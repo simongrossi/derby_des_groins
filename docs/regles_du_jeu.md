@@ -13,8 +13,9 @@ Bienvenue dans l'univers impitoyable et délicieux du **Derby des Groins**. Voic
 - **Force (FOR)** : S'imposer devant les autres.
 - **Intelligence (INT)** : Choisir la meilleure trajectoire.
 - **Moral (MOR)** : Détermination à gagner.
+- **Poids de forme** : un cochon trop lourd ou trop leger exploite moins bien ses stats pendant la course.
 
-Entraînez-le régulièrement, envoyez-le à l'école porcine et nourrissez-le pour le maintenir en forme avant les courses ! (Mais attention, un cochon ne peut courir qu'un nombre défini de fois avant de succomber...).
+Entraînez-le régulièrement, envoyez-le à l'école porcine et nourrissez-le pour le maintenir en forme avant les courses ! Le choix des cereales et des seances influe aussi sur son poids. (Mais attention, un cochon ne peut courir qu'un nombre défini de fois avant de succomber...).
 
 ## 2.b L'École Porcine
 - Depuis la page **Mon Cochon**, chaque cochon peut suivre des **cours tactiques** sous forme de quiz.
@@ -32,6 +33,7 @@ Entraînez-le régulièrement, envoyez-le à l'école porcine et nourrissez-le p
 - Il y a des courses régulières prévues à heure fixe ou forçables manuellement par l'admin.
 - Le calendrier continue de vivre meme sans visiteur connecte : les courses partent via une tache de fond.
 - Chaque cochon inscrit court (y compris les PNJ), sauf s'il est blessé ou dans un état trop faible pour être retenu.
+- Le moteur de course tient compte de la puissance generale, de l'etat du cochon et de son **poids de forme**.
 - Les éleveurs reçoivent une **prime de participation**, et les meilleurs gagnent un **bonus de podium**.
 
 ## 4. Les Paris
@@ -42,6 +44,7 @@ Entraînez-le régulièrement, envoyez-le à l'école porcine et nourrissez-le p
 - **Couple ordre** : trouver les 2 premiers dans l'ordre.
 - **Tierce ordre** : trouver les 3 premiers dans l'ordre.
 - Selon la difficulté du ticket et la cote calculée au moment de la mise, gagnez le pactole si ton pronostic est exact.
+- La page **Historique** conserve aussi chaque ticket, l'historique des courses et le journal des credits/debits BitGroins pour suivre les flux.
 
 ## 5. Survivre sur le Long Terme
 - Un cochon finit par prendre sa retraite ou mourir : il faut donc penser à renouveler son élevage.

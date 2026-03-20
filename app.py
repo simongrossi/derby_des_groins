@@ -39,6 +39,7 @@ class User(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     last_relief_at = db.Column(db.DateTime, nullable=True)
     bets = db.relationship('Bet', backref='user', lazy=True)
+    balance_transactions = db.relationship('BalanceTransaction', backref='user', lazy=True)
 
 class Pig(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -58,6 +59,7 @@ class Pig(db.Model):
     energy = db.Column(db.Float, default=80.0)
     hunger = db.Column(db.Float, default=60.0)
     happiness = db.Column(db.Float, default=70.0)
+    weight_kg = db.Column(db.Float, default=112.0)
 
     # Progression
     xp = db.Column(db.Integer, default=0)
@@ -129,6 +131,19 @@ class Bet(db.Model):
     winnings = db.Column(db.Float, default=0.0)
     placed_at = db.Column(db.DateTime, default=datetime.utcnow)
 
+class BalanceTransaction(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
+    amount = db.Column(db.Float, nullable=False)
+    balance_before = db.Column(db.Float, nullable=True)
+    balance_after = db.Column(db.Float, nullable=True)
+    reason_code = db.Column(db.String(40), nullable=False, default='adjustment')
+    reason_label = db.Column(db.String(80), nullable=False, default='Mouvement BitGroins')
+    details = db.Column(db.String(255), nullable=True)
+    reference_type = db.Column(db.String(30), nullable=True)
+    reference_id = db.Column(db.Integer, nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+
 class Auction(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     # Cochon en vente
@@ -140,6 +155,7 @@ class Auction(db.Model):
     pig_force = db.Column(db.Float, default=10.0)
     pig_intelligence = db.Column(db.Float, default=10.0)
     pig_moral = db.Column(db.Float, default=10.0)
+    pig_weight = db.Column(db.Float, default=112.0)
     pig_rarity = db.Column(db.String(20), default='commun')
     pig_max_races = db.Column(db.Integer, default=80)
     pig_origin = db.Column(db.String(30), default='France')
@@ -193,6 +209,7 @@ CEREALS = {
         'description': 'Base équilibrée, petit boost partout',
         'hunger_restore': 20, 'energy_restore': 5,
         'stats': {'vitesse': 0.5, 'endurance': 0.5, 'agilite': 0.5, 'force': 0.5, 'intelligence': 0.5, 'moral': 0.5},
+        'weight_delta': 0.5,
         'valeur_fourragere': 100
     },
     'orge': {
@@ -200,6 +217,7 @@ CEREALS = {
         'description': '+Endurance +Force',
         'hunger_restore': 30, 'energy_restore': 8,
         'stats': {'endurance': 2.0, 'force': 1.5, 'vitesse': 0.3},
+        'weight_delta': 0.9,
         'valeur_fourragere': 97
     },
     'ble': {
@@ -207,6 +225,7 @@ CEREALS = {
         'description': '+Force +Vitesse',
         'hunger_restore': 25, 'energy_restore': 5,
         'stats': {'force': 2.0, 'vitesse': 1.5, 'endurance': 0.5},
+        'weight_delta': 0.8,
         'valeur_fourragere': 105
     },
     'seigle': {
@@ -214,6 +233,7 @@ CEREALS = {
         'description': '+Agilité +Intelligence',
         'hunger_restore': 20, 'energy_restore': 5,
         'stats': {'agilite': 2.0, 'intelligence': 1.5},
+        'weight_delta': 0.3,
         'valeur_fourragere': 102
     },
     'triticale': {
@@ -221,6 +241,7 @@ CEREALS = {
         'description': '+Vitesse +Endurance',
         'hunger_restore': 25, 'energy_restore': 10,
         'stats': {'vitesse': 2.0, 'endurance': 1.5, 'moral': 0.5},
+        'weight_delta': 0.4,
         'valeur_fourragere': 100
     },
     'avoine': {
@@ -228,6 +249,7 @@ CEREALS = {
         'description': '+Moral +Agilité — récupération',
         'hunger_restore': 15, 'energy_restore': 15,
         'stats': {'moral': 2.5, 'agilite': 1.0},
+        'weight_delta': 0.2,
         'valeur_fourragere': 82
     }
 }
@@ -238,6 +260,7 @@ TRAININGS = {
         'description': 'Course courte et explosive',
         'energy_cost': 25, 'hunger_cost': 10,
         'stats': {'vitesse': 3.0, 'endurance': 1.0},
+        'weight_delta': -0.7,
         'min_happiness': 20
     },
     'cross': {
@@ -245,6 +268,7 @@ TRAININGS = {
         'description': 'Longue distance, mental d\'acier',
         'energy_cost': 35, 'hunger_cost': 15,
         'stats': {'endurance': 3.0, 'force': 1.0, 'vitesse': 0.5},
+        'weight_delta': -1.0,
         'min_happiness': 20
     },
     'obstacles': {
@@ -252,6 +276,7 @@ TRAININGS = {
         'description': 'Agilité et réflexes',
         'energy_cost': 30, 'hunger_cost': 10,
         'stats': {'agilite': 3.0, 'intelligence': 1.0},
+        'weight_delta': -0.6,
         'min_happiness': 30
     },
     'sparring': {
@@ -259,6 +284,7 @@ TRAININGS = {
         'description': 'Combat amical, gagne en puissance',
         'energy_cost': 30, 'hunger_cost': 15,
         'stats': {'force': 3.0, 'moral': 0.5, 'endurance': 0.5},
+        'weight_delta': 0.2,
         'min_happiness': 30
     },
     'puzzles': {
@@ -266,6 +292,7 @@ TRAININGS = {
         'description': 'Entraînement cérébral',
         'energy_cost': 15, 'hunger_cost': 5,
         'stats': {'intelligence': 3.0, 'moral': 1.0},
+        'weight_delta': 0.1,
         'min_happiness': 10
     },
     'repos': {
@@ -273,6 +300,7 @@ TRAININGS = {
         'description': 'Récupération complète',
         'energy_cost': -40, 'hunger_cost': 5,
         'stats': {'moral': 2.0},
+        'weight_delta': 0.5,
         'happiness_bonus': 15,
         'min_happiness': 0
     }
@@ -385,6 +413,9 @@ RACE_POSITION_REWARDS = {1: 25.0, 2: 12.0, 3: 6.0}
 VET_RESPONSE_MINUTES = 5
 MIN_INJURY_RISK = 8.0
 MAX_INJURY_RISK = 40.0
+DEFAULT_PIG_WEIGHT_KG = 112.0
+MIN_PIG_WEIGHT_KG = 75.0
+MAX_PIG_WEIGHT_KG = 190.0
 
 BET_TYPES = {
     'win': {
@@ -510,11 +541,90 @@ def init_default_config():
 
 # ─── HELPERS COCHON ─────────────────────────────────────────────────────────
 
+def clamp_pig_weight(weight):
+    return round(min(MAX_PIG_WEIGHT_KG, max(MIN_PIG_WEIGHT_KG, weight)), 1)
+
+def get_weight_stat(source, stat_name, default=10.0):
+    if isinstance(source, dict):
+        value = source.get(stat_name, default)
+    else:
+        value = getattr(source, stat_name, default)
+    return float(default if value is None else value)
+
+def calculate_target_weight_kg(source, level=None):
+    force = get_weight_stat(source, 'force')
+    endurance = get_weight_stat(source, 'endurance')
+    agilite = get_weight_stat(source, 'agilite')
+    vitesse = get_weight_stat(source, 'vitesse')
+    if level is None:
+        level = source.get('level', 1) if isinstance(source, dict) else getattr(source, 'level', 1)
+    level = max(1, int(level or 1))
+
+    target = (
+        108.0
+        + (force * 0.22)
+        + (endurance * 0.16)
+        - (agilite * 0.10)
+        - (vitesse * 0.05)
+        + ((level - 1) * 0.35)
+    )
+    return round(min(140.0, max(95.0, target)), 1)
+
+def generate_weight_kg_for_profile(source, level=None):
+    ideal = calculate_target_weight_kg(source, level=level)
+    return clamp_pig_weight(random.uniform(ideal - 7.0, ideal + 7.0))
+
+def adjust_pig_weight(pig, delta):
+    pig.weight_kg = clamp_pig_weight((pig.weight_kg or DEFAULT_PIG_WEIGHT_KG) + delta)
+    return pig.weight_kg
+
+def get_weight_profile(pig):
+    current_weight = clamp_pig_weight(pig.weight_kg or DEFAULT_PIG_WEIGHT_KG)
+    ideal_weight = calculate_target_weight_kg(pig)
+    tolerance = round(10.0 + (pig.endurance * 0.08) + (pig.force * 0.04), 1)
+    delta = round(current_weight - ideal_weight, 1)
+    abs_delta = abs(delta)
+    race_factor = max(0.82, min(1.06, 1.06 - ((abs_delta / max(tolerance * 2.2, 1.0)) * 0.24)))
+    injury_factor = 1.0 + min(0.35, abs_delta / max(tolerance * 3.5, 1.0))
+
+    if abs_delta <= tolerance * 0.4:
+        status = 'ideal'
+        status_label = 'Zone ideale'
+        note = "Ton cochon est dans son poids de forme. Il transforme mieux ses stats en vitesse utile."
+    elif delta > tolerance:
+        status = 'heavy'
+        status_label = 'Trop lourd'
+        note = "Il pousse fort, mais traine trop de kilos dans les relances et les virages."
+    elif delta < -tolerance:
+        status = 'light'
+        status_label = 'Trop leger'
+        note = "Il est vif, mais manque de coffre et d'impact face aux autres cochons."
+    else:
+        status = 'warning'
+        status_label = 'A surveiller'
+        note = "Le poids reste jouable, mais un petit ajustement peut encore aider en course."
+
+    return {
+        'current_weight': current_weight,
+        'ideal_weight': ideal_weight,
+        'min_weight': round(ideal_weight - tolerance, 1),
+        'max_weight': round(ideal_weight + tolerance, 1),
+        'delta': delta,
+        'status': status,
+        'status_label': status_label,
+        'note': note,
+        'race_factor': round(race_factor, 3),
+        'race_percent': round((race_factor - 1.0) * 100, 1),
+        'injury_factor': round(injury_factor, 3),
+        'score_pct': max(8, min(100, int((race_factor / 1.06) * 100))),
+    }
+
 def calculate_pig_power(pig):
     stats = [pig.vitesse, pig.endurance, pig.agilite, pig.force, pig.intelligence, pig.moral]
     stat_score = sum(math.sqrt(max(0.0, stat) / 100.0) * 100 for stat in stats) / len(stats)
     condition_factor = 0.8 + (((pig.energy + pig.hunger + pig.happiness) / 3.0) / 100.0) * 0.4
-    return round(stat_score * condition_factor, 2)
+    weight_factor = get_weight_profile(pig)['race_factor']
+    return round(stat_score * condition_factor * weight_factor, 2)
 
 def xp_for_level(level):
     return int(100 * (level ** 1.5))
@@ -544,6 +654,13 @@ def update_pig_state(pig):
         pig.happiness = max(0, pig.happiness - hours * 1)
     elif pig.happiness < 60:
         pig.happiness = min(60, pig.happiness + hours * 0.3)
+    current_weight = pig.weight_kg or DEFAULT_PIG_WEIGHT_KG
+    if pig.hunger < 25:
+        pig.weight_kg = clamp_pig_weight(current_weight - hours * 0.25)
+    elif pig.hunger > 75 and pig.energy < 45:
+        pig.weight_kg = clamp_pig_weight(current_weight + hours * 0.18)
+    elif pig.energy > 80 and pig.hunger < 60:
+        pig.weight_kg = clamp_pig_weight(current_weight - hours * 0.08)
     pig.last_updated = now
     db.session.commit()
 
@@ -611,30 +728,82 @@ def apply_row_lock(query):
         return query.with_for_update()
     return query
 
-def adjust_user_balance(user_id, delta, minimum_balance=None):
+def record_balance_transaction(user_id, amount, balance_before, balance_after,
+                               reason_code='adjustment', reason_label='Mouvement BitGroins',
+                               details=None, reference_type=None, reference_id=None):
+    tx = BalanceTransaction(
+        user_id=user_id,
+        amount=round(amount, 2),
+        balance_before=None if balance_before is None else round(balance_before, 2),
+        balance_after=None if balance_after is None else round(balance_after, 2),
+        reason_code=reason_code or 'adjustment',
+        reason_label=reason_label or 'Mouvement BitGroins',
+        details=details,
+        reference_type=reference_type,
+        reference_id=reference_id,
+    )
+    db.session.add(tx)
+    return tx
+
+def adjust_user_balance(user_id, delta, minimum_balance=None,
+                        reason_code='adjustment', reason_label='Mouvement BitGroins',
+                        details=None, reference_type=None, reference_id=None):
+    delta = round(float(delta or 0.0), 2)
     if delta == 0:
         return True
 
     stmt = update(User).where(User.id == user_id)
     if minimum_balance is not None:
         stmt = stmt.where(User.balance >= minimum_balance)
-    stmt = stmt.values(balance=func.round(User.balance + delta, 2))
+    stmt = stmt.values(balance=func.round(User.balance + delta, 2)).returning(User.balance)
 
-    result = db.session.execute(stmt)
-    if result.rowcount != 1:
+    row = db.session.execute(stmt).first()
+    if not row:
         db.session.rollback()
         return False
+    balance_after = round(float(row[0] or 0.0), 2)
+    balance_before = round(balance_after - delta, 2)
+    record_balance_transaction(
+        user_id=user_id,
+        amount=delta,
+        balance_before=balance_before,
+        balance_after=balance_after,
+        reason_code=reason_code,
+        reason_label=reason_label,
+        details=details,
+        reference_type=reference_type,
+        reference_id=reference_id,
+    )
     return True
 
-def debit_user_balance(user_id, amount):
+def debit_user_balance(user_id, amount, reason_code='debit', reason_label='Débit BitGroins',
+                       details=None, reference_type=None, reference_id=None):
     if amount <= 0:
         return False
-    return adjust_user_balance(user_id, -amount, minimum_balance=amount)
+    return adjust_user_balance(
+        user_id,
+        -amount,
+        minimum_balance=amount,
+        reason_code=reason_code,
+        reason_label=reason_label,
+        details=details,
+        reference_type=reference_type,
+        reference_id=reference_id,
+    )
 
-def credit_user_balance(user_id, amount):
+def credit_user_balance(user_id, amount, reason_code='credit', reason_label='Crédit BitGroins',
+                        details=None, reference_type=None, reference_id=None):
     if amount <= 0:
         return True
-    return adjust_user_balance(user_id, amount)
+    return adjust_user_balance(
+        user_id,
+        amount,
+        reason_code=reason_code,
+        reason_label=reason_label,
+        details=details,
+        reference_type=reference_type,
+        reference_id=reference_id,
+    )
 
 def reserve_pig_challenge_slot(pig_id, wager):
     result = db.session.execute(
@@ -681,10 +850,26 @@ def maybe_grant_emergency_relief(user):
             balance=func.round(User.balance + EMERGENCY_RELIEF_AMOUNT, 2),
             last_relief_at=now,
         )
+        .returning(User.balance)
     )
-    if result.rowcount != 1:
+    row = result.first()
+    if not row:
         db.session.rollback()
         return 0.0
+
+    balance_after = round(float(row[0] or 0.0), 2)
+    balance_before = round(balance_after - EMERGENCY_RELIEF_AMOUNT, 2)
+    record_balance_transaction(
+        user_id=user.id,
+        amount=EMERGENCY_RELIEF_AMOUNT,
+        balance_before=balance_before,
+        balance_after=balance_after,
+        reason_code='emergency_relief',
+        reason_label="Prime d'urgence",
+        details="Filet de sécurité automatique pour éviter un blocage à 0 BG.",
+        reference_type='system',
+        reference_id=user.id,
+    )
 
     db.session.commit()
     return EMERGENCY_RELIEF_AMOUNT
@@ -792,6 +977,7 @@ def get_user_active_pigs(user):
         )
         # Bonus d'origine
         apply_origin_bonus(pig, origin)
+        pig.weight_kg = generate_weight_kg_for_profile(pig)
         db.session.add(pig)
         db.session.commit()
         return [pig]
@@ -932,6 +1118,7 @@ def generate_auction_pig():
         pig_vitesse=stats['vitesse'], pig_endurance=stats['endurance'],
         pig_agilite=stats['agilite'], pig_force=stats['force'],
         pig_intelligence=stats['intelligence'], pig_moral=stats['moral'],
+        pig_weight=generate_weight_kg_for_profile(stats),
         pig_rarity=rarity_key,
         pig_max_races=random.randint(min_r, max_r),
         pig_origin=origin['country'], pig_origin_flag=origin['flag'],
@@ -964,6 +1151,7 @@ def resolve_auctions():
                     vitesse=auction.pig_vitesse, endurance=auction.pig_endurance,
                     agilite=auction.pig_agilite, force=auction.pig_force,
                     intelligence=auction.pig_intelligence, moral=auction.pig_moral,
+                    weight_kg=auction.pig_weight or DEFAULT_PIG_WEIGHT_KG,
                     max_races=auction.pig_max_races, rarity=auction.pig_rarity,
                     origin_country=auction.pig_origin, origin_flag=auction.pig_origin_flag,
                     energy=80, hunger=60, happiness=70
@@ -971,7 +1159,15 @@ def resolve_auctions():
                 db.session.add(new_pig)
             # Payer le vendeur si c'est un joueur
             if auction.seller_id:
-                credit_user_balance(auction.seller_id, auction.current_bid)
+                buyer_name = winner.username if winner else "un acheteur"
+                credit_user_balance(
+                    auction.seller_id, auction.current_bid,
+                    reason_code='auction_sale',
+                    reason_label='Vente au marche',
+                    details=f"{auction.pig_name} vendu a {buyer_name}.",
+                    reference_type='auction',
+                    reference_id=auction.id,
+                )
         else:
             auction.status = 'expired'
             if auction.seller_id and auction.source_pig_id:
@@ -1108,13 +1304,27 @@ def run_race_if_needed():
 
                 if owner:
                     reward = RACE_APPEARANCE_REWARD + RACE_POSITION_REWARDS.get(p.finish_position, 0.0)
-                    credit_user_balance(owner.id, reward)
+                    credit_user_balance(
+                        owner.id, reward,
+                        reason_code='race_reward',
+                        reason_label="Prime d'éleveur",
+                        details=f"{pig.name} a termine {p.finish_position}e sur la course #{race.id}.",
+                        reference_type='race',
+                        reference_id=race.id,
+                    )
 
                 if pig.challenge_mort_wager > 0:
                     wager = pig.challenge_mort_wager
                     if p.finish_position <= 3:
                         if owner:
-                            credit_user_balance(owner.id, wager * 3)
+                            credit_user_balance(
+                                owner.id, wager * 3,
+                                reason_code='challenge_payout',
+                                reason_label='Gain Challenge de la Mort',
+                                details=f"{pig.name} a survecu au Challenge de la Mort sur la course #{race.id}.",
+                                reference_type='race',
+                                reference_id=race.id,
+                            )
                         xp_gained *= 2
                         pig.happiness = min(100, pig.happiness + 15)
                     elif p.finish_position == num_participants:
@@ -1136,13 +1346,15 @@ def run_race_if_needed():
 
                 pig.energy = max(0, pig.energy - 15)
                 pig.hunger = max(0, pig.hunger - 10)
+                adjust_pig_weight(pig, -0.3)
                 pig.last_updated = datetime.utcnow()
                 check_level_up(pig)
 
                 base_risk = (pig.injury_risk or MIN_INJURY_RISK) / 100.0
                 fatigue_factor = 1.0 + max(0, (50 - pig.energy) / 100)
                 hunger_factor = 1.0 + max(0, (30 - pig.hunger) / 100)
-                effective_risk = min(0.70, base_risk * fatigue_factor * hunger_factor)
+                weight_profile = get_weight_profile(pig)
+                effective_risk = min(0.70, base_risk * fatigue_factor * hunger_factor * weight_profile['injury_factor'])
                 if random.random() < effective_risk and not pig.is_injured:
                     pig.is_injured = True
                     pig.vet_deadline = datetime.utcnow() + timedelta(minutes=VET_RESPONSE_MINUTES)
@@ -1163,7 +1375,14 @@ def run_race_if_needed():
                 winnings = round(bet.amount * bet.odds_at_bet, 2)
                 bet.status = 'won'
                 bet.winnings = winnings
-                credit_user_balance(bet.user_id, winnings)
+                credit_user_balance(
+                    bet.user_id, winnings,
+                    reason_code='bet_payout',
+                    reason_label='Gain de pari',
+                    details=f"Ticket {BET_TYPES[bet_type]['label'].lower()} gagnant sur la course #{race.id}: {bet.pig_name}.",
+                    reference_type='bet',
+                    reference_id=bet.id,
+                )
             else:
                 bet.status = 'lost'
                 bet.winnings = 0.0
@@ -1172,6 +1391,61 @@ def run_race_if_needed():
 
     if due_races:
         ensure_next_race()
+
+def get_race_history_entries():
+    races = Race.query.filter_by(status='finished').order_by(Race.finished_at.desc(), Race.id.desc()).all()
+    if not races:
+        return []
+
+    race_ids = [race.id for race in races]
+    participants = Participant.query.filter(Participant.race_id.in_(race_ids)).all()
+    participants_by_race = {}
+    for participant in participants:
+        participants_by_race.setdefault(participant.race_id, []).append(participant)
+
+    bet_stats_rows = (
+        db.session.query(
+            Bet.race_id,
+            func.count(Bet.id),
+            func.coalesce(func.sum(Bet.amount), 0.0),
+            func.coalesce(func.sum(Bet.winnings), 0.0),
+        )
+        .filter(Bet.race_id.in_(race_ids))
+        .group_by(Bet.race_id)
+        .all()
+    )
+    bet_stats_by_race = {
+        race_id: {
+            'bet_count': bet_count,
+            'total_staked': round(float(total_staked or 0.0), 2),
+            'total_paid_out': round(float(total_paid_out or 0.0), 2),
+        }
+        for race_id, bet_count, total_staked, total_paid_out in bet_stats_rows
+    }
+
+    entries = []
+    for race in races:
+        ordered_participants = sorted(
+            participants_by_race.get(race.id, []),
+            key=lambda participant: (
+                participant.finish_position is None,
+                participant.finish_position or 999,
+                participant.id,
+            )
+        )
+        stats = bet_stats_by_race.get(race.id, {'bet_count': 0, 'total_staked': 0.0, 'total_paid_out': 0.0})
+        entries.append({
+            'race': race,
+            'participants': ordered_participants,
+            'podium': ordered_participants[:3],
+            'winner': ordered_participants[0] if ordered_participants else None,
+            'player_count': sum(1 for participant in ordered_participants if participant.owner_name),
+            'npc_count': sum(1 for participant in ordered_participants if not participant.owner_name),
+            'bet_count': stats['bet_count'],
+            'total_staked': stats['total_staked'],
+            'total_paid_out': stats['total_paid_out'],
+        })
+    return entries
 
 # ─── ROUTES ─────────────────────────────────────────────────────────────────
 
@@ -1222,10 +1496,22 @@ def register():
         user = User(username=username, password_hash=generate_password_hash(password), balance=100.0)
         db.session.add(user)
         db.session.flush()
+        record_balance_transaction(
+            user_id=user.id,
+            amount=100.0,
+            balance_before=0.0,
+            balance_after=100.0,
+            reason_code='welcome_bonus',
+            reason_label="Bonus d'inscription",
+            details="Capital de depart offert a la creation du compte.",
+            reference_type='user',
+            reference_id=user.id,
+        )
         origin = random.choice(PIG_ORIGINS)
         pig = Pig(user_id=user.id, name=f"Cochon de {username}", emoji='🐷',
                   origin_country=origin['country'], origin_flag=origin['flag'])
         apply_origin_bonus(pig, origin)
+        pig.weight_kg = generate_weight_kg_for_profile(pig)
         db.session.add(pig)
         db.session.commit()
         session['user_id'] = user.id
@@ -1405,7 +1691,14 @@ def place_bet():
         status='pending'
     )
     try:
-        if not debit_user_balance(user.id, amount):
+        if not debit_user_balance(
+            user.id, amount,
+            reason_code='bet_stake',
+            reason_label='Mise de pari',
+            details=f"Ticket {BET_TYPES[bet_type]['label'].lower()} sur la course #{race_id}: {bet_label}.",
+            reference_type='race',
+            reference_id=race_id,
+        ):
             flash("Pas assez de BitGroins pour valider ce ticket.", "error")
             return redirect(url_for('index'))
         db.session.add(bet)
@@ -1423,8 +1716,34 @@ def history():
     if 'user_id' not in session:
         return redirect(url_for('login'))
     user = User.query.get(session['user_id'])
-    bets = Bet.query.filter_by(user_id=user.id).order_by(Bet.placed_at.desc()).limit(50).all()
-    return render_template('history.html', user=user, bets=bets, bet_types=BET_TYPES)
+    bets = Bet.query.filter_by(user_id=user.id).order_by(Bet.placed_at.desc()).all()
+    transactions = BalanceTransaction.query.filter_by(user_id=user.id).order_by(BalanceTransaction.created_at.desc(), BalanceTransaction.id.desc()).all()
+    global_transactions = []
+    if user.is_admin:
+        global_transactions = BalanceTransaction.query.order_by(BalanceTransaction.created_at.desc(), BalanceTransaction.id.desc()).all()
+
+    race_history = get_race_history_entries()
+
+    won_bets = [bet for bet in bets if bet.status == 'won']
+    lost_bets = [bet for bet in bets if bet.status == 'lost']
+    settled_bets = won_bets + lost_bets
+    credited_amount = round(sum(tx.amount for tx in transactions if tx.amount > 0 and tx.reason_code != 'snapshot'), 2)
+    debited_amount = round(sum(abs(tx.amount) for tx in transactions if tx.amount < 0 and tx.reason_code != 'snapshot'), 2)
+
+    return render_template(
+        'history.html',
+        user=user,
+        bets=bets,
+        won_bets=won_bets,
+        lost_bets=lost_bets,
+        settled_bets=settled_bets,
+        transactions=transactions,
+        global_transactions=global_transactions,
+        race_history=race_history,
+        bet_types=BET_TYPES,
+        credited_amount=credited_amount,
+        debited_amount=debited_amount,
+    )
 
 # ─── ROUTES COCHON ──────────────────────────────────────────────────────────
 
@@ -1450,6 +1769,7 @@ def mon_cochon():
         rarity_info = RARITIES.get(p.rarity or 'commun', RARITIES['commun'])
         school_cooldown = get_cooldown_remaining(p.last_school_at, SCHOOL_COOLDOWN_MINUTES)
         vet_seconds_left = get_seconds_until(p.vet_deadline) if p.is_injured else 0
+        weight_profile = get_weight_profile(p)
         pigs_data.append({
             'pig': p,
             'races_remaining': races_remaining,
@@ -1461,6 +1781,7 @@ def mon_cochon():
             'school_cooldown_label': format_duration_short(school_cooldown),
             'vet_seconds_left': vet_seconds_left,
             'vet_deadline_label': format_duration_short(vet_seconds_left),
+            'weight_profile': weight_profile,
         })
 
     return render_template('mon_cochon.html',
@@ -1484,7 +1805,14 @@ def adopt_second_pig():
     if cost is None:
         flash("Impossible d'adopter un nouveau cochon pour l'instant.", "warning")
         return redirect(url_for('mon_cochon'))
-    if not debit_user_balance(user.id, cost):
+    if not debit_user_balance(
+        user.id, cost,
+        reason_code='pig_adoption',
+        reason_label='Adoption de cochon',
+        details="Ouverture d'une nouvelle place dans l'elevage.",
+        reference_type='user',
+        reference_id=user.id,
+    ):
         flash(f"Il te faut {cost:.0f} BG pour adopter un nouveau cochon !", "error")
         return redirect(url_for('mon_cochon'))
 
@@ -1497,6 +1825,7 @@ def adopt_second_pig():
         origin_flag=origin['flag']
     )
     apply_origin_bonus(new_pig, origin)
+    new_pig.weight_kg = generate_weight_kg_for_profile(new_pig)
     db.session.add(new_pig)
     db.session.commit()
     if active_pigs:
@@ -1524,12 +1853,20 @@ def feed():
     if pig.hunger >= 95:
         flash("Ton cochon n'a plus faim !", "warning")
         return redirect(url_for('mon_cochon'))
-    if not debit_user_balance(user.id, cereal['cost']):
+    if not debit_user_balance(
+        user.id, cereal['cost'],
+        reason_code='feed_purchase',
+        reason_label='Nourriture achetee',
+        details=f"{cereal['name']} pour {pig.name}.",
+        reference_type='pig',
+        reference_id=pig.id,
+    ):
         flash("Pas assez de BitGroins !", "error")
         return redirect(url_for('mon_cochon'))
 
     pig.hunger = min(100, pig.hunger + cereal['hunger_restore'])
     pig.energy = min(100, pig.energy + cereal.get('energy_restore', 0))
+    adjust_pig_weight(pig, cereal.get('weight_delta', 0.0))
     for stat, boost in cereal['stats'].items():
         current = getattr(pig, stat, None)
         if current is not None:
@@ -1569,6 +1906,7 @@ def train():
         return redirect(url_for('mon_cochon'))
     pig.energy = max(0, min(100, pig.energy - training['energy_cost']))
     pig.hunger = max(0, pig.hunger - training.get('hunger_cost', 0))
+    adjust_pig_weight(pig, training.get('weight_delta', 0.0))
     if 'happiness_bonus' in training:
         pig.happiness = min(100, pig.happiness + training['happiness_bonus'])
     for stat, boost in training['stats'].items():
@@ -1694,7 +2032,14 @@ def challenge_mort():
         flash("Ton cochon est trop faible pour le Challenge !", "error")
         return redirect(url_for('mon_cochon'))
 
-    if not debit_user_balance(user.id, wager):
+    if not debit_user_balance(
+        user.id, wager,
+        reason_code='challenge_entry',
+        reason_label='Inscription Challenge de la Mort',
+        details=f"{pig.name} engage pour {wager:.0f} BG.",
+        reference_type='pig',
+        reference_id=pig.id,
+    ):
         flash("T'as pas les moyens de jouer avec la vie de ton cochon !", "error")
         return redirect(url_for('mon_cochon'))
     if not reserve_pig_challenge_slot(pig.id, wager):
@@ -1725,7 +2070,14 @@ def cancel_challenge():
     if refund <= 0:
         flash("Le challenge a déjà été annulé ou réglé ailleurs.", "warning")
         return redirect(url_for('mon_cochon'))
-    credit_user_balance(user.id, refund)
+    credit_user_balance(
+        user.id, refund,
+        reason_code='challenge_refund',
+        reason_label='Remboursement Challenge de la Mort',
+        details=f"Annulation du challenge pour {pig.name}.",
+        reference_type='pig',
+        reference_id=pig.id,
+    )
     db.session.commit()
     flash(f"😰 Challenge annulé pour {pig.name}... Remboursement : {refund:.0f} BG (50%)", "warning")
     return redirect(url_for('mon_cochon'))
@@ -1802,7 +2154,14 @@ def bid():
         flash(f"Enchère minimum : {min_bid:.0f} BG !", "error")
         return redirect(url_for('marche'))
 
-    if not debit_user_balance(user.id, bid_amount):
+    if not debit_user_balance(
+        user.id, bid_amount,
+        reason_code='auction_bid',
+        reason_label='Mise bloquee en enchere',
+        details=f"Enchere sur {auction.pig_name}.",
+        reference_type='auction',
+        reference_id=auction.id,
+    ):
         flash("Pas assez de BitGroins !", "error")
         return redirect(url_for('marche'))
 
@@ -1830,7 +2189,14 @@ def bid():
         return redirect(url_for('marche'))
 
     if previous_bidder_id and previous_bid_amount > 0:
-        credit_user_balance(previous_bidder_id, previous_bid_amount)
+        credit_user_balance(
+            previous_bidder_id, previous_bid_amount,
+            reason_code='auction_outbid_refund',
+            reason_label='Remboursement enchere depassee',
+            details=f"Ton offre sur {auction.pig_name} a ete depassee.",
+            reference_type='auction',
+            reference_id=auction.id,
+        )
 
     db.session.commit()
     flash(f"Enchère placée : {bid_amount:.0f} BG sur {auction.pig_name} !", "success")
@@ -1866,6 +2232,7 @@ def sell_pig():
         pig_vitesse=pig.vitesse, pig_endurance=pig.endurance,
         pig_agilite=pig.agilite, pig_force=pig.force,
         pig_intelligence=pig.intelligence, pig_moral=pig.moral,
+        pig_weight=pig.weight_kg or DEFAULT_PIG_WEIGHT_KG,
         pig_rarity=pig.rarity or 'commun',
         pig_max_races=max(0, (pig.max_races or 80) - pig.races_entered),
         pig_origin=pig.origin_country or 'France',
@@ -2244,6 +2611,8 @@ def api_pig():
         'stats': {k: round(getattr(pig, k), 1) for k in ['vitesse', 'endurance', 'agilite', 'force', 'intelligence', 'moral']},
         'energy': round(pig.energy, 1), 'hunger': round(pig.hunger, 1),
         'happiness': round(pig.happiness, 1),
+        'weight_kg': round(pig.weight_kg or DEFAULT_PIG_WEIGHT_KG, 1),
+        'weight_profile': get_weight_profile(pig),
         'power': round(calculate_pig_power(pig), 1),
         'origin': pig.origin_country, 'origin_flag': pig.origin_flag,
         'races_entered': pig.races_entered, 'races_won': pig.races_won,
@@ -2348,6 +2717,7 @@ def migrate_db():
         ('pig', 'origin_flag', 'VARCHAR(10) DEFAULT "🇫🇷"'),
         ('pig', 'last_school_at', 'DATETIME'),
         ('pig', 'school_sessions_completed', 'INTEGER DEFAULT 0'),
+        ('pig', 'weight_kg', 'FLOAT DEFAULT 112.0'),
         ('pig', 'is_injured', 'BOOLEAN DEFAULT 0'),
         ('pig', 'injury_risk', 'FLOAT DEFAULT 10.0'),
         ('pig', 'vet_deadline', 'DATETIME'),
@@ -2355,6 +2725,7 @@ def migrate_db():
         ('user', 'last_relief_at', 'DATETIME'),
         ('auction', 'seller_id', 'INTEGER'),
         ('auction', 'source_pig_id', 'INTEGER'),
+        ('auction', 'pig_weight', 'FLOAT DEFAULT 112.0'),
         ('auction', 'pig_origin', 'VARCHAR(30)'),
         ('auction', 'pig_origin_flag', 'VARCHAR(10)'),
         ('bet', 'bet_type', 'VARCHAR(20) DEFAULT "win"'),
@@ -2413,6 +2784,7 @@ def seed_users():
                 origin_country=origin_data['country'], origin_flag=origin_data['flag']
             )
             apply_origin_bonus(pig, origin_data)
+            pig.weight_kg = generate_weight_kg_for_profile(pig)
             db.session.add(pig)
 
     demo_owner = User.query.filter_by(username='Christophe').first()
@@ -2435,14 +2807,40 @@ def seed_users():
                 vet_deadline=datetime.utcnow() + timedelta(minutes=30),
             )
             apply_origin_bonus(demo_pig, origin_data)
+            demo_pig.weight_kg = clamp_pig_weight(118.0)
             db.session.add(demo_pig)
     db.session.commit()
+
+def ensure_balance_transaction_snapshots():
+    logged_user_ids = {
+        user_id for (user_id,) in db.session.query(BalanceTransaction.user_id).distinct().all()
+    }
+    created = False
+    for user in User.query.all():
+        if user.id in logged_user_ids:
+            continue
+        opening_balance = round(float(user.balance or 0.0), 2)
+        record_balance_transaction(
+            user_id=user.id,
+            amount=opening_balance,
+            balance_before=0.0,
+            balance_after=opening_balance,
+            reason_code='snapshot',
+            reason_label='Ouverture du journal BG',
+            details="Solde observe au moment de l'activation de la tracabilite.",
+            reference_type='user',
+            reference_id=user.id,
+        )
+        created = True
+    if created:
+        db.session.commit()
 
 with app.app_context():
     db.create_all()
     migrate_db()
     init_default_config()
     seed_users()
+    ensure_balance_transaction_snapshots()
     ensure_next_race()
 
 if should_autostart_scheduler():
