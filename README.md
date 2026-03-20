@@ -1,14 +1,59 @@
-# 🐷 Derby des Groins
+# 🐷 Derby des Groins™
 
-**Le Tamagotchi de cochons de course le plus porcin de l'internet.**
+Bienvenue dans le Derby des Groins™.
 
-Élève ton cochon, nourris-le, entraîne-le, fais-le courir — et si t'es assez fou, risque sa vie dans le **Challenge de la Mort**. Spoiler : ça finit parfois en charcuterie.
+Ce projet fait suite à une réunion interne dont l’objectif initial était simple :
+améliorer la prise de décision dans des environnements complexes.
 
-> 💡 *Idée originale née lors d'une réunion interne, proposée par Christophe. Comme quoi, les meilleures idées viennent quand on ne s'y attend pas.*
+Après 1h42 d’échanges, plusieurs constats ont émergé :
+- les décisions humaines peuvent être lentes, biaisées ou dépendantes du contexte
+- les outils existants ajoutent parfois plus de complexité que de clarté
+- certaines situations restent difficilement arbitrables, même avec les meilleurs frameworks
+
+Une proposition a alors été formulée.
+
+Au départ, c’était une blague.
+
+Introduire un système totalement neutre.
+
+**Les cochons.**
+
+Personne n’a vraiment validé.
+Personne n’a vraiment refusé.
+
+### Plateforme expérimentale de simulation décisionnelle en environnement compétitif
+
+Chaque entité porcine est élevée, nourrie et entraînée pour évoluer dans un cadre simulé.
+
+Les performances sont observées.
+Les comportements sont analysés.
+
+Et parfois… des décisions émergent.
+
+**Fonctionnalités principales :**
+- simulation de scénarios décisionnels complexes
+- observation de comportements non déterministes
+- mise en compétition d’approches alternatives
+
+> 💡 **Idée originale** : issue d’une discussion interne informelle (proposée par Christophe).
+
+Aujourd’hui, le système existe.
+
+Il n’était pas prévu.
+
+Mais il fonctionne.
+
+Les résultats sont intéressants.
+
+Ce qui soulève… de nouvelles questions.
 
 ---
 
 ## 🎮 Concept
+
+**Le Tamagotchi de cochons de course le plus porcin de l'internet.**
+
+Élève ton cochon, nourris-le, entraîne-le, fais-le courir — et si t'es assez fou, risque sa vie dans le **Challenge de la Mort**. Spoiler : ça finit parfois en charcuterie.
 
 Chaque joueur possède un **cochon virtuel** qu'il doit développer comme un Tamagotchi :
 
