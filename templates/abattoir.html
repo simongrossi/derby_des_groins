@@ -87,9 +87,14 @@
             <a href="/mon-cochon" class="text-pink-400/80 hover:text-pink-300 text-sm font-bold transition-colors">🐷 Mon Cochon</a>
             <a href="/cimetiere" class="text-purple-400/80 hover:text-purple-300 text-sm font-bold transition-colors">⚰️ Cimetière</a>
             {% endif %}
+            <a href="/mon-cochon" class="text-pink-400/80 hover:text-pink-300 text-sm font-bold transition-colors">🐷 Mon Cochon</a>
             <a href="/marche" class="text-white/60 hover:text-white text-sm font-bold transition-colors">🏪 Marché</a>
             <a href="/classement" class="text-yellow-400 hover:text-yellow-500 text-sm font-bold transition-colors">🏆 Classement</a>
-            <a href="/mon-cochon" class="text-white/60 hover:text-white text-sm font-bold transition-colors">🐷 Mon Cochon</a>
+            <a href="/history" class="text-white text-sm font-bold">Historique</a>
+            <a href="/legendes-pop" class="text-purple-400 hover:text-purple-300 text-sm font-bold transition-colors">🌟 Pop Cult'</a>
+            <a href="/cimetiere" class="text-purple-400/50 hover:text-purple-400 text-sm font-bold transition-colors">⚰️ Cimetière</a>
+            {% if user.is_admin %}<a href="/admin" class="text-indigo-400/70 hover:text-indigo-300 text-sm font-bold transition-colors">🔧 Admin</a>{% endif %}
+            <a href="/logout" class="text-red-400/70 hover:text-red-400 text-sm font-bold transition-colors">Quitter</a>
         </nav>
     </div>
 </header>
