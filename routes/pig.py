@@ -1,0 +1,379 @@
+from flask import Blueprint, render_template, request, redirect, url_for, session, flash
+from datetime import datetime
+import random
+
+from extensions import db
+from models import User, Pig
+from data import (
+    CEREALS, TRAININGS, SCHOOL_LESSONS, SCHOOL_COOLDOWN_MINUTES,
+    PIG_EMOJIS, PIG_ORIGINS, STAT_LABELS, RARITIES,
+)
+from helpers import (
+    get_user_active_pigs, update_pig_state, calculate_pig_power, xp_for_level,
+    get_cooldown_remaining, format_duration_short, get_seconds_until,
+    get_weight_profile, get_adoption_cost, get_active_listing_count,
+    get_pig_slot_count, maybe_grant_emergency_relief, check_level_up,
+    adjust_pig_weight, apply_origin_bonus, generate_weight_kg_for_profile,
+    debit_user_balance, credit_user_balance,
+    reserve_pig_challenge_slot, release_pig_challenge_slot,
+    send_to_abattoir,
+)
+
+pig_bp = Blueprint('pig', __name__)
+
+
+@pig_bp.route('/mon-cochon')
+def mon_cochon():
+    if 'user_id' not in session:
+        return redirect(url_for('auth.login'))
+    user = User.query.get(session['user_id'])
+    relief_amount = maybe_grant_emergency_relief(user)
+    if relief_amount > 0:
+        db.session.refresh(user)
+        flash(f"🛟 Prime d'élevage d'urgence: +{relief_amount:.0f} BG pour relancer ton élevage.", "success")
+    pigs = get_user_active_pigs(user)
+    adoption_cost = get_adoption_cost(user)
+    active_listing_count = get_active_listing_count(user)
+
+    pigs_data = []
+    for p in pigs:
+        update_pig_state(p)
+        races_remaining = max(0, (p.max_races or 80) - p.races_entered)
+        age_days = (datetime.utcnow() - p.created_at).days if p.created_at else 0
+        rarity_info = RARITIES.get(p.rarity or 'commun', RARITIES['commun'])
+        school_cooldown = get_cooldown_remaining(p.last_school_at, SCHOOL_COOLDOWN_MINUTES)
+        vet_seconds_left = get_seconds_until(p.vet_deadline) if p.is_injured else 0
+        weight_profile = get_weight_profile(p)
+        pigs_data.append({
+            'pig': p,
+            'races_remaining': races_remaining,
+            'age_days': age_days,
+            'rarity_info': rarity_info,
+            'power': round(calculate_pig_power(p), 1),
+            'xp_next': xp_for_level(p.level + 1),
+            'school_cooldown': school_cooldown,
+            'school_cooldown_label': format_duration_short(school_cooldown),
+            'vet_seconds_left': vet_seconds_left,
+            'vet_deadline_label': format_duration_short(vet_seconds_left),
+            'weight_profile': weight_profile,
+        })
+
+    return render_template('mon_cochon.html',
+        user=user, pigs_data=pigs_data, cereals=CEREALS, trainings=TRAININGS,
+        school_lessons=SCHOOL_LESSONS, school_cooldown_minutes=SCHOOL_COOLDOWN_MINUTES,
+        pig_emojis=PIG_EMOJIS, stat_labels=STAT_LABELS,
+        adoption_cost=adoption_cost, active_listing_count=active_listing_count
+    )
+
+
+@pig_bp.route('/adopt-second-pig')
+def adopt_second_pig():
+    if 'user_id' not in session:
+        return redirect(url_for('auth.login'))
+    user = User.query.get(session['user_id'])
+    active_pigs = Pig.query.filter_by(user_id=user.id, is_alive=True).all()
+    if get_pig_slot_count(user) >= 2:
+        flash("Tu as déjà le maximum de cochons (2) !", "warning")
+        return redirect(url_for('pig.mon_cochon'))
+
+    cost = get_adoption_cost(user)
+    if cost is None:
+        flash("Impossible d'adopter un nouveau cochon pour l'instant.", "warning")
+        return redirect(url_for('pig.mon_cochon'))
+    if not debit_user_balance(
+        user.id, cost,
+        reason_code='pig_adoption',
+        reason_label='Adoption de cochon',
+        details="Ouverture d'une nouvelle place dans l'elevage.",
+        reference_type='user',
+        reference_id=user.id,
+    ):
+        flash(f"Il te faut {cost:.0f} BG pour adopter un nouveau cochon !", "error")
+        return redirect(url_for('pig.mon_cochon'))
+
+    origin = random.choice(PIG_ORIGINS)
+    new_pig = Pig(
+        user_id=user.id,
+        name=f"Second de {user.username}" if active_pigs else f"Rescapé de {user.username}",
+        emoji='🐖',
+        origin_country=origin['country'],
+        origin_flag=origin['flag']
+    )
+    apply_origin_bonus(new_pig, origin)
+    new_pig.weight_kg = generate_weight_kg_for_profile(new_pig)
+    db.session.add(new_pig)
+    db.session.commit()
+    if active_pigs:
+        flash("✨ Nouveau cochon adopté ! Bienvenue dans l'écurie.", "success")
+    else:
+        flash("✨ Un cochon de secours rejoint ton élevage. C'est reparti.", "success")
+    return redirect(url_for('pig.mon_cochon'))
+
+
+@pig_bp.route('/feed', methods=['POST'])
+def feed():
+    if 'user_id' not in session:
+        return redirect(url_for('auth.login'))
+    user = User.query.get(session['user_id'])
+    pig_id = request.form.get('pig_id', type=int)
+    pig = Pig.query.get(pig_id)
+    if not pig or pig.user_id != user.id or not pig.is_alive:
+        flash("Cochon introuvable !", "error")
+        return redirect(url_for('pig.mon_cochon'))
+
+    update_pig_state(pig)
+    cereal_key = request.form.get('cereal')
+    if cereal_key not in CEREALS:
+        return redirect(url_for('pig.mon_cochon'))
+    cereal = CEREALS[cereal_key]
+    if pig.hunger >= 95:
+        flash("Ton cochon n'a plus faim !", "warning")
+        return redirect(url_for('pig.mon_cochon'))
+    if not debit_user_balance(
+        user.id, cereal['cost'],
+        reason_code='feed_purchase',
+        reason_label='Nourriture achetee',
+        details=f"{cereal['name']} pour {pig.name}.",
+        reference_type='pig',
+        reference_id=pig.id,
+    ):
+        flash("Pas assez de BitGroins !", "error")
+        return redirect(url_for('pig.mon_cochon'))
+
+    pig.hunger = min(100, pig.hunger + cereal['hunger_restore'])
+    pig.energy = min(100, pig.energy + cereal.get('energy_restore', 0))
+    adjust_pig_weight(pig, cereal.get('weight_delta', 0.0))
+    for stat, boost in cereal['stats'].items():
+        current = getattr(pig, stat, None)
+        if current is not None:
+            setattr(pig, stat, min(100, current + boost))
+    pig.last_updated = datetime.utcnow()
+    db.session.commit()
+    flash(f"{cereal['emoji']} {cereal['name']} donné ! Miam !", "success")
+    return redirect(url_for('pig.mon_cochon'))
+
+
+@pig_bp.route('/train', methods=['POST'])
+def train():
+    if 'user_id' not in session:
+        return redirect(url_for('auth.login'))
+    user = User.query.get(session['user_id'])
+    pig_id = request.form.get('pig_id', type=int)
+    pig = Pig.query.get(pig_id)
+    if not pig or pig.user_id != user.id or not pig.is_alive:
+        flash("Cochon introuvable !", "error")
+        return redirect(url_for('pig.mon_cochon'))
+
+    update_pig_state(pig)
+    if pig.is_injured:
+        flash("Ton cochon est blessé. Passe d'abord par le vétérinaire.", "warning")
+        return redirect(url_for('api.veterinaire', pig_id=pig.id))
+    training_key = request.form.get('training')
+    if training_key not in TRAININGS:
+        return redirect(url_for('pig.mon_cochon'))
+    training = TRAININGS[training_key]
+    if training['energy_cost'] > 0 and pig.energy < training['energy_cost']:
+        flash("Ton cochon est trop fatigué !", "error")
+        return redirect(url_for('pig.mon_cochon'))
+    if pig.hunger < training.get('hunger_cost', 0):
+        flash("Ton cochon a trop faim pour s'entraîner !", "error")
+        return redirect(url_for('pig.mon_cochon'))
+    if pig.happiness < training.get('min_happiness', 0):
+        flash("Ton cochon n'est pas assez heureux !", "error")
+        return redirect(url_for('pig.mon_cochon'))
+    pig.energy = max(0, min(100, pig.energy - training['energy_cost']))
+    pig.hunger = max(0, pig.hunger - training.get('hunger_cost', 0))
+    adjust_pig_weight(pig, training.get('weight_delta', 0.0))
+    if 'happiness_bonus' in training:
+        pig.happiness = min(100, pig.happiness + training['happiness_bonus'])
+    for stat, boost in training['stats'].items():
+        current = getattr(pig, stat, None)
+        if current is not None:
+            setattr(pig, stat, min(100, current + boost))
+    pig.last_updated = datetime.utcnow()
+    db.session.commit()
+    flash(f"{training['emoji']} {training['name']} terminé !", "success")
+    return redirect(url_for('pig.mon_cochon'))
+
+
+@pig_bp.route('/school', methods=['POST'])
+def school():
+    if 'user_id' not in session:
+        return redirect(url_for('auth.login'))
+    user = User.query.get(session['user_id'])
+    pig_id = request.form.get('pig_id', type=int)
+    pig = Pig.query.get(pig_id)
+    if not pig or pig.user_id != user.id or not pig.is_alive:
+        flash("Cochon introuvable !", "error")
+        return redirect(url_for('pig.mon_cochon'))
+
+    update_pig_state(pig)
+    if pig.is_injured:
+        flash("L'école attendra. Ton cochon doit d'abord passer au vétérinaire.", "warning")
+        return redirect(url_for('api.veterinaire', pig_id=pig.id))
+    lesson_key = request.form.get('lesson')
+    if lesson_key not in SCHOOL_LESSONS:
+        flash("Cours introuvable !", "error")
+        return redirect(url_for('pig.mon_cochon'))
+
+    lesson = SCHOOL_LESSONS[lesson_key]
+    cooldown = get_cooldown_remaining(pig.last_school_at, SCHOOL_COOLDOWN_MINUTES)
+    if cooldown > 0:
+        flash(f"La salle de classe est fermee pour l'instant. Reviens dans {format_duration_short(cooldown)}.", "warning")
+        return redirect(url_for('pig.mon_cochon'))
+
+    answer_idx = request.form.get('answer_idx', type=int)
+    answers = lesson['answers']
+    if answer_idx is None or answer_idx < 0 or answer_idx >= len(answers):
+        flash("Reponse invalide !", "error")
+        return redirect(url_for('pig.mon_cochon'))
+
+    if pig.energy < lesson['energy_cost']:
+        flash("Ton cochon est trop fatigue pour suivre ce cours.", "error")
+        return redirect(url_for('pig.mon_cochon'))
+    if pig.hunger < lesson['hunger_cost']:
+        flash("Ton cochon a trop faim pour se concentrer.", "error")
+        return redirect(url_for('pig.mon_cochon'))
+    if pig.happiness < lesson['min_happiness']:
+        flash("Ton cochon boude l'ecole aujourd'hui. Remonte-lui le moral d'abord.", "warning")
+        return redirect(url_for('pig.mon_cochon'))
+
+    selected_answer = answers[answer_idx]
+    pig.energy = max(0, pig.energy - lesson['energy_cost'])
+    pig.hunger = max(0, pig.hunger - lesson['hunger_cost'])
+    pig.last_school_at = datetime.utcnow()
+    pig.school_sessions_completed = (pig.school_sessions_completed or 0) + 1
+
+    if selected_answer['correct']:
+        for stat, boost in lesson['stats'].items():
+            current = getattr(pig, stat, None)
+            if current is not None:
+                setattr(pig, stat, min(100, current + boost))
+        pig.xp += lesson['xp']
+        pig.happiness = min(100, pig.happiness + lesson.get('happiness_bonus', 0))
+        feedback_prefix = "Cours valide avec mention groin-tres-bien."
+        category = "success"
+    else:
+        pig.xp += lesson.get('wrong_xp', 0)
+        pig.happiness = max(0, pig.happiness - lesson.get('wrong_happiness_penalty', 0))
+        feedback_prefix = "Le cours etait plus complique que prevu."
+        category = "warning"
+
+    pig.last_updated = datetime.utcnow()
+    check_level_up(pig)
+    db.session.commit()
+    flash(f"{lesson['emoji']} {lesson['name']} - {feedback_prefix} {selected_answer['feedback']}", category)
+    return redirect(url_for('pig.mon_cochon'))
+
+
+@pig_bp.route('/rename-pig', methods=['POST'])
+def rename_pig():
+    if 'user_id' not in session:
+        return redirect(url_for('auth.login'))
+    user = User.query.get(session['user_id'])
+    pig_id = request.form.get('pig_id', type=int)
+    pig = Pig.query.get(pig_id)
+    if not pig or pig.user_id != user.id or not pig.is_alive:
+        flash("Cochon introuvable !", "error")
+        return redirect(url_for('pig.mon_cochon'))
+    new_name = request.form.get('name', '').strip()
+    new_emoji = request.form.get('emoji', '').strip()
+    if new_name and 2 <= len(new_name) <= 30:
+        pig.name = new_name
+    if new_emoji and new_emoji in PIG_EMOJIS:
+        pig.emoji = new_emoji
+    db.session.commit()
+    return redirect(url_for('pig.mon_cochon'))
+
+
+@pig_bp.route('/challenge-mort', methods=['POST'])
+def challenge_mort():
+    if 'user_id' not in session:
+        return redirect(url_for('auth.login'))
+    user = User.query.get(session['user_id'])
+    pig_id = request.form.get('pig_id', type=int)
+    pig = Pig.query.get(pig_id)
+    if not pig or pig.user_id != user.id or not pig.is_alive:
+        flash("Cochon introuvable !", "error")
+        return redirect(url_for('pig.mon_cochon'))
+
+    update_pig_state(pig)
+    if pig.is_injured:
+        flash("Impossible d'inscrire un cochon blessé au Challenge de la Mort.", "error")
+        return redirect(url_for('api.veterinaire', pig_id=pig.id))
+    wager = request.form.get('wager', type=float)
+    if not wager or wager < 10:
+        flash("Mise minimum : 10 BG pour le Challenge de la Mort !", "error")
+        return redirect(url_for('pig.mon_cochon'))
+    if pig.challenge_mort_wager > 0:
+        flash("Tu es déjà inscrit au Challenge de la Mort !", "warning")
+        return redirect(url_for('pig.mon_cochon'))
+    if pig.energy <= 20 or pig.hunger <= 20:
+        flash("Ton cochon est trop faible pour le Challenge !", "error")
+        return redirect(url_for('pig.mon_cochon'))
+
+    if not debit_user_balance(
+        user.id, wager,
+        reason_code='challenge_entry',
+        reason_label='Inscription Challenge de la Mort',
+        details=f"{pig.name} engage pour {wager:.0f} BG.",
+        reference_type='pig',
+        reference_id=pig.id,
+    ):
+        flash("T'as pas les moyens de jouer avec la vie de ton cochon !", "error")
+        return redirect(url_for('pig.mon_cochon'))
+    if not reserve_pig_challenge_slot(pig.id, wager):
+        db.session.rollback()
+        flash("Tu es déjà inscrit au Challenge de la Mort !", "warning")
+        return redirect(url_for('pig.mon_cochon'))
+
+    db.session.commit()
+    flash(f"💀 {pig.name} inscrit au Challenge de la Mort ({wager:.0f} BG) ! Bonne chance...", "success")
+    return redirect(url_for('pig.mon_cochon'))
+
+
+@pig_bp.route('/cancel-challenge', methods=['POST'])
+def cancel_challenge():
+    if 'user_id' not in session:
+        return redirect(url_for('auth.login'))
+    user = User.query.get(session['user_id'])
+    pig_id = request.form.get('pig_id', type=int)
+    pig = Pig.query.get(pig_id)
+    if not pig or pig.user_id != user.id or not pig.is_alive:
+        flash("Cochon introuvable !", "error")
+        return redirect(url_for('pig.mon_cochon'))
+
+    if pig.challenge_mort_wager <= 0:
+        return redirect(url_for('pig.mon_cochon'))
+
+    refund = release_pig_challenge_slot(pig.id)
+    if refund <= 0:
+        flash("Le challenge a déjà été annulé ou réglé ailleurs.", "warning")
+        return redirect(url_for('pig.mon_cochon'))
+    credit_user_balance(
+        user.id, refund,
+        reason_code='challenge_refund',
+        reason_label='Remboursement Challenge de la Mort',
+        details=f"Annulation du challenge pour {pig.name}.",
+        reference_type='pig',
+        reference_id=pig.id,
+    )
+    db.session.commit()
+    flash(f"😰 Challenge annulé pour {pig.name}... Remboursement : {refund:.0f} BG (50%)", "warning")
+    return redirect(url_for('pig.mon_cochon'))
+
+
+@pig_bp.route('/sacrifice-pig', methods=['POST'])
+def sacrifice_pig():
+    if 'user_id' not in session:
+        return redirect(url_for('auth.login'))
+    user = User.query.get(session['user_id'])
+    pig_id = request.form.get('pig_id', type=int)
+    pig = Pig.query.get(pig_id)
+    if not pig or pig.user_id != user.id or not pig.is_alive:
+        flash("Cochon introuvable !", "error")
+        return redirect(url_for('pig.mon_cochon'))
+
+    send_to_abattoir(pig, cause='sacrifice_volontaire')
+    flash(f"🔪 {pig.name} a été envoyé à l'abattoir volontairement. Paix à ses côtelettes.", "warning")
+    return redirect(url_for('pig.mon_cochon'))

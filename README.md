@@ -183,33 +183,69 @@ Note de demo:
 
 ## 🏗️ Structure du projet
 
+Le projet suit une architecture **Flask Blueprints** modulaire, découpée par domaine métier :
+
 ```
 derby_des_groins/
-├── app.py                  # Backend Flask (modèles, routes, logique de jeu)
+├── app.py                  # Factory create_app(), migrations, seeds
+├── extensions.py           # SQLAlchemy db, timezone partagés
+├── models.py               # 9 modèles SQLAlchemy (User, Pig, Race, Bet…)
+├── data.py                 # Constantes de jeu (céréales, entraînements, raretés…)
+├── helpers.py              # Logique métier (balance, courses, marché, paris…)
+├── scheduler.py            # Tâches de fond APScheduler (courses, enchères, véto)
 ├── requirements.txt        # Dépendances Python
 ├── README.md
 ├── IDEAS.md                # Backlog d'idées et pistes de game design
-├── instance/
-│   └── derby.db            # Base SQLite (créée au lancement)
-└── templates/
-    ├── _site_header.html   # Header partagé / navigation principale
-    ├── courses.html         # Calendrier des courses et planification
-    ├── index.html           # Dashboard d'accueil — course du jour, tickets Bacon, ma bauge, actu & paris
-    ├── auth.html            # Inscription / Connexion
-    ├── history.html         # Historique complet : courses, paris et journal BitGroins
-    ├── mon_cochon.html      # Tamagotchi — stats, nourrir, entraîner, école porcine, radar chart
-    ├── profil.html          # Mon Profil — compte, stats joueur, changement de mot de passe
-    ├── marche.html          # Marché aux Cochons — enchères
-    ├── abattoir.html        # L'Abattoir — vitrine de charcuterie
-    ├── veterinaire.html     # Urgence vétérinaire — puzzle de soin
-    ├── veterinaire_lobby.html # Clinique / salle d'attente du véto
-    └── cimetiere.html       # Cimetière des Légendes — tombes des héros
+├── .gitignore
+│
+├── routes/                 # 8 Blueprints Flask
+│   ├── __init__.py         # Registre des blueprints
+│   ├── auth.py             # register, login, logout, profil
+│   ├── main.py             # index (dashboard), history, classement, légendes pop
+│   ├── race.py             # courses (calendrier), plan_course, place_bet
+│   ├── pig.py              # mon-cochon, adopt, feed, train, school, challenge, sacrifice
+│   ├── market.py           # marché, bid, sell-pig
+│   ├── abattoir.py         # abattoir, cimetière
+│   ├── admin.py            # admin panel, config, force-race
+│   └── api.py              # vétérinaire, countdown, pig API, prix-groin
+│
+├── templates/
+│   ├── _site_header.html   # Header partagé / navigation principale
+│   ├── index.html           # Dashboard d'accueil — course du jour, tickets Bacon, actu & paris
+│   ├── courses.html         # Calendrier des courses et planification
+│   ├── auth.html            # Inscription / Connexion
+│   ├── profil.html          # Mon Profil — compte, stats joueur, changement mdp
+│   ├── history.html         # Historique complet : courses, paris et journal BitGroins
+│   ├── mon_cochon.html      # Tamagotchi — stats, nourrir, entraîner, école, radar chart
+│   ├── marche.html          # Marché aux Cochons — enchères
+│   ├── classement.html      # Classement général des joueurs
+│   ├── legendes_pop.html    # Légendes porcines de la pop culture
+│   ├── abattoir.html        # L'Abattoir — vitrine de charcuterie
+│   ├── cimetiere.html       # Cimetière des Légendes — tombes des héros
+│   ├── veterinaire.html     # Urgence vétérinaire — puzzle de soin
+│   └── veterinaire_lobby.html # Clinique / salle d'attente du véto
+│
+└── instance/
+    └── derby.db            # Base SQLite (créée au lancement)
 ```
+
+### Architecture modulaire
+
+| Module | Rôle | Contenu |
+|--------|------|---------|
+| `extensions.py` | Objets partagés | `db = SQLAlchemy()`, `APP_TIMEZONE` |
+| `models.py` | Schéma de données | 9 modèles : `User`, `Pig`, `Race`, `Participant`, `Bet`, `BalanceTransaction`, `CoursePlan`, `Auction`, `GameConfig` |
+| `data.py` | Données statiques | Céréales, entraînements, école, raretés, origines, constantes d'équilibrage |
+| `helpers.py` | Logique métier | Gestion cochon, balance atomique, paris, courses, marché, vétérinaire |
+| `scheduler.py` | Tâches de fond | Résolution courses, enchères, deadlines véto |
+| `routes/` | 8 Blueprints | Chaque domaine a son fichier avec ses routes |
+| `app.py` | Point d'entrée | Factory `create_app()`, migrations SQLite, seed utilisateurs |
 
 ## ⚙️ Stack technique
 
-- **Backend** : Flask + Flask-SQLAlchemy
+- **Backend** : Flask + Flask-SQLAlchemy + Flask Blueprints
 - **Base de données** : SQLite
+- **Scheduler** : APScheduler (résolution des courses, enchères, blessures)
 - **Frontend** : Tailwind CSS (CDN) + Chart.js (radar chart) + Vanilla JS
 - **Fonts** : Lilita One, Nunito, Creepster (pour l'ambiance abattoir)
 

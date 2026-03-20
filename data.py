@@ -1,0 +1,339 @@
+PIGS = [
+    {"name": "Rillette", "emoji": "🐷"},
+    {"name": "Côtelette", "emoji": "🥩"},
+    {"name": "Jambonneau", "emoji": "🍖"},
+    {"name": "Tirelire", "emoji": "🐽"},
+    {"name": "Monsieur Lardon", "emoji": "🥓"},
+    {"name": "Bacon Express", "emoji": "🚂"},
+    {"name": "Groin d'Or", "emoji": "✨"},
+    {"name": "P'tit Boudin", "emoji": "🌭"},
+]
+
+PIG_EMOJIS = ['🐷', '🐽', '🐖', '🐗', '🥓', '🍖', '🌭', '🏆']
+
+PIG_ORIGINS = [
+    {'country': 'France', 'flag': '🇫🇷', 'specialty': 'Moral', 'bonus_stat': 'moral', 'bonus': 5},
+    {'country': 'Espagne', 'flag': '🇪🇸', 'specialty': 'Endurance', 'bonus_stat': 'endurance', 'bonus': 5},
+    {'country': 'Italie', 'flag': '🇮🇹', 'specialty': 'Agilité', 'bonus_stat': 'agilite', 'bonus': 5},
+    {'country': 'Allemagne', 'flag': '🇩🇪', 'specialty': 'Force', 'bonus_stat': 'force', 'bonus': 5},
+    {'country': 'Angleterre', 'flag': '🇬🇧', 'specialty': 'Vitesse', 'bonus_stat': 'vitesse', 'bonus': 5},
+    {'country': 'Japon', 'flag': '🇯🇵', 'specialty': 'Intelligence', 'bonus_stat': 'intelligence', 'bonus': 5},
+    {'country': 'Brésil', 'flag': '🇧🇷', 'specialty': 'Vitesse', 'bonus_stat': 'vitesse', 'bonus': 4},
+    {'country': 'Belgique', 'flag': '🇧🇪', 'specialty': 'Endurance', 'bonus_stat': 'endurance', 'bonus': 4},
+    {'country': 'Portugal', 'flag': '🇵🇹', 'specialty': 'Agilité', 'bonus_stat': 'agilite', 'bonus': 4},
+    {'country': 'Corée du Sud', 'flag': '🇰🇷', 'specialty': 'Intelligence', 'bonus_stat': 'intelligence', 'bonus': 4},
+    {'country': 'Argentine', 'flag': '🇦🇷', 'specialty': 'Force', 'bonus_stat': 'force', 'bonus': 4},
+    {'country': 'Mexique', 'flag': '🇲🇽', 'specialty': 'Moral', 'bonus_stat': 'moral', 'bonus': 4},
+]
+
+CEREALS = {
+    'mais': {
+        'name': 'Maïs', 'emoji': '🌽', 'cost': 5,
+        'description': 'Base équilibrée, petit boost partout',
+        'hunger_restore': 20, 'energy_restore': 5,
+        'stats': {'vitesse': 0.5, 'endurance': 0.5, 'agilite': 0.5, 'force': 0.5, 'intelligence': 0.5, 'moral': 0.5},
+        'weight_delta': 0.5,
+        'valeur_fourragere': 100
+    },
+    'orge': {
+        'name': 'Orge', 'emoji': '🌾', 'cost': 8,
+        'description': '+Endurance +Force',
+        'hunger_restore': 30, 'energy_restore': 8,
+        'stats': {'endurance': 2.0, 'force': 1.5, 'vitesse': 0.3},
+        'weight_delta': 0.9,
+        'valeur_fourragere': 97
+    },
+    'ble': {
+        'name': 'Blé', 'emoji': '🌿', 'cost': 10,
+        'description': '+Force +Vitesse',
+        'hunger_restore': 25, 'energy_restore': 5,
+        'stats': {'force': 2.0, 'vitesse': 1.5, 'endurance': 0.5},
+        'weight_delta': 0.8,
+        'valeur_fourragere': 105
+    },
+    'seigle': {
+        'name': 'Seigle', 'emoji': '🌱', 'cost': 7,
+        'description': '+Agilité +Intelligence',
+        'hunger_restore': 20, 'energy_restore': 5,
+        'stats': {'agilite': 2.0, 'intelligence': 1.5},
+        'weight_delta': 0.3,
+        'valeur_fourragere': 102
+    },
+    'triticale': {
+        'name': 'Triticale', 'emoji': '🍃', 'cost': 9,
+        'description': '+Vitesse +Endurance',
+        'hunger_restore': 25, 'energy_restore': 10,
+        'stats': {'vitesse': 2.0, 'endurance': 1.5, 'moral': 0.5},
+        'weight_delta': 0.4,
+        'valeur_fourragere': 100
+    },
+    'avoine': {
+        'name': 'Avoine', 'emoji': '🥣', 'cost': 6,
+        'description': '+Moral +Agilité — récupération',
+        'hunger_restore': 15, 'energy_restore': 15,
+        'stats': {'moral': 2.5, 'agilite': 1.0},
+        'weight_delta': 0.2,
+        'valeur_fourragere': 82
+    }
+}
+
+TRAININGS = {
+    'sprint': {
+        'name': 'Sprint', 'emoji': '💨',
+        'description': 'Course courte et explosive',
+        'energy_cost': 25, 'hunger_cost': 10,
+        'stats': {'vitesse': 3.0, 'endurance': 1.0},
+        'weight_delta': -0.7,
+        'min_happiness': 20
+    },
+    'cross': {
+        'name': 'Cross-country', 'emoji': '🏃',
+        'description': 'Longue distance, mental d\'acier',
+        'energy_cost': 35, 'hunger_cost': 15,
+        'stats': {'endurance': 3.0, 'force': 1.0, 'vitesse': 0.5},
+        'weight_delta': -1.0,
+        'min_happiness': 20
+    },
+    'obstacles': {
+        'name': 'Parcours d\'obstacles', 'emoji': '🏅',
+        'description': 'Agilité et réflexes',
+        'energy_cost': 30, 'hunger_cost': 10,
+        'stats': {'agilite': 3.0, 'intelligence': 1.0},
+        'weight_delta': -0.6,
+        'min_happiness': 30
+    },
+    'sparring': {
+        'name': 'Sparring', 'emoji': '🥊',
+        'description': 'Combat amical, gagne en puissance',
+        'energy_cost': 30, 'hunger_cost': 15,
+        'stats': {'force': 3.0, 'moral': 0.5, 'endurance': 0.5},
+        'weight_delta': 0.2,
+        'min_happiness': 30
+    },
+    'puzzles': {
+        'name': 'Puzzles & Stratégie', 'emoji': '🧩',
+        'description': 'Entraînement cérébral',
+        'energy_cost': 15, 'hunger_cost': 5,
+        'stats': {'intelligence': 3.0, 'moral': 1.0},
+        'weight_delta': 0.1,
+        'min_happiness': 10
+    },
+    'repos': {
+        'name': 'Repos & Détente', 'emoji': '😴',
+        'description': 'Récupération complète',
+        'energy_cost': -40, 'hunger_cost': 5,
+        'stats': {'moral': 2.0},
+        'weight_delta': 0.5,
+        'happiness_bonus': 15,
+        'min_happiness': 0
+    }
+}
+
+SCHOOL_COOLDOWN_MINUTES = 30
+
+SCHOOL_LESSONS = {
+    'strategie': {
+        'name': 'Strategie de Virage',
+        'emoji': '📐',
+        'description': 'Apprendre a lire la piste et garder sa relance au bon moment.',
+        'question': 'Dans un virage serre, quelle est la meilleure approche ?',
+        'answers': [
+            {'text': 'Ralentir legerement puis accelerer en sortie', 'correct': True, 'feedback': 'Bonne lecture. La sortie de virage fait gagner plus de terrain que l entree heroique.'},
+            {'text': 'Foncer tout droit et compter sur la chance', 'correct': False, 'feedback': 'La chance ne tient pas la corde tres longtemps.'},
+            {'text': 'S arreter pour observer les autres', 'correct': False, 'feedback': 'Observer c est bien, planter ses sabots au milieu de la piste un peu moins.'},
+            {'text': 'Suivre le plus bruyant du groupe', 'correct': False, 'feedback': 'Le vacarme n est pas une tactique de course.'},
+        ],
+        'stats': {'intelligence': 2.5, 'agilite': 1.5},
+        'xp': 24,
+        'wrong_xp': 6,
+        'energy_cost': 10,
+        'hunger_cost': 4,
+        'min_happiness': 15,
+        'happiness_bonus': 5,
+        'wrong_happiness_penalty': 6,
+    },
+    'nutrition': {
+        'name': 'Nutrition du Champion',
+        'emoji': '🥗',
+        'description': 'Comprendre quand manger pour tenir jusqu au sprint final.',
+        'question': 'Quel repas prepare le mieux un cochon juste avant la course ?',
+        'answers': [
+            {'text': 'Un repas equilibre et facile a digerer', 'correct': True, 'feedback': 'Exact. Du carburant utile, pas un festival du bidou.'},
+            {'text': 'Une fondue XXL servie tres chaude', 'correct': False, 'feedback': 'Excellente idee pour une sieste, beaucoup moins pour un depart.'},
+            {'text': 'Aucun repas pour courir leger', 'correct': False, 'feedback': 'Leger, oui. Debout au depart, beaucoup moins sur.'},
+            {'text': 'Trois desserts et un soda surprise', 'correct': False, 'feedback': 'Ton cochon applaudit, son endurance beaucoup moins.'},
+        ],
+        'stats': {'endurance': 2.0, 'moral': 1.0},
+        'xp': 22,
+        'wrong_xp': 5,
+        'energy_cost': 8,
+        'hunger_cost': 3,
+        'min_happiness': 10,
+        'happiness_bonus': 4,
+        'wrong_happiness_penalty': 5,
+    },
+    'mental': {
+        'name': 'Mental d Acier',
+        'emoji': '🧠',
+        'description': 'Gerer la pression, la foule et les petits cochons qui fanfaronnent.',
+        'question': 'Comment garder son sang-froid juste avant le depart ?',
+        'answers': [
+            {'text': 'Respirer, se concentrer et ignorer la provoc', 'correct': True, 'feedback': 'Parfait. Le calme fait plus de degats que les cris.'},
+            {'text': 'Repondre a toutes les moqueries', 'correct': False, 'feedback': 'Ton cochon gagne peut-etre une dispute, pas une course.'},
+            {'text': 'Dormir sur la ligne de depart', 'correct': False, 'feedback': 'Repos mal place. Ambiance sieste, resultat desastreux.'},
+            {'text': 'Paniquer tres fort tres tot', 'correct': False, 'feedback': 'Technique peu recommandee par l academie porcine.'},
+        ],
+        'stats': {'moral': 2.0, 'intelligence': 1.5},
+        'xp': 26,
+        'wrong_xp': 6,
+        'energy_cost': 9,
+        'hunger_cost': 3,
+        'min_happiness': 20,
+        'happiness_bonus': 6,
+        'wrong_happiness_penalty': 4,
+    },
+    'video': {
+        'name': 'Analyse Video',
+        'emoji': '🎥',
+        'description': 'Revision des departs fulgurants et des depassements bien sentis.',
+        'question': 'Quel detail faut-il surveiller sur une rediffusion de course ?',
+        'answers': [
+            {'text': 'Le timing des accelerations et les ouvertures dans le trafic', 'correct': True, 'feedback': 'Exact. Les details repetes font les champions reguliers.'},
+            {'text': 'La couleur des bottes du soigneur', 'correct': False, 'feedback': 'Elegant, mais pas franchement decisif sur 400 metres.'},
+            {'text': 'Le nombre de spectateurs au premier rang', 'correct': False, 'feedback': 'Flatteur pour l ego, inutile pour la trajectoire.'},
+            {'text': 'La meilleure pose pour la photo d arrivee', 'correct': False, 'feedback': 'D abord la course, ensuite la couverture de magazine.'},
+        ],
+        'stats': {'vitesse': 1.5, 'agilite': 1.5, 'intelligence': 1.0},
+        'xp': 24,
+        'wrong_xp': 6,
+        'energy_cost': 11,
+        'hunger_cost': 4,
+        'min_happiness': 15,
+        'happiness_bonus': 5,
+        'wrong_happiness_penalty': 5,
+    },
+}
+
+STAT_LABELS = {
+    'vitesse': 'VIT',
+    'endurance': 'END',
+    'agilite': 'AGI',
+    'force': 'FOR',
+    'intelligence': 'INT',
+    'moral': 'MOR',
+}
+
+EMERGENCY_RELIEF_THRESHOLD = 10.0
+EMERGENCY_RELIEF_AMOUNT = 20.0
+EMERGENCY_RELIEF_HOURS = 12
+SECOND_PIG_COST = 30.0
+REPLACEMENT_PIG_COST = 15.0
+BETTING_HOUSE_EDGE = 1.18
+EXACTA_HOUSE_EDGE = 1.28
+TIERCE_HOUSE_EDGE = 1.28
+RACE_APPEARANCE_REWARD = 6.0
+RACE_POSITION_REWARDS = {1: 25.0, 2: 12.0, 3: 6.0}
+VET_RESPONSE_MINUTES = 5
+MIN_INJURY_RISK = 8.0
+MAX_INJURY_RISK = 40.0
+DEFAULT_PIG_WEIGHT_KG = 112.0
+MIN_PIG_WEIGHT_KG = 75.0
+MAX_PIG_WEIGHT_KG = 190.0
+WEEKLY_RACE_QUOTA = 3
+WEEKLY_BACON_TICKETS = 3
+
+BET_TYPES = {
+    'win': {
+        'label': 'Simple gagnant',
+        'icon': '🥇',
+        'selection_count': 1,
+        'house_edge': BETTING_HOUSE_EDGE,
+        'description': "Trouver uniquement le vainqueur.",
+    },
+    'exacta': {
+        'label': 'Couple ordre',
+        'icon': '🥈',
+        'selection_count': 2,
+        'house_edge': EXACTA_HOUSE_EDGE,
+        'description': "Trouver les 2 premiers dans l'ordre.",
+    },
+    'tierce': {
+        'label': 'Tierce ordre',
+        'icon': '🎯',
+        'selection_count': 3,
+        'house_edge': TIERCE_HOUSE_EDGE,
+        'description': "Trouver le podium complet dans l'ordre.",
+    },
+}
+
+CHARCUTERIE = [
+    {'name': 'Jambon', 'emoji': '🍖', 'msg': 'Un beau jambon fumé au bois de hêtre'},
+    {'name': 'Saucisson sec', 'emoji': '🌭', 'msg': 'Tranché finement, un régal à l\'apéro'},
+    {'name': 'Rillettes', 'emoji': '🥫', 'msg': 'Étalées sur du pain de campagne'},
+    {'name': 'Pâté de campagne', 'emoji': '🍞', 'msg': 'Avec cornichons et moutarde'},
+    {'name': 'Boudin noir', 'emoji': '⬛', 'msg': 'Aux pommes, comme mémé'},
+    {'name': 'Andouillette', 'emoji': '🌯', 'msg': 'AAAAA — pour les connaisseurs'},
+    {'name': 'Chipolatas', 'emoji': '🥓', 'msg': 'Grillées au barbecue'},
+    {'name': 'Lardons fumés', 'emoji': '🥘', 'msg': 'Dans une bonne tartiflette'},
+    {'name': 'Côtes de porc', 'emoji': '🥩', 'msg': 'Marinées à la perfection'},
+    {'name': 'Terrine', 'emoji': '🫕', 'msg': 'En bocal, souvenir éternel'},
+    {'name': 'Jambon de Bayonne', 'emoji': '🏔️', 'msg': 'Séché 12 mois'},
+    {'name': 'Grattons', 'emoji': '🍿', 'msg': 'Croustillants à l\'apéro'},
+]
+
+CHARCUTERIE_PREMIUM = [
+    {'name': 'Jambon Grand Cru', 'emoji': '🏅', 'msg': 'Affiné par des années de course'},
+    {'name': 'Pata Negra d\'Exception', 'emoji': '🖤', 'msg': 'Le summum du groin'},
+    {'name': 'Saucisson Millésimé', 'emoji': '🍷', 'msg': 'Séché lentement, saveur incomparable'},
+    {'name': 'Rillettes Prestige', 'emoji': '👑', 'msg': 'Recette secrète du Derby'},
+]
+
+EPITAPHS = [
+    "Ci-gît {name}, qui courut plus vite que son ombre... mais pas assez vite.",
+    "{name} repose ici. Son groin brillait plus que son palmarès.",
+    "RIP {name} — Parti trop tôt, transformé trop vite. Groin groin... *silence*",
+    "{name} galope désormais dans les pâturages éternels du Valhalla porcin.",
+    "Ici dort {name}. {wins} victoires. Zéro regret. Beaucoup de charcuterie.",
+    "En mémoire de {name}, dont le courage n'avait d'égal que sa malchance.",
+    "{name} — Tu étais un cochon parmi les cochons. Le meilleur d'entre nous.",
+    "Repose en paix {name}. Ton sacrifice nourrit les apéros de la nation.",
+    "{name} n'est plus. Mais son jambon, lui, est éternel.",
+    "Adieu {name}. Tu méritais mieux qu'un dernier virage vers l'abattoir.",
+]
+
+PIG_NAME_PREFIXES = [
+    'Groin', 'Porcinet', 'Truffe', 'Lardon', 'Boudin', 'Saucisse',
+    'Cochon', 'Museau', 'Grognon', 'Jambon', 'Pâté', 'Rillette',
+    'Andouille', 'Terrine', 'Gratton', 'Porc',
+]
+PIG_NAME_SUFFIXES = [
+    'de Feu', 'Doré', 'Sauvage', 'Express', 'Turbo', 'Suprême',
+    'le Grand', 'le Terrible', 'le Brave', 'le Magnifique',
+    'de l\'Ombre', 'du Tonnerre', 'Infernal', 'le Rapide',
+    'de Fer', 'le Féroce', 'le Rusé', 'Légendaire',
+]
+
+RARITIES = {
+    'commun': {
+        'name': 'Commun', 'color': '#9ca3af', 'emoji': '⚪',
+        'stats_range': (5, 20), 'max_races_range': (40, 60),
+        'price_range': (15, 30), 'weight': 50
+    },
+    'rare': {
+        'name': 'Rare', 'color': '#3b82f6', 'emoji': '🔵',
+        'stats_range': (15, 35), 'max_races_range': (60, 80),
+        'price_range': (30, 60), 'weight': 30
+    },
+    'epique': {
+        'name': 'Épique', 'color': '#a855f7', 'emoji': '🟣',
+        'stats_range': (25, 50), 'max_races_range': (80, 100),
+        'price_range': (60, 120), 'weight': 15
+    },
+    'legendaire': {
+        'name': 'Légendaire', 'color': '#f59e0b', 'emoji': '🟡',
+        'stats_range': (40, 70), 'max_races_range': (100, 150),
+        'price_range': (120, 250), 'weight': 5
+    }
+}
+
+JOURS_FR = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche']
