@@ -35,8 +35,12 @@ Entraînez-le régulièrement, envoyez-le à l'école porcine et nourrissez-le p
 
 ## 4. Les Paris
 - Placez vos BitGroins sur les cochons participants (même ceux des autres joueurs !).
-- **Un seul pari par course** est autorisé pour éviter les arbitrages faciles.
-- Selon la cote de chaque cochon, gagnez le pactole si votre chouchou arrive premier.
+- **Un seul ticket par course** est autorisé pour éviter les arbitrages faciles.
+- Trois formats sont disponibles :
+- **Simple gagnant** : trouver le 1er.
+- **Couple ordre** : trouver les 2 premiers dans l'ordre.
+- **Tierce ordre** : trouver les 3 premiers dans l'ordre.
+- Selon la difficulté du ticket et la cote calculée au moment de la mise, gagnez le pactole si ton pronostic est exact.
 
 ## 5. Survivre sur le Long Terme
 - Un cochon finit par prendre sa retraite ou mourir : il faut donc penser à renouveler son élevage.

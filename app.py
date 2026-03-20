@@ -112,6 +112,8 @@ class Bet(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     race_id = db.Column(db.Integer, db.ForeignKey('race.id'), nullable=False)
     pig_name = db.Column(db.String(80), nullable=False)
+    bet_type = db.Column(db.String(20), default='win')
+    selection_order = db.Column(db.String(240), nullable=True)
     amount = db.Column(db.Float, nullable=False)
     odds_at_bet = db.Column(db.Float, nullable=False)
     status = db.Column(db.String(20), default='pending')
@@ -367,11 +369,37 @@ EMERGENCY_RELIEF_HOURS = 12
 SECOND_PIG_COST = 30.0
 REPLACEMENT_PIG_COST = 15.0
 BETTING_HOUSE_EDGE = 1.18
+EXACTA_HOUSE_EDGE = 1.28
+TIERCE_HOUSE_EDGE = 1.28
 RACE_APPEARANCE_REWARD = 6.0
 RACE_POSITION_REWARDS = {1: 25.0, 2: 12.0, 3: 6.0}
 VET_RESPONSE_MINUTES = 5
 MIN_INJURY_RISK = 8.0
 MAX_INJURY_RISK = 40.0
+
+BET_TYPES = {
+    'win': {
+        'label': 'Simple gagnant',
+        'icon': '🥇',
+        'selection_count': 1,
+        'house_edge': BETTING_HOUSE_EDGE,
+        'description': "Trouver uniquement le vainqueur.",
+    },
+    'exacta': {
+        'label': 'Couple ordre',
+        'icon': '🥈',
+        'selection_count': 2,
+        'house_edge': EXACTA_HOUSE_EDGE,
+        'description': "Trouver les 2 premiers dans l'ordre.",
+    },
+    'tierce': {
+        'label': 'Tierce ordre',
+        'icon': '🎯',
+        'selection_count': 3,
+        'house_edge': TIERCE_HOUSE_EDGE,
+        'description': "Trouver le podium complet dans l'ordre.",
+    },
+}
 
 CHARCUTERIE = [
     {'name': 'Jambon', 'emoji': '🍖', 'msg': 'Un beau jambon fumé au bois de hêtre'},
@@ -576,6 +604,77 @@ def apply_origin_bonus(pig, origin):
     base_value = getattr(pig, origin['bonus_stat']) or 10.0
     setattr(pig, origin['bonus_stat'], base_value + origin['bonus'])
 
+def normalize_bet_type(bet_type):
+    if bet_type in BET_TYPES:
+        return bet_type
+    return 'win'
+
+def serialize_selection_ids(selection_ids):
+    return ",".join(str(int(selection_id)) for selection_id in selection_ids)
+
+def parse_selection_ids(raw_selection):
+    if not raw_selection:
+        return []
+    selection_ids = []
+    for raw_part in str(raw_selection).split(','):
+        part = raw_part.strip()
+        if not part:
+            continue
+        if not part.isdigit():
+            return []
+        selection_ids.append(int(part))
+    return selection_ids
+
+def format_bet_label(participants):
+    return " -> ".join(participant.name for participant in participants)
+
+def calculate_ordered_finish_probability(participants_by_id, ordered_ids):
+    remaining_probabilities = {
+        participant_id: max(participant.win_probability or 0.0, 0.0)
+        for participant_id, participant in participants_by_id.items()
+    }
+    remaining_total = sum(remaining_probabilities.values())
+    if remaining_total <= 0:
+        return 0.0
+
+    combined_probability = 1.0
+    for participant_id in ordered_ids:
+        current_probability = remaining_probabilities.get(participant_id)
+        if current_probability is None or current_probability <= 0 or remaining_total <= 0:
+            return 0.0
+        combined_probability *= current_probability / remaining_total
+        remaining_total -= current_probability
+        del remaining_probabilities[participant_id]
+
+    return combined_probability
+
+def calculate_bet_odds(participants_by_id, ordered_ids, bet_type):
+    bet_config = BET_TYPES[normalize_bet_type(bet_type)]
+    probability = calculate_ordered_finish_probability(participants_by_id, ordered_ids)
+    if probability <= 0:
+        return 0.0
+    raw_odds = (1 / probability) / bet_config['house_edge']
+    return max(1.1, math.floor(raw_odds * 10) / 10)
+
+def build_weighted_finish_order(participants):
+    remaining = list(participants)
+    finish_order = []
+    while remaining:
+        weights = [max(participant.win_probability or 0.0, 0.000001) for participant in remaining]
+        chosen = random.choices(remaining, weights=weights, k=1)[0]
+        finish_order.append(chosen)
+        remaining.remove(chosen)
+    return finish_order
+
+def get_bet_selection_ids(bet, participants_by_id):
+    selection_ids = parse_selection_ids(getattr(bet, 'selection_order', None))
+    if selection_ids:
+        return selection_ids
+    matching_participant = next((participant for participant in participants_by_id.values() if participant.name == bet.pig_name), None)
+    if matching_participant:
+        return [matching_participant.id]
+    return []
+
 def refresh_race_betting_lines(race):
     if not race or race.status != 'open':
         return
@@ -585,9 +684,11 @@ def refresh_race_betting_lines(race):
     if not participants:
         return
     total_prob = sum(p.win_probability for p in participants) or 1.0
+    participants_by_id = {participant.id: participant for participant in participants}
     for participant in participants:
         participant.win_probability = participant.win_probability / total_prob
-        participant.odds = max(1.1, math.floor(((1 / participant.win_probability) / BETTING_HOUSE_EDGE) * 10) / 10)
+    for participant in participants:
+        participant.odds = calculate_bet_odds(participants_by_id, [participant.id], 'win')
     db.session.commit()
 
 def get_user_active_pigs(user):
@@ -884,8 +985,10 @@ def ensure_next_race():
     for i, p in enumerate(participants_list):
         prob = all_powers[i] / total_power
         p.win_probability = prob
-        raw_odds = (1 / prob) / BETTING_HOUSE_EDGE
-        p.odds = max(1.1, math.floor(raw_odds * 10) / 10)
+    db.session.flush()
+    participants_by_id = {participant.id: participant for participant in participants_list}
+    for participant in participants_list:
+        participant.odds = calculate_bet_odds(participants_by_id, [participant.id], 'win')
 
     db.session.commit()
     return race
@@ -900,19 +1003,13 @@ def run_race_if_needed():
         if not participants:
             continue
 
-        names = [p.name for p in participants]
-        weights = [p.win_probability for p in participants]
-        winner_name = random.choices(names, weights=weights, k=1)[0]
-
-        order = list(participants)
-        random.shuffle(order)
-        order = [p for p in order if p.name == winner_name] + \
-                [p for p in order if p.name != winner_name]
+        participants_by_id = {participant.id: participant for participant in participants}
+        order = build_weighted_finish_order(participants)
         for i, p in enumerate(order):
             p.finish_position = i + 1
 
-        winner_participant = next(p for p in participants if p.name == winner_name)
-        race.winner_name = winner_name
+        winner_participant = order[0]
+        race.winner_name = winner_participant.name
         race.winner_odds = winner_participant.odds
         race.finished_at = now
         race.status = 'finished'
@@ -977,8 +1074,12 @@ def run_race_if_needed():
                     retire_pig_old_age(pig)
 
         bets = Bet.query.filter_by(race_id=race.id, status='pending').all()
+        finish_order_ids = [participant.id for participant in order]
         for bet in bets:
-            if bet.pig_name == winner_name:
+            bet_type = normalize_bet_type(getattr(bet, 'bet_type', None))
+            expected_count = BET_TYPES[bet_type]['selection_count']
+            selection_ids = get_bet_selection_ids(bet, participants_by_id)
+            if len(selection_ids) == expected_count and finish_order_ids[:expected_count] == selection_ids:
                 winnings = round(bet.amount * bet.odds_at_bet, 2)
                 bet.status = 'won'
                 bet.winnings = winnings
@@ -1023,6 +1124,7 @@ def index():
         user=user, pigs=pigs, next_race=next_race,
         participants=participants, recent_races=recent_races,
         user_bets=user_bets, now=datetime.now(),
+        bet_types=BET_TYPES,
         prix_groin=prix_groin,
         market_open=is_market_open(),
         next_market=get_next_market_time()
@@ -1147,6 +1249,7 @@ def profil():
         total_winnings=total_winnings,
         total_profit=total_profit,
         bet_win_rate=bet_win_rate,
+        bet_types=BET_TYPES,
         market_unlocked=market_unlocked,
         market_progress_races=market_progress_races,
         market_hours_left=market_hours_left,
@@ -1158,33 +1261,76 @@ def profil():
 @app.route('/bet', methods=['POST'])
 def place_bet():
     if 'user_id' not in session:
-        return jsonify({'error': 'Non connecté'}), 401
+        return redirect(url_for('login'))
     run_race_if_needed()
     user = User.query.get(session['user_id'])
+    if not user:
+        session.pop('user_id', None)
+        return redirect(url_for('login'))
+
     race_id = request.form.get('race_id', type=int)
-    pig_name = request.form.get('pig_name', '').strip()
+    bet_type = normalize_bet_type(request.form.get('bet_type', 'win'))
+    selection_ids = parse_selection_ids(request.form.get('selection_order', '').strip())
     amount = request.form.get('amount', type=float)
-    if not all([race_id, pig_name, amount]):
+    if not all([race_id, amount]):
+        flash("Ticket incomplet. Choisis ton pari et ta mise.", "warning")
         return redirect(url_for('index'))
+
     race = Race.query.get(race_id)
     if not race or race.status != 'open':
+        flash("Cette course n'accepte plus de paris.", "warning")
         return redirect(url_for('index'))
+
     now = datetime.now()
     if (race.scheduled_at - now).total_seconds() < 30:
+        flash("Les paris ferment 30 secondes avant le départ.", "warning")
         return redirect(url_for('index'))
-    participant = Participant.query.filter_by(race_id=race_id, name=pig_name).first()
-    if not participant:
+
+    participants = Participant.query.filter_by(race_id=race_id).all()
+    participants_by_id = {participant.id: participant for participant in participants}
+    expected_count = BET_TYPES[bet_type]['selection_count']
+    if len(participants) < expected_count:
+        flash("Pas assez de partants pour ce type de ticket.", "warning")
         return redirect(url_for('index'))
+
+    if len(selection_ids) != expected_count or len(set(selection_ids)) != expected_count:
+        flash(f"Ce ticket demande {expected_count} cochon(s) distinct(s) dans l'ordre.", "warning")
+        return redirect(url_for('index'))
+
+    selected_participants = [participants_by_id.get(selection_id) for selection_id in selection_ids]
+    if any(participant is None for participant in selected_participants):
+        flash("Sélection invalide pour cette course.", "error")
+        return redirect(url_for('index'))
+
     if amount <= 0 or amount > user.balance:
+        flash("Mise invalide pour ton solde actuel.", "error")
         return redirect(url_for('index'))
+
     existing = Bet.query.filter_by(user_id=user.id, race_id=race_id).first()
     if existing:
+        flash("Tu as déjà un ticket sur cette course.", "warning")
         return redirect(url_for('index'))
-    bet = Bet(user_id=user.id, race_id=race_id, pig_name=pig_name,
-              amount=amount, odds_at_bet=participant.odds, status='pending')
+
+    odds_at_bet = calculate_bet_odds(participants_by_id, selection_ids, bet_type)
+    if odds_at_bet <= 0:
+        flash("Impossible de calculer la cote de ce ticket.", "error")
+        return redirect(url_for('index'))
+
+    bet_label = format_bet_label(selected_participants)
+    bet = Bet(
+        user_id=user.id,
+        race_id=race_id,
+        pig_name=bet_label,
+        bet_type=bet_type,
+        selection_order=serialize_selection_ids(selection_ids),
+        amount=amount,
+        odds_at_bet=odds_at_bet,
+        status='pending'
+    )
     user.balance = round(user.balance - amount, 2)
     db.session.add(bet)
     db.session.commit()
+    flash(f"{BET_TYPES[bet_type]['icon']} Ticket {BET_TYPES[bet_type]['label'].lower()} validé sur {bet_label}.", "success")
     return redirect(url_for('index'))
 
 @app.route('/history')
@@ -1193,7 +1339,7 @@ def history():
         return redirect(url_for('login'))
     user = User.query.get(session['user_id'])
     bets = Bet.query.filter_by(user_id=user.id).order_by(Bet.placed_at.desc()).limit(50).all()
-    return render_template('history.html', user=user, bets=bets)
+    return render_template('history.html', user=user, bets=bets, bet_types=BET_TYPES)
 
 # ─── ROUTES COCHON ──────────────────────────────────────────────────────────
 
@@ -1758,7 +1904,10 @@ def admin_force_race():
     for i, p in enumerate(participants_list):
         prob = all_powers[i] / total_power
         p.win_probability = prob
-        p.odds = max(1.1, math.floor(((1 / prob) / BETTING_HOUSE_EDGE) * 10) / 10)
+    db.session.flush()
+    participants_by_id = {participant.id: participant for participant in participants_list}
+    for participant in participants_list:
+        participant.odds = calculate_bet_odds(participants_by_id, [participant.id], 'win')
 
     db.session.commit()
     run_race_if_needed()
@@ -2027,6 +2176,8 @@ def migrate_db():
         ('auction', 'source_pig_id', 'INTEGER'),
         ('auction', 'pig_origin', 'VARCHAR(30)'),
         ('auction', 'pig_origin_flag', 'VARCHAR(10)'),
+        ('bet', 'bet_type', 'VARCHAR(20) DEFAULT "win"'),
+        ('bet', 'selection_order', 'VARCHAR(240)'),
     ]
     with db.engine.connect() as conn:
         for table, col, col_type in migrations:

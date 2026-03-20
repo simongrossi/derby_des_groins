@@ -72,7 +72,7 @@ Chaque joueur possède un **cochon virtuel** qu'il doit développer comme un Tam
 - **Entraîner** (Sprint, Cross-country, Obstacles, Sparring, Puzzles, Repos)
 - **Envoyer à l'École porcine** pour répondre à des quiz tactiques et gagner des bonus de stats + XP
 - **Faire courir** automatiquement à l'heure configurée contre les cochons des autres joueurs et des PNJ
-- **Parier** sur les courses avec des Groins-Coins (GC)
+- **Parier** en simple, en **couple ordre** ou en **tierce ordre** avec des Groins-Coins (GC)
 - **Gérer les blessures** via le **Vétérinaire** et son puzzle d'urgence
 - **Suivre ton compte** et changer ton mot de passe dans **Mon Profil**
 - **Oser le Challenge de la Mort** — mise x3 si top 3, mais dernier = abattoir 🔪
@@ -212,7 +212,7 @@ derby_des_groins/
 4. L'**École porcine** propose des quiz tactiques avec coût en énergie/satiété, gain de stats/XP et cooldown par cochon
 5. Les blessures peuvent déclencher une **urgence vétérinaire** : un cochon blessé ne peut plus s'entraîner, aller à l'école, relever le Challenge de la Mort ni participer aux courses tant qu'il n'est pas soigné
 6. Le **Vétérinaire** propose un puzzle chronométré : réussite = sauvetage, échec = issue fatale
-7. Chaque joueur ne peut placer **qu'un seul pari par course**
+7. Chaque joueur ne peut placer **qu'un seul ticket par course**, au choix entre **simple gagnant**, **couple ordre** et **tierce ordre**
 8. Les paris ferment **30 secondes** avant le départ
 9. Après la course : **XP** selon le classement (1er: 100xp, 2e: 60xp, 3e: 40xp...)
 10. Les éleveurs touchent des **récompenses de participation et de podium**, même sans parier

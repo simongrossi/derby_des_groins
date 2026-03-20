@@ -50,6 +50,30 @@
             border-color: #fbbf24;
             box-shadow: 0 0 20px rgba(255, 200, 0, 0.3);
         }
+        .pig-card.selected-order {
+            border-color: rgba(251, 191, 36, 0.85);
+            box-shadow: 0 0 20px rgba(251, 191, 36, 0.28);
+        }
+
+        .selection-badge {
+            position: absolute;
+            top: 0.6rem;
+            right: 0.6rem;
+            width: 1.7rem;
+            height: 1.7rem;
+            border-radius: 999px;
+            background: linear-gradient(135deg, #f59e0b, #ef4444);
+            color: white;
+            font-size: 0.85rem;
+            font-weight: 800;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 6px 18px rgba(245, 158, 11, 0.35);
+        }
+        .selection-badge.visible {
+            display: inline-flex;
+        }
 
         .btn-primary {
             background: linear-gradient(135deg, #f59e0b, #ef4444);
@@ -125,6 +149,30 @@
             color: #86efac;
         }
 
+        .bet-type-btn {
+            width: 100%;
+            text-align: left;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.10);
+            border-radius: 1rem;
+            padding: 1rem;
+            transition: all 0.2s ease;
+        }
+        .bet-type-btn:hover:not(:disabled) {
+            background: rgba(255, 255, 255, 0.09);
+            border-color: rgba(255, 255, 255, 0.18);
+            transform: translateY(-1px);
+        }
+        .bet-type-btn.active {
+            background: linear-gradient(135deg, rgba(245, 158, 11, 0.18), rgba(239, 68, 68, 0.14));
+            border-color: rgba(251, 191, 36, 0.5);
+            box-shadow: 0 10px 30px rgba(245, 158, 11, 0.16);
+        }
+        .bet-type-btn:disabled {
+            opacity: 0.45;
+            cursor: not-allowed;
+        }
+
         .flash-in {
             animation: flashIn 0.5s ease-out;
         }
@@ -144,6 +192,20 @@
 {% include "_site_header.html" %}
 
 <main class="max-w-6xl mx-auto px-4 py-8">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    <div class="mb-6 space-y-2">
+        {% for category, message in messages %}
+        <div class="p-4 rounded-xl text-sm font-bold text-center flash-in
+            {% if category == 'error' %}bg-red-500/15 border border-red-500/30 text-red-300
+            {% elif category == 'warning' %}bg-yellow-500/15 border border-yellow-500/30 text-yellow-200
+            {% else %}bg-green-500/15 border border-green-500/30 text-green-300{% endif %}">
+            {{ message }}
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+    {% endwith %}
 
     <!-- COUNTDOWN HERO -->
     <section class="card-gold p-8 mb-8 text-center flash-in">
@@ -174,7 +236,12 @@
                 <div class="grid grid-cols-2 sm:grid-cols-3 gap-3" id="pig-grid">
                     {% for pig in participants %}
                     {% set odds_class = 'odds-low' if pig.odds <= 2.5 else ('odds-mid' if pig.odds <= 4.0 else 'odds-high') %}
-                    <div class="pig-card p-4 text-center {% if pig.pig_id %}ring-1 ring-pink-500/30{% endif %}" onclick="selectPig('{{ pig.name }}', {{ pig.odds }})" data-pig="{{ pig.name }}" data-odds="{{ pig.odds }}">
+                    <div class="pig-card relative p-4 text-center {% if pig.pig_id %}ring-1 ring-pink-500/30{% endif %}"
+                         data-participant-id="{{ pig.id }}"
+                         data-pig-name="{{ pig.name }}"
+                         data-odds="{{ pig.odds }}"
+                         data-win-probability="{{ pig.win_probability }}">
+                        <span class="selection-badge" data-selection-badge></span>
                         <span class="pig-emoji">{{ pig.emoji }}</span>
                         <p class="text-white font-bold mt-2 text-sm leading-tight">{{ pig.name }}</p>
                         <p class="text-xs font-bold {% if pig.owner_name %}text-pink-400/70{% else %}text-white/20{% endif %}">
@@ -203,16 +270,37 @@
                 <div class="alert-success p-4 mb-4">
                     <p class="font-bold">✅ Tu as déjà utilisé ton pari pour cette course :</p>
                     {% for bet in user_bets %}
-                    <p class="text-sm mt-1">→ <strong>{{ bet.pig_name }}</strong> — {{ bet.amount }} BG @ x{{ bet.odds_at_bet }}</p>
+                    {% set bet_type_key = bet.bet_type if bet.bet_type in bet_types else 'win' %}
+                    <p class="text-sm mt-1">→ <strong>{{ bet.pig_name }}</strong> • {{ bet_types[bet_type_key].label }} — {{ bet.amount }} BG @ x{{ bet.odds_at_bet }}</p>
                     {% endfor %}
                 </div>
                 {% else %}
                 <form method="POST" action="/bet" id="bet-form">
                     <input type="hidden" name="race_id" value="{{ next_race.id }}">
-                    <input type="hidden" name="pig_name" id="selected-pig-input" value="">
+                    <input type="hidden" name="bet_type" id="bet-type-input" value="win">
+                    <input type="hidden" name="selection_order" id="selection-order-input" value="">
+
+                    <div class="mb-5">
+                        <p class="text-white/60 text-sm font-bold mb-2">Format du ticket</p>
+                        <div class="grid gap-3 sm:grid-cols-3" id="bet-type-switcher">
+                            {% for bet_key, bet_meta in bet_types.items() %}
+                            {% set disabled = participants|length < bet_meta.selection_count %}
+                            <button type="button"
+                                    class="bet-type-btn {% if bet_key == 'win' %}active{% endif %}"
+                                    data-bet-type-btn
+                                    data-bet-type="{{ bet_key }}"
+                                    data-selection-count="{{ bet_meta.selection_count }}"
+                                    {% if disabled %}disabled{% endif %}>
+                                <p class="text-white font-bold">{{ bet_meta.icon }} {{ bet_meta.label }}</p>
+                                <p class="text-white/45 text-xs font-semibold mt-1">{{ bet_meta.description }}</p>
+                            </button>
+                            {% endfor %}
+                        </div>
+                        <p id="bet-type-help" class="text-white/40 text-xs font-bold mt-3">Choisis le type de ticket, puis clique sur les cochons dans l'ordre d'arrivée.</p>
+                    </div>
 
                     <div class="mb-4 p-4 rounded-xl border border-white/10 bg-white/5" id="selected-pig-display">
-                        <p class="text-white/40 text-sm font-semibold">Aucun cochon sélectionné</p>
+                        <p class="text-white/40 text-sm font-semibold">Choisis un ticket, puis clique sur les partants dans l'ordre d'arrivée attendu.</p>
                     </div>
 
                     <div class="flex gap-3 items-center">
@@ -230,10 +318,10 @@
                     </div>
 
                     <div id="potential-win" class="mt-3 text-sm text-white/50 font-semibold hidden">
-                        Gain potentiel : <span id="potential-amount" class="text-green-400 font-bold"></span> BG
+                        Cote ticket : <span id="ticket-odds" class="text-yellow-300 font-bold"></span> • Gain potentiel : <span id="potential-amount" class="text-green-400 font-bold"></span> BG
                     </div>
                 </form>
-                <p class="text-white/30 text-xs font-bold mt-3">Un seul pari par course et par joueur.</p>
+                <p class="text-white/30 text-xs font-bold mt-3">Un seul ticket par course et par joueur. Clique de nouveau sur un cochon déjà choisi pour le retirer de l'ordre.</p>
                 {% endif %}
             </div>
             {% elif not user %}
@@ -329,44 +417,144 @@
 </footer>
 
 <script>
-// ─── SÉLECTION DES COCHONS ────────────────────────────────────────────────
-let selectedPig = null;
-let selectedOdds = null;
+const betTypes = {{ bet_types|tojson }};
+const participantCards = Array.from(document.querySelectorAll('.pig-card'));
+const participantMap = Object.fromEntries(participantCards.map((card) => {
+    const participantId = Number(card.dataset.participantId);
+    return [participantId, {
+        id: participantId,
+        name: card.dataset.pigName,
+        odds: Number(card.dataset.odds),
+        winProbability: Number(card.dataset.winProbability),
+        card,
+    }];
+}));
 
-function selectPig(name, odds) {
-    selectedPig = name;
-    selectedOdds = odds;
+let activeBetType = 'win';
+let selectedOrder = [];
 
-    // Reset toutes les cartes
-    document.querySelectorAll('.pig-card').forEach(c => c.classList.remove('selected'));
-    // Sélectionner la bonne
-    const card = document.querySelector(`[data-pig="${name}"]`);
-    if (card) card.classList.add('selected');
+function getRequiredSelectionCount() {
+    return betTypes[activeBetType]?.selection_count || 1;
+}
 
-    document.getElementById('selected-pig-input').value = name;
+function calculateOrderedProbability(selectionIds) {
+    const remainingProbabilities = {};
+    let remainingTotal = 0;
 
-    // Afficher dans le formulaire
-    const display = document.getElementById('selected-pig-display');
-    if (display) {
-        display.innerHTML = `<p class="text-white font-bold">🐷 <strong>${name}</strong> sélectionné(e) — Cote : <span class="text-yellow-400">x${odds}</span></p>`;
+    Object.values(participantMap).forEach((participant) => {
+        remainingProbabilities[participant.id] = participant.winProbability;
+        remainingTotal += participant.winProbability;
+    });
+
+    let combinedProbability = 1;
+    for (const participantId of selectionIds) {
+        const currentProbability = remainingProbabilities[participantId];
+        if (!currentProbability || remainingTotal <= 0) return 0;
+        combinedProbability *= currentProbability / remainingTotal;
+        remainingTotal -= currentProbability;
+        delete remainingProbabilities[participantId];
+    }
+    return combinedProbability;
+}
+
+function calculateSelectionOdds() {
+    if (selectedOrder.length !== getRequiredSelectionCount()) return 0;
+    if (activeBetType === 'win') {
+        const participant = participantMap[selectedOrder[0]];
+        return participant ? participant.odds : 0;
     }
 
-    // Activer le bouton
-    const btn = document.getElementById('bet-submit');
-    if (btn) btn.disabled = false;
+    const probability = calculateOrderedProbability(selectedOrder);
+    if (probability <= 0) return 0;
+    const edge = betTypes[activeBetType].house_edge;
+    return Math.max(1.1, Math.floor(((1 / probability) / edge) * 10) / 10);
+}
 
+function renderSelectionSummary() {
+    const display = document.getElementById('selected-pig-display');
+    const selectionInput = document.getElementById('selection-order-input');
+    const betTypeInput = document.getElementById('bet-type-input');
+    const submitButton = document.getElementById('bet-submit');
+    if (!display || !selectionInput || !betTypeInput || !submitButton) return;
+
+    betTypeInput.value = activeBetType;
+    selectionInput.value = selectedOrder.join(',');
+
+    participantCards.forEach((card) => {
+        const participantId = Number(card.dataset.participantId);
+        const badge = card.querySelector('[data-selection-badge]');
+        const selectionIndex = selectedOrder.indexOf(participantId);
+        card.classList.remove('selected', 'selected-order');
+        if (badge) {
+            badge.textContent = '';
+            badge.classList.remove('visible');
+        }
+
+        if (selectionIndex !== -1) {
+            card.classList.add('selected', 'selected-order');
+            if (badge) {
+                badge.textContent = String(selectionIndex + 1);
+                badge.classList.add('visible');
+            }
+        }
+    });
+
+    const requiredCount = getRequiredSelectionCount();
+    if (selectedOrder.length === 0) {
+        display.textContent = `Choisis ${requiredCount} cochon(s) dans l'ordre attendu pour un ticket ${betTypes[activeBetType].label.toLowerCase()}.`;
+    } else {
+        const label = selectedOrder.map((participantId, index) => `${index + 1}. ${participantMap[participantId].name}`).join('  ->  ');
+        display.textContent = label;
+    }
+
+    submitButton.disabled = selectedOrder.length !== requiredCount;
     updatePotentialWin();
+}
+
+function setBetType(nextBetType) {
+    if (!betTypes[nextBetType]) return;
+    activeBetType = nextBetType;
+    selectedOrder = [];
+
+    document.querySelectorAll('[data-bet-type-btn]').forEach((button) => {
+        button.classList.toggle('active', button.dataset.betType === nextBetType);
+    });
+
+    const help = document.getElementById('bet-type-help');
+    if (help) {
+        help.textContent = `${betTypes[nextBetType].description} Clique sur les cochons dans l'ordre d'arrivée prévu.`;
+    }
+
+    renderSelectionSummary();
+}
+
+function toggleParticipantSelection(participantId) {
+    if (!participantMap[participantId]) return;
+
+    const existingIndex = selectedOrder.indexOf(participantId);
+    if (existingIndex !== -1) {
+        selectedOrder.splice(existingIndex, 1);
+        renderSelectionSummary();
+        return;
+    }
+
+    if (selectedOrder.length >= getRequiredSelectionCount()) return;
+    selectedOrder.push(participantId);
+    renderSelectionSummary();
 }
 
 function updatePotentialWin() {
     const amountInput = document.getElementById('bet-amount');
     const potentialDiv = document.getElementById('potential-win');
     const potentialAmount = document.getElementById('potential-amount');
-    if (!amountInput || !potentialDiv || !selectedOdds) return;
+    const oddsSpan = document.getElementById('ticket-odds');
+    if (!amountInput || !potentialDiv || !oddsSpan) return;
 
     const amount = parseFloat(amountInput.value);
-    if (amount > 0) {
-        const gain = (amount * selectedOdds).toFixed(2);
+    const selectionOdds = calculateSelectionOdds();
+    if (amount > 0 && selectionOdds > 0) {
+        const gain = (amount * selectionOdds).toFixed(2);
+        oddsSpan.textContent = `x${selectionOdds.toFixed(1)}`;
         potentialAmount.textContent = gain;
         potentialDiv.classList.remove('hidden');
     } else {
@@ -378,6 +566,20 @@ const amountInput = document.getElementById('bet-amount');
 if (amountInput) {
     amountInput.addEventListener('input', updatePotentialWin);
 }
+
+participantCards.forEach((card) => {
+    card.addEventListener('click', () => toggleParticipantSelection(Number(card.dataset.participantId)));
+});
+
+document.querySelectorAll('[data-bet-type-btn]').forEach((button) => {
+    button.addEventListener('click', () => {
+        if (!button.disabled) {
+            setBetType(button.dataset.betType);
+        }
+    });
+});
+
+renderSelectionSummary();
 
 // ─── COMPTE À REBOURS ────────────────────────────────────────────────────
 function formatTime(seconds) {

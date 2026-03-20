@@ -12,7 +12,7 @@
 3. **Model `Pig`** : cœur du jeu. Contient les stats, l'état tamagotchi, la progression, la rareté, l'origine, la mortalité, le challenge de la mort, le suivi de l'**École porcine** et les champs de **blessure / urgence vétérinaire**.
 4. **Model `Race`** : événements de course, planification et résultat final.
 5. **Model `Participant`** : participants d'une course, qu'ils soient issus d'un joueur ou d'un PNJ.
-6. **Model `Bet`** : paris des utilisateurs sur une course, avec cote, statut et gains.
+6. **Model `Bet`** : paris des utilisateurs sur une course, avec type de ticket (`simple`, `couple ordre`, `tierce ordre`), selection ordonnee, cote, statut et gains.
 7. **Model `Auction`** : marché des enchères pour les cochons, avec vendeur, acheteur et état de la vente.
 
 ## Mécaniques principales
@@ -22,7 +22,7 @@
 - **École porcine** : des quiz tactiques accordent XP et bonus de stats, avec un cooldown indépendant par cochon.
 - **Blessures et vétérinaire** : les cochons blessés sont bloqués hors des activités risquées jusqu'au puzzle de soin ou à l'expiration du timer.
 - **Courses automatiques** : les cochons aptes sont inscrits, la puissance moyenne sert à calculer probabilités et cotes.
-- **Garde-fous économiques** : un seul pari par course, cotes avec marge maison, prime d'urgence et retour automatique des cochons invendus.
+- **Garde-fous économiques** : un seul ticket par course, cotes avec marge maison, tickets simples / ordonnes, prime d'urgence et retour automatique des cochons invendus.
 - **Profil joueur** : une vue dédiée permet de suivre ses indicateurs et de changer son mot de passe.
 - **Marché** : enchères limitées dans le temps avec résolution automatique.
 - **Mort / retraite / abattoir** : les cochons ont une durée de vie et peuvent finir en charcuterie mémorable.

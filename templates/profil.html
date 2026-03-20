@@ -331,7 +331,8 @@
                             <span class="text-white/55 text-sm font-semibold">Dernier pari</span>
                             <span class="text-white font-bold">
                                 {% if bets %}
-                                {{ bets[0].pig_name }} le {{ bets[0].placed_at.strftime('%d/%m') }}
+                                {% set latest_bet_type = bets[0].bet_type if bets[0].bet_type in bet_types else 'win' %}
+                                {{ bet_types[latest_bet_type].icon }} {{ bets[0].pig_name }} le {{ bets[0].placed_at.strftime('%d/%m') }}
                                 {% else %}
                                 Aucun
                                 {% endif %}
