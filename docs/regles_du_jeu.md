@@ -22,9 +22,15 @@ Entraînez-le régulièrement, envoyez-le à l'école porcine et nourrissez-le p
 - Une mauvaise réponse ne bloque pas la progression, mais coûte du moral général.
 - Chaque cochon doit ensuite respecter un **temps de récupération** avant de retourner en classe.
 
+## 2.c Blessures et Vétérinaire
+- Certaines courses peuvent laisser un cochon **blessé** : il est alors retiré des activités risquées tant qu'il n'est pas soigné.
+- Un cochon blessé ne peut plus s'entraîner, retourner à l'école, entrer dans le Challenge de la Mort ni être retenu pour une course classique.
+- Le menu **Vétérinaire** ouvre une salle d'attente si tout va bien, ou une **urgence** avec mini-jeu chronométré si un patient doit être opéré.
+- Si le puzzle est résolu à temps, le cochon survit et repart avec une convalescence légère. Si le temps expire, il peut mourir sur la table.
+
 ## 3. Les Courses
 - Il y a des courses régulières prévues à heure fixe ou forçables manuellement par l'admin.
-- Chaque cochon inscrit court (y compris les PNJ). 
+- Chaque cochon inscrit court (y compris les PNJ), sauf s'il est blessé ou dans un état trop faible pour être retenu.
 - Les éleveurs reçoivent une **prime de participation**, et les meilleurs gagnent un **bonus de podium**.
 
 ## 4. Les Paris
@@ -37,6 +43,7 @@ Entraînez-le régulièrement, envoyez-le à l'école porcine et nourrissez-le p
 - Si un cochon mis en vente ne trouve pas preneur, il **revient automatiquement** chez son propriétaire.
 - Si vous êtes ruiné, le jeu peut verser une **prime d'urgence** pour éviter de rester bloqué sans solution.
 - Les nouveaux comptes doivent d'abord faire quelques courses, ou attendre un peu, avant de pouvoir utiliser pleinement le **marché**.
+- En mode démo, certains comptes peuvent disposer d'un cochon déjà blessé pour tester immédiatement la clinique vétérinaire.
 
 ## 6. Le Marché
 - Vous pouvez mettre votre cochon en vente aux enchères ou acheter de nouveaux champions.

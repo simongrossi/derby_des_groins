@@ -17,12 +17,20 @@
                 radial-gradient(ellipse at 30% 20%, rgba(180,0,0,0.2) 0%, transparent 55%),
                 radial-gradient(ellipse at 70% 80%, rgba(100,0,180,0.15) 0%, transparent 55%);
             min-height: 100vh;
-            overflow: hidden;
+            overflow-x: hidden;
+            color: #f8fafc;
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 1.5rem;
         }
 
         #chrono-ring {
-            width: 140px;
-            height: 140px;
+            width: 160px;
+            height: 160px;
             position: relative;
             flex-shrink: 0;
         }
@@ -128,14 +136,14 @@
             position: fixed;
             inset: 0;
             pointer-events: none;
-            z-index: 50;
+            z-index: 20;
             background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.03) 2px, rgba(0,0,0,0.03) 4px);
         }
         .vignette {
             position: fixed;
             inset: 0;
             pointer-events: none;
-            z-index: 49;
+            z-index: 19;
             background: radial-gradient(ellipse at center, transparent 60%, rgba(0,0,0,0.6) 100%);
         }
 
@@ -189,56 +197,61 @@
         }
     </style>
 </head>
-<body>
+<body class="pb-12">
+{% set active_page = 'veterinaire' %}
+{% include "_site_header.html" %}
 
 <div class="scanline"></div>
 <div class="vignette"></div>
 
-<div class="fixed top-0 left-0 right-0 z-20 px-4 py-3 flex items-center justify-between" style="background:rgba(10,10,15,0.95);border-bottom:1px solid rgba(220,38,38,0.3)">
-    <div class="flex items-center gap-3">
-        <span class="text-2xl heartbeat">❤️</span>
-        <div>
-            <p class="font-title text-red-400 text-lg leading-none">URGENCE VÉTÉRINAIRE</p>
-            <p class="text-white/40 text-xs font-bold">{{ pig.name }} — Clinique des Groins Cassés</p>
+<main class="relative z-30 max-w-5xl mx-auto px-4 py-8">
+    <section class="card p-6 md:p-8 mb-8" style="background:linear-gradient(135deg,rgba(127,29,29,0.55),rgba(17,24,39,0.7));border-color:rgba(248,113,113,0.22);">
+        <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-8">
+            <div class="flex items-start gap-4">
+                <span class="text-5xl md:text-6xl heartbeat">{{ pig.emoji }}</span>
+                <div>
+                    <p class="text-red-300 font-bold uppercase tracking-[0.25em] text-xs mb-2">Urgence vétérinaire</p>
+                    <h1 class="font-title text-3xl md:text-4xl text-white">{{ pig.name }}</h1>
+                    <p class="text-red-200 font-bold text-sm mt-2">🩻 Fracture multi-osseuse détectée — puzzle chirurgical requis</p>
+                    <p class="text-white/55 text-sm font-semibold mt-2 max-w-2xl">Replacez les os dans le bon ordre pour soigner votre patient. Chaque erreur coûte du temps, et le chrono tourne vraiment.</p>
+                    <div class="flex flex-wrap gap-2 mt-4">
+                        <a href="/mon-cochon" class="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-bold text-white bg-white/10 border border-white/10 hover:bg-white/15 transition-colors">← Retour à l'écurie</a>
+                        <span class="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-bold text-red-100 bg-red-500/12 border border-red-400/20">❤️ Chaque seconde compte</span>
+                    </div>
+                </div>
+            </div>
+            <div class="mx-auto lg:mx-0">
+                <div id="chrono-ring">
+                    <svg id="chrono-svg" width="160" height="160" viewBox="0 0 140 140">
+                        <circle id="chrono-circle" cx="70" cy="70" r="60"></circle>
+                        <circle id="chrono-progress" cx="70" cy="70" r="60" stroke-dasharray="377" stroke-dashoffset="0"></circle>
+                    </svg>
+                    <div id="chrono-text">{{ "%d:%02d"|format(seconds_left // 60, seconds_left % 60) }}</div>
+                </div>
+            </div>
         </div>
-    </div>
-    <div id="chrono-ring">
-        <svg id="chrono-svg" width="140" height="140" viewBox="0 0 140 140">
-            <circle id="chrono-circle" cx="70" cy="70" r="60"></circle>
-            <circle id="chrono-progress" cx="70" cy="70" r="60" stroke-dasharray="377" stroke-dashoffset="0"></circle>
-        </svg>
-        <div id="chrono-text">{{ "%d:%02d"|format(seconds_left // 60, seconds_left % 60) }}</div>
-    </div>
-</div>
+    </section>
 
-<main class="pt-24 pb-8 px-4 max-w-2xl mx-auto">
-    <div class="mb-6 p-4 rounded-2xl flex items-center gap-4" style="background:rgba(220,38,38,0.08);border:1px solid rgba(220,38,38,0.2)">
-        <span style="font-size:3.5rem">{{ pig.emoji }}</span>
-        <div>
-            <p class="font-title text-2xl text-white">{{ pig.name }}</p>
-            <p class="text-red-400 font-bold text-sm">🩻 Fracture multi-osseuse détectée — Puzzle chirurgical requis</p>
-            <p class="text-white/40 text-xs mt-1">Replacez les os dans le bon ordre pour soigner votre patient. Chaque erreur coûte du temps.</p>
+    <section class="max-w-2xl mx-auto">
+        <div class="mb-4 text-center">
+            <p class="text-white/65 text-sm font-bold">🦴 Glissez les os dans les cases numérotées dans le bon ordre (1 → 12)</p>
         </div>
-    </div>
 
-    <div class="mb-4 text-center">
-        <p class="text-white/50 text-sm font-bold">🦴 Glissez les os dans les cases numérotées dans le bon ordre (1 → 12)</p>
-    </div>
-
-    <div id="puzzle-board" class="mb-6">
+        <div id="puzzle-board" class="mb-6">
         {% for i in range(12) %}
         <div class="puzzle-slot" data-slot="{{ i }}" ondragover="onDragOver(event, {{ i }})" ondragleave="onDragLeave(event, {{ i }})" ondrop="onDrop(event, {{ i }})">
             <span class="text-white/15 font-bold text-lg absolute top-1 left-2">{{ i + 1 }}</span>
         </div>
         {% endfor %}
-    </div>
+        </div>
 
-    <p class="text-center text-white/40 text-xs font-bold mb-3 uppercase tracking-widest">⬆️ Faites glisser les os ci-dessous vers les cases</p>
-    <div id="piece-tray"></div>
+        <p class="text-center text-white/40 text-xs font-bold mb-3 uppercase tracking-widest">⬆️ Faites glisser les os ci-dessous vers les cases</p>
+        <div id="piece-tray"></div>
 
-    <p class="text-center text-white/25 text-xs mt-4">
-        Le chrono tourne. Chaque os mal placé vous coûte 10 secondes.
-    </p>
+        <p class="text-center text-white/25 text-xs mt-4">
+            Le chrono tourne. Chaque os mal placé vous coûte 10 secondes.
+        </p>
+    </section>
 </main>
 
 <div id="overlay-win" class="overlay hidden">
