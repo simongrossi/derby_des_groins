@@ -12,30 +12,30 @@
         .font-title { font-family: 'Lilita One', cursive; }
 
         body {
-            background: #1a0a2e;
+            background: #1a0a24;
             background-image:
-                radial-gradient(ellipse at 20% 50%, rgba(255, 100, 0, 0.15) 0%, transparent 60%),
-                radial-gradient(ellipse at 80% 20%, rgba(255, 200, 0, 0.1) 0%, transparent 50%),
-                radial-gradient(ellipse at 50% 80%, rgba(180, 0, 255, 0.1) 0%, transparent 50%);
+                radial-gradient(ellipse at 20% 45%, rgba(244, 114, 182, 0.18) 0%, transparent 60%),
+                radial-gradient(ellipse at 80% 20%, rgba(251, 146, 60, 0.1) 0%, transparent 50%),
+                radial-gradient(ellipse at 50% 80%, rgba(190, 24, 93, 0.11) 0%, transparent 50%);
             min-height: 100vh;
             color: #f8fafc;
         }
 
         .card {
-            background: rgba(255, 255, 255, 0.05);
+            background: linear-gradient(180deg, rgba(255,255,255,0.055) 0%, rgba(255,240,246,0.03) 100%);
             backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 205, 226, 0.12);
             border-radius: 1.5rem;
         }
 
         .btn-primary {
-            background: linear-gradient(135deg, #f59e0b, #ef4444);
+            background: linear-gradient(135deg, #ec4899, #fb7185 55%, #fb923c);
             border: none; color: white; font-weight: 800;
             border-radius: 0.75rem; padding: 0.6rem 1.5rem;
             cursor: pointer; transition: all 0.2s;
             text-transform: uppercase; font-size: 0.85rem;
         }
-        .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 8px 25px rgba(245, 158, 11, 0.5); }
+        .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 8px 25px rgba(244, 114, 182, 0.35); }
         .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
 
         .stat-bar { height: 8px; border-radius: 4px; background: rgba(255, 255, 255, 0.1); overflow: hidden; }
@@ -49,10 +49,10 @@
             cursor: pointer; transition: all 0.15s;
             border: 2px solid transparent; background: rgba(255,255,255,0.05);
         }
-        .emoji-picker-btn.selected { border-color: #f59e0b; background: rgba(245,158,11,0.2); }
+        .emoji-picker-btn.selected { border-color: #f472b6; background: rgba(244,114,182,0.2); }
 
         ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-thumb { background: rgba(245, 158, 11, 0.4); border-radius: 3px; }
+        ::-webkit-scrollbar-thumb { background: rgba(244, 114, 182, 0.4); border-radius: 3px; }
 
         .cereal-card, .training-card {
             background: rgba(255, 255, 255, 0.04);
@@ -89,8 +89,8 @@
             transition: all 0.2s;
         }
         .answer-btn:hover:not(:disabled) {
-            background: rgba(99, 102, 241, 0.12);
-            border-color: rgba(129, 140, 248, 0.4);
+            background: rgba(244, 114, 182, 0.12);
+            border-color: rgba(244, 114, 182, 0.32);
             transform: translateY(-1px);
         }
         .answer-btn:disabled {

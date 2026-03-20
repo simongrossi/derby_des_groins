@@ -10,53 +10,54 @@
         * { font-family: 'Nunito', sans-serif; }
         .font-title { font-family: 'Lilita One', cursive; }
         body {
-            background: #160b29;
+            background: #1b0b23;
             background-image:
-                radial-gradient(circle at 15% 20%, rgba(251, 191, 36, 0.12), transparent 28%),
-                radial-gradient(circle at 80% 10%, rgba(236, 72, 153, 0.12), transparent 30%),
-                linear-gradient(180deg, #1a0c31 0%, #0f0a1c 100%);
+                radial-gradient(circle at 12% 18%, rgba(244, 114, 182, 0.22), transparent 30%),
+                radial-gradient(circle at 82% 8%, rgba(251, 146, 60, 0.14), transparent 28%),
+                radial-gradient(circle at 50% 100%, rgba(190, 24, 93, 0.10), transparent 36%),
+                linear-gradient(180deg, #210d29 0%, #120917 100%);
             min-height: 100vh;
         }
         .card {
-            background: rgba(255,255,255,.05);
+            background: linear-gradient(180deg, rgba(255,255,255,.055) 0%, rgba(255,240,246,.03) 100%);
             backdrop-filter: blur(12px);
-            border: 1px solid rgba(255,255,255,.1);
+            border: 1px solid rgba(255, 205, 226, .12);
             border-radius: 1.5rem;
-            box-shadow: 0 18px 60px rgba(7,10,18,.22);
+            box-shadow: 0 18px 60px rgba(18, 8, 20, .28);
         }
-        .soft { background: rgba(255,255,255,.035); border: 1px solid rgba(255,255,255,.08); border-radius: 1rem; }
+        .soft { background: rgba(255, 232, 240, .035); border: 1px solid rgba(255, 205, 226, .09); border-radius: 1rem; }
         .pill { display:inline-flex; align-items:center; gap:.45rem; padding:.42rem .82rem; border-radius:999px; font-size:.75rem; font-weight:800; }
         .btn-primary {
-            background: linear-gradient(135deg,#f59e0b,#ef4444); color:#fff; font-weight:800;
+            background: linear-gradient(135deg,#ec4899,#fb7185 55%, #fb923c); color:#fff; font-weight:800;
             border-radius:.9rem; padding:.85rem 1.15rem; transition:all .2s ease;
         }
-        .btn-primary:hover { transform:translateY(-1px); box-shadow:0 10px 28px rgba(245,158,11,.32); }
+        .btn-primary:hover { transform:translateY(-1px); box-shadow:0 10px 28px rgba(244,114,182,.34); }
         .btn-secondary {
             display:inline-flex; align-items:center; justify-content:center; gap:.5rem; border-radius:.9rem;
-            border:1px solid rgba(255,255,255,.12); background:rgba(255,255,255,.05); color:rgba(255,255,255,.85);
+            border:1px solid rgba(255, 205, 226, .14); background:rgba(255, 232, 240, .045); color:rgba(255,255,255,.88);
             padding:.8rem 1.1rem; font-weight:800; transition:all .2s ease;
         }
-        .btn-secondary:hover { background:rgba(255,255,255,.09); border-color:rgba(255,255,255,.18); }
+        .btn-secondary:hover { background:rgba(255, 232, 240, .085); border-color:rgba(255, 205, 226, .22); }
         .gauge { height:.62rem; width:100%; overflow:hidden; border-radius:999px; background:rgba(255,255,255,.08); }
         .fill { height:100%; border-radius:999px; }
         .pig-card {
-            background: rgba(255,255,255,.06); border:2px solid transparent; border-radius:1rem; cursor:pointer;
+            background: rgba(255,244,247,.06); border:2px solid transparent; border-radius:1rem; cursor:pointer;
             transition:all .2s ease;
         }
-        .pig-card:hover { background:rgba(255,200,0,.12); border-color:rgba(255,200,0,.45); transform:translateY(-2px); }
-        .pig-card.selected { background:rgba(255,200,0,.2); border-color:#fbbf24; box-shadow:0 0 20px rgba(255,200,0,.26); }
+        .pig-card:hover { background:rgba(244,114,182,.14); border-color:rgba(244,114,182,.4); transform:translateY(-2px); }
+        .pig-card.selected { background:rgba(244,114,182,.2); border-color:#f472b6; box-shadow:0 0 20px rgba(244,114,182,.24); }
         .selection-badge {
             position:absolute; top:.6rem; right:.6rem; width:1.7rem; height:1.7rem; border-radius:999px;
-            background:linear-gradient(135deg,#f59e0b,#ef4444); color:#fff; font-size:.85rem; font-weight:800;
+            background:linear-gradient(135deg,#ec4899,#fb7185); color:#fff; font-size:.85rem; font-weight:800;
             display:none; align-items:center; justify-content:center;
         }
         .selection-badge.visible { display:inline-flex; }
         .bet-type-btn {
-            width:100%; text-align:left; background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.1);
+            width:100%; text-align:left; background:rgba(255,244,247,.05); border:1px solid rgba(255, 205, 226, .12);
             border-radius:1rem; padding:1rem; transition:all .2s ease;
         }
-        .bet-type-btn:hover:not(:disabled) { background:rgba(255,255,255,.09); border-color:rgba(255,255,255,.18); transform:translateY(-1px); }
-        .bet-type-btn.active { background:linear-gradient(135deg,rgba(245,158,11,.18),rgba(239,68,68,.14)); border-color:rgba(251,191,36,.45); }
+        .bet-type-btn:hover:not(:disabled) { background:rgba(255,232,240,.09); border-color:rgba(255, 205, 226, .22); transform:translateY(-1px); }
+        .bet-type-btn.active { background:linear-gradient(135deg,rgba(244,114,182,.18),rgba(251,113,133,.15)); border-color:rgba(244,114,182,.38); }
         .bet-type-btn:disabled { opacity:.45; cursor:not-allowed; }
         .odds-badge { border-radius:.5rem; padding:.25rem .75rem; font-weight:800; font-size:1rem; }
         .odds-low { border:1px solid #16a34a; color:#86efac; background:linear-gradient(135deg,#052e16,#14532d); }
@@ -64,7 +65,7 @@
         .odds-high { border:1px solid #dc2626; color:#fca5a5; background:linear-gradient(135deg,#1c0707,#450a0a); }
         #countdown-display {
             font-family:'Lilita One', cursive;
-            background:linear-gradient(135deg,#f59e0b,#ef4444);
+            background:linear-gradient(135deg,#f472b6,#fb7185,#fdba74);
             -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;
         }
     </style>
@@ -92,7 +93,7 @@
     <section class="grid grid-cols-1 xl:grid-cols-[1.3fr_0.9fr] gap-6">
         <article class="card p-6 lg:p-8">
             <div class="flex flex-wrap items-center gap-2">
-                <span class="pill bg-yellow-400/15 text-yellow-200 border border-yellow-400/20">🚨 A la une</span>
+                <span class="pill bg-pink-400/14 text-pink-100 border border-pink-300/22">🚨 A la une</span>
                 {% if next_race_theme %}
                 <span class="pill bg-white/8 text-white/70 border border-white/10">{{ next_race_theme.emoji }} {{ next_race_theme.tag }}</span>
                 {% endif %}
@@ -135,7 +136,7 @@
                 </span>
             </div>
             {% if user %}
-            <p class="text-white/55 font-semibold mt-4">Il te reste <strong class="text-yellow-300">{{ bacon_tickets_remaining }} Tickets Bacon</strong> cette semaine.</p>
+                    <p class="text-white/55 font-semibold mt-4">Il te reste <strong class="text-pink-200">{{ bacon_tickets_remaining }} Tickets Bacon</strong> cette semaine.</p>
             {% if user_bets %}
             <div class="soft p-4 mt-4">
                 <p class="text-white font-extrabold">Ticket deja pose sur la prochaine course</p>

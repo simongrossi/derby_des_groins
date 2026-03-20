@@ -10,24 +10,24 @@
         * { font-family: 'Nunito', sans-serif; }
         .font-title { font-family: 'Lilita One', cursive; }
         body {
-            background: #150b27;
+            background: #180a20;
             background-image:
-                radial-gradient(circle at 15% 20%, rgba(244, 114, 182, 0.16), transparent 32%),
-                radial-gradient(circle at 85% 10%, rgba(251, 191, 36, 0.12), transparent 28%),
-                radial-gradient(circle at 50% 100%, rgba(34, 211, 238, 0.08), transparent 35%),
-                linear-gradient(180deg, #1a0d2f 0%, #0d0a18 100%);
+                radial-gradient(circle at 15% 18%, rgba(244, 114, 182, 0.22), transparent 32%),
+                radial-gradient(circle at 82% 10%, rgba(251, 146, 60, 0.12), transparent 28%),
+                radial-gradient(circle at 50% 100%, rgba(190, 24, 93, 0.10), transparent 35%),
+                linear-gradient(180deg, #210d29 0%, #100915 100%);
             min-height: 100vh;
         }
         .card {
-            background: rgba(255, 255, 255, 0.05);
+            background: linear-gradient(180deg, rgba(255,255,255,0.055) 0%, rgba(255,240,246,0.03) 100%);
             backdrop-filter: blur(12px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 205, 226, 0.12);
             border-radius: 1.5rem;
-            box-shadow: 0 16px 50px rgba(10, 10, 20, 0.22);
+            box-shadow: 0 16px 50px rgba(18, 8, 20, 0.28);
         }
         .soft-card {
-            background: rgba(255, 255, 255, 0.035);
-            border: 1px solid rgba(255, 255, 255, 0.08);
+            background: rgba(255, 232, 240, 0.035);
+            border: 1px solid rgba(255, 205, 226, 0.09);
             border-radius: 1rem;
         }
         .pill {
@@ -50,8 +50,8 @@
         }
         .btn-plan:hover:not(:disabled) {
             transform: translateY(-1px);
-            border-color: rgba(250, 204, 21, 0.35);
-            background: rgba(250, 204, 21, 0.08);
+            border-color: rgba(244, 114, 182, 0.35);
+            background: rgba(244, 114, 182, 0.08);
         }
         .btn-plan:disabled {
             opacity: 0.45;
@@ -60,8 +60,8 @@
         .table-shell {
             overflow: hidden;
             border-radius: 1rem;
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 205, 226, 0.09);
+            background: rgba(255, 232, 240, 0.03);
         }
         .table-shell table {
             width: 100%;
@@ -69,7 +69,7 @@
         }
         .table-shell th, .table-shell td {
             padding: 0.95rem 1rem;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+            border-bottom: 1px solid rgba(255, 205, 226, 0.07);
             text-align: left;
             vertical-align: top;
         }
@@ -79,7 +79,7 @@
             letter-spacing: 0.08em;
             font-size: 0.72rem;
             font-weight: 800;
-            background: rgba(255, 255, 255, 0.04);
+            background: rgba(255, 232, 240, 0.04);
         }
         .table-shell tr:last-child td { border-bottom: none; }
     </style>
@@ -107,7 +107,7 @@
     <section class="card p-6 lg:p-8">
         <div class="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
             <div>
-                <p class="text-xs uppercase tracking-[0.35em] text-yellow-300/70 font-extrabold">Planifier la semaine</p>
+                <p class="text-xs uppercase tracking-[0.35em] text-pink-200/70 font-extrabold">Planifier la semaine</p>
                 <h1 class="font-title text-4xl text-white mt-3">📅 Courses</h1>
                 <p class="text-white/55 font-semibold mt-3 max-w-3xl">
                     Programme tes cochons sur les courses a venir, suis le quota hebdomadaire et choisis les bons rendez-vous.
