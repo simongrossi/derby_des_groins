@@ -125,7 +125,7 @@
     <div class="flex items-center justify-between mb-8">
         <div>
             <h1 class="font-title text-4xl text-white">Mes Champions</h1>
-            <p class="text-white/50 text-xs font-bold mt-2">Héritage porcherie: +{{ "%.1f"|format(user.barn_heritage_bonus or 0) }} • Pression nourriture actuelle x{{ "%.2f"|format(feeding_multiplier) }} • Capacité {{ pigs_data|length }}/{{ max_slots }}</p>
+            <p class="text-white/50 text-xs font-bold mt-2">Héritage porcherie: +{{ "%.1f"|format(user.barn_heritage_bonus or 0) }} • Pression nourriture actuelle x{{ "%.2f"|format(feeding_multiplier) }} • Capacité {{ pigs_data|length }}/{{ max_slots }} • En-cas solidaires restants {{ pigs_data[0].share_snacks_remaining if pigs_data else 3 }}/3</p>
         </div>
         {% if adoption_cost is not none %}
         <a href="/adopt-second-pig" class="btn-primary flex items-center gap-2" onclick="return confirm('Adopter {{ 'un cochon de secours' if not pigs_data else 'une nouvelle recrue' }} pour {{ '%.0f'|format(adoption_cost) }} BG ? Plus la porcherie est grande, plus nourrir tout le monde coûte cher.');">
@@ -171,6 +171,8 @@
         {% set pig = pd.pig %}
         {% set injury_risk = pig.injury_risk or 10.0 %}
         {% set weight_profile = pd.weight_profile %}
+        {% set freshness = pd.freshness_bonus %}
+        {% set performance_flags = pd.performance_flags %}
         <div class="grid grid-cols-1 xl:grid-cols-3 gap-8 p-1 relative">
             
             <!-- LEFT COLUMN: Main ID Card -->
@@ -195,7 +197,12 @@
                     <div class="pig-emoji-display text-8xl mb-6">{{ pig.emoji }}</div>
                     
                     <div>
-                        <div class="level-badge mb-3">Niveau {{ pig.level }}</div>
+                        <div class="flex flex-wrap items-center justify-center gap-2 mb-3">
+                            <div class="level-badge">Niveau {{ pig.level }}</div>
+                            {% if pd.weekend_truce_active %}
+                            <div class="px-3 py-1 rounded-full border border-sky-400/30 bg-sky-400/10 text-sky-200 text-[10px] font-black uppercase tracking-wider">🛌 En hibernation</div>
+                            {% endif %}
+                        </div>
                         <h2 class="font-title text-4xl text-white mb-2">{{ pig.name }}</h2>
                         <div class="flex items-center justify-center gap-2 text-white/40 text-sm font-bold">
                             <span>{{ pd.rarity_info.emoji }} {{ pd.rarity_info.name | upper }}</span>
@@ -309,6 +316,23 @@
                         </div>
                         <div class="stat-bar border border-white/5"><div class="stat-bar-fill bg-pink-500" style="width: {{ pig.happiness }}%"></div></div>
                     </div>
+
+                    <div class="mt-2 grid grid-cols-1 gap-2">
+                        {% if performance_flags.hungry_penalty %}
+                        <div class="px-3 py-2 rounded-xl border border-red-500/20 bg-red-500/10 text-red-200 text-[11px] font-bold">🍽️ Affamé : malus de 30% sur force et endurance.</div>
+                        {% endif %}
+                        {% if performance_flags.weight_penalty %}
+                        <div class="px-3 py-2 rounded-xl border border-amber-500/20 bg-amber-500/10 text-amber-200 text-[11px] font-bold">⚖️ {{ 'Trop lourd' if weight_profile.delta > 0 else 'Hors gabarit' }} : vitesse et agilité ralenties.</div>
+                        {% endif %}
+                        <div class="px-3 py-3 rounded-xl border {{ 'border-emerald-400/20 bg-emerald-500/10' if freshness.active else 'border-white/10 bg-white/5' }}">
+                            <div class="flex items-center justify-between text-[10px] font-bold uppercase">
+                                <span class="{{ 'text-emerald-200' if freshness.active else 'text-white/45' }}">Fraicheur de repas</span>
+                                <span class="{{ 'text-emerald-300' if freshness.active else 'text-white/35' }}">{% if freshness.active %}+{{ "%.0f"|format(freshness.bonus_percent) }}% moral{% else %}Aucun bonus{% endif %}</span>
+                            </div>
+                            <div class="mt-2 stat-bar border border-white/5"><div class="stat-bar-fill {{ 'bg-emerald-400' if freshness.active else 'bg-white/20' }}" style="width: {{ 100 if freshness.active else 0 }}%"></div></div>
+                            <p class="mt-2 text-[11px] font-bold {{ 'text-emerald-100' if freshness.active else 'text-white/35' }}">{% if freshness.active %}Le prochain depart profite encore du dernier repas. Fenetre restante: ~{{ "%.1f"|format(freshness.hours_remaining) }} h.{% else %}Un repas dans les 2 prochaines heures relance le buff de fraicheur avant la course.{% endif %}</p>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="card p-5" style="background:rgba({{ '16,185,129' if weight_profile.status == 'ideal' else ('245,158,11' if weight_profile.status == 'warning' else '239,68,68') }},0.07);border:1px solid rgba({{ '52,211,153' if weight_profile.status == 'ideal' else ('251,191,36' if weight_profile.status == 'warning' else '248,113,113') }},0.22);">
@@ -344,6 +368,9 @@
                     </div>
                     {% endif %}
                     <p class="text-white/45 text-[11px] font-semibold mt-2">{{ weight_profile.note }}</p>
+                    {% if performance_flags.weight_penalty %}
+                    <p class="text-amber-200 text-[11px] font-bold mt-2">🪶 Malus de performance actif : au-dela de 20% d'ecart au poids ideal, la vitesse et l'agilite plongent progressivement.</p>
+                    {% endif %}
                 </div>
             </div>
 
@@ -439,6 +466,27 @@
                         <input type="hidden" name="pig_id" value="{{ pig.id }}">
                         <button type="submit" class="w-full bg-red-900/40 hover:bg-red-900/60 py-2 rounded-lg text-[10px] font-bold uppercase transition-colors">Annuler (50% Perdu)</button>
                     </form>
+                    {% endif %}
+                </div>
+
+                <!-- En-cas Solidaire -->
+                <div class="card p-5 border-emerald-500/20" style="background: rgba(16, 185, 129, 0.05);">
+                    <div class="flex items-center justify-between mb-2">
+                        <h3 class="text-emerald-400 font-title">🍎 En-cas Solidaire</h3>
+                        <span class="text-[10px] bg-emerald-600 px-2 py-0.5 rounded text-white font-bold">{{ pd.share_snacks_remaining }} restants</span>
+                    </div>
+                    <p class="text-white/70 text-[11px] font-bold mb-3">Lance un trognon de pomme au cochon d'un collegue pour l'aider ! C'est gratuit et ca restaure un peu sa faim.</p>
+                    {% if pd.share_snacks_remaining > 0 %}
+                    <form method="POST" action="/share-snack" class="space-y-2">
+                        <input type="hidden" name="pig_id" value="{{ pig.id }}">
+                        <input type="hidden" name="snack" value="apple_core">
+                        <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-500 py-2 rounded-lg text-[10px] font-bold uppercase transition-colors"
+                                {% if pig.user_id == user.id %}disabled title="Impossible sur ton propre cochon"{% endif %}>
+                            Lancer un en-cas solidaires
+                        </button>
+                    </form>
+                    {% else %}
+                    <p class="text-white/35 text-[10px] font-bold">Limite quotidienne atteinte.</p>
                     {% endif %}
                 </div>
 

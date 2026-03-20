@@ -1,3 +1,13 @@
+IDEAL_WEIGHT_MALUS_THRESHOLD_RATIO = 0.20
+MAX_WEIGHT_PERFORMANCE_MALUS = 0.45
+FRESHNESS_BONUS_HOURS = 2
+FRESHNESS_MORAL_BONUS = 0.10
+SNACK_SHARE_DAILY_LIMIT = 3
+OFFICE_SNACKS = {
+    'pomme': {'name': 'Pomme', 'emoji': '🍎', 'hunger_restore': 5},
+    'biscuit': {'name': 'Biscuit', 'emoji': '🍪', 'hunger_restore': 5},
+}
+
 PIGS = [
     {"name": "Rillette", "emoji": "🐷"},
     {"name": "Côtelette", "emoji": "🥩"},

@@ -1,7 +1,8 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, time
 from sqlalchemy import func, or_, update
 import random
 import math
+from zoneinfo import ZoneInfo
 
 from extensions import db
 from models import (
@@ -17,7 +18,8 @@ from data import (
     DEFAULT_PIG_WEIGHT_KG, MIN_PIG_WEIGHT_KG, MAX_PIG_WEIGHT_KG,
     MIN_INJURY_RISK, MAX_INJURY_RISK, VET_RESPONSE_MINUTES,
     RACE_APPEARANCE_REWARD, RACE_POSITION_REWARDS,
-    WEEKLY_RACE_QUOTA, JOURS_FR,
+    WEEKLY_RACE_QUOTA, JOURS_FR, IDEAL_WEIGHT_MALUS_THRESHOLD_RATIO,
+    MAX_WEIGHT_PERFORMANCE_MALUS, FRESHNESS_BONUS_HOURS, FRESHNESS_MORAL_BONUS,
 )
 
 
@@ -53,6 +55,105 @@ def init_default_config():
 
 
 # ─── HELPERS COCHON ─────────────────────────────────────────────────────────
+ 
+PARIS_TZ = ZoneInfo('Europe/Paris')
+WEEKEND_TRUCE_START = time(18, 0)
+WEEKEND_TRUCE_END = time(8, 0)
+
+def get_paris_now():
+    return datetime.now(PARIS_TZ)
+
+def to_paris_time(dt):
+    if dt is None:
+        return None
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=ZoneInfo('UTC')).astimezone(PARIS_TZ)
+    return dt.astimezone(PARIS_TZ)
+
+def is_weekend_truce_active(moment=None):
+    local_moment = to_paris_time(moment or datetime.utcnow())
+    weekday = local_moment.weekday()
+    local_time = local_moment.time()
+    if weekday == 4 and local_time >= WEEKEND_TRUCE_START:
+        return True
+    if weekday in (5, 6):
+        return True
+    if weekday == 0 and local_time < WEEKEND_TRUCE_END:
+        return True
+    return False
+
+def _next_weekend_truce_start(after_local):
+    candidate_day = after_local.date()
+    days_until_friday = (4 - after_local.weekday()) % 7
+    candidate_day = candidate_day + timedelta(days=days_until_friday)
+    candidate_start = datetime.combine(candidate_day, WEEKEND_TRUCE_START, tzinfo=PARIS_TZ)
+    if candidate_start <= after_local:
+        candidate_start += timedelta(days=7)
+    return candidate_start
+
+def calculate_weekend_truce_hours(start_dt, end_dt):
+    if not start_dt or not end_dt or end_dt <= start_dt:
+        return 0.0
+    start_local = to_paris_time(start_dt)
+    end_local = to_paris_time(end_dt)
+    overlap_seconds = 0.0
+
+    if is_weekend_truce_active(start_local):
+        weekday = start_local.weekday()
+        if weekday == 4:
+            truce_start = datetime.combine(start_local.date(), WEEKEND_TRUCE_START, tzinfo=PARIS_TZ)
+        elif weekday == 5:
+            truce_start = datetime.combine(start_local.date() - timedelta(days=1), WEEKEND_TRUCE_START, tzinfo=PARIS_TZ)
+        elif weekday == 6:
+            truce_start = datetime.combine(start_local.date() - timedelta(days=2), WEEKEND_TRUCE_START, tzinfo=PARIS_TZ)
+        else:
+            truce_start = datetime.combine(start_local.date() - timedelta(days=3), WEEKEND_TRUCE_START, tzinfo=PARIS_TZ)
+        truce_end = truce_start + timedelta(days=2, hours=14)
+        overlap_seconds += (min(end_local, truce_end) - start_local).total_seconds()
+        cursor = truce_end
+    else:
+        cursor = start_local
+
+    while cursor < end_local:
+        truce_start = _next_weekend_truce_start(cursor)
+        if truce_start >= end_local:
+            break
+        truce_end = truce_start + timedelta(days=2, hours=14)
+        overlap_seconds += (min(end_local, truce_end) - truce_start).total_seconds()
+        cursor = truce_end
+
+    return max(0.0, overlap_seconds / 3600.0)
+
+def get_freshness_bonus(pig):
+    if not pig or not pig.last_fed_at:
+        return {'active': False, 'multiplier': 1.0, 'bonus_percent': 0.0, 'hours_remaining': 0.0}
+    elapsed_hours = max(0.0, (datetime.utcnow() - pig.last_fed_at).total_seconds() / 3600.0)
+    active = elapsed_hours < FRESHNESS_BONUS_HOURS
+    remaining = max(0.0, FRESHNESS_BONUS_HOURS - elapsed_hours)
+    return {
+        'active': active,
+        'multiplier': round(1.0 + FRESHNESS_MORAL_BONUS, 3) if active else 1.0,
+        'bonus_percent': round(FRESHNESS_MORAL_BONUS * 100, 1) if active else 0.0,
+        'hours_remaining': round(remaining, 2),
+    }
+
+def get_pig_performance_flags(pig):
+    weight_profile = get_weight_profile(pig)
+    ideal_weight = max(1.0, weight_profile['ideal_weight'])
+    deviation_ratio = abs(weight_profile['current_weight'] - ideal_weight) / ideal_weight
+    return {
+        'hungry_penalty': (pig.hunger or 0) < 10,
+        'weight_penalty': deviation_ratio > IDEAL_WEIGHT_MALUS_THRESHOLD_RATIO,
+        'weight_status': weight_profile['status'],
+    }
+
+def reset_snack_share_limit_if_needed(user, now=None):
+    if not user:
+        return
+    current_time = now or datetime.utcnow()
+    if not user.snack_share_reset_at or user.snack_share_reset_at.date() != current_time.date():
+        user.snack_shares_today = 0
+        user.snack_share_reset_at = current_time
 
 def clamp_pig_weight(weight):
     return round(min(MAX_PIG_WEIGHT_KG, max(MIN_PIG_WEIGHT_KG, weight)), 1)
@@ -149,14 +250,34 @@ def get_weight_profile(pig):
 
 def calculate_pig_power(pig):
     profile = get_weight_profile(pig)
-    # Appliquer les modificateurs de poids sur les stats de base pour le calcul de puissance
+    freshness = get_freshness_bonus(pig)
+    effective_force = pig.force * profile['force_mod']
+    effective_endurance = pig.endurance
+    effective_vitesse = pig.vitesse
+    effective_agilite = pig.agilite * profile['agilite_mod']
+
+    if (pig.hunger or 0) < 10:
+        effective_force *= 0.7
+        effective_endurance *= 0.7
+
+    ideal_weight = max(1.0, profile['ideal_weight'])
+    deviation_ratio = abs(profile['current_weight'] - ideal_weight) / ideal_weight
+    if deviation_ratio > IDEAL_WEIGHT_MALUS_THRESHOLD_RATIO:
+        excess_ratio = deviation_ratio - IDEAL_WEIGHT_MALUS_THRESHOLD_RATIO
+        penalty = min(MAX_WEIGHT_PERFORMANCE_MALUS, excess_ratio / IDEAL_WEIGHT_MALUS_THRESHOLD_RATIO * 0.2)
+        modifier = 1.0 - penalty
+        effective_vitesse *= modifier
+        effective_agilite *= modifier
+
+    effective_moral = pig.moral * freshness['multiplier']
+
     stats = [
-        pig.vitesse,
-        pig.endurance,
-        pig.agilite * profile['agilite_mod'],
-        pig.force * profile['force_mod'],
+        effective_vitesse,
+        effective_endurance,
+        effective_agilite,
+        effective_force,
         pig.intelligence,
-        pig.moral
+        effective_moral,
     ]
     stat_score = sum(math.sqrt(max(0.0, stat) / 100.0) * 100 for stat in stats) / len(stats)
     condition_factor = 0.8 + (((pig.energy + pig.hunger + pig.happiness) / 3.0) / 100.0) * 0.4
@@ -176,10 +297,16 @@ def update_pig_state(pig):
     if not pig.last_updated:
         pig.last_updated = now
         return
-    hours = (now - pig.last_updated).total_seconds() / 3600
-    if hours < 0.01:
+    elapsed_hours = (now - pig.last_updated).total_seconds() / 3600
+    if elapsed_hours < 0.01:
         return
+    truce_hours = calculate_weekend_truce_hours(pig.last_updated, now)
+    hours = max(0.0, elapsed_hours - truce_hours)
     hours = min(hours, 24)
+    if hours < 0.01:
+        pig.last_updated = now
+        db.session.commit()
+        return
     pig.hunger = max(0, pig.hunger - hours * 2)
     if pig.hunger > 30:
         pig.energy = min(100, pig.energy + hours * 5)

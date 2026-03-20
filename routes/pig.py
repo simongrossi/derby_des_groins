@@ -7,6 +7,7 @@ from models import User, Pig
 from data import (
     CEREALS, TRAININGS, SCHOOL_LESSONS, SCHOOL_COOLDOWN_MINUTES,
     PIG_EMOJIS, PIG_ORIGINS, STAT_LABELS, RARITIES, BREEDING_COST,
+    OFFICE_SNACKS, SNACK_SHARE_DAILY_LIMIT,
 )
 from helpers import (
     get_user_active_pigs, update_pig_state, calculate_pig_power, xp_for_level,
@@ -16,7 +17,8 @@ from helpers import (
     get_lineage_label, get_pig_heritage_value, can_retire_into_heritage,
     retire_pig_into_heritage, create_offspring, maybe_grant_emergency_relief, check_level_up,
     adjust_pig_weight, apply_origin_bonus, generate_weight_kg_for_profile,
-    debit_user_balance, credit_user_balance,
+    debit_user_balance, credit_user_balance, get_freshness_bonus,
+    get_pig_performance_flags, is_weekend_truce_active, reset_snack_share_limit_if_needed,
     reserve_pig_challenge_slot, release_pig_challenge_slot,
     send_to_abattoir, is_pig_name_taken, build_unique_pig_name,
 )
@@ -33,6 +35,8 @@ def mon_cochon():
     if relief_amount > 0:
         db.session.refresh(user)
         flash(f"🛟 Prime d'élevage d'urgence: +{relief_amount:.0f} BG pour relancer ton élevage.", "success")
+    reset_snack_share_limit_if_needed(user)
+    db.session.commit()
     pigs = get_user_active_pigs(user)
     adoption_cost = get_adoption_cost(user)
     active_listing_count = get_active_listing_count(user)
@@ -48,6 +52,7 @@ def mon_cochon():
         school_cooldown = get_cooldown_remaining(p.last_school_at, SCHOOL_COOLDOWN_MINUTES)
         vet_seconds_left = get_seconds_until(p.vet_deadline) if p.is_injured else 0
         weight_profile = get_weight_profile(p)
+        freshness_bonus = get_freshness_bonus(p)
         pigs_data.append({
             'pig': p,
             'lineage_label': get_lineage_label(p),
@@ -63,6 +68,10 @@ def mon_cochon():
             'vet_seconds_left': vet_seconds_left,
             'vet_deadline_label': format_duration_short(vet_seconds_left),
             'weight_profile': weight_profile,
+            'freshness_bonus': freshness_bonus,
+            'performance_flags': get_pig_performance_flags(p),
+            'weekend_truce_active': is_weekend_truce_active(),
+            'share_snacks_remaining': max(0, SNACK_SHARE_DAILY_LIMIT - (user.snack_shares_today or 0)),
         })
 
     return render_template('mon_cochon.html',
@@ -159,9 +168,48 @@ def feed():
         current = getattr(pig, stat, None)
         if current is not None:
             setattr(pig, stat, min(100, current + boost))
-    pig.last_updated = datetime.utcnow()
+    pig.last_fed_at = datetime.utcnow()
+    pig.last_updated = pig.last_fed_at
     db.session.commit()
     flash(f"{cereal['emoji']} {cereal['name']} donné ! Miam ! Coût réel: {effective_cost:.0f} BG (x{feeding_multiplier:.2f} de pression d'élevage).", "success")
+    return redirect(url_for('pig.mon_cochon'))
+
+
+@pig_bp.route('/share-snack', methods=['POST'])
+def share_snack():
+    if 'user_id' not in session:
+        return redirect(url_for('auth.login'))
+    user = User.query.get(session['user_id'])
+    reset_snack_share_limit_if_needed(user)
+
+    recipient_pig = Pig.query.get(request.form.get('pig_id', type=int))
+    if not recipient_pig or not recipient_pig.is_alive:
+        flash("Cochon introuvable !", "error")
+        return redirect(url_for('pig.mon_cochon'))
+    if recipient_pig.user_id == user.id:
+        flash("Tu ne peux pas lancer un encas sur ton propre cochon via cette action.", "warning")
+        return redirect(url_for('pig.mon_cochon'))
+
+    snack_key = request.form.get('snack')
+    snack = OFFICE_SNACKS.get(snack_key)
+    if not snack:
+        flash("En-cas de bureau inconnu.", "error")
+        return redirect(url_for('pig.mon_cochon'))
+
+    if (user.snack_shares_today or 0) >= SNACK_SHARE_DAILY_LIMIT:
+        flash(f"Tu as deja distribue tes {SNACK_SHARE_DAILY_LIMIT} en-cas solidaires aujourd'hui.", "warning")
+        return redirect(url_for('pig.mon_cochon'))
+
+    update_pig_state(recipient_pig)
+    recipient_pig.hunger = min(100, recipient_pig.hunger + snack['hunger_restore'])
+    recipient_pig.last_fed_at = datetime.utcnow()
+    recipient_pig.last_updated = recipient_pig.last_fed_at
+    user.snack_shares_today = (user.snack_shares_today or 0) + 1
+    user.snack_share_reset_at = datetime.utcnow()
+    db.session.commit()
+
+    recipient_name = recipient_pig.owner.username if recipient_pig.owner else 'ton collegue'
+    flash(f"Tu as lance un trognon de pomme au cochon de {recipient_name}, quel geste noble !", "success")
     return redirect(url_for('pig.mon_cochon'))
 
 
