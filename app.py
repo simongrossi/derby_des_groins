@@ -1,7 +1,13 @@
 from flask import Flask, render_template, request, redirect, url_for, session, jsonify, flash
 from flask_sqlalchemy import SQLAlchemy
+from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.triggers.interval import IntervalTrigger
+from sqlalchemy import and_, func, or_, update
+from sqlalchemy.exc import IntegrityError
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
+import atexit
 import random
 import math
 import os
@@ -11,8 +17,11 @@ app = Flask(__name__, template_folder=os.path.join(BASE_DIR, 'templates'))
 app.config['SECRET_KEY'] = 'derby-des-groins-secret-2024'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///derby.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['SCHEDULER_ENABLED'] = os.environ.get('DERBY_DISABLE_SCHEDULER', '0') != '1'
 
 db = SQLAlchemy(app)
+scheduler = None
+APP_TIMEZONE = ZoneInfo(os.environ.get('DERBY_TIMEZONE', 'Europe/Paris'))
 
 # ─── MODÈLES ────────────────────────────────────────────────────────────────
 
@@ -558,19 +567,6 @@ def get_seconds_until(deadline):
         return 0
     return max(0, int((deadline - datetime.utcnow()).total_seconds()))
 
-def maybe_grant_emergency_relief(user):
-    if not user or user.balance >= EMERGENCY_RELIEF_THRESHOLD:
-        return 0.0
-    now = datetime.utcnow()
-    if user.last_relief_at:
-        elapsed = (now - user.last_relief_at).total_seconds()
-        if elapsed < EMERGENCY_RELIEF_HOURS * 3600:
-            return 0.0
-    user.balance = round(user.balance + EMERGENCY_RELIEF_AMOUNT, 2)
-    user.last_relief_at = now
-    db.session.commit()
-    return EMERGENCY_RELIEF_AMOUNT
-
 def get_active_listing_count(user):
     return Auction.query.filter_by(seller_id=user.id, status='active').count()
 
@@ -603,6 +599,95 @@ def get_market_lock_reason(user):
 def apply_origin_bonus(pig, origin):
     base_value = getattr(pig, origin['bonus_stat']) or 10.0
     setattr(pig, origin['bonus_stat'], base_value + origin['bonus'])
+
+def supports_row_level_locking():
+    try:
+        return db.engine.dialect.name != 'sqlite'
+    except Exception:
+        return False
+
+def apply_row_lock(query):
+    if supports_row_level_locking():
+        return query.with_for_update()
+    return query
+
+def adjust_user_balance(user_id, delta, minimum_balance=None):
+    if delta == 0:
+        return True
+
+    stmt = update(User).where(User.id == user_id)
+    if minimum_balance is not None:
+        stmt = stmt.where(User.balance >= minimum_balance)
+    stmt = stmt.values(balance=func.round(User.balance + delta, 2))
+
+    result = db.session.execute(stmt)
+    if result.rowcount != 1:
+        db.session.rollback()
+        return False
+    return True
+
+def debit_user_balance(user_id, amount):
+    if amount <= 0:
+        return False
+    return adjust_user_balance(user_id, -amount, minimum_balance=amount)
+
+def credit_user_balance(user_id, amount):
+    if amount <= 0:
+        return True
+    return adjust_user_balance(user_id, amount)
+
+def reserve_pig_challenge_slot(pig_id, wager):
+    result = db.session.execute(
+        update(Pig)
+        .where(Pig.id == pig_id, Pig.is_alive == True, Pig.challenge_mort_wager <= 0)
+        .values(challenge_mort_wager=wager)
+    )
+    if result.rowcount != 1:
+        db.session.rollback()
+        return False
+    return True
+
+def release_pig_challenge_slot(pig_id):
+    pig = Pig.query.get(pig_id)
+    if not pig or pig.challenge_mort_wager <= 0:
+        return 0.0
+
+    current_wager = round(pig.challenge_mort_wager or 0.0, 2)
+    refund = round(current_wager * 0.5, 2)
+    result = db.session.execute(
+        update(Pig)
+        .where(Pig.id == pig_id, Pig.is_alive == True, Pig.challenge_mort_wager == current_wager)
+        .values(challenge_mort_wager=0.0)
+    )
+    if result.rowcount != 1:
+        db.session.rollback()
+        return 0.0
+    return refund
+
+def maybe_grant_emergency_relief(user):
+    if not user:
+        return 0.0
+
+    now = datetime.utcnow()
+    cooldown_limit = now - timedelta(hours=EMERGENCY_RELIEF_HOURS)
+    result = db.session.execute(
+        update(User)
+        .where(
+            User.id == user.id,
+            User.balance < EMERGENCY_RELIEF_THRESHOLD,
+            or_(User.last_relief_at.is_(None), User.last_relief_at <= cooldown_limit),
+        )
+        .values(
+            balance=func.round(User.balance + EMERGENCY_RELIEF_AMOUNT, 2),
+            last_relief_at=now,
+        )
+    )
+    if result.rowcount != 1:
+        db.session.rollback()
+        return 0.0
+
+    db.session.commit()
+    return EMERGENCY_RELIEF_AMOUNT
 
 def normalize_bet_type(bet_type):
     if bet_type in BET_TYPES:
@@ -724,7 +809,7 @@ def check_vet_deadlines():
         if pig.vet_deadline and now > pig.vet_deadline:
             send_to_abattoir(pig, cause='blessure')
 
-def send_to_abattoir(pig, cause='abattoir'):
+def send_to_abattoir(pig, cause='abattoir', commit=True):
     charcuterie = random.choice(CHARCUTERIE)
     epitaph_template = random.choice(EPITAPHS)
     pig.is_alive = False
@@ -736,9 +821,10 @@ def send_to_abattoir(pig, cause='abattoir'):
     pig.charcuterie_emoji = charcuterie['emoji']
     pig.epitaph = epitaph_template.format(name=pig.name, wins=pig.races_won)
     pig.challenge_mort_wager = 0
-    db.session.commit()
+    if commit:
+        db.session.commit()
 
-def retire_pig_old_age(pig):
+def retire_pig_old_age(pig, commit=True):
     charcuterie = random.choice(CHARCUTERIE_PREMIUM)
     pig.is_alive = False
     pig.is_injured = False
@@ -756,12 +842,6 @@ def get_dead_pigs_abattoir():
 
 def get_legendary_pigs():
     return Pig.query.filter(Pig.is_alive == False, Pig.races_won >= 3).order_by(Pig.races_won.desc()).all()
-
-@app.before_request
-def sync_world_state():
-    if request.endpoint == 'static':
-        return
-    check_vet_deadlines()
 
 @app.context_processor
 def inject_injured_pig_nav():
@@ -866,6 +946,9 @@ def resolve_auctions():
     expired = Auction.query.filter(Auction.status == 'active', Auction.ends_at <= now).all()
 
     for auction in expired:
+        auction = apply_row_lock(Auction.query.filter_by(id=auction.id)).first()
+        if not auction or auction.status != 'active' or auction.ends_at > now:
+            continue
         if auction.bidder_id and auction.current_bid > 0:
             auction.status = 'sold'
             winner = User.query.get(auction.bidder_id)
@@ -873,7 +956,7 @@ def resolve_auctions():
                 active_pigs = Pig.query.filter_by(user_id=winner.id, is_alive=True).order_by(Pig.id).all()
                 if len(active_pigs) >= 2:
                     # Sacrifier le plus ancien pour respecter la limite de 2
-                    send_to_abattoir(active_pigs[0], cause='sacrifice')
+                    send_to_abattoir(active_pigs[0], cause='sacrifice', commit=False)
                 
                 origin_data = next((o for o in PIG_ORIGINS if o['country'] == auction.pig_origin), PIG_ORIGINS[0])
                 new_pig = Pig(
@@ -888,9 +971,7 @@ def resolve_auctions():
                 db.session.add(new_pig)
             # Payer le vendeur si c'est un joueur
             if auction.seller_id:
-                seller = User.query.get(auction.seller_id)
-                if seller:
-                    seller.balance = round(seller.balance + auction.current_bid, 2)
+                credit_user_balance(auction.seller_id, auction.current_bid)
         else:
             auction.status = 'expired'
             if auction.seller_id and auction.source_pig_id:
@@ -995,7 +1076,6 @@ def ensure_next_race():
 
 def run_race_if_needed():
     now = datetime.now()
-    check_vet_deadlines()
     due_races = Race.query.filter(Race.status == 'open', Race.scheduled_at <= now).all()
 
     for race in due_races:
@@ -1028,17 +1108,17 @@ def run_race_if_needed():
 
                 if owner:
                     reward = RACE_APPEARANCE_REWARD + RACE_POSITION_REWARDS.get(p.finish_position, 0.0)
-                    owner.balance = round(owner.balance + reward, 2)
+                    credit_user_balance(owner.id, reward)
 
                 if pig.challenge_mort_wager > 0:
                     wager = pig.challenge_mort_wager
                     if p.finish_position <= 3:
                         if owner:
-                            owner.balance = round(owner.balance + wager * 3, 2)
+                            credit_user_balance(owner.id, wager * 3)
                         xp_gained *= 2
                         pig.happiness = min(100, pig.happiness + 15)
                     elif p.finish_position == num_participants:
-                        send_to_abattoir(pig, cause='challenge')
+                        send_to_abattoir(pig, cause='challenge', commit=False)
                         pig.challenge_mort_wager = 0
                         continue
                     pig.challenge_mort_wager = 0
@@ -1071,7 +1151,7 @@ def run_race_if_needed():
                     pig.injury_risk = min(MAX_INJURY_RISK, (pig.injury_risk or MIN_INJURY_RISK) + random.uniform(0.3, 0.8))
 
                 if pig.max_races and pig.races_entered >= pig.max_races:
-                    retire_pig_old_age(pig)
+                    retire_pig_old_age(pig, commit=False)
 
         bets = Bet.query.filter_by(race_id=race.id, status='pending').all()
         finish_order_ids = [participant.id for participant in order]
@@ -1083,14 +1163,15 @@ def run_race_if_needed():
                 winnings = round(bet.amount * bet.odds_at_bet, 2)
                 bet.status = 'won'
                 bet.winnings = winnings
-                user = User.query.get(bet.user_id)
-                if user:
-                    user.balance = round(user.balance + winnings, 2)
+                credit_user_balance(bet.user_id, winnings)
             else:
                 bet.status = 'lost'
                 bet.winnings = 0.0
 
         db.session.commit()
+
+    if due_races:
+        ensure_next_race()
 
 # ─── ROUTES ─────────────────────────────────────────────────────────────────
 
@@ -1098,9 +1179,6 @@ JOURS_FR = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanc
 
 @app.route('/')
 def index():
-    run_race_if_needed()
-    ensure_next_race()
-
     next_race = Race.query.filter(Race.status == 'open').order_by(Race.scheduled_at).first()
     recent_races = Race.query.filter_by(status='finished').order_by(Race.finished_at.desc()).limit(5).all()
 
@@ -1262,7 +1340,6 @@ def profil():
 def place_bet():
     if 'user_id' not in session:
         return redirect(url_for('login'))
-    run_race_if_needed()
     user = User.query.get(session['user_id'])
     if not user:
         session.pop('user_id', None)
@@ -1276,7 +1353,7 @@ def place_bet():
         flash("Ticket incomplet. Choisis ton pari et ta mise.", "warning")
         return redirect(url_for('index'))
 
-    race = Race.query.get(race_id)
+    race = apply_row_lock(Race.query.filter_by(id=race_id)).first()
     if not race or race.status != 'open':
         flash("Cette course n'accepte plus de paris.", "warning")
         return redirect(url_for('index'))
@@ -1302,11 +1379,11 @@ def place_bet():
         flash("Sélection invalide pour cette course.", "error")
         return redirect(url_for('index'))
 
-    if amount <= 0 or amount > user.balance:
+    if amount <= 0:
         flash("Mise invalide pour ton solde actuel.", "error")
         return redirect(url_for('index'))
 
-    existing = Bet.query.filter_by(user_id=user.id, race_id=race_id).first()
+    existing = apply_row_lock(Bet.query.filter_by(user_id=user.id, race_id=race_id)).first()
     if existing:
         flash("Tu as déjà un ticket sur cette course.", "warning")
         return redirect(url_for('index'))
@@ -1327,9 +1404,17 @@ def place_bet():
         odds_at_bet=odds_at_bet,
         status='pending'
     )
-    user.balance = round(user.balance - amount, 2)
-    db.session.add(bet)
-    db.session.commit()
+    try:
+        if not debit_user_balance(user.id, amount):
+            flash("Pas assez de BitGroins pour valider ce ticket.", "error")
+            return redirect(url_for('index'))
+        db.session.add(bet)
+        db.session.commit()
+    except IntegrityError:
+        db.session.rollback()
+        flash("Tu as déjà un ticket sur cette course.", "warning")
+        return redirect(url_for('index'))
+
     flash(f"{BET_TYPES[bet_type]['icon']} Ticket {BET_TYPES[bet_type]['label'].lower()} validé sur {bet_label}.", "success")
     return redirect(url_for('index'))
 
@@ -1350,6 +1435,7 @@ def mon_cochon():
     user = User.query.get(session['user_id'])
     relief_amount = maybe_grant_emergency_relief(user)
     if relief_amount > 0:
+        db.session.refresh(user)
         flash(f"🛟 Prime d'élevage d'urgence: +{relief_amount:.0f} BG pour relancer ton élevage.", "success")
     pigs = get_user_active_pigs(user)
     adoption_cost = get_adoption_cost(user)
@@ -1398,11 +1484,10 @@ def adopt_second_pig():
     if cost is None:
         flash("Impossible d'adopter un nouveau cochon pour l'instant.", "warning")
         return redirect(url_for('mon_cochon'))
-    if user.balance < cost:
+    if not debit_user_balance(user.id, cost):
         flash(f"Il te faut {cost:.0f} BG pour adopter un nouveau cochon !", "error")
         return redirect(url_for('mon_cochon'))
 
-    user.balance = round(user.balance - cost, 2)
     origin = random.choice(PIG_ORIGINS)
     new_pig = Pig(
         user_id=user.id,
@@ -1436,13 +1521,13 @@ def feed():
     if cereal_key not in CEREALS:
         return redirect(url_for('mon_cochon'))
     cereal = CEREALS[cereal_key]
-    if user.balance < cereal['cost']:
-        flash("Pas assez de BitGroins !", "error")
-        return redirect(url_for('mon_cochon'))
     if pig.hunger >= 95:
         flash("Ton cochon n'a plus faim !", "warning")
         return redirect(url_for('mon_cochon'))
-    user.balance = round(user.balance - cereal['cost'], 2)
+    if not debit_user_balance(user.id, cereal['cost']):
+        flash("Pas assez de BitGroins !", "error")
+        return redirect(url_for('mon_cochon'))
+
     pig.hunger = min(100, pig.hunger + cereal['hunger_restore'])
     pig.energy = min(100, pig.energy + cereal.get('energy_restore', 0))
     for stat, boost in cereal['stats'].items():
@@ -1602,18 +1687,23 @@ def challenge_mort():
     if not wager or wager < 10:
         flash("Mise minimum : 10 BG pour le Challenge de la Mort !", "error")
         return redirect(url_for('mon_cochon'))
-    if wager > user.balance:
-        flash("T'as pas les moyens de jouer avec la vie de ton cochon !", "error")
-        return redirect(url_for('mon_cochon'))
     if pig.challenge_mort_wager > 0:
         flash("Tu es déjà inscrit au Challenge de la Mort !", "warning")
         return redirect(url_for('mon_cochon'))
     if pig.energy <= 20 or pig.hunger <= 20:
         flash("Ton cochon est trop faible pour le Challenge !", "error")
         return redirect(url_for('mon_cochon'))
-    user.balance = round(user.balance - wager, 2)
-    pig.challenge_mort_wager = wager
-    db.session.commit()
+
+    if not debit_user_balance(user.id, wager):
+        flash("T'as pas les moyens de jouer avec la vie de ton cochon !", "error")
+        return redirect(url_for('mon_cochon'))
+    if not reserve_pig_challenge_slot(pig.id, wager):
+        db.session.rollback()
+        flash("Tu es déjà inscrit au Challenge de la Mort !", "warning")
+        return redirect(url_for('mon_cochon'))
+
+    if commit:
+        db.session.commit()
     flash(f"💀 {pig.name} inscrit au Challenge de la Mort ({wager:.0f} BG) ! Bonne chance...", "success")
     return redirect(url_for('mon_cochon'))
 
@@ -1630,9 +1720,12 @@ def cancel_challenge():
     
     if pig.challenge_mort_wager <= 0:
         return redirect(url_for('mon_cochon'))
-    refund = round(pig.challenge_mort_wager * 0.5, 2)
-    user.balance = round(user.balance + refund, 2)
-    pig.challenge_mort_wager = 0
+
+    refund = release_pig_challenge_slot(pig.id)
+    if refund <= 0:
+        flash("Le challenge a déjà été annulé ou réglé ailleurs.", "warning")
+        return redirect(url_for('mon_cochon'))
+    credit_user_balance(user.id, refund)
     db.session.commit()
     flash(f"😰 Challenge annulé pour {pig.name}... Remboursement : {refund:.0f} BG (50%)", "warning")
     return redirect(url_for('mon_cochon'))
@@ -1656,8 +1749,6 @@ def sacrifice_pig():
 
 @app.route('/marche')
 def marche():
-    resolve_auctions()
-
     active_auctions = Auction.query.filter_by(status='active').order_by(Auction.ends_at).all()
     recent_sold = Auction.query.filter_by(status='sold').order_by(Auction.ends_at.desc()).limit(5).all()
 
@@ -1699,7 +1790,7 @@ def bid():
         return redirect(url_for('marche'))
     auction_id = request.form.get('auction_id', type=int)
     bid_amount = request.form.get('bid_amount', type=float)
-    auction = Auction.query.get(auction_id)
+    auction = apply_row_lock(Auction.query.filter_by(id=auction_id)).first()
     if not auction or auction.status != 'active':
         flash("Cette enchère n'est plus disponible !", "error")
         return redirect(url_for('marche'))
@@ -1710,16 +1801,37 @@ def bid():
     if not bid_amount or bid_amount < min_bid:
         flash(f"Enchère minimum : {min_bid:.0f} BG !", "error")
         return redirect(url_for('marche'))
-    if bid_amount > user.balance:
+
+    if not debit_user_balance(user.id, bid_amount):
         flash("Pas assez de BitGroins !", "error")
         return redirect(url_for('marche'))
-    if auction.bidder_id:
-        prev_bidder = User.query.get(auction.bidder_id)
-        if prev_bidder:
-            prev_bidder.balance = round(prev_bidder.balance + auction.current_bid, 2)
-    user.balance = round(user.balance - bid_amount, 2)
-    auction.current_bid = bid_amount
-    auction.bidder_id = user.id
+
+    previous_bidder_id = auction.bidder_id
+    previous_bid_amount = round(auction.current_bid or 0.0, 2)
+    auction_conditions = [
+        Auction.id == auction.id,
+        Auction.status == 'active',
+        Auction.ends_at > datetime.utcnow(),
+        Auction.current_bid == previous_bid_amount,
+    ]
+    if previous_bidder_id is None:
+        auction_conditions.append(Auction.bidder_id.is_(None))
+    else:
+        auction_conditions.append(Auction.bidder_id == previous_bidder_id)
+
+    result = db.session.execute(
+        update(Auction)
+        .where(*auction_conditions)
+        .values(current_bid=bid_amount, bidder_id=user.id)
+    )
+    if result.rowcount != 1:
+        db.session.rollback()
+        flash("Quelqu'un a enchéri juste avant toi. Recharge le marché et retente.", "warning")
+        return redirect(url_for('marche'))
+
+    if previous_bidder_id and previous_bid_amount > 0:
+        credit_user_balance(previous_bidder_id, previous_bid_amount)
+
     db.session.commit()
     flash(f"Enchère placée : {bid_amount:.0f} BG sur {auction.pig_name} !", "success")
     return redirect(url_for('marche'))
@@ -2091,8 +2203,6 @@ def legendes_pop():
 
 @app.route('/api/countdown')
 def api_countdown():
-    run_race_if_needed()
-    ensure_next_race()
     next_race = Race.query.filter_by(status='open').order_by(Race.scheduled_at).first()
     if not next_race:
         return jsonify({'seconds': 86400, 'race_id': None})
@@ -2148,6 +2258,77 @@ def api_pig():
 def api_prix_groin():
     return jsonify({'prix': get_prix_moyen_groin()})
 
+# ─── SCHEDULER ──────────────────────────────────────────────────────────────
+
+def scheduler_should_start():
+    return app.config.get('SCHEDULER_ENABLED', True)
+
+def run_scheduler_job(job_name, callback):
+    with app.app_context():
+        try:
+            callback()
+        except Exception:
+            app.logger.exception("Scheduler job failed: %s", job_name)
+            db.session.rollback()
+        finally:
+            db.session.remove()
+
+def scheduled_race_tick():
+    run_scheduler_job('race_tick', lambda: (run_race_if_needed(), ensure_next_race()))
+
+def scheduled_auction_tick():
+    run_scheduler_job('auction_tick', resolve_auctions)
+
+def scheduled_vet_tick():
+    run_scheduler_job('vet_tick', check_vet_deadlines)
+
+def start_scheduler():
+    global scheduler
+    if scheduler is not None or not scheduler_should_start():
+        return
+
+    scheduler = BackgroundScheduler(timezone=APP_TIMEZONE)
+    scheduler.add_job(
+        scheduled_race_tick,
+        IntervalTrigger(seconds=15, timezone=APP_TIMEZONE),
+        id='race-tick',
+        replace_existing=True,
+        max_instances=1,
+        coalesce=True,
+    )
+    scheduler.add_job(
+        scheduled_auction_tick,
+        IntervalTrigger(minutes=1, timezone=APP_TIMEZONE),
+        id='auction-tick',
+        replace_existing=True,
+        max_instances=1,
+        coalesce=True,
+    )
+    scheduler.add_job(
+        scheduled_vet_tick,
+        IntervalTrigger(seconds=15, timezone=APP_TIMEZONE),
+        id='vet-tick',
+        replace_existing=True,
+        max_instances=1,
+        coalesce=True,
+    )
+    scheduler.start()
+    atexit.register(lambda: scheduler.shutdown(wait=False) if scheduler and scheduler.running else None)
+    app.logger.info("Background scheduler started")
+
+def stop_scheduler():
+    global scheduler
+    if scheduler and scheduler.running:
+        scheduler.shutdown(wait=False)
+    scheduler = None
+
+def should_autostart_scheduler():
+    if not app.config.get('SCHEDULER_ENABLED', True):
+        return False
+    if os.environ.get('DERBY_FORCE_SCHEDULER') == '1':
+        return True
+    return os.environ.get('WERKZEUG_RUN_MAIN') == 'true'
+
 # ─── INIT ───────────────────────────────────────────────────────────────────
 
 def migrate_db():
@@ -2179,6 +2360,12 @@ def migrate_db():
         ('bet', 'bet_type', 'VARCHAR(20) DEFAULT "win"'),
         ('bet', 'selection_order', 'VARCHAR(240)'),
     ]
+    index_migrations = [
+        'CREATE UNIQUE INDEX IF NOT EXISTS ux_bet_user_race ON bet(user_id, race_id)',
+        'CREATE INDEX IF NOT EXISTS ix_auction_status_ends_at ON auction(status, ends_at)',
+        'CREATE INDEX IF NOT EXISTS ix_race_status_scheduled_at ON race(status, scheduled_at)',
+        'CREATE INDEX IF NOT EXISTS ix_pig_vet_deadline ON pig(is_injured, is_alive, vet_deadline)',
+    ]
     with db.engine.connect() as conn:
         for table, col, col_type in migrations:
             try:
@@ -2189,6 +2376,12 @@ def migrate_db():
                     conn.commit()
                 except Exception:
                     pass
+        for statement in index_migrations:
+            try:
+                conn.execute(db.text(statement))
+                conn.commit()
+            except Exception:
+                pass
 
 def seed_users():
     default_users = [
@@ -2251,6 +2444,9 @@ with app.app_context():
     init_default_config()
     seed_users()
     ensure_next_race()
+
+if should_autostart_scheduler():
+    start_scheduler()
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)

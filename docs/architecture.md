@@ -3,6 +3,7 @@
 ## Technologies Utilisées
 - **Backend**: Python 3.x, Flask
 - **Base de données**: SQLite avec SQLAlchemy via Flask-SQLAlchemy
+- **Scheduler**: APScheduler pour les taches de fond (courses, marche, veterinaire)
 - **Frontend**: HTML5, Jinja2, Tailwind CSS (CDN), Chart.js
 - **Fonctionnement temps réel léger**: endpoints JSON pour le countdown, les résultats et l'état du cochon
 
@@ -22,9 +23,10 @@
 - **École porcine** : des quiz tactiques accordent XP et bonus de stats, avec un cooldown indépendant par cochon.
 - **Blessures et vétérinaire** : les cochons blessés sont bloqués hors des activités risquées jusqu'au puzzle de soin ou à l'expiration du timer.
 - **Courses automatiques** : les cochons aptes sont inscrits, la puissance moyenne sert à calculer probabilités et cotes.
-- **Garde-fous économiques** : un seul ticket par course, cotes avec marge maison, tickets simples / ordonnes, prime d'urgence et retour automatique des cochons invendus.
+- **Garde-fous économiques** : un seul ticket par course, cotes avec marge maison, tickets simples / ordonnes, prime d'urgence, mises a jour atomiques du solde et retour automatique des cochons invendus.
 - **Profil joueur** : une vue dédiée permet de suivre ses indicateurs et de changer son mot de passe.
 - **Marché** : enchères limitées dans le temps avec résolution automatique.
+- **Automatisation du monde** : un scheduler traite les courses dues, les enchères expirées et les deadlines vétérinaires hors cycle HTTP.
 - **Mort / retraite / abattoir** : les cochons ont une durée de vie et peuvent finir en charcuterie mémorable.
 
 ## Arborescence du Projet

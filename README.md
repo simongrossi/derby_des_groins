@@ -146,8 +146,12 @@ pip install -r requirements.txt
 
 > Note compatibilite : sur Python recent (notamment 3.14), le projet a besoin d'une version recente de `SQLAlchemy`. Le `requirements.txt` du depot est pingle pour eviter l'erreur `SQLCoreOperations` vue sur certains postes.
 
+> Le projet utilise aussi `APScheduler` pour faire vivre le jeu en tache de fond : resolution des courses, controle des delais veterinaire et cloture des encheres sans dependre d'une visite sur le site.
+
 ### 3. Lancer l'application : `python app.py`
 4. Accès local : `http://127.0.0.1:5000`
+
+En usage local via `python app.py`, le scheduler demarre automatiquement dans le vrai process serveur. Si le projet est heberge via un import WSGI dedie, definir `DERBY_FORCE_SCHEDULER=1` sur le process qui doit piloter le monde de jeu.
 
 **🔑 Accès test :**
 - Les comptes par défaut (Christophe, Simon, etc.) utilisent le mot de passe : `mdp1234`
@@ -220,6 +224,8 @@ derby_des_groins/
 12. Si un joueur tombe vraiment trop bas en caisse, une **prime d'urgence** l'aide à repartir
 13. Le **marché** ne s'ouvre pour un nouveau compte qu'après un peu d'ancienneté ou quelques courses, pour limiter les abus de création de comptes
 14. La page **Mon Profil** permet de consulter ses indicateurs de compte et de changer son mot de passe sans passer par l'admin
+15. Les mouvements critiques de **BitGroins** (paris, enchères, récompenses) passent par des mises à jour atomiques côté base pour limiter les doubles clics et les conflits de concurrence
+16. Les courses, les enchères et les deadlines du vétérinaire sont gérées par un **scheduler de fond**, même si personne n'est connecté
 
 ---
 

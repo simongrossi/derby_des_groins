@@ -30,6 +30,7 @@ Entraînez-le régulièrement, envoyez-le à l'école porcine et nourrissez-le p
 
 ## 3. Les Courses
 - Il y a des courses régulières prévues à heure fixe ou forçables manuellement par l'admin.
+- Le calendrier continue de vivre meme sans visiteur connecte : les courses partent via une tache de fond.
 - Chaque cochon inscrit court (y compris les PNJ), sauf s'il est blessé ou dans un état trop faible pour être retenu.
 - Les éleveurs reçoivent une **prime de participation**, et les meilleurs gagnent un **bonus de podium**.
 
@@ -52,6 +53,7 @@ Entraînez-le régulièrement, envoyez-le à l'école porcine et nourrissez-le p
 ## 6. Le Marché
 - Vous pouvez mettre votre cochon en vente aux enchères ou acheter de nouveaux champions.
 - Le marché n'est ouvert que sur certains créneaux définis par l'admin.
+- Les encheres expirent et se resolvent automatiquement, meme si personne n'ouvre la page au bon moment.
 
 ## 7. L'Abattoir et le Cimetière
 - Les cochons meurent s'ils courent trop ou de vieillesse (sauf certains chanceux).
