@@ -6,8 +6,8 @@ from extensions import db
 from models import User, Pig
 from data import (
     CEREALS, TRAININGS, SCHOOL_LESSONS, SCHOOL_COOLDOWN_MINUTES,
-    PIG_EMOJIS, PIG_ORIGINS, STAT_LABELS, RARITIES, BREEDING_COST,
-    OFFICE_SNACKS, SNACK_SHARE_DAILY_LIMIT,
+    PIG_EMOJIS, PIG_ORIGINS, STAT_LABELS, STAT_DESCRIPTIONS, RARITIES, BREEDING_COST,
+    OFFICE_SNACKS, SNACK_SHARE_DAILY_LIMIT, PIG_TYPING_WORDS,
 )
 from helpers import (
     get_user_active_pigs, update_pig_state, calculate_pig_power, xp_for_level,
@@ -77,7 +77,7 @@ def mon_cochon():
     return render_template('mon_cochon.html',
         user=user, pigs_data=pigs_data, cereals=CEREALS, trainings=TRAININGS,
         school_lessons=SCHOOL_LESSONS, school_cooldown_minutes=SCHOOL_COOLDOWN_MINUTES,
-        pig_emojis=PIG_EMOJIS, stat_labels=STAT_LABELS,
+        pig_emojis=PIG_EMOJIS, stat_labels=STAT_LABELS, stat_descriptions=STAT_DESCRIPTIONS,
         adoption_cost=adoption_cost, active_listing_count=active_listing_count,
         feeding_multiplier=feeding_multiplier, max_slots=max_slots, breeding_cost=BREEDING_COST
     )
@@ -499,4 +499,74 @@ def sacrifice_pig():
 
     send_to_abattoir(pig, cause='sacrifice_volontaire')
     flash(f"🔪 {pig.name} a été envoyé à l'abattoir volontairement. Paix à ses côtelettes.", "warning")
+    return redirect(url_for('pig.mon_cochon'))
+
+
+@pig_bp.route('/typing-challenge/<int:pig_id>')
+def typing_challenge(pig_id):
+    if 'user_id' not in session:
+        return redirect(url_for('auth.login'))
+    user = User.query.get(session['user_id'])
+    pig = Pig.query.get(pig_id)
+
+    if not pig or pig.user_id != user.id or not pig.is_alive:
+        flash("Cochon introuvable !", "error")
+        return redirect(url_for('pig.mon_cochon'))
+    
+    if pig.is_injured:
+        flash("Ton cochon est blesse. Rends-toi chez le veterinaire.", "warning")
+        return redirect(url_for('pig.mon_cochon'))
+    
+    cooldown = get_cooldown_remaining(pig.last_school_at, SCHOOL_COOLDOWN_MINUTES)
+    if cooldown > 0:
+        flash(f"La salle de dactylo est fermee. Reviens dans {format_duration_short(cooldown)}.", "warning")
+        return redirect(url_for('pig.mon_cochon'))
+    
+    words = random.sample(PIG_TYPING_WORDS, 15)
+    return render_template('typing_game.html', pig=pig, words=words)
+
+
+@pig_bp.route('/typing-complete', methods=['POST'])
+def typing_complete():
+    if 'user_id' not in session:
+        return redirect(url_for('auth.login'))
+    
+    pig_id = request.form.get('pig_id', type=int)
+    time_taken = request.form.get('time_taken', type=float)
+    errors = request.form.get('errors', type=int)
+    
+    pig = Pig.query.get(pig_id)
+    if not pig or pig.user_id != session['user_id'] or not pig.is_alive:
+        return redirect(url_for('pig.mon_cochon'))
+
+    # Cooldown check again for safety
+    cooldown = get_cooldown_remaining(pig.last_school_at, SCHOOL_COOLDOWN_MINUTES)
+    if cooldown > 0:
+        return redirect(url_for('pig.mon_cochon'))
+
+    # Calculate performance
+    # Example: 15 words, ideal time around 20-30s.
+    # Score could be based on WPM
+    wpm = (15 / time_taken) * 60 if time_taken > 0 else 0
+    
+    if wpm > 40 and errors <= 2:
+        pig.vitesse = min(100, pig.vitesse + 1.5)
+        pig.agilite = min(100, pig.agilite + 1.0)
+        bonus_msg = "Excellent ! +1.5 Vitesse, +1.0 Agilite."
+        category = "success"
+    elif wpm > 20:
+        pig.vitesse = min(100, pig.vitesse + 0.5)
+        bonus_msg = "Pas mal. +0.5 Vitesse."
+        category = "success"
+    else:
+        bonus_msg = "Tu peux faire mieux !"
+        category = "warning"
+
+    pig.xp += 20
+    pig.last_school_at = datetime.utcnow()
+    pig.last_updated = pig.last_school_at
+    check_level_up(pig)
+    db.session.commit()
+    
+    flash(f"🏆 Typing Derby termine ! {bonus_msg} (WPM: {wpm:.1f}, Erreurs: {errors})", category)
     return redirect(url_for('pig.mon_cochon'))

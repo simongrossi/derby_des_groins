@@ -262,6 +262,15 @@ STAT_LABELS = {
     'moral': 'MOR',
 }
 
+STAT_DESCRIPTIONS = {
+    'vitesse': 'Vitesse de pointe sur terrain plat. Crucial pour le sprint final.',
+    'endurance': 'Résistance à la fatigue. Permet de maintenir une vitesse élevée plus longtemps.',
+    'agilite': 'Aisance dans les virages et les dépassements. Réduit les risques de bousculade.',
+    'force': 'Puissance de poussée. Utile pour les départs et les terrains difficiles.',
+    'intelligence': 'Lecture de course. Améliore les trajectoires et la gestion de l\'effort.',
+    'moral': 'Détermination du cochon. Un moral haut donne un bonus global à toutes les stats en course.',
+}
+
 EMERGENCY_RELIEF_THRESHOLD = 10.0
 EMERGENCY_RELIEF_AMOUNT = 20.0
 EMERGENCY_RELIEF_HOURS = 12
@@ -378,5 +387,13 @@ RARITIES = {
         'price_range': (120, 250), 'weight': 5
     }
 }
-
 JOURS_FR = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche']
+
+PIG_TYPING_WORDS = [
+    "groin", "jambon", "lisier", "tirelire", "salaison", "couenne", "truffe", "porcherie",
+    "rillettes", "lardon", "bacon", "saucisson", "charcuterie", "cochon", "verrat", "truie",
+    "porcelet", "porc", "boudin", "andouillette", "museau", "hure", "griffon", "soie",
+    "lisier", "auge", "paille", "foin", "ferme", "elevage", "paddock", "course",
+    "galop", "vitesse", "champion", "medaille", "victoire", "podium", "derby", "grognement",
+    "paté", "terrine", "cotelette", "palette", "échine", "travers", "poitrine", "jambe",
+]
