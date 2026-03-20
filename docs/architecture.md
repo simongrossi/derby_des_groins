@@ -1,89 +1,83 @@
 # 🐷 Derby des Groins - Architecture du Projet
 
 ## Technologies Utilisées
-- **Backend**: Python 3.x, Flask
+- **Backend**: Python 3.x, Flask (Blueprint Based)
 - **Base de données**: SQLite avec SQLAlchemy via Flask-SQLAlchemy
-- **Scheduler**: APScheduler pour les taches de fond (courses, marche, veterinaire)
+- **Scheduler**: APScheduler pour les tâches de fond (simulations de courses, mise à jour des stats Tamagotchi, clôture des enchères, délais vétérinaires)
 - **Frontend**: HTML5, Jinja2, Tailwind CSS (CDN), Chart.js
-- **Fonctionnement temps réel léger**: endpoints JSON pour le countdown, les résultats et l'état du cochon
+- **API Temps-RÉEL**: Endpoints JSON pour les countdowns, les flux de résultats et l'état détaillé des cochons.
 
 ## Structure des Modèles (Database Schema)
-1. **Model `GameConfig`** : stocke la configuration de l'application (heure des courses, horaire du marché, durée d'ouverture).
-2. **Model `User`** : comptes utilisateurs, mot de passe hashé, solde en BitGroins `BG`, statut administrateur.
-3. **Model `Pig`** : cœur du jeu. Contient les stats, l'état tamagotchi, la progression, la rareté, l'origine, le **poids**, la mortalité, le challenge de la mort, le suivi de l'**École porcine** et les champs de **blessure / urgence vétérinaire**.
-4. **Model `Race`** : événements de course, planification et résultat final.
-5. **Model `Participant`** : participants d'une course, qu'ils soient issus d'un joueur ou d'un PNJ.
-6. **Model `Bet`** : paris des utilisateurs sur une course, avec type de ticket (`simple`, `couple ordre`, `tierce ordre`), selection ordonnee, cote, statut et gains.
-7. **Model `BalanceTransaction`** : journal comptable des credits / debits BitGroins avec motif, details et solde apres operation.
-8. **Model `Auction`** : marché des enchères pour les cochons, avec vendeur, acheteur et état de la vente.
 
-## Mécaniques principales
-- **Tamagotchi porcin** : faim, énergie, bonheur et progression évoluent dans le temps.
-- **Nutrition** : chaque céréale coûte des BG et modifie la satiété, l'énergie, certaines stats et parfois le poids.
-- **Entraînement** : les séances consomment des ressources, améliorent des compétences ciblées et peuvent faire varier le poids.
-- **École porcine** : des quiz tactiques accordent XP et bonus de stats, avec un cooldown indépendant par cochon.
-- **Blessures et vétérinaire** : les cochons blessés sont bloqués hors des activités risquées jusqu'au puzzle de soin ou à l'expiration du timer.
-- **Dashboard d'accueil** : la home agrège la prochaine course, l'état du cochon vedette, les Tickets Bacon hebdo, les courses à venir et un fil d'actualité compact.
-- **Courses automatiques** : les cochons aptes sont inscrits, la puissance moyenne sert à calculer probabilités et cotes, puis un facteur de **poids de forme** affine les chances réelles et le risque de blessure.
-- **Calendrier des courses** : une vue dediee permet de voir les prochains creneaux, de planifier ses cochons et d'appliquer un quota hebdomadaire.
-- **Garde-fous économiques** : 3 Tickets Bacon par semaine, un seul ticket par course, cotes avec marge maison, tickets simples / ordonnes, prime d'urgence, mises a jour atomiques du solde et retour automatique des cochons invendus.
-- **Profil joueur** : une vue dédiée permet de suivre ses indicateurs et de changer son mot de passe.
-- **Historique / tracabilite** : une page rassemble l'historique complet des courses et un journal BitGroins par utilisateur, avec vue globale pour l'admin.
-- **Marché** : enchères limitées dans le temps avec résolution automatique.
-- **Automatisation du monde** : un scheduler traite les courses dues, les enchères expirées et les deadlines vétérinaires hors cycle HTTP.
-- **Mort / retraite / abattoir** : les cochons ont une durée de vie et peuvent finir en charcuterie mémorable.
+1.  **`GameConfig`** : Stocke les paramètres globaux (horaires de courses, ouverture du marché, seuils d'aide d'urgence).
+2.  **`User`** : Profil utilisateur, authentification (bcrypt), solde BitGroins (BG), statut admin et le bonus cumulé d'héritage (**`barn_heritage_bonus`**).
+3.  **`Pig`** : Cœur du jeu.
+    *   **Stats & Tamagotchi** : Faim, énergie, bonheur, poids, rareté, statistiques de course.
+    *   **Généalogie** : Lignée (`lineage_name`), génération, parents (`sire_id`, `dam_id`), bonus de lignée.
+    *   **Cycle de vie** : Retraite au haras (`retired_into_heritage`), abattoir (cimetière), mortalité.
+    *   **Santé** : Blessures (`is_injured`), risque de blessure, deadline vétérinaire.
+4.  **`CoursePlan`** : Système de planification permettant aux joueurs d'inscrire leurs cochons sur des créneaux futurs (respectant les quotas hebdo).
+5.  **`Race`** : Sessions de courses planifiées ou terminées, incluant le statut de clôture et le vainqueur.
+6.  **`Participant`** : Liaison entre un cochon (Joueur ou PNJ) et une course, incluant les cotes calculées et le résultat final.
+7.  **`Bet`** : Paris des utilisateurs (Simple, Couplé Ordre, Tiercé Ordre) avec gestion des statuts de gain.
+8.  **`BalanceTransaction`** : Journal comptable complet de chaque BitGroin dépensé ou gagné (traçabilité totale).
+9.  **`Auction`** : Marché aux enchères temporisées pour l'achat/vente de cochons entre joueurs.
+
+## Mécaniques Principales
+
+- **Système Tamagotchi Dynamique** : Les stats (faim, énergie, bonheur) évoluent en temps réel selon le passage du temps (via `update_pig_state`).
+- **Poids de Forme & Puissance** : 
+    *   Chaque cochon a un **poids idéal** calculé selon ses statistiques (Force/Endurance vs Agilité).
+    *   Le **delta de poids** (Trop lourd / Trop léger) modifie dynamiquement la vitesse réelle en course et peut augmenter le risque de blessure.
+    *   La **Puissance** (`calculate_pig_power`) synthétise toutes les stats, l'état Tamagotchi et le poids.
+- **Généalogie & Reproduction** :
+    *   Possibilité de faire se reproduire deux cochons pour créer un descendant héritant d'une partie des statistiques.
+    *   **Héritage** : Un cochon performant peut être mis à la retraite au haras, accordant un bonus de lignée permanent (`lineage_boost`) à ses descendants et à l'étable du joueur.
+- **Planification & Courses** :
+    *   Vue hebdomadaire permettant d'occuper les slots de courses.
+    *   **Types de Courses** : Thématiques quotidiennes (Marathon le mercredi, Finale le vendredi) avec des caractéristiques et récompenses variées.
+- **Économie & PMU** : 
+    *   Tickets Bacon hebdomadaires pour limiter les risques.
+    *   Cotes dynamiques basées sur les probabilités de victoire réelles (Calcul PMU).
+    *   Marché aux enchères ouvert périodiquement avec système de surenchère.
+- **Récupération Vétérinaire** : Mini-jeu (puzzle de soin) pour soigner un cochon blessé avant la deadline, sous peine de séquelles ou de mort.
 
 ## Arborescence du Projet
-\`\`\`
-derby_des_groins/
-├── app.py                  # Logique backend, routes Flask, modèles BDD
-├── IDEAS.md                # Pistes de game design et backlog d'idées
-├── README.md               # Vue d'ensemble du projet
-├── requirements.txt        # Dépendances Python
-├── instance/
-│   └── derby.db            # Base SQLite générée au lancement
-├── docs/                   # Documentation du projet
-│   ├── architecture.md     # Technique et structure
-│   └── regles_du_jeu.md    # Comment jouer
-└── templates/              # Vues Jinja2/HTML
-    ├── _site_header.html   # Header partagé et navigation principale
-    ├── abattoir.html       # Le hall des cochons transformés
-    ├── admin.html          # Paramétrage global
-    ├── auth.html           # Inscription/Connexion
-    ├── cimetiere.html      # Le panthéon des cochons légendaires
-    ├── courses.html        # Calendrier des courses et planification
-    ├── history.html        # Historique complet : courses, paris et journal BitGroins
-    ├── index.html          # Dashboard d'accueil et guichet des paris
-    ├── legendes_pop.html   # Les stars de la Pop Culture
-    ├── marche.html         # Le marché aux enchères (Market open/close)
-    ├── profil.html         # Profil joueur, statistiques et changement de mot de passe
-    ├── classement.html     # Classement des joueurs
-    ├── mon_cochon.html     # Tableau de bord individuel du cochon, entraînement et école
-    ├── veterinaire.html    # Interface d'urgence et puzzle de soin
-    └── veterinaire_lobby.html # Salle d'attente / overview du vétérinaire
-\`\`\`
 
-## Routes importantes
-- `/` : dashboard d'accueil, prochaine course, recap du cochon et prise de paris.
-- `/courses` : calendrier des courses et planification des cochons.
-- `/mon-cochon` : gestion des cochons vivants.
-- `/profil` : vue compte joueur et changement de mot de passe.
-- `/history` : historique complet des courses, tickets et mouvements BitGroins.
-- `/feed` et `/train` : actions tamagotchi principales.
-- `/school` : soumission d'un quiz de l'école porcine.
-- `/veterinaire` et `/veterinaire/<id>` : salle d'attente ou urgence d'un cochon blessé.
-- `/marche` et `/bid` : visualisation et enchères du marché.
-- `/api/vet/solve`, `/api/vet/timeout` : résolution ou expiration de l'opération vétérinaire.
-- `/api/countdown`, `/api/latest_result`, `/api/pig` : endpoints JSON pour l'UI.
+```text
+derby_des_groins/
+├── app.py                  # Initialisation Flask et migrations légères
+├── models.py               # Définition de tous les modèles SQLAlchemy
+├── extensions.py           # Instance db shared pour éviter les cycles
+├── helpers.py              # Logique métier : calcul power, reproduction, PMU, transactions
+├── data.py                 # Constantes du monde, echeanciers, types de courses
+├── scheduler.py            # Configuration APScheduler (tâches cron)
+├── routes/                 # Modules de routage par fonctionnalité
+│   ├── auth.py             # Login / Logout / Inscription
+│   ├── main.py             # Index, Classement, Historique, Légendes
+│   ├── pig.py              # Gestion tamagotchi, nutrition, entraînement, reproduction
+│   ├── race.py             # Calendrier, planification, visualisation des courses
+│   ├── market.py           # Enchères et transactions de cochons
+│   ├── abattoir.py         # Hall des cochons morts / cimetière
+│   ├── admin.py            # Outils de gestion pour le maître du jeu
+│   └── api.py              # Endpoints JSON pour l'UI dynamique
+├── templates/              # Vues Jinja2 (v3.0 UI Responsive)
+└── instance/               # Données locales SQLite
+```
+
+## Routes Importantes (Blueprints)
+- `/` : Dashboard central et guichet des paris.
+- `/pig/...` : Gestion des cochons (nutrition, entraînement, reproduction, étable).
+- `/race/...` : Calendrier et suivi des courses en direct.
+- `/market` : Accès aux ventes aux enchères.
+- `/classement` : Ranking global des éleveurs et trophées.
+- `/history` : Journal complet des BitGroins et archives des courses.
+- `/abattoir` : Hommage aux cochons disparus.
 
 ## Choix de Design
-La direction artistique est basée sur le **"dark mode" amusant** avec des dégradés intenses (rouge, jaune, violet), des polices sympathiques (Lilita One, Nunito) et l'utilisation omniprésente de l'emoji 🐷 pour donner un aspect léger et addictif.
-L'approche choisie pour CSS est **Tailwind CDN**.
+L'esthétique repose sur un **"Premium Dark Mode"** avec des accents vibrants. L'UI utilise massivement Tailwind CSS pour la réactivité et Chart.js pour visualiser les statistiques de performance des cochons.
 
-## Roadmap UX / meta-jeu
-- **Calendrier / planification** : la page Courses doit evoluer vers une vraie vue hebdomadaire / mensuelle, avec quotas restants, themes de course, alertes de fatigue et inscription en un clic.
-- **Genealogie** : une future vue dediee devra historiser les lignees, les retraites, les morts et les cochons legendaires du joueur.
-- **PMU porcin** : une page de statistiques globales pourra centraliser cotes historiques, plus gros gains, cochons les plus rentables et tendances de paris.
-- **Integrations bureau** : webhooks Slack / Teams et alertes asynchrones pour faire vivre le jeu hors de l'interface web.
-- **Saisons / ligues** : l'architecture devra supporter remises a zero partielles, divisions et Hall of Fame persistant sans perdre l'historique meta.
-
+## Roadmap Future
+- **PMU Porcin Evolué** : Statistiques globales sur les cotes les plus rentables et tendances de gains.
+- **Webhooks & Alertes** : Notifications pour les fins d'enchères ou les résultats de courses majeures.
+- **Saisons & Ligues** : Mise en place de championnats par divisions avec remise des prix saisonnière.
