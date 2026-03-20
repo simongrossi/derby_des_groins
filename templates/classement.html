@@ -53,12 +53,25 @@
             <span class="text-2xl">🐷</span>
             <span class="font-title text-xl text-yellow-400">Derby des Groins</span>
         </a>
-        <nav class="flex items-center gap-4">
-            <a href="/" class="text-white/60 hover:text-white text-sm font-bold transition-colors">Courses</a>
-            <a href="/mon-cochon" class="text-white/60 hover:text-white text-sm font-bold transition-colors">🐷 Mon Cochon</a>
-            <a href="/marche" class="text-white/60 hover:text-white text-sm font-bold transition-colors">🏪 Marché</a>
-            <a href="/classement" class="text-yellow-400 text-sm font-bold transition-colors">🏆 Classement</a>
-            <a href="/legendes-pop" class="text-purple-400 hover:text-purple-300 text-sm font-bold transition-colors">🌟 Pop Cult'</a>
+        <nav class="flex items-center gap-3">
+            {% if user %}
+                <div class="card px-4 py-2 flex items-center gap-2" style="background: rgba(255,255,255,0.05); border-radius: 1rem;">
+                    <span class="text-yellow-400 font-bold text-lg">{{ "%.2f"|format(user.balance) }}</span>
+                    <span class="text-white/50 text-sm font-semibold">BG</span>
+                    <span class="text-white/30">|</span>
+                    <span class="text-white/70 text-sm font-semibold">{{ user.username }}</span>
+                </div>
+                <a href="/mon-cochon" class="text-pink-400/80 hover:text-pink-300 text-sm font-bold transition-colors">🐷 Mon Cochon</a>
+                <a href="/marche" class="text-yellow-600/80 hover:text-yellow-500 text-sm font-bold transition-colors">🏪 Marché</a>
+                <a href="/classement" class="text-yellow-400 hover:text-yellow-500 text-sm font-bold transition-colors">🏆 Classement</a>
+                <a href="/history" class="text-white/60 hover:text-white text-sm font-bold transition-colors">Historique</a>
+                <a href="/legendes-pop" class="text-purple-400 hover:text-purple-300 text-sm font-bold transition-colors">🌟 Pop Cult'</a>
+                {% if user.is_admin %}<a href="/admin" class="text-indigo-400/70 hover:text-indigo-300 text-sm font-bold transition-colors">🔧 Admin</a>{% endif %}
+                <a href="/logout" class="text-red-400/70 hover:text-red-400 text-sm font-bold transition-colors">Quitter</a>
+            {% else %}
+                <a href="/login" class="text-white/70 hover:text-white font-bold text-sm transition-colors">Connexion</a>
+                <a href="/register" class="bg-yellow-500 hover:bg-yellow-400 text-black font-bold text-sm px-4 py-2 rounded-lg transition-all">S'inscrire</a>
+            {% endif %}
         </nav>
     </div>
 </header>
