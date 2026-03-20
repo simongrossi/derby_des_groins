@@ -160,7 +160,7 @@ def admin_trigger_event():
         for u in all_users:
             credit_user_balance(u.id, 50.0, reason_code='admin_gift', reason_label='Cadeau Admin', reference_type='user', reference_id=user.id)
         db.session.commit()
-        flash("💰 Bonus de 50 BG accordé à tous les joueurs !", "success")
+        flash("💰 Bonus de 50 🪙 BitGroins accordé à tous les joueurs !", "success")
     else:
         flash("Événement inconnu.", "error")
 

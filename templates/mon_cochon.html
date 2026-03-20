@@ -128,9 +128,9 @@
             <p class="text-white/50 text-xs font-bold mt-2">Héritage porcherie: +{{ "%.1f"|format(user.barn_heritage_bonus or 0) }} • Pression nourriture actuelle x{{ "%.2f"|format(feeding_multiplier) }} • Capacité {{ pigs_data|length }}/{{ max_slots }} • En-cas solidaires restants {{ pigs_data[0].share_snacks_remaining if pigs_data else 3 }}/3</p>
         </div>
         {% set adopt_msg = "Adopter un cochon de secours" if not pigs_data else "Adopter une recrue" %}
-        {% set adopt_full_msg = "Adopter " ~ adopt_msg ~ " pour %.0f BG ? Plus la porcherie est grande, plus nourrir tout le monde coûte cher."|format(adoption_cost) %}
+        {% set adopt_full_msg = "Adopter " ~ adopt_msg ~ " pour %.0f 🪙 ? Plus la porcherie est grande, plus nourrir tout le monde coûte cher."|format(adoption_cost) %}
         <a href="/adopt-second-pig" class="btn-primary flex items-center gap-2" onclick="return confirm('{{ adopt_full_msg }}');">
-            ➕ {{ adopt_msg }} ({{ "%.0f"|format(adoption_cost) }} BG)
+            ➕ {{ adopt_msg }} ({{ "%.0f"|format(adoption_cost) }} 🪙)
         </a>
     </div>
 
@@ -138,7 +138,7 @@
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
             <div>
                 <p class="text-pink-300 font-bold uppercase tracking-wider text-[11px]">Reproduction & lignée</p>
-                <p class="text-white/65 font-semibold mt-2">Deux cochons actifs peuvent lancer une portée pour {{ "%.0f"|format(breeding_cost) }} BG. Le porcelet hérite d'une partie des stats, de l'origine et du bonus de lignée.</p>
+                <p class="text-white/65 font-semibold mt-2">Deux cochons actifs peuvent lancer une portée pour {{ "%.0f"|format(breeding_cost) }} 🪙. Le porcelet hérite d'une partie des stats, de l'origine et du bonus de lignée.</p>
             </div>
             <div>
                 <p class="text-amber-300 font-bold uppercase tracking-wider text-[11px]">Retraite d'honneur</p>
@@ -451,7 +451,7 @@
                             {% endfor %}
                         </select>
                         <input type="text" name="child_name" maxlength="30" placeholder="Nom du porcelet (optionnel)" class="w-full bg-white/5 border border-amber-500/20 rounded-lg px-3 py-2 text-white text-xs font-bold">
-                        {% set breed_confirm = "Lancer une portée pour %.0f BG ? Plus tu as de cochons, plus les repas suivants coûteront cher."|format(breeding_cost) %}
+                        {% set breed_confirm = "Lancer une portée pour %.0f 🪙 ? Plus tu as de cochons, plus les repas suivants coûteront cher."|format(breeding_cost) %}
                         <button type="submit" class="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 py-2 rounded-lg text-[10px] font-black uppercase" onclick="return confirm('{{ breed_confirm }}');">Lancer une portée</button>
                     </form>
                     {% else %}
@@ -472,7 +472,7 @@
                     <div class="flex items-center justify-between mb-2">
                         <h3 class="text-red-400 font-title">💀 Challenge Mort</h3>
                         {% if pig.challenge_mort_wager > 0 %}
-                            <span class="text-[10px] bg-red-600 px-2 py-0.5 rounded text-white font-bold animate-pulse">ACTIF: {{ pig.challenge_mort_wager }} BG</span>
+                            <span class="text-[10px] bg-red-600 px-2 py-0.5 rounded text-white font-bold animate-pulse">ACTIF: {{ pig.challenge_mort_wager }} 🪙</span>
                         {% endif %}
                     </div>
                     {% if pig.is_injured %}
@@ -538,7 +538,7 @@
                                 {% set effective_feed_cost = cer.cost * feeding_multiplier %}
                                 <button type="submit" class="bg-green-600 hover:bg-green-500 px-3 py-1.5 rounded-lg font-bold text-[10px] h-fit"
                                         {% if user.balance < effective_feed_cost or pig.hunger >= 95 %}disabled{% endif %}>
-                                    {{ "%.0f"|format(effective_feed_cost) }} BG
+                                    {{ "%.0f"|format(effective_feed_cost) }} 🪙
                                 </button>
                             </form>
                         </div>

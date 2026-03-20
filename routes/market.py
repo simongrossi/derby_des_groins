@@ -67,7 +67,7 @@ def bid():
         return redirect(url_for('market.marche'))
     min_bid = auction.current_bid + 5 if auction.current_bid > 0 else auction.starting_price
     if not bid_amount or bid_amount < min_bid:
-        flash(f"Enchère minimum : {min_bid:.0f} BG !", "error")
+        flash(f"Enchère minimum : {min_bid:.0f} 🪙 !", "error")
         return redirect(url_for('market.marche'))
 
     if not debit_user_balance(
@@ -115,7 +115,7 @@ def bid():
         )
 
     db.session.commit()
-    flash(f"Enchère placée : {bid_amount:.0f} BG sur {auction.pig_name} !", "success")
+    flash(f"Enchère placée : {bid_amount:.0f} 🪙 sur {auction.pig_name} !", "success")
     return redirect(url_for('market.marche'))
 
 
@@ -140,7 +140,7 @@ def sell_pig():
         return redirect(url_for('market.marche'))
     starting_price = request.form.get('price', type=float)
     if not starting_price or starting_price < 5:
-        flash("Prix minimum : 5 BG !", "error")
+        flash("Prix minimum : 5 🪙 !", "error")
         return redirect(url_for('market.marche'))
 
     auction = Auction(
@@ -168,5 +168,5 @@ def sell_pig():
     pig.epitaph = f"{pig.name} a été mis en vente au Marché aux Groins."
     db.session.add(auction)
     db.session.commit()
-    flash(f"🏷️ {pig.name} est en vente pour {starting_price:.0f} BG minimum !", "success")
+    flash(f"🏷️ {pig.name} est en vente pour {starting_price:.0f} 🪙 minimum !", "success")
     return redirect(url_for('market.marche'))

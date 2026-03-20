@@ -114,7 +114,7 @@ def index():
         news_items.append({
             'emoji': '🎟️',
             'title': f"{latest_big_win.user.username} a touche gros",
-            'text': f"{latest_big_win.reason_label}: {latest_big_win.amount:.0f} BG.",
+            'text': f"{latest_big_win.reason_label}: {latest_big_win.amount:.0f} 🪙.",
         })
 
     if latest_race and latest_race_participants:
@@ -253,8 +253,8 @@ def classement():
 
         # --- Trophees ---
         trophies = []
-        if u.balance >= 500: trophies.append({'n': 'Cresus', 'e': '💰', 'd': 'Plus de 500 BG en caisse'})
-        if u.balance >= 1000: trophies.append({'n': 'Oligarque', 'e': '👑', 'd': 'Plus de 1000 BG en caisse'})
+        if u.balance >= 500: trophies.append({'n': 'Cresus', 'e': '💰', 'd': 'Plus de 500 🪙 en caisse'})
+        if u.balance >= 1000: trophies.append({'n': 'Oligarque', 'e': '👑', 'd': 'Plus de 1000 🪙 en caisse'})
         if total_wins >= 10: trophies.append({'n': 'Legende', 'e': '🏆', 'd': '10 victoires au total'})
         if total_wins >= 25: trophies.append({'n': 'Dynastie', 'e': '🏛️', 'd': '25 victoires au total'})
         if dead_pigs_count >= 5: trophies.append({'n': 'Boucher', 'e': '🔪', 'd': '5 cochons morts'})
@@ -269,7 +269,7 @@ def classement():
         if len(won_bets) >= 10: trophies.append({'n': 'Parieur', 'e': '🎟️', 'd': '10 paris gagnes'})
         if best_odds_hit >= 5.0: trophies.append({'n': 'Sniper', 'e': '🎯', 'd': 'Pari gagne a x5+'})
         if best_odds_hit >= 10.0: trophies.append({'n': 'Fou Furieux', 'e': '🔥', 'd': 'Pari gagne a x10+'})
-        if bet_profit <= -100: trophies.append({'n': 'Ruine', 'e': '📉', 'd': 'Perdu plus de 100 BG en paris'})
+        if bet_profit <= -100: trophies.append({'n': 'Ruine', 'e': '📉', 'd': 'Perdu plus de 100 🪙 en paris'})
         if legendary_count >= 1: trophies.append({'n': 'Collectionneur', 'e': '🟡', 'd': 'Posseder un cochon legendaire'})
         if deaths_sacrifice >= 3: trophies.append({'n': 'Sans Pitie', 'e': '🗡️', 'd': '3 cochons sacrifies'})
         if legendary_dead >= 1: trophies.append({'n': 'Sacrilege', 'e': '⚱️', 'd': 'Avoir perdu un cochon legendaire'})
@@ -355,13 +355,13 @@ def classement():
     if a and a['deaths_challenge'] > 0: awards.append({'emoji': '💀', 'title': 'Kamikaze Supreme', 'desc': 'Le plus de morts au Challenge', 'user': a['user'].username, 'value': f"{a['deaths_challenge']} sacrifice(s)", 'color': 'purple'})
 
     a = best_by('total_staked')
-    if a and a['total_staked'] > 0: awards.append({'emoji': '🎰', 'title': 'Le Flambeur', 'desc': 'Le plus mise au total', 'user': a['user'].username, 'value': f"{a['total_staked']:.0f} BG mises", 'color': 'amber'})
+    if a and a['total_staked'] > 0: awards.append({'emoji': '🎰', 'title': 'Le Flambeur', 'desc': 'Le plus mise au total', 'user': a['user'].username, 'value': f"{a['total_staked']:.0f} 🪙 misés", 'color': 'amber'})
 
     a = best_by('bet_profit')
-    if a and a['bet_profit'] > 0: awards.append({'emoji': '🤑', 'title': 'Le Bookmaker', 'desc': 'Le plus gros profit aux paris', 'user': a['user'].username, 'value': f"+{a['bet_profit']:.0f} BG", 'color': 'emerald'})
+    if a and a['bet_profit'] > 0: awards.append({'emoji': '🤑', 'title': 'Le Bookmaker', 'desc': 'Le plus gros profit aux paris', 'user': a['user'].username, 'value': f"+{a['bet_profit']:.0f} 🪙", 'color': 'emerald'})
 
     a = best_by('bet_profit', reverse=False)
-    if a and a['bet_profit'] < 0: awards.append({'emoji': '📉', 'title': 'Le Pigeon', 'desc': 'Les pires pertes aux paris', 'user': a['user'].username, 'value': f"{a['bet_profit']:.0f} BG", 'color': 'red'})
+    if a and a['bet_profit'] < 0: awards.append({'emoji': '📉', 'title': 'Le Pigeon', 'desc': 'Les pires pertes aux paris', 'user': a['user'].username, 'value': f"{a['bet_profit']:.0f} 🪙", 'color': 'red'})
 
     a = best_by('total_school')
     if a and a['total_school'] > 0: awards.append({'emoji': '🎓', 'title': "L'Intellectuel", 'desc': 'Le plus de sessions ecole', 'user': a['user'].username, 'value': f"{a['total_school']} sessions", 'color': 'blue'})
@@ -379,7 +379,7 @@ def classement():
     if a and a['deaths_blessure'] > 0: awards.append({'emoji': '🩹', 'title': 'Le Negligent', 'desc': 'Le plus de morts par blessure non soignee', 'user': a['user'].username, 'value': f"{a['deaths_blessure']} victime(s)", 'color': 'orange'})
 
     a = best_by('total_spent_on_food')
-    if a and a['total_spent_on_food'] > 0: awards.append({'emoji': '🌽', 'title': 'Le Nourricier', 'desc': 'Le plus depense en nourriture', 'user': a['user'].username, 'value': f"{a['total_spent_on_food']:.0f} BG", 'color': 'lime'})
+    if a and a['total_spent_on_food'] > 0: awards.append({'emoji': '🌽', 'title': 'Le Nourricier', 'desc': 'Le plus depense en nourriture', 'user': a['user'].username, 'value': f"{a['total_spent_on_food']:.0f} 🪙", 'color': 'lime'})
 
     a = best_by('legendary_dead')
     if a and a['legendary_dead'] > 0: awards.append({'emoji': '⚱️', 'title': 'Le Sacrilege', 'desc': 'Le plus de legendaires perdus', 'user': a['user'].username, 'value': f"{a['legendary_dead']} legendaire(s)", 'color': 'fuchsia'})
@@ -391,7 +391,7 @@ def classement():
     if a and a['max_level'] > 1: awards.append({'emoji': '🔝', 'title': 'Le Maitre', 'desc': 'Cochon au plus haut niveau', 'user': a['user'].username, 'value': f"Niv. {a['max_level']}", 'color': 'teal'})
 
     a = best_by('total_earned')
-    if a and a['total_earned'] > 0: awards.append({'emoji': '💸', 'title': 'La Machine a BG', 'desc': 'Le plus de BitGroins gagnes au total', 'user': a['user'].username, 'value': f"{a['total_earned']:.0f} BG", 'color': 'emerald'})
+    if a and a['total_earned'] > 0: awards.append({'emoji': '💸', 'title': 'La Machine à 🪙', 'desc': 'Le plus de BitGroins gagnes au total', 'user': a['user'].username, 'value': f"{a['total_earned']:.0f} 🪙", 'color': 'emerald'})
 
     a = best_by('deaths_vieillesse')
     if a and a['deaths_vieillesse'] > 0: awards.append({'emoji': '🧓', 'title': 'Eleveur Patient', 'desc': 'Le plus de cochons morts de vieillesse', 'user': a['user'].username, 'value': f"{a['deaths_vieillesse']} retraite(s)", 'color': 'sky'})

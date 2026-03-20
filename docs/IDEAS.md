@@ -105,6 +105,28 @@
 - Assumer le ton absurde et cérémoniel (titres honorifiques, folklore maison).
 - Transformer les blagues internes en features cosmétiques.
 
+## Bourse aux Grains — evolutions possibles
+
+La Bourse aux Grains est implementee. Evolutions futures envisageables :
+
+- **Tendances de marche** : afficher un historique des positions du curseur sur les dernieres 24h/7j.
+- **Bourse a terme** : permettre de bloquer un prix a l'avance en payant une prime.
+- **Crises alimentaires** : evenements aleatoires qui deplacent brutalement le curseur (secheresse, recolte exceptionnelle).
+- **Lobbying porcin** : alliances entre joueurs pour deplacer le curseur ensemble (cumul de points de mouvement).
+- **Speculation de vitrine** : penalite BG si le meme joueur bloque la vitrine trop souvent.
+- **Qualite des terroirs** : certaines origines de cochons reagissent mieux a certains grains (synergie pays/cereale).
+
+### Algorithme de la Bourse aux Grains
+
+1. **Grille 5x5** : positions (1,1) a (5,5). Centre (3,3) = neutre.
+2. **Axe X (Prix)** : modificateurs `[0.55, 0.78, 1.00, 1.28, 1.60]`.
+3. **Axe Y (Qualite)** : modificateurs `[0.55, 0.78, 1.00, 1.28, 1.60]`.
+4. **Prix final** = `base_cost * price_mod * feeding_multiplier`.
+5. **Qualite finale** = tous les bonus (faim, energie, stats, poids) multiplies par `quality_mod`.
+6. **Points de mouvement** = `max(1, total_achats_nourriture // 10)`.
+7. **Vitrine** : le grain achete en dernier est bloque jusqu'au prochain achat d'un grain different.
+8. **Etat partage** : le curseur et la vitrine sont communs a tous les joueurs (modele `GrainMarket`, singleton id=1).
+
 ## Direction forte à garder
 
 - Jeu de bureau asynchrone : planification de la semaine plutôt qu'actions répétitives.

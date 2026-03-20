@@ -34,7 +34,7 @@ def mon_cochon():
     relief_amount = maybe_grant_emergency_relief(user)
     if relief_amount > 0:
         db.session.refresh(user)
-        flash(f"🛟 Prime d'élevage d'urgence: +{relief_amount:.0f} BG pour relancer ton élevage.", "success")
+        flash(f"🛟 Prime d'élevage d'urgence: +{relief_amount:.0f} 🪙 pour relancer ton élevage.", "success")
     reset_snack_share_limit_if_needed(user)
     db.session.commit()
     pigs = get_user_active_pigs(user)
@@ -106,7 +106,7 @@ def adopt_second_pig():
         reference_type='user',
         reference_id=user.id,
     ):
-        flash(f"Il te faut {cost:.0f} BG pour adopter un nouveau cochon !", "error")
+        flash(f"Il te faut {cost:.0f} 🪙 pour adopter un nouveau cochon !", "error")
         return redirect(url_for('pig.mon_cochon'))
 
     origin = random.choice(PIG_ORIGINS)
@@ -171,7 +171,7 @@ def feed():
     pig.last_fed_at = datetime.utcnow()
     pig.last_updated = pig.last_fed_at
     db.session.commit()
-    flash(f"{cereal['emoji']} {cereal['name']} donné ! Miam ! Coût réel: {effective_cost:.0f} BG (x{feeding_multiplier:.2f} de pression d'élevage).", "success")
+    flash(f"{cereal['emoji']} {cereal['name']} donné ! Miam ! Coût réel: {effective_cost:.0f} 🪙 (x{feeding_multiplier:.2f} de pression d'élevage).", "success")
     return redirect(url_for('pig.mon_cochon'))
 
 
@@ -369,7 +369,7 @@ def challenge_mort():
         return redirect(url_for('api.veterinaire', pig_id=pig.id))
     wager = request.form.get('wager', type=float)
     if not wager or wager < 10:
-        flash("Mise minimum : 10 BG pour le Challenge de la Mort !", "error")
+        flash("Mise minimum : 10 🪙 pour le Challenge de la Mort !", "error")
         return redirect(url_for('pig.mon_cochon'))
     if pig.challenge_mort_wager > 0:
         flash("Tu es déjà inscrit au Challenge de la Mort !", "warning")
@@ -382,7 +382,7 @@ def challenge_mort():
         user.id, wager,
         reason_code='challenge_entry',
         reason_label='Inscription Challenge de la Mort',
-        details=f"{pig.name} engage pour {wager:.0f} BG.",
+        details=f"{pig.name} engagé pour {wager:.0f} 🪙.",
         reference_type='pig',
         reference_id=pig.id,
     ):
@@ -394,7 +394,7 @@ def challenge_mort():
         return redirect(url_for('pig.mon_cochon'))
 
     db.session.commit()
-    flash(f"💀 {pig.name} inscrit au Challenge de la Mort ({wager:.0f} BG) ! Bonne chance...", "success")
+    flash(f"💀 {pig.name} inscrit au Challenge de la Mort ({wager:.0f} 🪙) ! Bonne chance...", "success")
     return redirect(url_for('pig.mon_cochon'))
 
 
@@ -424,7 +424,7 @@ def cancel_challenge():
         reference_type='pig',
         reference_id=pig.id,
     )
-    flash(f"😰 Challenge annulé pour {pig.name}... Remboursement : {refund:.0f} BG (50%)", "warning")
+    flash(f"😰 Challenge annulé pour {pig.name}... Remboursement : {refund:.0f} 🪙 (50%)", "warning")
     return redirect(url_for('pig.mon_cochon'))
 
 @pig_bp.route('/breed-pig', methods=['POST'])
@@ -456,7 +456,7 @@ def breed_pig():
         reference_type='user',
         reference_id=user.id,
     ):
-        flash(f"Il faut {BREEDING_COST:.0f} BG pour financer la portée.", "error")
+        flash(f"Il faut {BREEDING_COST:.0f} 🪙 pour financer la portée.", "error")
         return redirect(url_for('pig.mon_cochon'))
 
     if child_name and is_pig_name_taken(child_name):

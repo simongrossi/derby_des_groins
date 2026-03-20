@@ -399,3 +399,36 @@ PIG_TYPING_WORDS = [
 ]
 
 PIG_COURSE_SEGMENT_TYPES = ['PLAT', 'MONTEE', 'DESCENTE', 'VIRAGE', 'BOUE']
+
+# ---------------------------------------------------------------------------
+# Bourse aux Grains -- marche dynamique de cereales
+# ---------------------------------------------------------------------------
+# Grille 7x7 avec valeurs symetriques : le centre (indice 3) vaut 0.
+# Plus on s'eloigne du centre, plus le surcout augmente.
+BOURSE_GRID_SIZE = 7
+BOURSE_GRID_VALUES = [6, 4, 2, 0, 2, 4, 6]     # valeur par indice 0-6
+
+BOURSE_DEFAULT_POS = 3                            # centre de la grille (0-indexed)
+BOURSE_BLOCK_MIN = 1                              # centre du bloc 3x3 : min = 1
+BOURSE_BLOCK_MAX = 5                              # centre du bloc 3x3 : max = 5
+
+# Facteur de conversion valeur -> surcout (chaque point = +5% du prix de base)
+BOURSE_SURCHARGE_FACTOR = 0.05
+
+BOURSE_MOVEMENT_DIVISOR = 10                      # 1 point de mouvement / N achats
+BOURSE_MIN_MOVEMENT = 1                           # minimum garanti
+
+# Disposition des grains dans le bloc 3x3
+# (dx, dy) relatif au centre du bloc -> cle cereal (None = case vide)
+# dy=-1 = haut, dy=+1 = bas ; dx=-1 = gauche, dx=+1 = droite
+BOURSE_GRAIN_LAYOUT = {
+    (-1, -1): 'orge',       # coin haut-gauche    🌾
+    ( 0, -1): 'triticale',  # bord haut           🍃
+    ( 1, -1): 'ble',        # coin haut-droit     🌿
+    (-1,  0): None,         # bord gauche (vide)
+    ( 0,  0): 'mais',       # CENTRE = grain de base 🌽
+    ( 1,  0): None,         # bord droit (vide)
+    (-1,  1): 'seigle',     # coin bas-gauche     🌱
+    ( 0,  1): None,         # bord bas (vide)
+    ( 1,  1): 'avoine',     # coin bas-droit      🥣
+}

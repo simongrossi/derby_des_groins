@@ -120,6 +120,8 @@ Inspirée des vrais taux d'inclusion recommandés pour l'alimentation porcine :
 | Triticale 🍃 | 9 GC | +Vitesse +Endurance | 100 |
 | Avoine 🥣 | 6 GC | +Moral +Agilité | 82 |
 
+> **Bourse aux Grains** : les prix ci-dessus sont les prix de base. Le cout reel est determine par la **Bourse aux Grains**, un marche dynamique ou tous les joueurs partagent un curseur sur une grille 5x5. L'axe horizontal fixe le modificateur de prix (x0.55 a x1.60), l'axe vertical fixe le modificateur de qualite (bonus de stats, faim et energie). Chaque joueur peut deplacer le curseur avant d'acheter, et le dernier grain achete est bloque en vitrine jusqu'a ce qu'un concurrent achete autre chose.
+
 ### 🏪 Marché aux Cochons
 
 Le marché génère automatiquement des cochons aux enchères avec 4 niveaux de rareté :
@@ -208,7 +210,7 @@ Le projet suit une architecture **Flask Blueprints** modulaire, découpée par d
 derby_des_groins/
 ├── app.py                  # Factory create_app(), migrations, seeds
 ├── extensions.py           # SQLAlchemy db, timezone partagés
-├── models.py               # 9 modèles SQLAlchemy (User, Pig, Race, Bet…)
+├── models.py               # 10 modèles SQLAlchemy (User, Pig, Race, Bet, GrainMarket…)
 ├── data.py                 # Constantes de jeu (céréales, entraînements, raretés…)
 ├── helpers.py              # Logique métier (balance, courses, marché, paris…)
 ├── scheduler.py            # Tâches de fond APScheduler (courses, enchères, véto)
@@ -217,12 +219,13 @@ derby_des_groins/
 ├── IDEAS.md                # Backlog d'idées et pistes de game design
 ├── .gitignore
 │
-├── routes/                 # 8 Blueprints Flask
+├── routes/                 # 9 Blueprints Flask
 │   ├── __init__.py         # Registre des blueprints
 │   ├── auth.py             # register, login, logout, profil
 │   ├── main.py             # index (dashboard), history, classement, légendes pop
 │   ├── race.py             # courses (calendrier), plan_course, place_bet
 │   ├── pig.py              # mon-cochon, adopt, feed, train, school, challenge, sacrifice
+│   ├── bourse.py           # Bourse aux Grains — marché dynamique, grille, vitrine
 │   ├── market.py           # marché, bid, sell-pig
 │   ├── abattoir.py         # abattoir, cimetière
 │   ├── admin.py            # admin panel, config, force-race
@@ -236,6 +239,7 @@ derby_des_groins/
 │   ├── profil.html          # Mon Profil — compte, stats joueur, changement mdp
 │   ├── history.html         # Historique complet : courses, paris et journal BitGroins
 │   ├── mon_cochon.html      # Tamagotchi — stats, nourrir, entraîner, école, radar chart
+│   ├── bourse.html          # Bourse aux Grains — grille 5x5, curseur partagé, vitrine
 │   ├── marche.html          # Marché aux Cochons — enchères
 │   ├── classement.html      # Classement général des joueurs
 │   ├── legendes_pop.html    # Légendes porcines de la pop culture
@@ -253,11 +257,11 @@ derby_des_groins/
 | Module | Rôle | Contenu |
 |--------|------|---------|
 | `extensions.py` | Objets partagés | `db = SQLAlchemy()`, `APP_TIMEZONE` |
-| `models.py` | Schéma de données | 9 modèles : `User`, `Pig`, `Race`, `Participant`, `Bet`, `BalanceTransaction`, `CoursePlan`, `Auction`, `GameConfig` |
-| `data.py` | Données statiques | Céréales, entraînements, école, raretés, origines, constantes d'équilibrage |
-| `helpers.py` | Logique métier | Gestion cochon, balance atomique, paris, courses, marché, vétérinaire |
+| `models.py` | Schéma de données | 10 modèles : `User`, `Pig`, `Race`, `Participant`, `Bet`, `BalanceTransaction`, `CoursePlan`, `Auction`, `GameConfig`, `GrainMarket` |
+| `data.py` | Données statiques | Céréales, entraînements, école, raretés, origines, constantes d'équilibrage, grille Bourse |
+| `helpers.py` | Logique métier | Gestion cochon, balance atomique, paris, courses, marché, vétérinaire, Bourse aux Grains |
 | `scheduler.py` | Tâches de fond | Résolution courses, enchères, deadlines véto |
-| `routes/` | 8 Blueprints | Chaque domaine a son fichier avec ses routes |
+| `routes/` | 9 Blueprints | Chaque domaine a son fichier avec ses routes |
 | `app.py` | Point d'entrée | Factory `create_app()`, migrations SQLite, seed utilisateurs |
 
 ## ⚙️ Stack technique
@@ -290,6 +294,8 @@ derby_des_groins/
 18. Les mouvements critiques de **BitGroins** (paris, enchères, récompenses) passent par des mises à jour atomiques côté base pour limiter les doubles clics et les conflits de concurrence
 19. La page **Historique** centralise les courses terminées, les tickets déjà joués et un **journal credit/debit BitGroins** pour la traçabilité
 20. Les courses, les enchères et les deadlines du vétérinaire sont gérées par un **scheduler de fond**, même si personne n'est connecté
+21. La **Bourse aux Grains** remplace les prix fixes : un curseur sur une grille 5x5 partagée par tous les joueurs determine le prix et la qualite de la nourriture. Chaque joueur peut deplacer le curseur avant d'acheter, et le dernier grain achete est bloque en vitrine
+22. Le **Classement** propose 5 onglets (General, Abattoir, Paris, Elevage, Mur de la Honte) avec 18+ awards automatiques et des charts detailles
 
 ---
 

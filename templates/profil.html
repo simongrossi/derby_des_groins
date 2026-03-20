@@ -134,7 +134,7 @@
             <div class="grid grid-cols-2 gap-3 min-w-[260px]">
                 <div class="stat-card p-4 text-center">
                     <p class="text-3xl font-title text-yellow-400">{{ "%.0f"|format(user.balance) }}</p>
-                    <p class="text-white/45 text-xs font-bold uppercase tracking-wide">BG disponibles</p>
+                    <p class="text-white/45 text-xs font-bold uppercase tracking-wide">🪙 BitGroins</p>
                 </div>
                 <div class="stat-card p-4 text-center">
                     <p class="text-3xl font-title text-pink-300">{{ active_pigs|length }}</p>
@@ -306,7 +306,7 @@
                         </div>
                         <div class="stat-card p-4 text-center">
                             <p class="text-2xl font-title text-yellow-300">{{ "%.0f"|format(total_winnings) }}</p>
-                            <p class="text-white/45 text-[11px] font-bold uppercase tracking-wide">BG encaissés</p>
+                            <p class="text-white/45 text-[11px] font-bold uppercase tracking-wide">🪙 encaisses</p>
                         </div>
                         <div class="stat-card p-4 text-center">
                             <p class="text-2xl font-title {{ 'text-green-300' if total_profit >= 0 else 'text-red-300' }}">{{ "%.0f"|format(total_profit) }}</p>
@@ -317,7 +317,7 @@
                     <div class="space-y-3">
                         <div class="pig-pill p-4 flex items-center justify-between">
                             <span class="text-white/55 text-sm font-semibold">Total de mises</span>
-                            <span class="text-white font-bold">{{ "%.0f"|format(total_staked) }} BG</span>
+                            <span class="text-white font-bold">{{ "%.0f"|format(total_staked) }} 🪙</span>
                         </div>
                         <div class="pig-pill p-4 flex items-center justify-between">
                             <span class="text-white/55 text-sm font-semibold">Paris encore ouverts</span>

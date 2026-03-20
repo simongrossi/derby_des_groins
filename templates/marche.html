@@ -172,7 +172,7 @@
         <div class="prix-groin-card p-5 text-center">
             <p class="text-yellow-400/60 text-xs font-bold uppercase tracking-wider mb-1">Prix Moyen du Groin</p>
             <p class="font-title text-4xl text-yellow-400" id="prix-groin">{{ "%.2f"|format(prix_groin) }}</p>
-            <p class="text-yellow-400/40 text-xs font-semibold mt-1">BitGroins (BG)</p>
+            <p class="text-yellow-400/40 text-xs font-semibold mt-1">🪙 BitGroins</p>
         </div>
     </div>
 
@@ -216,13 +216,13 @@
                 <form method="POST" action="/sell-pig" class="flex gap-3 items-end">
                     <input type="hidden" name="pig_id" value="{{ pig.id }}">
                     <div class="flex-1">
-                        <label class="text-white/60 text-xs font-bold block mb-1">Prix de départ (min 5 BG)</label>
+                        <label class="text-white/60 text-xs font-bold block mb-1">Prix de départ (min 5 🪙)</label>
                         <input type="number" name="price" min="5" step="1" placeholder="Ex: 30"
                                class="w-full bg-black/30 border border-yellow-900/30 rounded-xl px-4 py-2 text-white font-bold text-sm focus:outline-none focus:border-yellow-400">
                     </div>
                     <button type="submit" class="btn-sell px-6 py-2 bg-yellow-600 hover:bg-yellow-500 text-white font-bold rounded-xl transition-all"
                             {% if sale_locked %}disabled{% endif %}
-                            onclick="return confirm('⚠️ {{ pig.name }} sera mis en vente !\nSi quelqu\'un l\'achète, tu recevras les BG.\nS\'il ne part pas, il reviendra chez toi à la fin du marché.\n\nContinuer ?');">
+                            onclick="return confirm('⚠️ {{ pig.name }} sera mis en vente !\nSi quelqu\'un l\'achète, tu recevras les BitGroins.\nS\'il ne part pas, il reviendra chez toi à la fin du marché.\n\nContinuer ?');">
                         Mettre en vente
                     </button>
                 </form>
@@ -309,13 +309,13 @@
                 <div class="bg-black/20 rounded-xl p-3 mb-3 text-center">
                     {% if auction.current_bid > 0 %}
                     <p class="text-white/50 text-xs font-bold">Meilleure enchère</p>
-                    <p class="text-yellow-400 font-bold text-2xl font-title">{{ "%.0f"|format(auction.current_bid) }} BG</p>
+                    <p class="text-yellow-400 font-bold text-2xl font-title">{{ "%.0f"|format(auction.current_bid) }} 🪙</p>
                     <p class="text-white/30 text-xs font-semibold">
                         par {{ auction.bidder.username if auction.bidder else '???' }}
                     </p>
                     {% else %}
                     <p class="text-white/50 text-xs font-bold">Prix de départ</p>
-                    <p class="text-yellow-400 font-bold text-2xl font-title">{{ "%.0f"|format(auction.starting_price) }} BG</p>
+                    <p class="text-yellow-400 font-bold text-2xl font-title">{{ "%.0f"|format(auction.starting_price) }} 🪙</p>
                     <p class="text-white/30 text-xs font-semibold">Aucune enchère</p>
                     {% endif %}
                 </div>
@@ -335,7 +335,7 @@
                     <input type="number" name="bid_amount"
                            min="{{ (auction.current_bid + 5) if auction.current_bid > 0 else auction.starting_price }}"
                            max="{{ user.balance }}" step="1"
-                           placeholder="Min {{ ((auction.current_bid + 5) if auction.current_bid > 0 else auction.starting_price) | int }} BG"
+                           placeholder="Min {{ ((auction.current_bid + 5) if auction.current_bid > 0 else auction.starting_price) | int }} 🪙"
                            class="flex-1 bg-white/5 border border-yellow-900/30 rounded-xl px-3 py-2 text-white font-bold text-sm focus:outline-none focus:border-yellow-400">
                     <button type="submit" class="btn-bid"
                             {% if user.balance < ((auction.current_bid + 5) if auction.current_bid > 0 else auction.starting_price) %}disabled{% endif %}
@@ -406,7 +406,7 @@
                 </div>
             </div>
             <div class="text-right">
-                <p class="text-green-400 font-bold">{{ "%.0f"|format(sale.current_bid) }} BG</p>
+                <p class="text-green-400 font-bold">{{ "%.0f"|format(sale.current_bid) }} 🪙</p>
                 <p class="text-white/30 text-xs">{{ sale.ends_at.strftime('%d/%m %H:%M') }}</p>
             </div>
         </div>

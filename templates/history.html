@@ -107,12 +107,12 @@
             <p class="text-white/45 text-sm font-semibold mt-2">{{ won_bets | length }} gagnes, {{ lost_bets | length }} perdus.</p>
         </div>
         <div class="card p-5">
-            <p class="text-white/45 text-xs uppercase tracking-[0.2em] font-extrabold">Credits BG</p>
+            <p class="text-white/45 text-xs uppercase tracking-[0.2em] font-extrabold">Credits 🪙</p>
             <p class="font-title text-4xl text-emerald-300 mt-3">+{{ "%.2f"|format(credited_amount) }}</p>
             <p class="text-white/45 text-sm font-semibold mt-2">Flux positifs journalises hors snapshot initial.</p>
         </div>
         <div class="card p-5">
-            <p class="text-white/45 text-xs uppercase tracking-[0.2em] font-extrabold">Debits BG</p>
+            <p class="text-white/45 text-xs uppercase tracking-[0.2em] font-extrabold">Debits 🪙</p>
             <p class="font-title text-4xl text-rose-300 mt-3">-{{ "%.2f"|format(debited_amount) }}</p>
             <p class="text-white/45 text-sm font-semibold mt-2">Chaque depense ou blocage d'enchere reste visible.</p>
         </div>
@@ -235,7 +235,7 @@
         <div class="card p-5 lg:p-6 space-y-4">
             <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                    <h3 class="text-white text-xl font-extrabold">Mon journal BG</h3>
+                    <h3 class="text-white text-xl font-extrabold">Mon journal 🪙 BitGroins</h3>
                     <p class="text-white/45 text-sm font-semibold mt-1">Le snapshot initial sert de point de depart pour les comptes deja existants.</p>
                 </div>
                 <span class="pill bg-white/8 text-white/70 border border-white/10">{{ transactions | length }} mouvement(s)</span>
@@ -259,20 +259,20 @@
                             <td class="text-white/70 text-sm font-bold whitespace-nowrap">{{ tx.created_at.strftime('%d/%m/%Y %H:%M') }}</td>
                             <td>
                                 <p class="font-extrabold {{ amount_color }}">
-                                    {% if tx.amount > 0 %}+{% endif %}{{ "%.2f"|format(tx.amount) }} BG
+                                    {% if tx.amount > 0 %}+{% endif %}{{ "%.2f"|format(tx.amount) }} 🪙
                                 </p>
                                 <p class="text-white/35 text-xs font-semibold mt-1">{{ tx.reason_label }}</p>
                             </td>
                             <td>
                                 <p class="text-white font-bold">{{ tx.details or 'Aucun detail complementaire' }}</p>
                                 <p class="text-white/35 text-xs font-semibold mt-1">
-                                    Avant {{ "%.2f"|format(tx.balance_before or 0) }} BG
+                                    Avant {{ "%.2f"|format(tx.balance_before or 0) }} 🪙
                                     {% if tx.reference_type and tx.reference_id %}
                                     • {{ tx.reference_type }} #{{ tx.reference_id }}
                                     {% endif %}
                                 </p>
                             </td>
-                            <td class="text-white font-extrabold whitespace-nowrap">{{ "%.2f"|format(tx.balance_after or 0) }} BG</td>
+                            <td class="text-white font-extrabold whitespace-nowrap">{{ "%.2f"|format(tx.balance_after or 0) }} 🪙</td>
                         </tr>
                         {% endfor %}
                     </tbody>
@@ -315,20 +315,20 @@
                             <td class="text-white font-bold">{{ tx.user.username if tx.user else 'Utilisateur supprime' }}</td>
                             <td>
                                 <p class="font-extrabold {{ amount_color }}">
-                                    {% if tx.amount > 0 %}+{% endif %}{{ "%.2f"|format(tx.amount) }} BG
+                                    {% if tx.amount > 0 %}+{% endif %}{{ "%.2f"|format(tx.amount) }} 🪙
                                 </p>
                                 <p class="text-white/35 text-xs font-semibold mt-1">{{ tx.reason_label }}</p>
                             </td>
                             <td>
                                 <p class="text-white font-bold">{{ tx.details or 'Aucun detail complementaire' }}</p>
                                 <p class="text-white/35 text-xs font-semibold mt-1">
-                                    Avant {{ "%.2f"|format(tx.balance_before or 0) }} BG
+                                    Avant {{ "%.2f"|format(tx.balance_before or 0) }} 🪙
                                     {% if tx.reference_type and tx.reference_id %}
                                     • {{ tx.reference_type }} #{{ tx.reference_id }}
                                     {% endif %}
                                 </p>
                             </td>
-                            <td class="text-white font-extrabold whitespace-nowrap">{{ "%.2f"|format(tx.balance_after or 0) }} BG</td>
+                            <td class="text-white font-extrabold whitespace-nowrap">{{ "%.2f"|format(tx.balance_after or 0) }} 🪙</td>
                         </tr>
                         {% endfor %}
                     </tbody>
@@ -378,7 +378,7 @@
                             <span class="pill bg-white/8 text-white/70 border border-white/10">{{ bet.placed_at.strftime('%d/%m/%Y %H:%M') }}</span>
                         </div>
                         <p class="text-white font-extrabold text-lg mt-3">{{ bet.pig_name }}</p>
-                        <p class="text-white/45 text-sm font-semibold mt-1">Mise {{ "%.2f"|format(bet.amount) }} BG • Cote x{{ "%.2f"|format(bet.odds_at_bet) }}</p>
+                        <p class="text-white/45 text-sm font-semibold mt-1">Mise {{ "%.2f"|format(bet.amount) }} 🪙 • Cote x{{ "%.2f"|format(bet.odds_at_bet) }}</p>
                     </div>
                     <div class="text-left lg:text-right">
                         {% if bet.status == 'won' %}

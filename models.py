@@ -149,6 +149,22 @@ class CoursePlan(db.Model):
         db.UniqueConstraint('pig_id', 'scheduled_at', name='ux_course_plan_pig_slot'),
     )
 
+class GrainMarket(db.Model):
+    """Singleton — etat partage de la Bourse aux Grains (une seule ligne, id=1)."""
+    id = db.Column(db.Integer, primary_key=True)
+    cursor_x = db.Column(db.Integer, default=3)           # 1-5 : axe prix
+    cursor_y = db.Column(db.Integer, default=3)           # 1-5 : axe qualite
+    vitrine_grain = db.Column(db.String(20), nullable=True)   # cle cereal bloquee (ex: 'mais')
+    vitrine_user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+    last_move_user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+    last_move_at = db.Column(db.DateTime, nullable=True)
+    last_purchase_at = db.Column(db.DateTime, nullable=True)
+    total_transactions = db.Column(db.Integer, default=0)
+
+    vitrine_user = db.relationship('User', foreign_keys=[vitrine_user_id])
+    last_move_user = db.relationship('User', foreign_keys=[last_move_user_id])
+
+
 class Auction(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     # Cochon en vente

@@ -121,7 +121,7 @@
         <!-- Charts -->
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
             <div class="card p-6">
-                <h3 class="font-title text-lg text-yellow-500 mb-4">💰 Top Fortunes (BG)</h3>
+                <h3 class="font-title text-lg text-yellow-500 mb-4">💰 Top Fortunes (🪙 BitGroins)</h3>
                 <canvas id="balanceChart" height="180"></canvas>
             </div>
             <div class="card p-6">
@@ -165,7 +165,7 @@
                             </div>
                         </td>
                         <td class="px-4 py-4 font-title text-blue-400">{{ "%.0f"|format(r.score) }}</td>
-                        <td class="px-4 py-4 font-bold text-yellow-400 text-sm">{{ "%.2f"|format(r.user.balance) }} <span class="text-white/30">BG</span></td>
+                        <td class="px-4 py-4 font-bold text-yellow-400 text-sm">{{ "%.2f"|format(r.user.balance) }} <span class="text-white/30">🪙</span></td>
                         <td class="px-4 py-4 font-bold text-green-400">{{ r.total_wins }}</td>
                         <td class="px-4 py-4 text-white/50 text-sm">{{ r.total_races }}</td>
                         <td class="px-4 py-4">
@@ -247,7 +247,7 @@
 
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
             <div class="card p-6">
-                <h3 class="font-title text-lg text-emerald-500 mb-4">📈 Profit/Perte aux paris (BG)</h3>
+                <h3 class="font-title text-lg text-emerald-500 mb-4">📈 Profit/Perte aux paris (🪙)</h3>
                 <canvas id="betProfitChart" height="200"></canvas>
             </div>
             <div class="card p-6">
@@ -290,10 +290,10 @@
                                 {{ r.bet_win_rate }}%
                             </span>
                         </td>
-                        <td class="px-4 py-3 text-white/50 text-sm">{{ "%.0f"|format(r.total_staked) }} BG</td>
-                        <td class="px-4 py-3 text-yellow-400 text-sm font-bold">{{ "%.0f"|format(r.total_winnings) }} BG</td>
+                        <td class="px-4 py-3 text-white/50 text-sm">{{ "%.0f"|format(r.total_staked) }} 🪙</td>
+                        <td class="px-4 py-3 text-yellow-400 text-sm font-bold">{{ "%.0f"|format(r.total_winnings) }} 🪙</td>
                         <td class="px-4 py-3 font-bold text-sm {% if r.bet_profit > 0 %}text-green-400{% elif r.bet_profit < 0 %}text-red-400{% else %}text-white/30{% endif %}">
-                            {% if r.bet_profit > 0 %}+{% endif %}{{ "%.1f"|format(r.bet_profit) }} BG
+                            {% if r.bet_profit > 0 %}+{% endif %}{{ "%.1f"|format(r.bet_profit) }} 🪙
                         </td>
                         <td class="px-4 py-3 text-sm {% if r.best_odds_hit >= 5 %}text-cyan-400 font-bold{% else %}text-white/40{% endif %}">
                             {% if r.best_odds_hit > 0 %}x{{ r.best_odds_hit }}{% else %}--{% endif %}
@@ -337,7 +337,7 @@
                         <th class="px-4 py-3">Cochons actifs</th>
                         <th class="px-4 py-3">Legendaires</th>
                         <th class="px-4 py-3">Nourriture</th>
-                        <th class="px-4 py-3">BG gagnes</th>
+                        <th class="px-4 py-3">🪙 gagnes</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-white/5">
@@ -356,8 +356,8 @@
                         <td class="px-4 py-3 text-blue-400 text-sm font-bold">{{ r.total_school }} <span class="text-white/20">sess.</span></td>
                         <td class="px-4 py-3 text-white/50 text-sm">{{ r.active_pigs_count }}</td>
                         <td class="px-4 py-3 text-sm {% if r.legendary_count > 0 %}text-yellow-400 font-bold{% else %}text-white/15{% endif %}">{{ r.legendary_count }}</td>
-                        <td class="px-4 py-3 text-lime-400 text-sm">{{ "%.0f"|format(r.total_spent_on_food) }} <span class="text-white/20">BG</span></td>
-                        <td class="px-4 py-3 text-emerald-400 text-sm font-bold">{{ "%.0f"|format(r.total_earned) }} <span class="text-white/20">BG</span></td>
+                        <td class="px-4 py-3 text-lime-400 text-sm">{{ "%.0f"|format(r.total_spent_on_food) }} <span class="text-white/20">🪙</span></td>
+                        <td class="px-4 py-3 text-emerald-400 text-sm font-bold">{{ "%.0f"|format(r.total_earned) }} <span class="text-white/20">🪙</span></td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -441,7 +441,7 @@
                         <span class="font-title text-white/20 text-sm">#{{ loop.index }}</span>
                         <span class="text-white font-bold text-sm">{{ r.user.username }}</span>
                     </div>
-                    <span class="text-orange-400 font-bold text-sm">{{ "%.1f"|format(r.bet_profit) }} BG</span>
+                    <span class="text-orange-400 font-bold text-sm">{{ "%.1f"|format(r.bet_profit) }} 🪙</span>
                 </div>
                 {% endif %}
                 {% endfor %}
@@ -541,14 +541,14 @@
                         <span class="font-title text-white/20 text-sm">#{{ loop.index }}</span>
                         <span class="text-white font-bold text-sm">{{ r.user.username }}</span>
                     </div>
-                    <span class="text-yellow-400 font-bold text-sm">{{ "%.0f"|format(r.total_staked) }} BG</span>
+                    <span class="text-yellow-400 font-bold text-sm">{{ "%.0f"|format(r.total_staked) }} 🪙</span>
                 </div>
                 {% endif %}
                 {% endfor %}
             </div>
             {% endif %}
 
-            <!-- Pauvre en BG -->
+            <!-- Pauvre en BitGroins -->
             {% set poorest = rankings|sort(attribute='user.balance')|list %}
             {% if poorest %}
             <div class="card p-6 border-slate-500/20">
@@ -565,7 +565,7 @@
                         <span class="font-title text-white/20 text-sm">#{{ loop.index }}</span>
                         <span class="text-white font-bold text-sm">{{ r.user.username }}</span>
                     </div>
-                    <span class="text-slate-400 font-bold text-sm">{{ "%.2f"|format(r.user.balance) }} BG</span>
+                    <span class="text-slate-400 font-bold text-sm">{{ "%.2f"|format(r.user.balance) }} 🪙</span>
                 </div>
                 {% endfor %}
             </div>
@@ -589,7 +589,7 @@
                         <span class="font-title text-white/20 text-sm">#{{ loop.index }}</span>
                         <span class="text-white font-bold text-sm">{{ r.user.username }}</span>
                     </div>
-                    <span class="text-lime-400 font-bold text-sm">{{ "%.0f"|format(r.total_spent_on_food) }} BG</span>
+                    <span class="text-lime-400 font-bold text-sm">{{ "%.0f"|format(r.total_spent_on_food) }} 🪙</span>
                 </div>
                 {% endif %}
                 {% endfor %}
@@ -638,7 +638,7 @@
     // Balance chart
     new Chart(document.getElementById('balanceChart').getContext('2d'), {
         type: 'bar',
-        data: { labels: chartLabels, datasets: [{ label: 'Fortune (BG)', data: balanceData, backgroundColor: 'rgba(251, 191, 36, 0.4)', borderColor: '#fbbf24', borderWidth: 2, borderRadius: 8 }] },
+        data: { labels: chartLabels, datasets: [{ label: 'Fortune (BitGroins)', data: balanceData, backgroundColor: 'rgba(251, 191, 36, 0.4)', borderColor: '#fbbf24', borderWidth: 2, borderRadius: 8 }] },
         options: chartOpts()
     });
 
@@ -692,7 +692,7 @@
         data: {
             labels: allLabels,
             datasets: [{
-                label: 'Profit (BG)',
+                label: 'Profit (BitGroins)',
                 data: allBetProfit,
                 backgroundColor: allBetProfit.map(v => v >= 0 ? 'rgba(52, 211, 153, 0.5)' : 'rgba(248, 113, 113, 0.5)'),
                 borderColor: allBetProfit.map(v => v >= 0 ? '#34d399' : '#f87171'),

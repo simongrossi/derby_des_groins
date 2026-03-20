@@ -23,7 +23,7 @@
                             <p class="text-[11px] uppercase tracking-[0.2em] text-pink-100/35 font-bold">Elevage</p>
                             <div class="flex items-center gap-2">
                                 <span class="font-title text-2xl leading-none text-yellow-400">{{ "%.2f"|format(user.balance) }}</span>
-                                <span class="text-xs font-bold uppercase text-pink-100/45">BG</span>
+                                <span class="text-xs font-bold uppercase text-pink-100/45">🪙</span>
                             </div>
                         </div>
                         <div class="h-8 w-px bg-pink-100/10"></div>
@@ -53,6 +53,7 @@
                 <a href="/courses" class="{{ nav_base }} {{ nav_active if active_page == 'courses' else nav_idle }}">📅 Courses</a>
                 <a href="/mon-cochon" class="{{ nav_base }} {{ nav_active if active_page == 'mon_cochon' else nav_idle }}">🐷 Mon Cochon</a>
                 <a href="/veterinaire" class="{{ nav_base }} {{ 'border-red-400/35 bg-red-500/15 text-red-100 shadow-[0_8px_24px_rgba(248,113,113,0.12)]' if injured_pig_nav_id else (nav_active if active_page == 'veterinaire' else nav_idle) }}">{{ '🏥 Véto urgent' if injured_pig_nav_id else '🏥 Vétérinaire' }}</a>
+                <a href="/bourse" class="{{ nav_base }} {{ nav_active if active_page == 'bourse' else nav_idle }}">🌾 Bourse</a>
                 <a href="/marche" class="{{ nav_base }} {{ nav_active if active_page == 'marche' else nav_idle }}">🏪 Marché</a>
                 <a href="/classement" class="{{ nav_base }} {{ nav_active if active_page == 'classement' else nav_idle }}">🏆 Classement</a>
                 <a href="/profil" class="{{ nav_base }} {{ nav_active if active_page == 'profil' else nav_idle }}">👤 Profil</a>

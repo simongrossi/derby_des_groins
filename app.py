@@ -5,7 +5,7 @@ import os
 
 from extensions import db
 from models import (
-    GameConfig, User, Pig, BalanceTransaction,
+    GameConfig, User, Pig, BalanceTransaction, GrainMarket,
 )
 from data import PIG_ORIGINS
 from helpers import (
@@ -47,6 +47,7 @@ def create_app():
         seed_users()
         ensure_balance_transaction_snapshots()
         ensure_next_race()
+        _init_grain_market()
 
     if should_autostart_scheduler(app):
         start_scheduler(app)
@@ -202,13 +203,25 @@ def ensure_balance_transaction_snapshots():
             balance_before=0.0,
             balance_after=opening_balance,
             reason_code='snapshot',
-            reason_label='Ouverture du journal BG',
+            reason_label='Ouverture du journal BitGroin',
             details="Solde observe au moment de l'activation de la tracabilite.",
             reference_type='user',
             reference_id=user.id,
         )
         created = True
     if created:
+        db.session.commit()
+
+
+def _init_grain_market():
+    """Cree la ligne singleton de la Bourse aux Grains si elle n'existe pas."""
+    from data import BOURSE_DEFAULT_POS
+    if not GrainMarket.query.first():
+        db.session.add(GrainMarket(
+            id=1,
+            cursor_x=BOURSE_DEFAULT_POS,
+            cursor_y=BOURSE_DEFAULT_POS,
+        ))
         db.session.commit()
 
 

@@ -22,6 +22,7 @@
 7.  **`Bet`** : Paris des utilisateurs (Simple, Couplé Ordre, Tiercé Ordre) avec gestion des statuts de gain.
 8.  **`BalanceTransaction`** : Journal comptable complet de chaque BitGroin dépensé ou gagné (traçabilité totale).
 9.  **`Auction`** : Marché aux enchères temporisées pour l'achat/vente de cochons entre joueurs.
+10. **`GrainMarket`** : Singleton partagé de la Bourse aux Grains. Stocke la position du curseur (cursor_x, cursor_y) sur la grille 5x5, le grain actuellement en vitrine (bloqué), et les métadonnées de la dernière transaction.
 
 ## Mécaniques Principales
 
@@ -56,6 +57,7 @@ derby_des_groins/
 │   ├── auth.py             # Login / Logout / Inscription
 │   ├── main.py             # Index, Classement, Historique, Légendes
 │   ├── pig.py              # Gestion tamagotchi, nutrition, entraînement, reproduction
+│   ├── bourse.py           # Bourse aux Grains (marché dynamique, grille, vitrine)
 │   ├── race.py             # Calendrier, planification, visualisation des courses
 │   ├── market.py           # Enchères et transactions de cochons
 │   ├── abattoir.py         # Hall des cochons morts / cimetière
@@ -70,6 +72,7 @@ derby_des_groins/
 - `/pig/...` : Gestion des cochons (nutrition, entraînement, reproduction, étable).
 - `/race/...` : Calendrier et suivi des courses en direct.
 - `/market` : Accès aux ventes aux enchères.
+- `/bourse` : Bourse aux Grains — marché dynamique de céréales avec grille de cotation partagée.
 - `/classement` : Ranking global des éleveurs et trophées.
 - `/history` : Journal complet des BitGroins et archives des courses.
 - `/abattoir` : Hommage aux cochons disparus.

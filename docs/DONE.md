@@ -19,6 +19,21 @@ Liste des fonctionnalités et idées déjà implémentées dans le projet.
 - **Retraite d'honneur & Héritage permanent** : Les cochons légendaires ou victorieux peuvent être mis à la retraite pour booster l'héritage de la porcherie et renforcer leur lignée.
 - **Pression de nourrissage** : Le coût des céréales augmente avec le nombre de cochons dans la porcherie (+20% par cochon supplémentaire) pour équilibrer la progression.
 
+## Bourse aux Grains (Marche dynamique)
+- **Grille de cotation 5x5** : un curseur partage entre tous les joueurs determine le prix (axe X) et la qualite (axe Y) de la nourriture.
+- **Points de mouvement** : chaque joueur accumule des points en achetant (1 pt / 10 achats) et peut deplacer le curseur pour influencer les prix.
+- **Vitrine anti-spam** : le dernier grain achete est bloque pour tous jusqu'a ce qu'un autre grain soit achete, forcant la variete.
+- **Prix dynamiques** : le cout final combine le modificateur Bourse, la pression de porcherie et le cout de base.
+- **Qualite variable** : les bonus de faim, energie et stats sont multiplies par le modificateur de qualite de la grille.
+- **Interface dediee** (`/bourse`) : grille visuelle, controles directionnels, selecteur de cochon, cartes de cereales avec prix ajustes.
+- **Modele GrainMarket** : singleton en base pour stocker l'etat partage du marche.
+
+## Classement enrichi
+- **5 onglets** : General, Abattoir & Cimetiere, Paris & Fortune, Elevage & Ecole, Mur de la Honte.
+- **Palmares complet** : 18+ awards automatiques (Roi du Derby, Boucher en Chef, Kamikaze Supreme, Le Pigeon, etc.).
+- **Charts supplementaires** : morts empilees par cause, donut des causes de deces, profit/perte paris, taux de reussite, courses disputees, win rate.
+- **Mur de la Honte** : classements des pires performances (looser, boucher, pigeon, negligent, flambeur, rat fauche, gaveur).
+
 ## Infrastructure et Admin
 - **Configuration Admin** : Ajout de réglages dans le panneau d'administration pour les seuils de participants et les modes de gestion des courses vides.
 - **Historique étendu** : Les courses annulées apparaissent désormais dans l'historique pour une meilleure transparence.

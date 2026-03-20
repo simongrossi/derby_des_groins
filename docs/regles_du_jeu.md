@@ -30,6 +30,36 @@ Entraînez-le régulièrement, envoyez-le à l'école porcine et nourrissez-le p
 - Le menu **Vétérinaire** ouvre une salle d'attente si tout va bien, ou une **urgence** avec mini-jeu chronométré si un patient doit être opéré.
 - Si le puzzle est résolu à temps, le cochon survit et repart avec une convalescence légère. Si le temps expire, il peut mourir sur la table.
 
+## 2.d Bourse aux Grains
+
+La nourriture ne s'achete plus a prix fixe. Tous les prix et la qualite des cereales sont determines par la **Bourse aux Grains**, un marche dynamique partage entre tous les joueurs.
+
+### La Grille de Cotation (5x5)
+- Un **curseur** unique, visible par tous, se deplace sur une grille.
+- **Axe horizontal (Prix)** : plus le curseur est a droite, plus la nourriture est chere (x0.55 a x1.60).
+- **Axe vertical (Qualite)** : plus le curseur est haut, plus la nourriture apporte de bonus (faim, energie, stats) eleves.
+- Le centre de la grille (3, 3) correspond au tarif et a la qualite de reference (x1.00).
+
+### Points de Mouvement
+- Avant d'acheter, chaque joueur peut **deplacer le curseur** d'une ou plusieurs cases.
+- Le nombre de cases autorisees depend du nombre total d'achats de nourriture du joueur : **1 point de mouvement par tranche de 10 achats** (minimum 1).
+- Chaque deplacement vaut 1 point (horizontal ou vertical, 1 case a la fois).
+- **Le deplacement affecte tous les joueurs** : baisser le prix pour soi peut aussi profiter aux concurrents, et inversement.
+
+### La Vitrine (anti-spam)
+- Chaque achat place le grain achete **en vitrine**.
+- Le grain en vitrine est **bloque** : personne ne peut l'acheter tant qu'un autre joueur n'a pas achete un grain different.
+- Cela force la variete et empeche de spammer la meme cereale a l'infini.
+
+### Strategies
+- **Le Prudent** : deplace le curseur vers la gauche pour payer moins cher, au risque de reduire la qualite.
+- **Le Speculateur** : monte le curseur vers le haut pour booster la qualite de son achat, meme si le prix augmente.
+- **Le Saboteur** : pousse le curseur a droite pour faire monter les prix et bloquer les joueurs suivants.
+
+### Acces
+- La Bourse est accessible depuis le menu principal (**Bourse**).
+- Le prix final affiche tient compte du modificateur Bourse, de la pression de porcherie (nombre de cochons) et du cout de base de la cereale.
+
 ## 3. Les Courses
 - Il y a des courses régulières prévues à heure fixe ou forçables manuellement par l'admin.
 - Le calendrier continue de vivre meme sans visiteur connecte : les courses partent via une tache de fond.

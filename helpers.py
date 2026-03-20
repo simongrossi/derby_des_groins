@@ -7,7 +7,7 @@ from zoneinfo import ZoneInfo
 from extensions import db
 from models import (
     GameConfig, User, Pig, Race, Participant, Bet,
-    BalanceTransaction, CoursePlan, Auction,
+    BalanceTransaction, CoursePlan, Auction, GrainMarket,
 )
 from data import (
     PIGS, PIG_ORIGINS, PIG_EMOJIS, PIG_NAME_PREFIXES, PIG_NAME_SUFFIXES, PRELOADED_PIG_NAMES,
@@ -21,6 +21,11 @@ from data import (
     WEEKLY_RACE_QUOTA, JOURS_FR, IDEAL_WEIGHT_MALUS_THRESHOLD_RATIO,
     MAX_WEIGHT_PERFORMANCE_MALUS, FRESHNESS_BONUS_HOURS, FRESHNESS_MORAL_BONUS,
     PIG_COURSE_SEGMENT_TYPES,
+    BOURSE_GRID_SIZE, BOURSE_GRID_VALUES, BOURSE_DEFAULT_POS,
+    BOURSE_BLOCK_MIN, BOURSE_BLOCK_MAX, BOURSE_SURCHARGE_FACTOR,
+    BOURSE_MOVEMENT_DIVISOR, BOURSE_MIN_MOVEMENT,
+    BOURSE_GRAIN_LAYOUT,
+    CEREALS,
 )
 from race_engine import CourseManager
 
@@ -658,7 +663,7 @@ def maybe_grant_emergency_relief(user):
         balance_after=balance_after,
         reason_code='emergency_relief',
         reason_label="Prime d'urgence",
-        details="Filet de sécurité automatique pour éviter un blocage à 0 BG.",
+        details="Filet de sécurité automatique pour éviter un blocage à 0 🪙.",
         reference_type='system',
         reference_id=user.id,
     )
@@ -1585,3 +1590,184 @@ def get_race_history_entries():
             'total_paid_out': stats['total_paid_out'],
         })
     return entries
+
+
+# ─── BOURSE AUX GRAINS ──────────────────────────────────────────────────────
+
+def get_grain_market():
+    """Retourne le singleton GrainMarket (le cree si absent)."""
+    market = GrainMarket.query.first()
+    if market is None:
+        market = GrainMarket(
+            id=1,
+            cursor_x=BOURSE_DEFAULT_POS,
+            cursor_y=BOURSE_DEFAULT_POS,
+        )
+        db.session.add(market)
+        db.session.commit()
+    return market
+
+
+# ── Positions & surcouts ─────────────────────────────────────────
+
+def _cell_value(grid_index):
+    """Valeur de surcout pour un indice 0-6 de la grille 7x7."""
+    return BOURSE_GRID_VALUES[max(0, min(BOURSE_GRID_SIZE - 1, grid_index))]
+
+
+def get_grain_grid_pos(market, dx, dy):
+    """Position absolue (gx, gy) sur la grille 7x7 d'un grain relatif (dx, dy)."""
+    bx = market.cursor_x if market.cursor_x is not None else BOURSE_DEFAULT_POS
+    by = market.cursor_y if market.cursor_y is not None else BOURSE_DEFAULT_POS
+    return (bx + dx, by + dy)
+
+
+def get_grain_surcharge(gx, gy):
+    """Surcout (multiplicateur) pour un grain a la position absolue (gx, gy).
+
+    Retourne un float >= 1.0.  Centre (3,3) -> valeurs 0+0 -> x1.00.
+    Coin extreme (0,0) -> valeurs 6+6=12 -> x1.60.
+    """
+    val = _cell_value(gx) + _cell_value(gy)
+    return 1.0 + val * BOURSE_SURCHARGE_FACTOR
+
+
+def get_all_grain_surcharges(market):
+    """Dict {cereal_key: surcharge_multiplier} pour chaque grain du bloc 3x3."""
+    result = {}
+    for (dx, dy), cereal_key in BOURSE_GRAIN_LAYOUT.items():
+        if cereal_key is None:
+            continue
+        gx, gy = get_grain_grid_pos(market, dx, dy)
+        result[cereal_key] = get_grain_surcharge(gx, gy)
+    return result
+
+
+# ── Mouvement ────────────────────────────────────────────────────
+
+def get_bourse_movement_points(user_id):
+    """Nombre de cases que l'utilisateur peut deplacer le curseur."""
+    total_purchases = db.session.query(func.count(BalanceTransaction.id)).filter(
+        BalanceTransaction.user_id == user_id,
+        BalanceTransaction.reason_code == 'feed_purchase',
+    ).scalar() or 0
+    return max(BOURSE_MIN_MOVEMENT, total_purchases // BOURSE_MOVEMENT_DIVISOR)
+
+
+def move_bourse_cursor(market, dx, dy, max_points):
+    """Deplace le centre du bloc 3x3 de (dx, dy).
+
+    Le centre est contraint entre BLOCK_MIN et BLOCK_MAX (1-5)
+    pour que le bloc 3x3 reste dans la grille 7x7.
+    Retourne le nombre de points consommes.
+    """
+    if dx == 0 and dy == 0:
+        return 0
+
+    # Limiter au nombre de points dispo
+    total_requested = abs(dx) + abs(dy)
+    if total_requested > max_points:
+        if dx != 0:
+            dx = max(-max_points, min(max_points, dx))
+        else:
+            dy = max(-max_points, min(max_points, dy))
+
+    # Clamper aux bornes du bloc
+    new_x = max(BOURSE_BLOCK_MIN, min(BOURSE_BLOCK_MAX, market.cursor_x + dx))
+    new_y = max(BOURSE_BLOCK_MIN, min(BOURSE_BLOCK_MAX, market.cursor_y + dy))
+    actual_dx = new_x - market.cursor_x
+    actual_dy = new_y - market.cursor_y
+    points_used = abs(actual_dx) + abs(actual_dy)
+
+    market.cursor_x = new_x
+    market.cursor_y = new_y
+    return points_used
+
+
+# ── Vitrine (anti-spam) ──────────────────────────────────────────
+
+def is_grain_blocked(grain_key, market):
+    """Retourne True si ce grain est actuellement bloque en vitrine."""
+    return market.vitrine_grain == grain_key
+
+
+def update_vitrine(market, grain_key, user_id):
+    """Met a jour la vitrine apres un achat."""
+    market.vitrine_grain = grain_key
+    market.vitrine_user_id = user_id
+    market.last_purchase_at = datetime.utcnow()
+    market.total_transactions = (market.total_transactions or 0) + 1
+
+
+# ── Cereales enrichies pour le template ──────────────────────────
+
+def get_bourse_cereals(market, feeding_multiplier=1.0):
+    """Retourne les cereales presentes dans le bloc 3x3, avec surcout individuel.
+
+    Chaque cereal est enrichi de :
+        original_cost, surcharge, bourse_cost, effective_cost,
+        grid_x, grid_y, cell_value, is_blocked, block_dx, block_dy
+    """
+    surcharges = get_all_grain_surcharges(market)
+    result = {}
+    for (dx, dy), cereal_key in BOURSE_GRAIN_LAYOUT.items():
+        if cereal_key is None:
+            continue
+        cer = CEREALS[cereal_key]
+        gx, gy = get_grain_grid_pos(market, dx, dy)
+        surcharge = surcharges[cereal_key]
+        c = dict(cer)
+        c['original_cost'] = cer['cost']
+        c['surcharge'] = surcharge
+        c['bourse_cost'] = round(cer['cost'] * surcharge, 2)
+        c['effective_cost'] = round(cer['cost'] * surcharge * feeding_multiplier, 2)
+        c['grid_x'] = gx
+        c['grid_y'] = gy
+        c['cell_value'] = _cell_value(gx) + _cell_value(gy)
+        c['is_blocked'] = is_grain_blocked(cereal_key, market)
+        c['block_dx'] = dx
+        c['block_dy'] = dy
+        result[cereal_key] = c
+    return result
+
+
+# ── Donnees de grille 7x7 pour le template ───────────────────────
+
+def get_bourse_grid_data(market):
+    """Construit les donnees de la grille 7x7 avec le bloc 3x3 superpose."""
+    bx = market.cursor_x if market.cursor_x is not None else BOURSE_DEFAULT_POS
+    by = market.cursor_y if market.cursor_y is not None else BOURSE_DEFAULT_POS
+
+    # Index inversé : grain relatif -> cereal key
+    block_grains = {}
+    for (dx, dy), ck in BOURSE_GRAIN_LAYOUT.items():
+        abs_x, abs_y = bx + dx, by + dy
+        block_grains[(abs_x, abs_y)] = ck  # ck peut etre None (case vide du bloc)
+
+    grid = []
+    for y in range(BOURSE_GRID_SIZE):        # y=0 en haut
+        row = []
+        for x in range(BOURSE_GRID_SIZE):    # x=0 a gauche
+            val_x = BOURSE_GRID_VALUES[x]
+            val_y = BOURSE_GRID_VALUES[y]
+            cell_value = val_x + val_y
+            is_block = (abs(x - bx) <= 1 and abs(y - by) <= 1)
+            is_center = (x == bx and y == by)
+            grain_key = block_grains.get((x, y))  # None si hors bloc ou case vide
+            grain_emoji = CEREALS[grain_key]['emoji'] if grain_key and grain_key in CEREALS else None
+            grain_name = CEREALS[grain_key]['name'] if grain_key and grain_key in CEREALS else None
+
+            row.append({
+                'x': x, 'y': y,
+                'val_x': val_x,
+                'val_y': val_y,
+                'cell_value': cell_value,
+                'surcharge': round(1.0 + cell_value * BOURSE_SURCHARGE_FACTOR, 2),
+                'is_block': is_block,
+                'is_center': is_center,
+                'grain_key': grain_key,
+                'grain_emoji': grain_emoji,
+                'grain_name': grain_name,
+            })
+        grid.append(row)
+    return grid
