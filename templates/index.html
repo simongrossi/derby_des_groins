@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🐷 Derby des Groins</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * { font-family: 'Nunito', sans-serif; }
+        .font-title { font-family: 'Lilita One', cursive; }
+
+        body {
+            background: #1a0a2e;
+            background-image:
+                radial-gradient(ellipse at 20% 50%, rgba(255, 100, 0, 0.15) 0%, transparent 60%),
+                radial-gradient(ellipse at 80% 20%, rgba(255, 200, 0, 0.1) 0%, transparent 50%),
+                radial-gradient(ellipse at 50% 80%, rgba(180, 0, 255, 0.1) 0%, transparent 50%);
+            min-height: 100vh;
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 1.5rem;
+        }
+
+        .card-gold {
+            background: linear-gradient(135deg, rgba(255, 180, 0, 0.15), rgba(255, 100, 0, 0.1));
+            border: 1px solid rgba(255, 200, 0, 0.3);
+            border-radius: 1.5rem;
+        }
+
+        .pig-card {
+            background: rgba(255, 255, 255, 0.06);
+            border: 2px solid transparent;
+            border-radius: 1rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .pig-card:hover { 
+            background: rgba(255, 200, 0, 0.12);
+            border-color: rgba(255, 200, 0, 0.5);
+            transform: translateY(-2px);
+        }
+        .pig-card.selected {
+            background: rgba(255, 200, 0, 0.2);
+            border-color: #fbbf24;
+            box-shadow: 0 0 20px rgba(255, 200, 0, 0.3);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #f59e0b, #ef4444);
+            border: none;
+            color: white;
+            font-weight: 800;
+            border-radius: 0.75rem;
+            padding: 0.75rem 2rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 8px 25px rgba(245, 158, 11, 0.4);
+        }
+        .btn-primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .odds-badge {
+            background: linear-gradient(135deg, #1e1b4b, #312e81);
+            border: 1px solid #4f46e5;
+            color: #a5b4fc;
+            border-radius: 0.5rem;
+            padding: 0.25rem 0.75rem;
+            font-weight: 800;
+            font-size: 1.1rem;
+        }
+        .odds-low { border-color: #16a34a; color: #86efac; background: linear-gradient(135deg, #052e16, #14532d); }
+        .odds-mid { border-color: #d97706; color: #fcd34d; background: linear-gradient(135deg, #1c1007, #451a03); }
+        .odds-high { border-color: #dc2626; color: #fca5a5; background: linear-gradient(135deg, #1c0707, #450a0a); }
+
+        #countdown-display {
+            font-family: 'Lilita One', cursive;
+            background: linear-gradient(135deg, #f59e0b, #ef4444);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .result-card {
+            background: linear-gradient(135deg, rgba(34, 197, 94, 0.15), rgba(16, 185, 129, 0.08));
+            border: 1px solid rgba(34, 197, 94, 0.3);
+            border-radius: 1rem;
+        }
+
+        .pig-emoji { 
+            font-size: 2.5rem; 
+            display: block;
+            animation: bounce 2s ease-in-out infinite;
+        }
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-5px); }
+        }
+
+        .track-line {
+            height: 3px;
+            background: linear-gradient(90deg, transparent, #f59e0b, #ef4444, transparent);
+            border-radius: 999px;
+            margin: 0.5rem 0;
+            opacity: 0.4;
+        }
+
+        .alert-success {
+            background: rgba(34, 197, 94, 0.15);
+            border: 1px solid rgba(34, 197, 94, 0.4);
+            border-radius: 0.75rem;
+            color: #86efac;
+        }
+
+        .flash-in {
+            animation: flashIn 0.5s ease-out;
+        }
+        @keyframes flashIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: rgba(255,255,255,0.05); }
+        ::-webkit-scrollbar-thumb { background: rgba(245, 158, 11, 0.4); border-radius: 3px; }
+    </style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="border-b border-white/10 sticky top-0 z-50" style="background: rgba(26, 10, 46, 0.9); backdrop-filter: blur(20px);">
+    <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+            <span class="text-3xl">🐷</span>
+            <div>
+                <h1 class="font-title text-2xl text-yellow-400 leading-none">Derby des Groins</h1>
+                <p class="text-xs text-white/40 font-semibold">Le pari le plus porcin de l'internet</p>
+            </div>
+        </div>
+
+        <nav class="flex items-center gap-3">
+            {% if user %}
+                <div class="card px-4 py-2 flex items-center gap-2">
+                    <span class="text-yellow-400 font-bold text-lg">{{ "%.2f"|format(user.balance) }}</span>
+                    <span class="text-white/50 text-sm font-semibold">BG</span>
+                    <span class="text-white/30">|</span>
+                    <span class="text-white/70 text-sm font-semibold">{{ user.username }}</span>
+                </div>
+                <a href="/mon-cochon" class="text-pink-400/80 hover:text-pink-300 text-sm font-bold transition-colors">🐷 Mon Cochon</a>
+                <a href="/marche" class="text-yellow-600/80 hover:text-yellow-500 text-sm font-bold transition-colors">🏪 Marché</a>
+                <a href="/history" class="text-white/60 hover:text-white text-sm font-bold transition-colors">Historique</a>
+                <a href="/legendes-pop" class="text-purple-400 hover:text-purple-300 text-sm font-bold transition-colors">🌟 Pop Cult'</a>
+                {% if user.is_admin %}<a href="/admin" class="text-indigo-400/70 hover:text-indigo-300 text-sm font-bold transition-colors">🔧 Admin</a>{% endif %}
+                <a href="/logout" class="text-red-400/70 hover:text-red-400 text-sm font-bold transition-colors">Quitter</a>
+            {% else %}
+                <a href="/login" class="text-white/70 hover:text-white font-bold text-sm transition-colors">Connexion</a>
+                <a href="/register" class="btn-primary text-sm px-4 py-2 rounded-lg">S'inscrire</a>
+            {% endif %}
+        </nav>
+    </div>
+</header>
+
+<main class="max-w-6xl mx-auto px-4 py-8">
+
+    <!-- COUNTDOWN HERO -->
+    <section class="card-gold p-8 mb-8 text-center flash-in">
+        <p class="text-yellow-400/70 font-bold text-sm uppercase tracking-widest mb-2">Prochaine course dans</p>
+        <div id="countdown-display" class="text-7xl mb-3">--:--:--</div>
+        <div class="track-line max-w-xs mx-auto"></div>
+        <p class="text-white/50 text-sm mt-2 font-semibold">
+            {% if next_race %}
+                Course #{{ next_race.id }} — {{ next_race.scheduled_at.strftime('%H:%M') }}
+            {% else %}
+                Chargement...
+            {% endif %}
+        </p>
+        <div id="race-running-msg" class="hidden mt-4 text-yellow-400 font-bold text-xl animate-pulse">
+            🏁 LA COURSE EST EN COURS ! 🏁
+        </div>
+    </section>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+        <!-- TABLEAU DES COTES -->
+        <div class="lg:col-span-2">
+            <div class="card p-6">
+                <h2 class="font-title text-2xl text-white mb-1">🏁 Partants</h2>
+                <p class="text-white/40 text-sm mb-5 font-semibold">Cliquez sur un cochon pour parier</p>
+
+                {% if participants %}
+                <div class="grid grid-cols-2 sm:grid-cols-3 gap-3" id="pig-grid">
+                    {% for pig in participants %}
+                    {% set odds_class = 'odds-low' if pig.odds <= 2.5 else ('odds-mid' if pig.odds <= 4.0 else 'odds-high') %}
+                    <div class="pig-card p-4 text-center {% if pig.pig_id %}ring-1 ring-pink-500/30{% endif %}" onclick="selectPig('{{ pig.name }}', {{ pig.odds }})" data-pig="{{ pig.name }}" data-odds="{{ pig.odds }}">
+                        <span class="pig-emoji">{{ pig.emoji }}</span>
+                        <p class="text-white font-bold mt-2 text-sm leading-tight">{{ pig.name }}</p>
+                        {% if pig.owner_name %}
+                        <p class="text-pink-400/70 text-xs font-bold">👤 {{ pig.owner_name }}</p>
+                        {% endif %}
+                        <div class="odds-badge {{ odds_class }} mt-2 inline-block">x{{ pig.odds }}</div>
+                        <p class="text-white/30 text-xs mt-1">{{ "%.0f"|format(pig.win_probability * 100) }}% de chance</p>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="text-white/40 text-center py-8">Aucune course disponible pour l'instant.</p>
+                {% endif %}
+            </div>
+
+            <!-- FORM DE PARI -->
+            {% if user and next_race %}
+            <div class="card p-6 mt-6" id="bet-form-section">
+                <h2 class="font-title text-xl text-white mb-4">💰 Placer un Pari</h2>
+
+                {% if user_bets %}
+                <div class="alert-success p-4 mb-4">
+                    <p class="font-bold">✅ Pari déjà placé pour cette course :</p>
+                    {% for bet in user_bets %}
+                    <p class="text-sm mt-1">→ <strong>{{ bet.pig_name }}</strong> — {{ bet.amount }} BG @ x{{ bet.odds_at_bet }}</p>
+                    {% endfor %}
+                </div>
+                {% endif %}
+
+                <form method="POST" action="/bet" id="bet-form">
+                    <input type="hidden" name="race_id" value="{{ next_race.id }}">
+                    <input type="hidden" name="pig_name" id="selected-pig-input" value="">
+
+                    <div class="mb-4 p-4 rounded-xl border border-white/10 bg-white/5" id="selected-pig-display">
+                        <p class="text-white/40 text-sm font-semibold">Aucun cochon sélectionné</p>
+                    </div>
+
+                    <div class="flex gap-3 items-center">
+                        <div class="flex-1">
+                            <label class="text-white/60 text-sm font-bold block mb-1">Mise (max: {{ "%.0f"|format(user.balance) }} BG)</label>
+                            <input type="number" name="amount" id="bet-amount" min="1" max="{{ user.balance }}" step="1"
+                                   class="w-full bg-white/5 border border-white/20 rounded-xl px-4 py-3 text-white font-bold focus:outline-none focus:border-yellow-400 transition-colors"
+                                   placeholder="Ex: 20">
+                        </div>
+                        <div class="pt-6">
+                            <button type="submit" id="bet-submit" class="btn-primary" disabled>
+                                Parier ! 🐷
+                            </button>
+                        </div>
+                    </div>
+
+                    <div id="potential-win" class="mt-3 text-sm text-white/50 font-semibold hidden">
+                        Gain potentiel : <span id="potential-amount" class="text-green-400 font-bold"></span> BG
+                    </div>
+                </form>
+            </div>
+            {% elif not user %}
+            <div class="card p-6 mt-6 text-center">
+                <p class="text-white/60 mb-4 font-semibold">Connecte-toi pour parier !</p>
+                <div class="flex gap-3 justify-center">
+                    <a href="/login" class="btn-primary text-sm px-6 py-2.5 rounded-xl">Connexion</a>
+                    <a href="/register" class="text-white/70 hover:text-white font-bold text-sm py-2.5 px-4 transition-colors">Inscription</a>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- SIDEBAR RÉSULTATS -->
+        <div class="space-y-4">
+
+            <!-- DERNIER RÉSULTAT -->
+            <div class="card p-5">
+                <h2 class="font-title text-xl text-white mb-4">🏆 Derniers Résultats</h2>
+                {% if recent_races %}
+                <div class="space-y-3" id="results-list">
+                    {% for race in recent_races %}
+                    <div class="result-card p-3">
+                        <div class="flex items-center justify-between mb-1">
+                            <span class="text-green-400 font-bold text-sm">Course #{{ race.id }}</span>
+                            <span class="text-white/40 text-xs">{{ race.finished_at.strftime('%H:%M') if race.finished_at }}</span>
+                        </div>
+                        <p class="text-white font-bold">🥇 {{ race.winner_name }}</p>
+                        <p class="text-white/50 text-xs mt-1">Cote : x{{ race.winner_odds }}</p>
+
+                        <!-- Positions -->
+                        {% set sorted_parts = race.participants | sort(attribute='finish_position') %}
+                        <div class="mt-2 space-y-0.5">
+                        {% for p in sorted_parts %}
+                            {% if p.finish_position %}
+                            <div class="flex items-center gap-2 text-xs">
+                                <span class="text-white/30 w-4">{{ p.finish_position }}.</span>
+                                <span>{{ p.emoji }}</span>
+                                <span class="text-white/60">{{ p.name }}</span>
+                            </div>
+                            {% endif %}
+                        {% endfor %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="text-white/40 text-sm text-center py-4">Aucune course terminée.</p>
+                {% endif %}
+            </div>
+
+            <!-- BONUS GROINS -->
+            <div class="card p-5 text-center">
+                <p class="text-4xl mb-2">🎰</p>
+                <p class="text-yellow-400 font-bold">Solde de départ</p>
+                <p class="text-white/60 text-sm mt-1">Chaque nouveau joueur reçoit <strong class="text-yellow-400">100 BitGroins</strong> gratuits !</p>
+            </div>
+
+            <!-- PRIX MOYEN DU GROIN -->
+            <div class="card p-5 text-center">
+                <p class="text-yellow-400/50 text-xs font-bold uppercase tracking-wider mb-1">Prix Moyen du Groin</p>
+                <p class="font-title text-3xl text-yellow-400" id="prix-groin">{{ "%.2f"|format(prix_groin) }}</p>
+                <p class="text-white/30 text-xs font-semibold mt-1">BitGroins (BG)</p>
+            </div>
+
+            <!-- MARCHÉ -->
+            <div class="card p-4 text-center">
+                {% if market_open %}
+                <p class="text-green-400 font-bold text-sm">🟢 Marché ouvert !</p>
+                <a href="/marche" class="text-yellow-400 hover:text-yellow-300 text-sm font-bold transition-colors">Aller au Marché aux Groins →</a>
+                {% else %}
+                <p class="text-white/40 text-xs font-bold mb-1">🔴 Marché fermé</p>
+                <p class="text-white/30 text-xs">Prochain : {{ next_market.strftime('%d/%m %H:%M') }}</p>
+                <a href="/marche" class="text-yellow-400/60 hover:text-yellow-400 text-xs font-bold transition-colors mt-1 inline-block">Voir le marché →</a>
+                {% endif %}
+            </div>
+
+            <!-- LIENS SOMBRES -->
+            <div class="card p-4 text-center space-y-2">
+                <a href="/abattoir" class="block text-red-400/60 hover:text-red-400 text-sm font-bold transition-colors">🔪 L'Abattoir</a>
+                <a href="/cimetiere" class="block text-purple-400/60 hover:text-purple-400 text-sm font-bold transition-colors">⚰️ Cimetière des Légendes</a>
+            </div>
+
+        </div>
+    </div>
+</main>
+
+<footer class="text-center py-8 text-white/20 text-sm font-semibold">
+    🐷 Derby des Groins — Tous droits de groin réservés
+</footer>
+
+<script>
+// ─── SÉLECTION DES COCHONS ────────────────────────────────────────────────
+let selectedPig = null;
+let selectedOdds = null;
+
+function selectPig(name, odds) {
+    selectedPig = name;
+    selectedOdds = odds;
+
+    // Reset toutes les cartes
+    document.querySelectorAll('.pig-card').forEach(c => c.classList.remove('selected'));
+    // Sélectionner la bonne
+    const card = document.querySelector(`[data-pig="${name}"]`);
+    if (card) card.classList.add('selected');
+
+    document.getElementById('selected-pig-input').value = name;
+
+    // Afficher dans le formulaire
+    const display = document.getElementById('selected-pig-display');
+    if (display) {
+        display.innerHTML = `<p class="text-white font-bold">🐷 <strong>${name}</strong> sélectionné(e) — Cote : <span class="text-yellow-400">x${odds}</span></p>`;
+    }
+
+    // Activer le bouton
+    const btn = document.getElementById('bet-submit');
+    if (btn) btn.disabled = false;
+
+    updatePotentialWin();
+}
+
+function updatePotentialWin() {
+    const amountInput = document.getElementById('bet-amount');
+    const potentialDiv = document.getElementById('potential-win');
+    const potentialAmount = document.getElementById('potential-amount');
+    if (!amountInput || !potentialDiv || !selectedOdds) return;
+
+    const amount = parseFloat(amountInput.value);
+    if (amount > 0) {
+        const gain = (amount * selectedOdds).toFixed(2);
+        potentialAmount.textContent = gain;
+        potentialDiv.classList.remove('hidden');
+    } else {
+        potentialDiv.classList.add('hidden');
+    }
+}
+
+const amountInput = document.getElementById('bet-amount');
+if (amountInput) {
+    amountInput.addEventListener('input', updatePotentialWin);
+}
+
+// ─── COMPTE À REBOURS ────────────────────────────────────────────────────
+function formatTime(seconds) {
+    if (seconds <= 0) return "00:00:00";
+    const h = Math.floor(seconds / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    const s = seconds % 60;
+    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+}
+
+let countdownSeconds = null;
+
+async function fetchCountdown() {
+    try {
+        const res = await fetch('/api/countdown');
+        const data = await res.json();
+        countdownSeconds = data.seconds;
+    } catch(e) {}
+}
+
+function tickCountdown() {
+    const display = document.getElementById('countdown-display');
+    if (!display) return;
+
+    if (countdownSeconds === null) {
+        display.textContent = '--:--:--';
+        return;
+    }
+
+    if (countdownSeconds <= 0) {
+        display.textContent = '00:00:00';
+        document.getElementById('race-running-msg').classList.remove('hidden');
+        // Recharger la page après 3 secondes pour afficher les résultats
+        setTimeout(() => location.reload(), 3000);
+        return;
+    }
+
+    display.textContent = formatTime(countdownSeconds);
+    countdownSeconds--;
+}
+
+// Init
+fetchCountdown();
+setInterval(tickCountdown, 1000);
+setInterval(fetchCountdown, 30000); // Resync toutes les 30s
+</script>
+
+</body>
+</html>
