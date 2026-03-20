@@ -208,9 +208,13 @@
                     <div class="pig-card p-4 text-center {% if pig.pig_id %}ring-1 ring-pink-500/30{% endif %}" onclick="selectPig('{{ pig.name }}', {{ pig.odds }})" data-pig="{{ pig.name }}" data-odds="{{ pig.odds }}">
                         <span class="pig-emoji">{{ pig.emoji }}</span>
                         <p class="text-white font-bold mt-2 text-sm leading-tight">{{ pig.name }}</p>
-                        {% if pig.owner_name %}
-                        <p class="text-pink-400/70 text-xs font-bold">👤 {{ pig.owner_name }}</p>
-                        {% endif %}
+                        <p class="text-xs font-bold {% if pig.owner_name %}text-pink-400/70{% else %}text-white/20{% endif %}">
+                            {% if pig.owner_name %}
+                                👤 {{ pig.owner_name }}
+                            {% else %}
+                                💻 Ordinateur
+                            {% endif %}
+                        </p>
                         <div class="odds-badge {{ odds_class }} mt-2 inline-block">x{{ pig.odds }}</div>
                         <p class="text-white/30 text-xs mt-1">{{ "%.0f"|format(pig.win_probability * 100) }}% de chance</p>
                     </div>
@@ -299,6 +303,9 @@
                                 <span class="text-white/30 w-4">{{ p.finish_position }}.</span>
                                 <span>{{ p.emoji }}</span>
                                 <span class="text-white/60">{{ p.name }}</span>
+                                <span class="text-[10px] font-bold {% if p.owner_name %}text-pink-400/50{% else %}text-white/10{% endif %}">
+                                    ({{ p.owner_name if p.owner_name else 'Ordi' }})
+                                </span>
                             </div>
                             {% endif %}
                         {% endfor %}
