@@ -9,7 +9,7 @@ from models import (
     BalanceTransaction, CoursePlan, Auction,
 )
 from data import (
-    PIGS, PIG_ORIGINS, PIG_EMOJIS, PIG_NAME_PREFIXES, PIG_NAME_SUFFIXES,
+    PIGS, PIG_ORIGINS, PIG_EMOJIS, PIG_NAME_PREFIXES, PIG_NAME_SUFFIXES, PRELOADED_PIG_NAMES,
     RARITIES, CHARCUTERIE, CHARCUTERIE_PREMIUM, EPITAPHS, BET_TYPES,
     EMERGENCY_RELIEF_THRESHOLD, EMERGENCY_RELIEF_AMOUNT, EMERGENCY_RELIEF_HOURS,
     SECOND_PIG_COST, REPLACEMENT_PIG_COST, MAX_PIG_SLOTS, BREEDING_COST,
@@ -286,7 +286,7 @@ def create_offspring(user, parent_a, parent_b, name=None):
     barn_bonus = user.barn_heritage_bonus or 0.0
     child = Pig(
         user_id=user.id,
-        name=(name or f"Porcelet {lineage_name}")[:80],
+        name=build_unique_pig_name(name or f"Porcelet {lineage_name}", fallback_prefix='Porcelet'),
         emoji=random.choice(PIG_EMOJIS),
         rarity=parent_a.rarity if parent_a.rarity == parent_b.rarity else random.choice([parent_a.rarity, parent_b.rarity, 'commun']),
         origin_country=random.choice([parent_a.origin_country, parent_b.origin_country]),
@@ -324,6 +324,58 @@ def get_market_lock_reason(user):
 def apply_origin_bonus(pig, origin):
     base_value = getattr(pig, origin['bonus_stat']) or 10.0
     setattr(pig, origin['bonus_stat'], base_value + origin['bonus'])
+ 
+def normalize_pig_name(name):
+    return ' '.join((name or '').split()).casefold()
+
+
+def is_pig_name_taken(name, exclude_pig_id=None):
+    normalized = normalize_pig_name(name)
+    if not normalized:
+        return False
+    pigs = Pig.query
+    if exclude_pig_id is not None:
+        pigs = pigs.filter(Pig.id != exclude_pig_id)
+    return any(normalize_pig_name(pig.name) == normalized for pig in pigs.all())
+
+
+def build_unique_pig_name(base_name, fallback_prefix='Cochon'):
+    candidate = ' '.join((base_name or '').split())[:80]
+    if not candidate:
+        candidate = fallback_prefix
+    if not is_pig_name_taken(candidate):
+        return candidate
+    suffix = 2
+    while True:
+        suffix_label = f' {suffix}'
+        trimmed = candidate[:max(1, 80 - len(suffix_label))].rstrip()
+        unique_name = f'{trimmed}{suffix_label}'
+        if not is_pig_name_taken(unique_name):
+            return unique_name
+        suffix += 1
+
+
+def create_preloaded_admin_pigs(admin_user):
+    if not admin_user:
+        return 0
+    created = 0
+    for index, pig_name in enumerate(PRELOADED_PIG_NAMES):
+        if is_pig_name_taken(pig_name):
+            continue
+        origin = PIG_ORIGINS[index % len(PIG_ORIGINS)]
+        pig = Pig(
+            user_id=admin_user.id,
+            name=pig_name,
+            emoji=PIG_EMOJIS[index % len(PIG_EMOJIS)],
+            origin_country=origin['country'],
+            origin_flag=origin['flag'],
+            lineage_name='Maison Admin',
+        )
+        apply_origin_bonus(pig, origin)
+        pig.weight_kg = generate_weight_kg_for_profile(pig)
+        db.session.add(pig)
+        created += 1
+    return created
 
 def supports_row_level_locking():
     try:
@@ -913,7 +965,7 @@ def get_user_active_pigs(user):
         origin_flag = origin['flag']
         pig = Pig(
             user_id=user.id,
-            name=f"Cochon de {user.username}",
+            name=build_unique_pig_name(f"Cochon de {user.username}", fallback_prefix='Cochon'),
             emoji='🐷',
             origin_country=origin_country,
             origin_flag=origin_flag,
@@ -1076,7 +1128,7 @@ def resolve_auctions():
 
                 origin_data = next((o for o in PIG_ORIGINS if o['country'] == auction.pig_origin), PIG_ORIGINS[0])
                 new_pig = Pig(
-                    user_id=winner.id, name=auction.pig_name, emoji=auction.pig_emoji,
+                    user_id=winner.id, name=build_unique_pig_name(auction.pig_name, fallback_prefix='Champion du marche'), emoji=auction.pig_emoji,
                     vitesse=auction.pig_vitesse, endurance=auction.pig_endurance,
                     agilite=auction.pig_agilite, force=auction.pig_force,
                     intelligence=auction.pig_intelligence, moral=auction.pig_moral,

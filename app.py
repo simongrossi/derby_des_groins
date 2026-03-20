@@ -11,7 +11,7 @@ from data import PIG_ORIGINS
 from helpers import (
     init_default_config, apply_origin_bonus, generate_weight_kg_for_profile,
     clamp_pig_weight, record_balance_transaction, ensure_next_race,
-    get_first_injured_pig,
+    get_first_injured_pig, create_preloaded_admin_pigs, build_unique_pig_name,
 )
 from routes import all_blueprints
 from scheduler import start_scheduler, should_autostart_scheduler
@@ -124,25 +124,26 @@ def seed_users():
         {'username': 'Edwin',      'pig_name': 'Porcinator',         'emoji': '🐽', 'origin': 'Angleterre'},
         {'username': 'Julien',     'pig_name': 'Flash McGroin',      'emoji': '🐖', 'origin': 'Japon'},
         {'username': 'Christophe', 'pig_name': 'Père Cochon',        'emoji': '🏆', 'origin': 'France', 'admin': True},
+        {'username': 'admin',       'pig_name': 'Grand Admin',        'emoji': '👑', 'origin': 'France', 'admin': True, 'password': 'admin'},
     ]
     for u in default_users:
         existing = User.query.filter_by(username=u['username']).first()
         if existing:
-            existing.password_hash = generate_password_hash('mdp1234')
+            existing.password_hash = generate_password_hash(u.get('password', 'mdp1234'))
             if u.get('admin'):
                 existing.is_admin = True
         else:
             origin_data = next((o for o in PIG_ORIGINS if o['country'] == u.get('origin', 'France')), PIG_ORIGINS[0])
             user = User(
                 username=u['username'],
-                password_hash=generate_password_hash('mdp1234'),
+                password_hash=generate_password_hash(u.get('password', 'mdp1234')),
                 balance=100.0,
                 is_admin=u.get('admin', False)
             )
             db.session.add(user)
             db.session.flush()
             pig = Pig(
-                user_id=user.id, name=u['pig_name'], emoji=u['emoji'],
+                user_id=user.id, name=build_unique_pig_name(u['pig_name'], fallback_prefix='Cochon'), emoji=u['emoji'],
                 origin_country=origin_data['country'], origin_flag=origin_data['flag'],
                 lineage_name=f"Maison {u['username']}",
             )
@@ -151,6 +152,10 @@ def seed_users():
             db.session.add(pig)
 
     demo_owner = User.query.filter_by(username='Christophe').first()
+    admin_user = User.query.filter_by(username='admin').first()
+    if admin_user:
+        create_preloaded_admin_pigs(admin_user)
+ 
     if demo_owner:
         demo_pig = Pig.query.filter_by(user_id=demo_owner.id, name='Patient Zero').first()
         owner_pig_count = Pig.query.filter_by(user_id=demo_owner.id).count()

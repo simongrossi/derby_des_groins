@@ -10,6 +10,7 @@ from data import PIG_ORIGINS, BET_TYPES, RARITIES
 from helpers import (
     apply_origin_bonus, generate_weight_kg_for_profile, record_balance_transaction,
     get_market_unlock_progress, get_market_lock_reason, get_active_listing_count,
+    build_unique_pig_name,
 )
 
 auth_bp = Blueprint('auth', __name__)
@@ -41,7 +42,7 @@ def register():
             reference_id=user.id,
         )
         origin = random.choice(PIG_ORIGINS)
-        pig = Pig(user_id=user.id, name=f"Cochon de {username}", emoji='🐷',
+        pig = Pig(user_id=user.id, name=build_unique_pig_name(f"Cochon de {username}", fallback_prefix='Cochon'), emoji='🐷',
                   origin_country=origin['country'], origin_flag=origin['flag'])
         apply_origin_bonus(pig, origin)
         pig.weight_kg = generate_weight_kg_for_profile(pig)
@@ -61,6 +62,9 @@ def login():
         if not user or not check_password_hash(user.password_hash, password):
             return render_template('auth.html', error="Identifiants incorrects !", mode='login')
         session['user_id'] = user.id
+        next_url = request.args.get('next') or request.form.get('next')
+        if next_url and next_url.startswith('/'):
+            return redirect(next_url)
         return redirect(url_for('main.index'))
     return render_template('auth.html', mode='login')
 

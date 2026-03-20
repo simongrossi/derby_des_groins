@@ -11,6 +11,35 @@ PIGS = [
 
 PIG_EMOJIS = ['🐷', '🐽', '🐖', '🐗', '🥓', '🍖', '🌭', '🏆']
 
+PRELOADED_PIG_NAMES = [
+    "Lard Vador",
+    "Trop Lard",
+    "Lard de Rien",
+    "Lard Déco",
+    "Lard Plastique",
+    "Lard Scénic",
+    "Lard Choix",
+    "Lard Magnac",
+    "Porcasse",
+    "Jean-Luc Porcard",
+    "Cochonou Reeves",
+    "Hambone",
+    "Francis Bacon",
+    "Albert Ein-Styr",
+    "Groseille",
+    "Spider-Cochon",
+    "Groin de Sel",
+    "Groin de Folie",
+    "Truie sans fin",
+    "Gros Groin",
+    "À tire-d'aile et de groin",
+    "Cochon-Air",
+    "Porc-Salut",
+    "Porc-Royal",
+    "Harry Pot-au-feu",
+    "Justin Bridou",
+]
+
 PIG_ORIGINS = [
     {'country': 'France', 'flag': '🇫🇷', 'specialty': 'Moral', 'bonus_stat': 'moral', 'bonus': 5},
     {'country': 'Espagne', 'flag': '🇪🇸', 'specialty': 'Endurance', 'bonus_stat': 'endurance', 'bonus': 5},

@@ -94,7 +94,7 @@
 <main class="max-w-5xl mx-auto px-4 py-8">
 
     <h1 class="font-title text-4xl text-white mb-2">🔧 Panneau d'Administration</h1>
-    <p class="text-white/40 font-semibold text-sm mb-8">Gère les horaires de courses, le marché et les joueurs.</p>
+    <p class="text-white/40 font-semibold text-sm mb-8">Gère les horaires de courses, le marché, les joueurs et tous les cochons.</p>
 
     <!-- FLASH MESSAGES -->
     {% with messages = get_flashed_messages(with_categories=true) %}
@@ -253,6 +253,50 @@
                     {% endfor %}
                 </div>
             </div>
+        </div>
+    </div>
+
+    <div class="card p-6 mb-8">
+        <div class="flex items-center justify-between gap-3 mb-4">
+            <div>
+                <h2 class="font-title text-2xl text-white">🐷 Tous les cochons ({{ pigs | length }})</h2>
+                <p class="text-white/40 text-sm font-semibold">Vue admin globale avec propriétaire, état et actions rapides.</p>
+            </div>
+        </div>
+
+        <div class="space-y-3 max-h-[34rem] overflow-y-auto pr-1">
+            {% for pig in pigs %}
+            <div class="user-row p-4 flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+                <div class="flex items-start gap-3">
+                    <span class="text-2xl">{{ pig.emoji }}</span>
+                    <div>
+                        <p class="text-white font-bold text-base">{{ pig.name }}</p>
+                        <p class="text-white/40 text-xs font-semibold">
+                            Propriétaire : {{ pig.owner.username if pig.owner else 'Ordinateur' }}
+                            · {{ pig.origin_flag }} {{ pig.origin_country }}
+                            · Niveau {{ pig.level }}
+                            · Gén. {{ pig.generation or 1 }}
+                        </p>
+                        <p class="text-white/30 text-xs font-semibold mt-1">
+                            Statut :
+                            {% if pig.is_alive %}
+                                <span class="text-green-400">Vivant</span>
+                            {% else %}
+                                <span class="text-red-400">Décédé</span>
+                            {% endif %}
+                            {% if pig.is_injured %}· <span class="text-yellow-300">Blessé</span>{% endif %}
+                            · 🏁 {{ pig.races_entered }} · 🏆 {{ pig.races_won }}
+                        </p>
+                    </div>
+                </div>
+
+                <form method="POST" action="/admin/pigs/{{ pig.id }}/toggle-life">
+                    <button type="submit" class="{{ 'btn-danger' if pig.is_alive else 'btn-admin' }}">
+                        {{ '☠️ Marquer décédé' if pig.is_alive else '✨ Réanimer' }}
+                    </button>
+                </form>
+            </div>
+            {% endfor %}
         </div>
     </div>
 

@@ -18,7 +18,7 @@ from helpers import (
     adjust_pig_weight, apply_origin_bonus, generate_weight_kg_for_profile,
     debit_user_balance, credit_user_balance,
     reserve_pig_challenge_slot, release_pig_challenge_slot,
-    send_to_abattoir,
+    send_to_abattoir, is_pig_name_taken, build_unique_pig_name,
 )
 
 pig_bp = Blueprint('pig', __name__)
@@ -103,7 +103,7 @@ def adopt_second_pig():
     origin = random.choice(PIG_ORIGINS)
     new_pig = Pig(
         user_id=user.id,
-        name=f"Recrue de {user.username}" if active_pigs else f"Rescapé de {user.username}",
+        name=build_unique_pig_name(f"Recrue de {user.username}" if active_pigs else f"Rescapé de {user.username}", fallback_prefix='Recrue'),
         emoji='🐖',
         origin_country=origin['country'],
         origin_flag=origin['flag'],
@@ -290,7 +290,13 @@ def rename_pig():
         return redirect(url_for('pig.mon_cochon'))
     new_name = request.form.get('name', '').strip()
     new_emoji = request.form.get('emoji', '').strip()
-    if new_name and 2 <= len(new_name) <= 30:
+    if new_name:
+        if not 2 <= len(new_name) <= 30:
+            flash("Le nom du cochon doit contenir entre 2 et 30 caractères.", "warning")
+            return redirect(url_for('pig.mon_cochon'))
+        if is_pig_name_taken(new_name, exclude_pig_id=pig.id):
+            flash("Ce nom de cochon existe déjà. Choisis un nom unique !", "error")
+            return redirect(url_for('pig.mon_cochon'))
         pig.name = new_name
     if new_emoji and new_emoji in PIG_EMOJIS:
         pig.emoji = new_emoji
@@ -403,6 +409,10 @@ def breed_pig():
         reference_id=user.id,
     ):
         flash(f"Il faut {BREEDING_COST:.0f} BG pour financer la portée.", "error")
+        return redirect(url_for('pig.mon_cochon'))
+
+    if child_name and is_pig_name_taken(child_name):
+        flash("Ce nom de cochon existe déjà. Choisis un nom unique pour la portée.", "error")
         return redirect(url_for('pig.mon_cochon'))
 
     piglet = create_offspring(user, parent_a, parent_b, name=child_name or None)

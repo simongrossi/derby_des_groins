@@ -81,6 +81,7 @@
 
             <!-- Formulaire -->
             <form method="POST">
+                {% if request.values.get('next') %}<input type="hidden" name="next" value="{{ request.values.get('next') }}">{% endif %}
                 <div class="mb-4">
                     <label class="text-white/60 text-sm font-bold block mb-2">Pseudo</label>
                     <input type="text" name="username" class="input-field" placeholder="Ex: GroinMaster" required autocomplete="username">
@@ -90,9 +91,12 @@
                     <input type="password" name="password" class="input-field" placeholder="••••••••" required autocomplete="{{ 'new-password' if mode == 'register' else 'current-password' }}">
                 </div>
 
-                {% if mode == 'register' %}
                 <div class="bg-yellow-400/10 border border-yellow-400/20 rounded-xl p-3 mb-5 text-center">
                     <p class="text-yellow-400 text-sm font-bold">🎁 Cadeau de bienvenue : <strong>100 BitGroins</strong> offerts !</p>
+                </div>
+                {% else %}
+                <div class="bg-indigo-400/10 border border-indigo-400/20 rounded-xl p-3 mb-5 text-center">
+                    <p class="text-indigo-300 text-sm font-bold">🔧 Accès admin temporaire : <strong>admin</strong> / <strong>admin</strong>.</p>
                 </div>
                 {% endif %}
 
