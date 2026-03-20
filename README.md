@@ -166,6 +166,9 @@ La base de données SQLite est créée automatiquement au premier lancement avec
 | Julien | Flash McGroin | 🐖 | `mdp1234` |
 | Christophe | Père Cochon | 🏆 | `mdp1234` |
 
+Note de demo:
+- Le compte `Christophe` peut recevoir un second cochon seedé, `Patient Zero`, déjà blessé pour tester immédiatement le menu `Vétérinaire` et le puzzle de soins.
+
 ---
 
 ## 🏗️ Structure du projet

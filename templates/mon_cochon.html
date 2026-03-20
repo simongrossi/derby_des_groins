@@ -100,33 +100,9 @@
     </style>
 </head>
 <body class="pb-12">
+{% set active_page = 'mon_cochon' %}
 
-<!-- HEADER -->
-<header class="border-b border-white/10 sticky top-0 z-[100]" style="background: rgba(26, 10, 46, 0.95); backdrop-filter: blur(20px);">
-    <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
-        <a href="/" class="flex items-center gap-2 hover:opacity-80 transition-opacity">
-            <span class="text-2xl">🐷</span>
-            <span class="font-title text-xl text-yellow-400">Derby des Groins</span>
-        </a>
-        <nav class="flex items-center gap-3">
-            <div class="card px-4 py-2 flex items-center gap-2 border-yellow-500/20 bg-yellow-500/5">
-                <span class="text-yellow-400 font-bold text-lg">{{ "%.2f"|format(user.balance) }}</span>
-                <span class="text-white/50 text-sm font-semibold">BG</span>
-                <span class="text-white/30">|</span>
-                <span class="text-white/70 text-sm font-semibold">{{ user.username }}</span>
-            </div>
-            <a href="/mon-cochon" class="text-yellow-400 text-sm font-bold transition-colors">🐷 Mon Cochon</a>
-            <a href="/marche" class="text-white/60 hover:text-white text-sm font-bold transition-colors">🏪 Marché</a>
-            <a href="/classement" class="text-yellow-400 hover:text-yellow-500 text-sm font-bold transition-colors">🏆 Classement</a>
-            <a href="/profil" class="text-cyan-300/80 hover:text-cyan-200 text-sm font-bold transition-colors">👤 Profil</a>
-            <a href="/history" class="text-white/60 hover:text-white text-sm font-bold transition-colors">Historique</a>
-            <a href="/legendes-pop" class="text-purple-400 hover:text-purple-300 text-sm font-bold transition-colors">🌟 Pop Cult'</a>
-            <a href="/cimetiere" class="text-purple-400/50 hover:text-purple-400 text-sm font-bold transition-colors">⚰️ Cimetière</a>
-            {% if user.is_admin %}<a href="/admin" class="text-indigo-400/70 hover:text-indigo-300 text-sm font-bold transition-colors">🔧 Admin</a>{% endif %}
-            <a href="/logout" class="text-red-400/70 hover:text-red-400 text-sm font-bold transition-colors">Quitter</a>
-        </nav>
-    </div>
-</header>
+{% include "_site_header.html" %}
 
 <main class="max-w-6xl mx-auto px-4 py-8">
 
@@ -173,6 +149,7 @@
         {% endif %}
         {% for pd in pigs_data %}
         {% set pig = pd.pig %}
+        {% set injury_risk = pig.injury_risk or 10.0 %}
         <div class="grid grid-cols-1 xl:grid-cols-3 gap-8 p-1 relative">
             
             <!-- LEFT COLUMN: Main ID Card -->
@@ -302,6 +279,44 @@
 
             <!-- RIGHT COLUMN: Actions (Feed / Train) -->
             <div class="xl:col-span-1 space-y-6">
+                {% if pig.is_injured and pig.is_alive %}
+                <div class="card p-5 animate-pulse" style="background:rgba(220,38,38,0.15);border:2px solid rgba(220,38,38,0.5);">
+                    <p class="font-title text-red-400 text-xl mb-1">🚨 Cochon Blessé</p>
+                    <p class="text-white/75 text-sm mb-2">{{ pig.name }} s'est blessé pendant une course. Le vétérinaire t'attend.</p>
+                    <p class="text-red-200 text-xs font-bold mb-2">
+                        Temps restant avant complication fatale :
+                        <span class="vet-countdown" data-seconds="{{ pd.vet_seconds_left }}">{{ pd.vet_deadline_label }}</span>
+                    </p>
+                    <p class="text-white/45 text-[11px] font-bold mb-3">Tu peux encore le nourrir, mais l'entraînement, l'école et le challenge restent verrouillés tant qu'il n'a pas été soigné.</p>
+                    <a href="/veterinaire/{{ pig.id }}" class="block text-center font-title text-lg py-3 rounded-xl text-white" style="background:linear-gradient(135deg,#dc2626,#991b1b)">
+                        🏥 Aller Chez Le Vétérinaire →
+                    </a>
+                </div>
+                {% endif %}
+
+                <div class="card p-5" style="background:rgba({{ '185,28,28' if injury_risk > 25 else ('217,119,6' if injury_risk > 15 else '15,118,110') }},0.07);border:1px solid rgba({{ '239,68,68' if injury_risk > 25 else ('245,158,11' if injury_risk > 15 else '20,184,166') }},0.25);">
+                    <div class="flex items-center justify-between mb-2">
+                        <h3 class="font-bold text-sm" style="color:{{ '#f87171' if injury_risk > 25 else ('#fbbf24' if injury_risk > 15 else '#2dd4bf') }}">
+                            {% if injury_risk > 25 %}⚠️ Risque de Blessure ÉLEVÉ
+                            {% elif injury_risk > 15 %}⚡ Risque de Blessure MODÉRÉ
+                            {% else %}✅ Risque de Blessure FAIBLE
+                            {% endif %}
+                        </h3>
+                        <span class="font-title text-2xl" style="color:{{ '#f87171' if injury_risk > 25 else ('#fbbf24' if injury_risk > 15 else '#2dd4bf') }}">
+                            {{ injury_risk | round(1) }}%
+                        </span>
+                    </div>
+                    <div class="h-2 rounded-full" style="background:rgba(255,255,255,0.07)">
+                        <div class="h-2 rounded-full transition-all" style="width:{{ [injury_risk / 40 * 100, 100] | min }}%;background:{{ 'linear-gradient(90deg,#dc2626,#f87171)' if injury_risk > 25 else ('linear-gradient(90deg,#d97706,#fbbf24)' if injury_risk > 15 else 'linear-gradient(90deg,#0f766e,#2dd4bf)') }}"></div>
+                    </div>
+                    <p class="text-white/35 text-xs mt-2 font-semibold">
+                        {% if injury_risk > 25 %}Ton cochon est à bout. Repose-le avant la prochaine course.
+                        {% elif injury_risk > 15 %}Il commence à tirer sur la machine. Les blessures peuvent vite s'enchaîner.
+                        {% else %}Tout va bien pour l'instant. Profite-en pour le garder frais.
+                        {% endif %}
+                    </p>
+                </div>
+
                 <!-- Challenge Mort -->
                 <div class="card p-5 border-red-500/20" style="background: rgba(185, 28, 28, 0.05);">
                     <div class="flex items-center justify-between mb-2">
@@ -310,7 +325,10 @@
                             <span class="text-[10px] bg-red-600 px-2 py-0.5 rounded text-white font-bold animate-pulse">ACTIF: {{ pig.challenge_mort_wager }} BG</span>
                         {% endif %}
                     </div>
-                    {% if pig.challenge_mort_wager == 0 %}
+                    {% if pig.is_injured %}
+                    <p class="text-red-300 text-[11px] font-bold mb-3">Défi verrouillé : un cochon blessé n'entre pas dans l'arène avant d'avoir vu le vétérinaire.</p>
+                    <a href="/veterinaire/{{ pig.id }}" class="block text-center bg-red-900/45 hover:bg-red-900/60 py-2 rounded-lg text-[10px] font-bold uppercase transition-colors">Voir le vétérinaire</a>
+                    {% elif pig.challenge_mort_wager == 0 %}
                     <form method="POST" action="/challenge-mort" class="flex gap-2">
                         <input type="hidden" name="pig_id" value="{{ pig.id }}">
                         <input type="number" name="wager" min="10" placeholder="Mise" class="flex-1 bg-white/5 border border-red-500/20 rounded-lg px-3 py-2 text-white text-sm focus:outline-none">
@@ -366,12 +384,15 @@
                                 <input type="hidden" name="pig_id" value="{{ pig.id }}">
                                 <input type="hidden" name="training" value="{{ k }}">
                                 <button type="submit" class="bg-indigo-600 hover:bg-indigo-500 px-3 py-1.5 rounded-lg font-bold text-[10px] h-fit"
-                                        {% if trn.energy_cost > 0 and pig.energy < trn.energy_cost %}disabled{% endif %}>
-                                    -{{ trn.energy_cost|abs }} ⚡
+                                        {% if pig.is_injured or (trn.energy_cost > 0 and pig.energy < trn.energy_cost) %}disabled{% endif %}>
+                                    {% if pig.is_injured %}Véto{% else %}-{{ trn.energy_cost|abs }} ⚡{% endif %}
                                 </button>
                             </form>
                         </div>
                         {% endfor %}
+                        {% if pig.is_injured %}
+                        <p class="text-red-300 text-[10px] font-bold">Entraînement verrouillé : ce cochon doit d'abord être soigné.</p>
+                        {% endif %}
                     </div>
 
                     <!-- TAB ECOLE -->
@@ -395,10 +416,11 @@
                         </div>
 
                         {% for lesson_key, lesson in school_lessons.items() %}
+                        {% set too_injured = pig.is_injured %}
                         {% set too_tired = pig.energy < lesson.energy_cost %}
                         {% set too_hungry = pig.hunger < lesson.hunger_cost %}
                         {% set too_sad = pig.happiness < lesson.min_happiness %}
-                        {% set unavailable = pd.school_cooldown > 0 or too_tired or too_hungry or too_sad %}
+                        {% set unavailable = too_injured or pd.school_cooldown > 0 or too_tired or too_hungry or too_sad %}
                         <div class="p-4 bg-white/5 border border-white/10 rounded-2xl">
                             <div class="flex items-start justify-between gap-3">
                                 <div>
@@ -438,6 +460,7 @@
 
                             {% if unavailable %}
                             <p class="mt-3 text-[10px] font-bold text-red-300">
+                                {% if too_injured %}Passage chez le vétérinaire obligatoire. {% endif %}
                                 {% if pd.school_cooldown > 0 %}Attends la fin du cooldown. {% endif %}
                                 {% if too_tired %}Energie insuffisante. {% endif %}
                                 {% if too_hungry %}Satiété insuffisante. {% endif %}
@@ -500,6 +523,32 @@
         btn.classList.add('selected');
         document.getElementById('emoji-input-' + pigId).value = emoji;
     }
+
+    function startVetCountdowns() {
+        document.querySelectorAll('.vet-countdown').forEach(el => {
+            let seconds = Number(el.dataset.seconds || 0);
+            const render = () => {
+                const minutes = Math.floor(seconds / 60);
+                const remainingSeconds = seconds % 60;
+                if (minutes > 0 && remainingSeconds > 0) {
+                    el.textContent = `${minutes}m ${String(remainingSeconds).padStart(2, '0')}s`;
+                } else if (minutes > 0) {
+                    el.textContent = `${minutes}m`;
+                } else {
+                    el.textContent = `${Math.max(0, seconds)}s`;
+                }
+            };
+            render();
+            if (seconds <= 0) return;
+            setInterval(() => {
+                if (seconds <= 0) return;
+                seconds -= 1;
+                render();
+            }, 1000);
+        });
+    }
+
+    startVetCountdowns();
 </script>
 
 </body>

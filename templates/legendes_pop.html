@@ -62,38 +62,9 @@
     </style>
 </head>
 <body>
+{% set active_page = 'legendes_pop' %}
 
-<!-- HEADER -->
-<header class="border-b border-white/10 sticky top-0 z-[100]" style="background: rgba(26, 10, 46, 0.95); backdrop-filter: blur(20px);">
-    <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
-        <a href="/" class="flex items-center gap-2 hover:opacity-80 transition-opacity">
-            <span class="text-2xl">🐷</span>
-            <span class="font-title text-xl text-yellow-400">Derby des Groins</span>
-        </a>
-        <nav class="flex items-center gap-3">
-            {% if user %}
-                <div class="card px-4 py-2 flex items-center gap-2 border-yellow-500/20 bg-yellow-500/5">
-                    <span class="text-yellow-400 font-bold text-lg">{{ "%.2f"|format(user.balance) }}</span>
-                    <span class="text-white/50 text-sm font-semibold">BG</span>
-                    <span class="text-white/30">|</span>
-                    <span class="text-white/70 text-sm font-semibold">{{ user.username }}</span>
-                </div>
-                <a href="/mon-cochon" class="text-pink-400/80 hover:text-pink-300 text-sm font-bold transition-colors">🐷 Mon Cochon</a>
-                <a href="/marche" class="text-white/60 hover:text-white text-sm font-bold transition-colors">🏪 Marché</a>
-                <a href="/classement" class="text-yellow-400 hover:text-yellow-500 text-sm font-bold transition-colors">🏆 Classement</a>
-                <a href="/profil" class="text-cyan-300/80 hover:text-cyan-200 text-sm font-bold transition-colors">👤 Profil</a>
-                <a href="/history" class="text-white/60 hover:text-white text-sm font-bold transition-colors">Historique</a>
-                <a href="/legendes-pop" class="text-purple-400 hover:text-purple-300 text-sm font-bold transition-colors">🌟 Pop Cult'</a>
-                <a href="/cimetiere" class="text-purple-400/50 hover:text-purple-400 text-sm font-bold transition-colors">⚰️ Cimetière</a>
-                {% if user.is_admin %}<a href="/admin" class="text-indigo-400/70 hover:text-indigo-300 text-sm font-bold transition-colors">🔧 Admin</a>{% endif %}
-                <a href="/logout" class="text-red-400/70 hover:text-red-400 text-sm font-bold transition-colors">Quitter</a>
-            {% else %}
-                <a href="/login" class="text-white/70 hover:text-white font-bold text-sm transition-colors">Connexion</a>
-                <a href="/register" class="bg-yellow-500 hover:bg-yellow-400 text-black font-bold text-sm px-4 py-2 rounded-lg transition-all">S'inscrire</a>
-            {% endif %}
-        </nav>
-    </div>
-</header>
+{% include "_site_header.html" %}
 
 <main class="max-w-6xl mx-auto px-4 py-8">
 

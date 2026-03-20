@@ -74,6 +74,11 @@ class Pig(db.Model):
     # Challenge de la Mort
     challenge_mort_wager = db.Column(db.Float, default=0.0)
 
+    # Blessures & Vétérinaire
+    is_injured = db.Column(db.Boolean, default=False)
+    injury_risk = db.Column(db.Float, default=10.0)
+    vet_deadline = db.Column(db.DateTime, nullable=True)
+
     # Timestamps
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     last_updated = db.Column(db.DateTime, default=datetime.utcnow)
@@ -364,6 +369,9 @@ REPLACEMENT_PIG_COST = 15.0
 BETTING_HOUSE_EDGE = 1.18
 RACE_APPEARANCE_REWARD = 6.0
 RACE_POSITION_REWARDS = {1: 25.0, 2: 12.0, 3: 6.0}
+VET_RESPONSE_MINUTES = 5
+MIN_INJURY_RISK = 8.0
+MAX_INJURY_RISK = 40.0
 
 CHARCUTERIE = [
     {'name': 'Jambon', 'emoji': '🍖', 'msg': 'Un beau jambon fumé au bois de hêtre'},
@@ -517,6 +525,11 @@ def format_duration_short(total_seconds):
         return f"{minutes}m"
     return f"{seconds}s"
 
+def get_seconds_until(deadline):
+    if not deadline:
+        return 0
+    return max(0, int((deadline - datetime.utcnow()).total_seconds()))
+
 def maybe_grant_emergency_relief(user):
     if not user or user.balance >= EMERGENCY_RELIEF_THRESHOLD:
         return 0.0
@@ -598,10 +611,24 @@ def get_user_active_pigs(user):
         return [pig]
     return pigs
 
+def get_first_injured_pig(user_id):
+    if not user_id:
+        return None
+    return Pig.query.filter_by(user_id=user_id, is_alive=True, is_injured=True).order_by(Pig.vet_deadline.asc(), Pig.id.asc()).first()
+
+def check_vet_deadlines():
+    now = datetime.utcnow()
+    injured_pigs = Pig.query.filter_by(is_injured=True, is_alive=True).all()
+    for pig in injured_pigs:
+        if pig.vet_deadline and now > pig.vet_deadline:
+            send_to_abattoir(pig, cause='blessure')
+
 def send_to_abattoir(pig, cause='abattoir'):
     charcuterie = random.choice(CHARCUTERIE)
     epitaph_template = random.choice(EPITAPHS)
     pig.is_alive = False
+    pig.is_injured = False
+    pig.vet_deadline = None
     pig.death_date = datetime.utcnow()
     pig.death_cause = cause
     pig.charcuterie_type = charcuterie['name']
@@ -613,6 +640,8 @@ def send_to_abattoir(pig, cause='abattoir'):
 def retire_pig_old_age(pig):
     charcuterie = random.choice(CHARCUTERIE_PREMIUM)
     pig.is_alive = False
+    pig.is_injured = False
+    pig.vet_deadline = None
     pig.death_date = datetime.utcnow()
     pig.death_cause = 'vieillesse'
     pig.charcuterie_type = charcuterie['name']
@@ -626,6 +655,20 @@ def get_dead_pigs_abattoir():
 
 def get_legendary_pigs():
     return Pig.query.filter(Pig.is_alive == False, Pig.races_won >= 3).order_by(Pig.races_won.desc()).all()
+
+@app.before_request
+def sync_world_state():
+    if request.endpoint == 'static':
+        return
+    check_vet_deadlines()
+
+@app.context_processor
+def inject_injured_pig_nav():
+    injured_pig_nav_id = None
+    if 'user_id' in session:
+        injured_pig = get_first_injured_pig(session.get('user_id'))
+        injured_pig_nav_id = injured_pig.id if injured_pig else None
+    return {'injured_pig_nav_id': injured_pig_nav_id}
 
 # ─── HELPERS BITGROIN ───────────────────────────────────────────────────────
 
@@ -799,10 +842,10 @@ def ensure_next_race():
     all_powers = []
     player_powers = []
 
-    fit_pigs = Pig.query.filter(Pig.is_alive == True, Pig.energy > 20, Pig.hunger > 20).all()
+    fit_pigs = Pig.query.filter(Pig.is_alive == True, Pig.is_injured == False, Pig.energy > 20, Pig.hunger > 20).all()
     for p in fit_pigs:
         update_pig_state(p)
-    fit_pigs = [p for p in fit_pigs if p.energy > 20 and p.hunger > 20]
+    fit_pigs = [p for p in fit_pigs if not p.is_injured and p.energy > 20 and p.hunger > 20]
     fit_pigs.sort(key=lambda p: calculate_pig_power(p), reverse=True)
     fit_pigs = fit_pigs[:MAX_PARTICIPANTS]
 
@@ -849,6 +892,7 @@ def ensure_next_race():
 
 def run_race_if_needed():
     now = datetime.now()
+    check_vet_deadlines()
     due_races = Race.query.filter(Race.status == 'open', Race.scheduled_at <= now).all()
 
     for race in due_races:
@@ -917,6 +961,17 @@ def run_race_if_needed():
                 pig.hunger = max(0, pig.hunger - 10)
                 pig.last_updated = datetime.utcnow()
                 check_level_up(pig)
+
+                base_risk = (pig.injury_risk or MIN_INJURY_RISK) / 100.0
+                fatigue_factor = 1.0 + max(0, (50 - pig.energy) / 100)
+                hunger_factor = 1.0 + max(0, (30 - pig.hunger) / 100)
+                effective_risk = min(0.70, base_risk * fatigue_factor * hunger_factor)
+                if random.random() < effective_risk and not pig.is_injured:
+                    pig.is_injured = True
+                    pig.vet_deadline = datetime.utcnow() + timedelta(minutes=VET_RESPONSE_MINUTES)
+                    pig.challenge_mort_wager = 0
+                else:
+                    pig.injury_risk = min(MAX_INJURY_RISK, (pig.injury_risk or MIN_INJURY_RISK) + random.uniform(0.3, 0.8))
 
                 if pig.max_races and pig.races_entered >= pig.max_races:
                     retire_pig_old_age(pig)
@@ -1162,6 +1217,7 @@ def mon_cochon():
         age_days = (datetime.utcnow() - p.created_at).days if p.created_at else 0
         rarity_info = RARITIES.get(p.rarity or 'commun', RARITIES['commun'])
         school_cooldown = get_cooldown_remaining(p.last_school_at, SCHOOL_COOLDOWN_MINUTES)
+        vet_seconds_left = get_seconds_until(p.vet_deadline) if p.is_injured else 0
         pigs_data.append({
             'pig': p,
             'races_remaining': races_remaining,
@@ -1171,6 +1227,8 @@ def mon_cochon():
             'xp_next': xp_for_level(p.level + 1),
             'school_cooldown': school_cooldown,
             'school_cooldown_label': format_duration_short(school_cooldown),
+            'vet_seconds_left': vet_seconds_left,
+            'vet_deadline_label': format_duration_short(vet_seconds_left),
         })
 
     return render_template('mon_cochon.html',
@@ -1262,6 +1320,9 @@ def train():
         return redirect(url_for('mon_cochon'))
     
     update_pig_state(pig)
+    if pig.is_injured:
+        flash("Ton cochon est blessé. Passe d'abord par le vétérinaire.", "warning")
+        return redirect(url_for('veterinaire', pig_id=pig.id))
     training_key = request.form.get('training')
     if training_key not in TRAININGS:
         return redirect(url_for('mon_cochon'))
@@ -1300,6 +1361,9 @@ def school():
         return redirect(url_for('mon_cochon'))
 
     update_pig_state(pig)
+    if pig.is_injured:
+        flash("L'école attendra. Ton cochon doit d'abord passer au vétérinaire.", "warning")
+        return redirect(url_for('veterinaire', pig_id=pig.id))
     lesson_key = request.form.get('lesson')
     if lesson_key not in SCHOOL_LESSONS:
         flash("Cours introuvable !", "error")
@@ -1385,6 +1449,9 @@ def challenge_mort():
         return redirect(url_for('mon_cochon'))
     
     update_pig_state(pig)
+    if pig.is_injured:
+        flash("Impossible d'inscrire un cochon blessé au Challenge de la Mort.", "error")
+        return redirect(url_for('veterinaire', pig_id=pig.id))
     wager = request.form.get('wager', type=float)
     if not wager or wager < 10:
         flash("Mise minimum : 10 BG pour le Challenge de la Mort !", "error")
@@ -1528,6 +1595,9 @@ def sell_pig():
     if not pig:
         flash("Tu n'as pas ce cochon ou il n'est plus disponible !", "error")
         return redirect(url_for('marche'))
+    if pig.is_injured:
+        flash("Impossible de vendre un cochon blessé. Il doit d'abord voir le vétérinaire.", "warning")
+        return redirect(url_for('marche'))
     starting_price = request.form.get('price', type=float)
     if not starting_price or starting_price < 5:
         flash("Prix minimum : 5 BG !", "error")
@@ -1652,10 +1722,10 @@ def admin_force_race():
     all_powers = []
     player_powers = []
 
-    fit_pigs = Pig.query.filter(Pig.is_alive == True, Pig.energy > 20, Pig.hunger > 20).all()
+    fit_pigs = Pig.query.filter(Pig.is_alive == True, Pig.is_injured == False, Pig.energy > 20, Pig.hunger > 20).all()
     for p in fit_pigs:
         update_pig_state(p)
-    fit_pigs = [p for p in fit_pigs if p.energy > 20 and p.hunger > 20]
+    fit_pigs = [p for p in fit_pigs if not p.is_injured and p.energy > 20 and p.hunger > 20]
     fit_pigs.sort(key=lambda p: calculate_pig_power(p), reverse=True)
     fit_pigs = fit_pigs[:MAX_PARTICIPANTS]
 
@@ -1696,6 +1766,94 @@ def admin_force_race():
     return redirect(url_for('admin'))
 
 # ─── API ────────────────────────────────────────────────────────────────────
+
+@app.route('/veterinaire/<int:pig_id>')
+def veterinaire(pig_id):
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    user = User.query.get(session['user_id'])
+    pig = Pig.query.get(pig_id)
+    if not pig or pig.user_id != user.id:
+        return redirect(url_for('mon_cochon'))
+    if not pig.is_alive:
+        return redirect(url_for('cimetiere'))
+    if not pig.is_injured:
+        return redirect(url_for('mon_cochon'))
+    seconds_left = get_seconds_until(pig.vet_deadline)
+    return render_template('veterinaire.html', user=user, pig=pig, seconds_left=seconds_left)
+
+@app.route('/veterinaire')
+def veterinaire_index():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    user = User.query.get(session['user_id'])
+    injured_pig = get_first_injured_pig(user.id)
+    if injured_pig:
+        return redirect(url_for('veterinaire', pig_id=injured_pig.id))
+
+    pigs = get_user_active_pigs(user)
+    pigs_data = []
+    for pig in pigs:
+        update_pig_state(pig)
+        injury_risk = round(pig.injury_risk or MIN_INJURY_RISK, 1)
+        pigs_data.append({
+            'pig': pig,
+            'injury_risk': injury_risk,
+            'power': round(calculate_pig_power(pig), 1),
+            'status': 'eleve' if injury_risk > 25 else ('modere' if injury_risk > 15 else 'faible'),
+        })
+
+    pigs_data.sort(key=lambda item: item['injury_risk'], reverse=True)
+    avg_risk = round(sum(item['injury_risk'] for item in pigs_data) / len(pigs_data), 1) if pigs_data else 0.0
+    max_risk = max((item['injury_risk'] for item in pigs_data), default=0.0)
+
+    return render_template(
+        'veterinaire_lobby.html',
+        user=user,
+        pigs_data=pigs_data,
+        avg_risk=avg_risk,
+        max_risk=max_risk,
+    )
+
+@app.route('/api/vet/solve', methods=['POST'])
+def vet_solve():
+    if 'user_id' not in session:
+        return jsonify({'error': 'Non connecté'}), 401
+    user = User.query.get(session['user_id'])
+    payload = request.get_json(silent=True) or {}
+    pig_id = payload.get('pig_id')
+    pig = Pig.query.get(pig_id)
+    if not pig or pig.user_id != user.id:
+        return jsonify({'error': 'Cochon introuvable'}), 404
+    if not pig.is_alive:
+        return jsonify({'dead': True, 'message': "Trop tard... il est passé de l'autre côté."}), 200
+    if not pig.is_injured:
+        return jsonify({'already_healed': True}), 200
+    if pig.vet_deadline and datetime.utcnow() > pig.vet_deadline:
+        send_to_abattoir(pig, cause='blessure')
+        return jsonify({'dead': True, 'message': 'Le délai était dépassé. RIP.'}), 200
+
+    pig.is_injured = False
+    pig.vet_deadline = None
+    pig.injury_risk = min(35.0, max(MIN_INJURY_RISK, (pig.injury_risk or MIN_INJURY_RISK) + 2.0))
+    pig.energy = max(0, pig.energy - 10)
+    pig.happiness = max(0, pig.happiness - 5)
+    db.session.commit()
+    return jsonify({'healed': True, 'message': f"{pig.name} s'en sort ! Repos, soupe tiède et pas de sprint tout de suite."})
+
+@app.route('/api/vet/timeout', methods=['POST'])
+def vet_timeout():
+    if 'user_id' not in session:
+        return jsonify({'error': 'Non connecté'}), 401
+    user = User.query.get(session['user_id'])
+    payload = request.get_json(silent=True) or {}
+    pig_id = payload.get('pig_id')
+    pig = Pig.query.get(pig_id)
+    if not pig or pig.user_id != user.id:
+        return jsonify({'error': 'Cochon introuvable'}), 404
+    if pig.is_alive and pig.is_injured:
+        send_to_abattoir(pig, cause='blessure')
+    return jsonify({'dead': True})
 
 @app.route('/classement')
 def classement():
@@ -1831,7 +1989,10 @@ def api_pig():
         'origin': pig.origin_country, 'origin_flag': pig.origin_flag,
         'races_entered': pig.races_entered, 'races_won': pig.races_won,
         'school_sessions_completed': pig.school_sessions_completed or 0,
-        'school_cooldown': get_cooldown_remaining(pig.last_school_at, SCHOOL_COOLDOWN_MINUTES)
+        'school_cooldown': get_cooldown_remaining(pig.last_school_at, SCHOOL_COOLDOWN_MINUTES),
+        'is_injured': pig.is_injured,
+        'injury_risk': round(pig.injury_risk or MIN_INJURY_RISK, 1),
+        'vet_seconds_left': get_seconds_until(pig.vet_deadline) if pig.is_injured else 0
     })
 
 @app.route('/api/prix-groin')
@@ -1857,6 +2018,9 @@ def migrate_db():
         ('pig', 'origin_flag', 'VARCHAR(10) DEFAULT "🇫🇷"'),
         ('pig', 'last_school_at', 'DATETIME'),
         ('pig', 'school_sessions_completed', 'INTEGER DEFAULT 0'),
+        ('pig', 'is_injured', 'BOOLEAN DEFAULT 0'),
+        ('pig', 'injury_risk', 'FLOAT DEFAULT 10.0'),
+        ('pig', 'vet_deadline', 'DATETIME'),
         ('user', 'is_admin', 'BOOLEAN DEFAULT 0'),
         ('user', 'last_relief_at', 'DATETIME'),
         ('auction', 'seller_id', 'INTEGER'),
@@ -1906,6 +2070,28 @@ def seed_users():
             )
             apply_origin_bonus(pig, origin_data)
             db.session.add(pig)
+
+    demo_owner = User.query.filter_by(username='Christophe').first()
+    if demo_owner:
+        demo_pig = Pig.query.filter_by(user_id=demo_owner.id, name='Patient Zero').first()
+        owner_pig_count = Pig.query.filter_by(user_id=demo_owner.id).count()
+        if not demo_pig and owner_pig_count < 2:
+            origin_data = next((o for o in PIG_ORIGINS if o['country'] == 'Belgique'), PIG_ORIGINS[0])
+            demo_pig = Pig(
+                user_id=demo_owner.id,
+                name='Patient Zero',
+                emoji='🩹',
+                origin_country=origin_data['country'],
+                origin_flag=origin_data['flag'],
+                energy=62,
+                hunger=58,
+                happiness=54,
+                is_injured=True,
+                injury_risk=28.0,
+                vet_deadline=datetime.utcnow() + timedelta(minutes=30),
+            )
+            apply_origin_bonus(demo_pig, origin_data)
+            db.session.add(demo_pig)
     db.session.commit()
 
 with app.app_context():
