@@ -397,3 +397,5 @@ PIG_TYPING_WORDS = [
     "galop", "vitesse", "champion", "medaille", "victoire", "podium", "derby", "grognement",
     "paté", "terrine", "cotelette", "palette", "échine", "travers", "poitrine", "jambe",
 ]
+
+PIG_COURSE_SEGMENT_TYPES = ['PLAT', 'MONTEE', 'DESCENTE', 'VIRAGE', 'BOUE']

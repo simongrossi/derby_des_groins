@@ -20,7 +20,9 @@ from data import (
     RACE_APPEARANCE_REWARD, RACE_POSITION_REWARDS,
     WEEKLY_RACE_QUOTA, JOURS_FR, IDEAL_WEIGHT_MALUS_THRESHOLD_RATIO,
     MAX_WEIGHT_PERFORMANCE_MALUS, FRESHNESS_BONUS_HOURS, FRESHNESS_MORAL_BONUS,
+    PIG_COURSE_SEGMENT_TYPES,
 )
+from race_engine import CourseManager
 
 
 # ─── HELPERS CONFIG ─────────────────────────────────────────────────────────
@@ -729,6 +731,17 @@ def build_weighted_finish_order(participants):
         remaining.remove(chosen)
     return finish_order
 
+def generate_course_segments(length=1200):
+    segments = []
+    current_dist = 0
+    while current_dist < length:
+        seg_type = random.choice(PIG_COURSE_SEGMENT_TYPES)
+        seg_len = random.randint(150, 400)
+        actual_len = min(seg_len, length - current_dist)
+        segments.append({'type': seg_type, 'length': actual_len})
+        current_dist += actual_len
+    return segments
+
 def get_bet_selection_ids(bet, participants_by_id):
     selection_ids = parse_selection_ids(getattr(bet, 'selection_order', None))
     if selection_ids:
@@ -926,12 +939,15 @@ def populate_race_participants(race, respect_course_plans=True, allow_rebuild_if
         player_powers.append(power)
         all_powers.append(power)
         owner = User.query.get(pig.user_id)
+        plan = CoursePlan.query.filter_by(pig_id=pig.id, scheduled_at=race.scheduled_at).first()
+        strategy = plan.strategy if plan else 50
         participant = Participant(
             race_id=race.id,
             name=pig.name,
             emoji=pig.emoji,
             pig_id=pig.id,
             owner_name=owner.username if owner else None,
+            strategy=strategy,
             odds=0,
             win_probability=0,
         )
@@ -1024,6 +1040,14 @@ def build_course_schedule(user, pigs, days=30):
         for pig in pigs:
             is_actual_participant = pig.id in slot_actual_pig_ids
             is_planned = pig.id in slot_user_plan_by_pig
+            
+            # Find current strategy if already participant
+            current_strategy = 50
+            if is_actual_participant:
+                part = next((p for p in slot_participants if p.pig_id == pig.id), None)
+                if part:
+                    current_strategy = part.strategy
+
             exclude_slot = slot_time if (is_actual_participant or is_planned) else None
             weekly_commitments = count_pig_weekly_course_commitments(pig.id, slot_time, exclude_scheduled_at=exclude_slot)
             quota_reached = weekly_commitments >= WEEKLY_RACE_QUOTA and not (is_actual_participant or is_planned)
@@ -1044,6 +1068,7 @@ def build_course_schedule(user, pigs, days=30):
                 'pig': pig,
                 'is_planned': is_planned,
                 'is_actual_participant': is_actual_participant,
+                'current_strategy': current_strategy,
                 'can_toggle': can_toggle,
                 'disabled_reason': disabled_reason,
                 'weekly_commitments': weekly_commitments + (0 if (is_actual_participant or is_planned) else 1),
@@ -1356,7 +1381,45 @@ def run_race_if_needed():
             continue
 
         participants_by_id = {participant.id: participant for participant in participants}
-        order = build_weighted_finish_order(participants)
+        
+        # New Tactical Simulation
+        # Fetch actual pig stats for simulation
+        pigs_for_sim = []
+        for p in participants:
+            if p.pig_id:
+                pig = Pig.query.get(p.pig_id)
+                if pig:
+                    pig.strategy = p.strategy # Sync current player strategy
+                    pigs_for_sim.append(pig)
+                else:
+                    # Mock NPC pig stats based on odds
+                    pigs_for_sim.append({
+                        'id': p.id, 'name': p.name, 'emoji': p.emoji,
+                        'vitesse': 20 + (1.0/p.odds)*100, 'endurance': 30, 'force': 30, 'agilite': 30,
+                        'intelligence': 30, 'moral': 50, 'strategy': 50
+                    })
+            else:
+                # Mock NPC pig stats based on odds
+                pigs_for_sim.append({
+                    'id': p.id, 'name': p.name, 'emoji': p.emoji,
+                    'vitesse': 20 + (1.0/p.odds)*100, 'endurance': 30, 'force': 30, 'agilite': 30,
+                    'intelligence': 30, 'moral': 50, 'strategy': 50
+                })
+
+        segments = generate_course_segments()
+        manager = CourseManager(pigs_for_sim, segments)
+        history = manager.run()
+        race.replay_json = manager.to_json()
+
+        # Determine order from finish_time and distance
+        final_pigs = sorted(manager.participants, key=lambda x: (x['finish_time'] or 9999, -x['distance']))
+        
+        order = []
+        for fp in final_pigs:
+            participant = participants_by_id.get(fp['id'])
+            if participant:
+                order.append(participant)
+
         for i, p in enumerate(order):
             p.finish_position = i + 1
 

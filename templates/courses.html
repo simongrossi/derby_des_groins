@@ -253,6 +253,18 @@
                             <form method="POST" action="/courses/plan">
                                 <input type="hidden" name="pig_id" value="{{ pig.id }}">
                                 <input type="hidden" name="scheduled_at" value="{{ slot.slot_key }}">
+                                
+                                <div class="mb-3 px-1">
+                                    <div class="flex justify-between text-[10px] font-bold text-white/40 uppercase mb-1">
+                                        <span>🐢 Éco</span>
+                                        <span class="text-white/60">Stratégie: {{ option.current_strategy }}%</span>
+                                        <span>Attaque 🚀</span>
+                                    </div>
+                                    <input type="range" name="strategy" min="0" max="100" value="{{ option.current_strategy }}" 
+                                           class="w-full accent-pink-500 bg-white/10 rounded-lg appearance-none h-1.5 cursor-pointer"
+                                           oninput="this.previousElementSibling.querySelector('.text-white\\/60').innerText = 'Stratégie: ' + this.value + '%'">
+                                </div>
+
                                 <button type="submit" class="btn-plan
                                     {% if option.is_actual_participant %}bg-emerald-500/12 border-emerald-400/25 text-emerald-100
                                     {% elif option.is_planned %}bg-yellow-500/12 border-yellow-400/25 text-yellow-100

@@ -110,7 +110,9 @@ def plan_course():
         flash(f"{pig.name} a deja atteint son quota hebdomadaire de {WEEKLY_RACE_QUOTA} courses.", "warning")
         return redirect(url_for('race.courses'))
 
-    db.session.add(CoursePlan(user_id=user.id, pig_id=pig.id, scheduled_at=scheduled_at))
+    strategy = request.form.get('strategy', 50, type=int)
+
+    db.session.add(CoursePlan(user_id=user.id, pig_id=pig.id, scheduled_at=scheduled_at, strategy=strategy))
     db.session.flush()
 
     if open_race:

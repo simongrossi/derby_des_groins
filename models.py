@@ -93,6 +93,7 @@ class Race(db.Model):
     winner_name = db.Column(db.String(80), nullable=True)
     winner_odds = db.Column(db.Float, nullable=True)
     status = db.Column(db.String(20), default='upcoming')
+    replay_json = db.Column(db.Text, nullable=True) # Detailed history as JSON
     participants = db.relationship('Participant', backref='race', lazy=True)
     bets = db.relationship('Bet', backref='race', lazy=True)
 
@@ -105,6 +106,7 @@ class Participant(db.Model):
     win_probability = db.Column(db.Float, nullable=False)
     finish_position = db.Column(db.Integer, nullable=True)
     pig_id = db.Column(db.Integer, db.ForeignKey('pig.id'), nullable=True)
+    strategy = db.Column(db.Integer, default=50)  # 0 (Economy) to 100 (Full Attack)
     owner_name = db.Column(db.String(80), nullable=True)
 
 class Bet(db.Model):
@@ -138,6 +140,7 @@ class CoursePlan(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
     pig_id = db.Column(db.Integer, db.ForeignKey('pig.id'), nullable=False, index=True)
     scheduled_at = db.Column(db.DateTime, nullable=False, index=True)
+    strategy = db.Column(db.Integer, default=50)
     created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
 
     pig = db.relationship('Pig', backref=db.backref('course_plans', lazy=True))
