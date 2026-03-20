@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🐷 Derby des Groins — {{ 'Inscription' if mode == 'register' else 'Connexion' }}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * { font-family: 'Nunito', sans-serif; }
+        .font-title { font-family: 'Lilita One', cursive; }
+        body {
+            background: #1a0a2e;
+            background-image:
+                radial-gradient(ellipse at 30% 40%, rgba(255, 100, 0, 0.15) 0%, transparent 60%),
+                radial-gradient(ellipse at 70% 70%, rgba(180, 0, 255, 0.1) 0%, transparent 50%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .card {
+            background: rgba(255, 255, 255, 0.06);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 1.5rem;
+        }
+        .input-field {
+            width: 100%;
+            background: rgba(255,255,255,0.07);
+            border: 1px solid rgba(255,255,255,0.15);
+            border-radius: 0.75rem;
+            padding: 0.75rem 1rem;
+            color: white;
+            font-weight: 600;
+            font-size: 1rem;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        .input-field:focus { border-color: #f59e0b; }
+        .input-field::placeholder { color: rgba(255,255,255,0.25); }
+        .btn-primary {
+            width: 100%;
+            background: linear-gradient(135deg, #f59e0b, #ef4444);
+            border: none;
+            color: white;
+            font-weight: 800;
+            font-size: 1.1rem;
+            border-radius: 0.75rem;
+            padding: 0.85rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+        }
+        .btn-primary:hover {
+            box-shadow: 0 8px 25px rgba(245, 158, 11, 0.4);
+            transform: translateY(-1px);
+        }
+        .pigs-row { font-size: 2rem; letter-spacing: 0.5rem; }
+    </style>
+</head>
+<body>
+    <div class="w-full max-w-md px-4">
+        <div class="card p-8">
+            <!-- Logo -->
+            <div class="text-center mb-8">
+                <div class="pigs-row mb-3">🐷🥓🐽</div>
+                <h1 class="font-title text-3xl text-yellow-400">Derby des Groins</h1>
+                <p class="text-white/40 text-sm mt-1 font-semibold">
+                    {{ "Rejoins l'écurie !" if mode == 'register' else 'Bon retour dans l\'arène !' }}
+                </p>
+            </div>
+
+            <!-- Erreur -->
+            {% if error %}
+            <div class="bg-red-500/15 border border-red-500/30 rounded-xl p-3 mb-5 text-red-400 text-sm font-bold text-center">
+                ⚠️ {{ error }}
+            </div>
+            {% endif %}
+
+            <!-- Formulaire -->
+            <form method="POST">
+                <div class="mb-4">
+                    <label class="text-white/60 text-sm font-bold block mb-2">Pseudo</label>
+                    <input type="text" name="username" class="input-field" placeholder="Ex: GroinMaster" required autocomplete="username">
+                </div>
+                <div class="mb-6">
+                    <label class="text-white/60 text-sm font-bold block mb-2">Mot de passe</label>
+                    <input type="password" name="password" class="input-field" placeholder="••••••••" required autocomplete="{{ 'new-password' if mode == 'register' else 'current-password' }}">
+                </div>
+
+                {% if mode == 'register' %}
+                <div class="bg-yellow-400/10 border border-yellow-400/20 rounded-xl p-3 mb-5 text-center">
+                    <p class="text-yellow-400 text-sm font-bold">🎁 Cadeau de bienvenue : <strong>100 Groins-Coins</strong> offerts !</p>
+                </div>
+                {% endif %}
+
+                <button type="submit" class="btn-primary">
+                    {{ '🐷 Créer mon compte' if mode == 'register' else '🏁 Entrer dans l\'arène' }}
+                </button>
+            </form>
+
+            <!-- Lien alternatif -->
+            <p class="text-center mt-5 text-white/40 text-sm font-semibold">
+                {% if mode == 'register' %}
+                    Déjà inscrit ? <a href="/login" class="text-yellow-400 hover:text-yellow-300 font-bold transition-colors">Connexion</a>
+                {% else %}
+                    Pas encore de compte ? <a href="/register" class="text-yellow-400 hover:text-yellow-300 font-bold transition-colors">S'inscrire</a>
+                {% endif %}
+            </p>
+
+            <div class="mt-6 text-center">
+                <a href="/" class="text-white/30 hover:text-white/60 text-xs font-semibold transition-colors">← Retour à l'accueil</a>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
