@@ -34,6 +34,18 @@ Liste des fonctionnalités et idées déjà implémentées dans le projet.
 - **Charts supplementaires** : morts empilees par cause, donut des causes de deces, profit/perte paris, taux de reussite, courses disputees, win rate.
 - **Mur de la Honte** : classements des pires performances (looser, boucher, pigeon, negligent, flambeur, rat fauche, gaveur).
 
+## Équilibrage économique et progression (v2)
+- **Nerf progression stats** : tous les gains de stats (entraînements et école) divisés par 5 pour éviter l'effet boule de neige. Un sprint donne +0.6 VIT (avant : +3.0), un cours de stratégie donne +0.5 INT (avant : +2.5).
+- **Durée de vie réduite** : les `max_races_range` des cochons sont divisées par 2 pour accélérer le turnover et dynamiser l'économie.
+  - Commun : 20-30 courses (avant : 40-60)
+  - Rare : 30-40 courses (avant : 60-80)
+  - Épique : 40-50 courses (avant : 80-100)
+  - Légendaire : 50-75 courses (avant : 100-150)
+- **Prime de pointage journalière** : +15 🪙 automatiques à la première connexion de la journée. Garantit un revenu minimum pour nourrir ses cochons sans dépendre de l'aide d'urgence.
+- **Moteur de course rééquilibré** :
+  - Récupération de fatigue en stratégie Économie (strat < 25) nerfée : de -0.5 à -0.1 par tour.
+  - Bonus d'aspiration (drafting) réduit : de +1.5 à +0.8, pour éviter que les cochons endurants en Économie dominent systématiquement.
+
 ## Infrastructure et Admin
 - **Configuration Admin** : Ajout de réglages dans le panneau d'administration pour les seuils de participants et les modes de gestion des courses vides.
 - **Historique étendu** : Les courses annulées apparaissent désormais dans l'historique pour une meilleure transparence.

@@ -144,12 +144,12 @@ class CourseManager:
 
         # 7. Drafting Bonus
         if p['has_draft'] and not p['is_finished']:
-            final_speed += 1.5 # Fixed boost from slipstream
+            final_speed += 0.8 # Nerfed slipstream boost
         
         # 8. Accumulate Fatigue
         # Economy (strat < 30) recovers a bit of fatigue
         if strat < 25:
-            p['fatigue'] = max(0.0, p['fatigue'] - 0.5)
+            p['fatigue'] = max(0.0, p['fatigue'] - 0.1)
         else:
             p['fatigue'] += fatigue_gain
             

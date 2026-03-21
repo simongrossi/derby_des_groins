@@ -9,8 +9,12 @@
   - conservation des trophées, du Hall of Fame et des métriques historiques,
   - divisions / ligues pour séparer nouveaux éleveurs et vétérans.
 - Renforcer l'**anti-snowball** pour éviter qu'un joueur dominant n'écrase durablement la concurrence :
-  - fatigue après sorties consécutives,
-  - rendements décroissants à l'entraînement,
+  - ✅ gains de stats divisés par 5 (entraînement et école),
+  - ✅ durée de vie des cochons divisée par 2,
+  - ✅ prime de pointage journalière (15 🪙),
+  - ✅ moteur de course : récupération fatigue et aspiration nerfées,
+  - fatigue après sorties consécutives (à explorer),
+  - rendements décroissants à l'entraînement (à explorer),
   - buffs de comeback pour les cochons frais ou les joueurs moins actifs.
 - Formaliser un **Hall of Fame** saisonnier :
   - vainqueur `Saint Grouin`,
@@ -46,7 +50,9 @@
   - Piste sèche pour favoriser la Vitesse.
   - Formats spéciaux pour Intelligence, Agilité ou Moral.
 - Revoir l'**École porcine** pour éviter le maxage trop rapide des stats :
-  - limiter les gains bruts, spécialisations (`sprinteur`, `roublard`, `marathonien`), garder le coût moral comme vrai arbitrage.
+  - ✅ gains bruts divisés par 5 (fait),
+  - spécialisations (`sprinteur`, `roublard`, `marathonien`) à explorer,
+  - garder le coût moral comme vrai arbitrage.
 
 ## Fatigue, porc-out et RTT
 
@@ -118,14 +124,24 @@ La Bourse aux Grains est implementee. Evolutions futures envisageables :
 
 ### Algorithme de la Bourse aux Grains
 
-1. **Grille 5x5** : positions (1,1) a (5,5). Centre (3,3) = neutre.
-2. **Axe X (Prix)** : modificateurs `[0.55, 0.78, 1.00, 1.28, 1.60]`.
-3. **Axe Y (Qualite)** : modificateurs `[0.55, 0.78, 1.00, 1.28, 1.60]`.
-4. **Prix final** = `base_cost * price_mod * feeding_multiplier`.
-5. **Qualite finale** = tous les bonus (faim, energie, stats, poids) multiplies par `quality_mod`.
-6. **Points de mouvement** = `max(1, total_achats_nourriture // 10)`.
+1. **Grille 7x7** : valeurs symetriques `[6, 4, 2, 0, 2, 4, 6]`. Centre (3,3) = surcout 0.
+2. **Bloc 3x3 mobile** : un bloc de 3x3 cases contient les 6 cereales disposees en croix/coins. Le centre du bloc = grain de base (mais). En position initiale (centre de la grille), le mais n'a aucun surcout.
+3. **Surcout** : chaque point de grille = +5% du prix de base (`BOURSE_SURCHARGE_FACTOR = 0.05`). Un grain sur la case de valeur 4 coute 20% de plus.
+4. **Prix final** = `base_cost * (1 + grid_value * 0.05) * feeding_multiplier`.
+5. **Points de mouvement** = `max(1, total_achats_nourriture // 10)`.
+6. **Contrainte du bloc** : le centre du bloc ne peut sortir des positions 1 a 5 pour que le bloc 3x3 reste entierement dans la grille 7x7.
 7. **Vitrine** : le grain achete en dernier est bloque jusqu'au prochain achat d'un grain different.
 8. **Etat partage** : le curseur et la vitrine sont communs a tous les joueurs (modele `GrainMarket`, singleton id=1).
+
+### Algorithme de l'equilibrage v2
+
+1. **Progression stats** : tous les gains d'entrainement et d'ecole divises par 5.
+2. **Duree de vie** : `max_races_range` divisee par 2 pour toutes les raretes.
+3. **Prime journaliere** : `DAILY_LOGIN_REWARD = 15.0` 🪙 a la premiere connexion du jour.
+4. **Moteur de course** :
+   - Recuperation fatigue en strategie Economie (strat < 25) : 0.5 → 0.1 par tour.
+   - Bonus d'aspiration (drafting) : 1.5 → 0.8.
+   - Ces deux nerfs empechent les cochons endurants en Economie de dominer systematiquement la fin de course.
 
 ## Direction forte à garder
 

@@ -98,6 +98,7 @@ def migrate_db():
         ('auction', 'pig_origin_flag', 'VARCHAR(10)'),
         ('bet', 'bet_type', 'VARCHAR(20) DEFAULT "win"'),
         ('bet', 'selection_order', 'VARCHAR(240)'),
+        ('user', 'last_daily_reward_at', 'DATETIME'),
     ]
     index_migrations = [
         'CREATE UNIQUE INDEX IF NOT EXISTS ux_bet_user_race ON bet(user_id, race_id)',

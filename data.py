@@ -121,7 +121,7 @@ TRAININGS = {
         'name': 'Sprint', 'emoji': '💨',
         'description': 'Course courte et explosive',
         'energy_cost': 25, 'hunger_cost': 10,
-        'stats': {'vitesse': 3.0, 'endurance': 1.0},
+        'stats': {'vitesse': 0.6, 'endurance': 0.2},
         'weight_delta': -0.7,
         'min_happiness': 20
     },
@@ -129,7 +129,7 @@ TRAININGS = {
         'name': 'Cross-country', 'emoji': '🏃',
         'description': 'Longue distance, mental d\'acier',
         'energy_cost': 35, 'hunger_cost': 15,
-        'stats': {'endurance': 3.0, 'force': 1.0, 'vitesse': 0.5},
+        'stats': {'endurance': 0.6, 'force': 0.2, 'vitesse': 0.1},
         'weight_delta': -1.0,
         'min_happiness': 20
     },
@@ -137,7 +137,7 @@ TRAININGS = {
         'name': 'Parcours d\'obstacles', 'emoji': '🏅',
         'description': 'Agilité et réflexes',
         'energy_cost': 30, 'hunger_cost': 10,
-        'stats': {'agilite': 3.0, 'intelligence': 1.0},
+        'stats': {'agilite': 0.6, 'intelligence': 0.2},
         'weight_delta': -0.6,
         'min_happiness': 30
     },
@@ -145,7 +145,7 @@ TRAININGS = {
         'name': 'Sparring', 'emoji': '🥊',
         'description': 'Combat amical, gagne en puissance',
         'energy_cost': 30, 'hunger_cost': 15,
-        'stats': {'force': 3.0, 'moral': 0.5, 'endurance': 0.5},
+        'stats': {'force': 0.6, 'moral': 0.1, 'endurance': 0.1},
         'weight_delta': 0.2,
         'min_happiness': 30
     },
@@ -153,7 +153,7 @@ TRAININGS = {
         'name': 'Puzzles & Stratégie', 'emoji': '🧩',
         'description': 'Entraînement cérébral',
         'energy_cost': 15, 'hunger_cost': 5,
-        'stats': {'intelligence': 3.0, 'moral': 1.0},
+        'stats': {'intelligence': 0.6, 'moral': 0.2},
         'weight_delta': 0.1,
         'min_happiness': 10
     },
@@ -161,7 +161,7 @@ TRAININGS = {
         'name': 'Repos & Détente', 'emoji': '😴',
         'description': 'Récupération complète',
         'energy_cost': -40, 'hunger_cost': 5,
-        'stats': {'moral': 2.0},
+        'stats': {'moral': 0.4},
         'weight_delta': 0.5,
         'happiness_bonus': 15,
         'min_happiness': 0
@@ -182,7 +182,7 @@ SCHOOL_LESSONS = {
             {'text': 'S arreter pour observer les autres', 'correct': False, 'feedback': 'Observer c est bien, planter ses sabots au milieu de la piste un peu moins.'},
             {'text': 'Suivre le plus bruyant du groupe', 'correct': False, 'feedback': 'Le vacarme n est pas une tactique de course.'},
         ],
-        'stats': {'intelligence': 2.5, 'agilite': 1.5},
+        'stats': {'intelligence': 0.5, 'agilite': 0.3},
         'xp': 24,
         'wrong_xp': 6,
         'energy_cost': 10,
@@ -202,7 +202,7 @@ SCHOOL_LESSONS = {
             {'text': 'Aucun repas pour courir leger', 'correct': False, 'feedback': 'Leger, oui. Debout au depart, beaucoup moins sur.'},
             {'text': 'Trois desserts et un soda surprise', 'correct': False, 'feedback': 'Ton cochon applaudit, son endurance beaucoup moins.'},
         ],
-        'stats': {'endurance': 2.0, 'moral': 1.0},
+        'stats': {'endurance': 0.4, 'moral': 0.2},
         'xp': 22,
         'wrong_xp': 5,
         'energy_cost': 8,
@@ -222,7 +222,7 @@ SCHOOL_LESSONS = {
             {'text': 'Dormir sur la ligne de depart', 'correct': False, 'feedback': 'Repos mal place. Ambiance sieste, resultat desastreux.'},
             {'text': 'Paniquer tres fort tres tot', 'correct': False, 'feedback': 'Technique peu recommandee par l academie porcine.'},
         ],
-        'stats': {'moral': 2.0, 'intelligence': 1.5},
+        'stats': {'moral': 0.4, 'intelligence': 0.3},
         'xp': 26,
         'wrong_xp': 6,
         'energy_cost': 9,
@@ -242,7 +242,7 @@ SCHOOL_LESSONS = {
             {'text': 'Le nombre de spectateurs au premier rang', 'correct': False, 'feedback': 'Flatteur pour l ego, inutile pour la trajectoire.'},
             {'text': 'La meilleure pose pour la photo d arrivee', 'correct': False, 'feedback': 'D abord la course, ensuite la couverture de magazine.'},
         ],
-        'stats': {'vitesse': 1.5, 'agilite': 1.5, 'intelligence': 1.0},
+        'stats': {'vitesse': 0.3, 'agilite': 0.3, 'intelligence': 0.2},
         'xp': 24,
         'wrong_xp': 6,
         'energy_cost': 11,
@@ -293,6 +293,7 @@ MIN_PIG_WEIGHT_KG = 75.0
 MAX_PIG_WEIGHT_KG = 190.0
 WEEKLY_RACE_QUOTA = 3
 WEEKLY_BACON_TICKETS = 3
+DAILY_LOGIN_REWARD = 15.0
 
 BET_TYPES = {
     'win': {
@@ -368,22 +369,22 @@ PIG_NAME_SUFFIXES = [
 RARITIES = {
     'commun': {
         'name': 'Commun', 'color': '#9ca3af', 'emoji': '⚪',
-        'stats_range': (5, 20), 'max_races_range': (40, 60),
+        'stats_range': (5, 20), 'max_races_range': (20, 30),
         'price_range': (15, 30), 'weight': 50
     },
     'rare': {
         'name': 'Rare', 'color': '#3b82f6', 'emoji': '🔵',
-        'stats_range': (15, 35), 'max_races_range': (60, 80),
+        'stats_range': (15, 35), 'max_races_range': (30, 40),
         'price_range': (30, 60), 'weight': 30
     },
     'epique': {
         'name': 'Épique', 'color': '#a855f7', 'emoji': '🟣',
-        'stats_range': (25, 50), 'max_races_range': (80, 100),
+        'stats_range': (25, 50), 'max_races_range': (40, 50),
         'price_range': (60, 120), 'weight': 15
     },
     'legendaire': {
         'name': 'Légendaire', 'color': '#f59e0b', 'emoji': '🟡',
-        'stats_range': (40, 70), 'max_races_range': (100, 150),
+        'stats_range': (40, 70), 'max_races_range': (50, 75),
         'price_range': (120, 250), 'weight': 5
     }
 }

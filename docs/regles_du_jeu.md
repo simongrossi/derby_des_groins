@@ -3,7 +3,8 @@
 Bienvenue dans l'univers impitoyable et délicieux du **Derby des Groins**. Voici comment dominer le circuit !
 
 ## 1. Débuter l'Aventure
-- Créez votre compte, vous recevrez **100 BitGroins (BG)** en cadeau de bienvenue.
+- Créez votre compte, vous recevrez **100 BitGroins (🪙)** en cadeau de bienvenue.
+- Chaque jour, votre **première connexion** vous rapporte une **Prime de pointage de 15 🪙** automatiquement créditée.
 - Rendez-vous sur la page **Mon Cochon** pour adopter votre premier poulain gratuitement. Votre cochon recevra un nom, un pays d'origine (avec un bonus de stats), un emoji représentatif, et des statistiques générées aléatoirement.
 - La page d'accueil fait office de **dashboard express** : on y voit la course du jour, le statut de son cochon, ses Tickets Bacon restants, un résumé de la bauge et les derniers résultats.
 
@@ -17,6 +18,8 @@ Bienvenue dans l'univers impitoyable et délicieux du **Derby des Groins**. Voic
 - **Poids de forme** : un cochon trop lourd ou trop leger exploite moins bien ses stats pendant la course.
 
 Entraînez-le régulièrement, envoyez-le à l'école porcine et nourrissez-le pour le maintenir en forme avant les courses ! Le choix des cereales et des seances influe aussi sur son poids. (Mais attention, un cochon ne peut courir qu'un nombre défini de fois avant de succomber...).
+
+> **Équilibrage v2** : les gains de stats par entraînement et par école ont été divisés par 5 pour ralentir la progression et éviter l'effet boule de neige. Un sprint donne désormais +0.6 en vitesse (au lieu de +3.0), un cours de stratégie donne +0.5 en intelligence (au lieu de +2.5). L'objectif est de garder les courses compétitives même entre joueurs assidus et joueurs occasionnels.
 
 ## 2.b L'École Porcine
 - Depuis la page **Mon Cochon**, chaque cochon peut suivre des **cours tactiques** sous forme de quiz.
@@ -80,11 +83,13 @@ La nourriture ne s'achete plus a prix fixe. Tous les prix et la qualite des cere
 - La page **Historique** conserve aussi chaque ticket, l'historique des courses et le journal des credits/debits BitGroins pour suivre les flux.
 
 ## 5. Survivre sur le Long Terme
+- La **Prime de pointage** (15 🪙/jour) garantit un revenu minimum pour nourrir ses cochons même en cas de série de défaites.
 - Un cochon finit par prendre sa retraite ou mourir : il faut donc penser à renouveler son élevage.
 - Deux cochons actifs peuvent maintenant lancer une **portee** : le porcelet hérite d'une partie des stats, de l'origine, de la rareté et du bonus de lignée de ses parents.
 - Un cochon **legendaire** (ou deja tres victorieux) peut prendre une **retraite d'honneur** : il quitte la piste, mais laisse un bonus permanent a sa lignee et a la porcherie du joueur.
 - Plus vous possedez de cochons, plus le nourrissage devient cher : chaque bouche supplementaire augmente le coût des cereales pour toute la porcherie.
 - Si un cochon mis en vente ne trouve pas preneur, il **revient automatiquement** chez son propriétaire.
+- La durée de vie des cochons a été **réduite de moitié** pour accélérer le turnover (Commun : 20-30 courses, Légendaire : 50-75 courses). Cela force les joueurs à utiliser l'élevage, l'abattoir et le marché plus activement.
 - Si vous êtes ruiné, le jeu peut verser une **prime d'urgence** pour éviter de rester bloqué sans solution.
 - Les nouveaux comptes doivent d'abord faire quelques courses, ou attendre un peu, avant de pouvoir utiliser pleinement le **marché**.
 - En mode démo, certains comptes peuvent disposer d'un cochon déjà blessé pour tester immédiatement la clinique vétérinaire.

@@ -18,6 +18,7 @@ class User(db.Model):
     barn_heritage_bonus = db.Column(db.Float, default=0.0)
     snack_shares_today = db.Column(db.Integer, default=0)
     snack_share_reset_at = db.Column(db.DateTime, nullable=True)
+    last_daily_reward_at = db.Column(db.DateTime, nullable=True)
     bets = db.relationship('Bet', backref='user', lazy=True)
     balance_transactions = db.relationship('BalanceTransaction', backref='user', lazy=True)
     course_plans = db.relationship('CoursePlan', backref='user', lazy=True)

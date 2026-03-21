@@ -1,10 +1,10 @@
-from flask import Blueprint, render_template, redirect, url_for, session
+from flask import Blueprint, render_template, redirect, url_for, session, flash
 from sqlalchemy import func
 from datetime import datetime
 
 from extensions import db
 from models import User, Pig, Race, Participant, Bet, BalanceTransaction, CoursePlan
-from data import BET_TYPES, WEEKLY_BACON_TICKETS
+from data import BET_TYPES, WEEKLY_BACON_TICKETS, DAILY_LOGIN_REWARD
 from helpers import (
     ensure_next_race, get_user_active_pigs, update_pig_state, calculate_pig_power,
     get_weight_profile, get_pig_dashboard_status, build_course_schedule,
@@ -36,6 +36,23 @@ def index():
     if 'user_id' in session:
         user = User.query.get(session['user_id'])
         if user:
+            # --- Prime de pointage journalière ---
+            today = datetime.utcnow().date()
+            if user.last_daily_reward_at is None or user.last_daily_reward_at.date() < today:
+                before = user.balance
+                user.balance += DAILY_LOGIN_REWARD
+                user.last_daily_reward_at = datetime.utcnow()
+                db.session.add(BalanceTransaction(
+                    user_id=user.id,
+                    amount=DAILY_LOGIN_REWARD,
+                    balance_before=before,
+                    balance_after=user.balance,
+                    reason_code='daily_reward',
+                    reason_label='Prime de pointage journalière',
+                ))
+                db.session.commit()
+                flash(f"🎁 Prime de pointage : Vous avez reçu {DAILY_LOGIN_REWARD:.0f} 🪙 BitGroins pour votre première connexion de la journée !", "success")
+
             pigs = Pig.query.filter_by(user_id=user.id, is_alive=True).all()
             for pig in pigs:
                 update_pig_state(pig)

@@ -113,14 +113,14 @@ Inspirée des vrais taux d'inclusion recommandés pour l'alimentation porcine :
 
 | Céréale | Coût | Boost principal | Valeur fourragère (vs maïs) |
 |---------|------|----------------|---------------------------|
-| Maïs 🌽 | 5 GC | Équilibré | 100 |
-| Orge 🌾 | 8 GC | +Endurance +Force | 97 |
-| Blé 🌿 | 10 GC | +Force +Vitesse | 105 |
-| Seigle 🌱 | 7 GC | +Agilité +Intelligence | 102 |
-| Triticale 🍃 | 9 GC | +Vitesse +Endurance | 100 |
-| Avoine 🥣 | 6 GC | +Moral +Agilité | 82 |
+| Maïs 🌽 | 5 🪙 | Équilibré | 100 |
+| Orge 🌾 | 8 🪙 | +Endurance +Force | 97 |
+| Blé 🌿 | 10 🪙 | +Force +Vitesse | 105 |
+| Seigle 🌱 | 7 🪙 | +Agilité +Intelligence | 102 |
+| Triticale 🍃 | 9 🪙 | +Vitesse +Endurance | 100 |
+| Avoine 🥣 | 6 🪙 | +Moral +Agilité | 82 |
 
-> **Bourse aux Grains** : les prix ci-dessus sont les prix de base. Le cout reel est determine par la **Bourse aux Grains**, un marche dynamique ou tous les joueurs partagent un curseur sur une grille 5x5. L'axe horizontal fixe le modificateur de prix (x0.55 a x1.60), l'axe vertical fixe le modificateur de qualite (bonus de stats, faim et energie). Chaque joueur peut deplacer le curseur avant d'acheter, et le dernier grain achete est bloque en vitrine jusqu'a ce qu'un concurrent achete autre chose.
+> **Bourse aux Grains** : les prix ci-dessus sont les prix de base. Le cout reel est determine par la **Bourse aux Grains**, un marche dynamique ou tous les joueurs partagent un bloc 3x3 de cereales sur une grille 7x7 avec valeurs symetriques `[6,4,2,0,2,4,6]`. Le centre de la grille = surcout 0. Plus le bloc s'eloigne du centre, plus certaines cereales deviennent cheres (+5% par point). Chaque joueur peut deplacer le bloc avant d'acheter, et le dernier grain achete est bloque en vitrine jusqu'a ce qu'un concurrent achete autre chose.
 
 ### 🏪 Marché aux Cochons
 
@@ -128,10 +128,10 @@ Le marché génère automatiquement des cochons aux enchères avec 4 niveaux de 
 
 | Rareté | Stats | Durée de vie | Prix départ |
 |--------|-------|-------------|-------------|
-| ⚪ Commun | 5-20 | 40-60 courses | 15-30 GC |
-| 🔵 Rare | 15-35 | 60-80 courses | 30-60 GC |
-| 🟣 Épique | 25-50 | 80-100 courses | 60-120 GC |
-| 🟡 Légendaire | 40-70 | 100-150 courses | 120-250 GC |
+| ⚪ Commun | 5-20 | 20-30 courses | 15-30 🪙 |
+| 🔵 Rare | 15-35 | 30-40 courses | 30-60 🪙 |
+| 🟣 Épique | 25-50 | 40-50 courses | 60-120 🪙 |
+| 🟡 Légendaire | 40-70 | 50-75 courses | 120-250 🪙 |
 
 - Enchères avec **countdown en temps réel**
 - Le meilleur enchérisseur remporte le cochon
@@ -296,6 +296,8 @@ derby_des_groins/
 20. Les courses, les enchères et les deadlines du vétérinaire sont gérées par un **scheduler de fond**, même si personne n'est connecté
 21. La **Bourse aux Grains** remplace les prix fixes : un curseur sur une grille 5x5 partagée par tous les joueurs determine le prix et la qualite de la nourriture. Chaque joueur peut deplacer le curseur avant d'acheter, et le dernier grain achete est bloque en vitrine
 22. Le **Classement** propose 5 onglets (General, Abattoir, Paris, Elevage, Mur de la Honte) avec 18+ awards automatiques et des charts detailles
+23. La **Prime de pointage** de 15 🪙 est versee automatiquement a la premiere connexion de chaque journee pour garantir un revenu minimum
+24. L'**equilibrage v2** divise les gains de stats par 5 (anti-snowball), reduit la duree de vie des cochons de moitie et nerf la strategie Economie en course
 
 ---
 

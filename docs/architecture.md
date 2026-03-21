@@ -10,7 +10,7 @@
 ## Structure des Modèles (Database Schema)
 
 1.  **`GameConfig`** : Stocke les paramètres globaux (horaires de courses, ouverture du marché, seuils d'aide d'urgence).
-2.  **`User`** : Profil utilisateur, authentification (bcrypt), solde BitGroins (BG), statut admin et le bonus cumulé d'héritage (**`barn_heritage_bonus`**).
+2.  **`User`** : Profil utilisateur, authentification (bcrypt), solde BitGroins (🪙), statut admin, le bonus cumulé d'héritage (**`barn_heritage_bonus`**) et la date de dernière prime journalière (**`last_daily_reward_at`**).
 3.  **`Pig`** : Cœur du jeu.
     *   **Stats & Tamagotchi** : Faim, énergie, bonheur, poids, rareté, statistiques de course.
     *   **Généalogie** : Lignée (`lineage_name`), génération, parents (`sire_id`, `dam_id`), bonus de lignée.
@@ -22,7 +22,7 @@
 7.  **`Bet`** : Paris des utilisateurs (Simple, Couplé Ordre, Tiercé Ordre) avec gestion des statuts de gain.
 8.  **`BalanceTransaction`** : Journal comptable complet de chaque BitGroin dépensé ou gagné (traçabilité totale).
 9.  **`Auction`** : Marché aux enchères temporisées pour l'achat/vente de cochons entre joueurs.
-10. **`GrainMarket`** : Singleton partagé de la Bourse aux Grains. Stocke la position du curseur (cursor_x, cursor_y) sur la grille 5x5, le grain actuellement en vitrine (bloqué), et les métadonnées de la dernière transaction.
+10. **`GrainMarket`** : Singleton partagé de la Bourse aux Grains. Stocke la position du curseur (cursor_x, cursor_y) sur la grille 7x7, le grain actuellement en vitrine (bloqué), et les métadonnées de la dernière transaction.
 
 ## Mécaniques Principales
 
@@ -79,6 +79,12 @@ derby_des_groins/
 
 ## Choix de Design
 L'esthétique repose sur un **"Premium Dark Mode"** avec des accents vibrants. L'UI utilise massivement Tailwind CSS pour la réactivité et Chart.js pour visualiser les statistiques de performance des cochons.
+
+## Équilibrage v2
+- **Progression nerfée** : les gains de stats par entraînement et école ont été divisés par 5 (anti-snowball).
+- **Durée de vie réduite** : les `max_races_range` ont été divisées par 2 pour accélérer le turnover.
+- **Prime de pointage** : 15 🪙 automatiques à la première connexion de chaque jour (`DAILY_LOGIN_REWARD`).
+- **Moteur de course** : récupération de fatigue en stratégie Économie nerfée (0.5 → 0.1), bonus d'aspiration réduit (1.5 → 0.8).
 
 ## Roadmap Future
 - **PMU Porcin Evolué** : Statistiques globales sur les cotes les plus rentables et tendances de gains.
