@@ -154,40 +154,7 @@ def get_pig_performance_flags(pig):
 
 
 def update_pig_state(pig):
-    now = datetime.utcnow()
-    if not pig.last_updated:
-        pig.last_updated = now
-        return
-    elapsed_hours = (now - pig.last_updated).total_seconds() / 3600
-    if elapsed_hours < 0.01:
-        return
-    truce_hours = calculate_weekend_truce_hours(pig.last_updated, now)
-    hours = max(0.0, elapsed_hours - truce_hours)
-    hours = min(hours, 24)
-    if hours < 0.01:
-        pig.last_updated = now
-        db.session.commit()
-        return
-    pig.hunger = max(0, pig.hunger - hours * 2)
-    if pig.hunger > 30:
-        pig.energy = min(100, pig.energy + hours * 5)
-    else:
-        pig.energy = max(0, pig.energy - hours * 1)
-    if pig.hunger < 15:
-        pig.happiness = max(0, pig.happiness - hours * 3)
-    elif pig.hunger < 30:
-        pig.happiness = max(0, pig.happiness - hours * 1)
-    elif pig.happiness < 60:
-        pig.happiness = min(60, pig.happiness + hours * 0.3)
-    current_weight = pig.weight_kg or DEFAULT_PIG_WEIGHT_KG
-    if pig.hunger < 25:
-        pig.weight_kg = clamp_pig_weight(current_weight - hours * 0.25)
-    elif pig.hunger > 75 and pig.energy < 45:
-        pig.weight_kg = clamp_pig_weight(current_weight + hours * 0.18)
-    elif pig.energy > 80 and pig.hunger < 60:
-        pig.weight_kg = clamp_pig_weight(current_weight - hours * 0.08)
-    pig.last_updated = now
-    db.session.commit()
+    pig.update_vitals()
 
 
 def calculate_pig_power(pig):

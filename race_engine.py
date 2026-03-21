@@ -44,6 +44,8 @@ class RaceParticipant:
     moral: float = 10.0
     strategy: int = 50
     freshness: float = 100.0
+    is_happy: bool = False
+    speed_bonus_multiplier: float = 1.0
     # État mutable pendant la simulation
     distance: float = 0.0
     fatigue: float = 0.0
@@ -75,6 +77,8 @@ class RaceParticipant:
             moral=float(_get('moral', 10)),
             strategy=int(_get('strategy', 50)),
             freshness=float(_get('freshness', 100.0)),
+            is_happy=bool(_get('is_happy', float(_get('freshness', 100.0)) > 90.0)),
+            speed_bonus_multiplier=float(_get('speed_bonus_multiplier', 1.0)),
         )
 
 
@@ -182,7 +186,7 @@ class CourseManager:
 
         # 5. Final Speed for this turn
         freshness_factor = 0.9 + (max(0.0, min(100.0, p.freshness)) / 1000.0)
-        final_speed = base_speed * strat_speed_mod * speed_penalty * terrain_mod * freshness_factor
+        final_speed = base_speed * strat_speed_mod * speed_penalty * terrain_mod * freshness_factor * p.speed_bonus_multiplier
 
         # 6. Apply stumble
         if stumble_roll:
@@ -218,6 +222,7 @@ class CourseManager:
                     'is_finished': p.is_finished,
                     'stumbled': p.stumbled,
                     'has_draft': p.has_draft,
+                    'is_happy': p.is_happy,
                 }
                 for p in self.participants
             ],

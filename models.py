@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 import json
 import random
 
@@ -142,6 +142,8 @@ class Pig(db.Model):
     last_updated = db.Column(db.DateTime, default=datetime.utcnow)
     last_school_at = db.Column(db.DateTime, nullable=True)
     last_fed_at = db.Column(db.DateTime, nullable=True)
+    last_interaction_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=True)
+    comeback_bonus_ready = db.Column(db.Boolean, default=False)
 
     lineage_name = db.Column(db.String(80), nullable=True)
     generation = db.Column(db.Integer, default=1)
@@ -214,6 +216,31 @@ class Pig(db.Model):
         """Remet la fraicheur a fond apres une interaction positive."""
         self.freshness = 100.0
 
+    def register_positive_interaction(self, interacted_at: datetime | None = None):
+        """Enregistre une interaction joueur et prepare le bonus de retrouvailles."""
+        interaction_time = interacted_at or datetime.utcnow()
+        previous_interaction = self.last_interaction_at or self.last_updated or self.created_at
+        if previous_interaction and (interaction_time - previous_interaction).total_seconds() > 3 * 24 * 3600:
+            self.comeback_bonus_ready = True
+        self.last_interaction_at = interaction_time
+        self.last_updated = interaction_time
+        self.reset_freshness()
+
+    def award_longevity_trophies(self):
+        """Attribue un trophee par mois reel de vie."""
+        if not self.owner or not self.created_at:
+            return
+        months_alive = max(0, (datetime.utcnow() - self.created_at).days // 30)
+        for month_index in range(1, months_alive + 1):
+            Trophy.award(
+                user_id=self.owner.id,
+                code=f'ancient_one_month_{month_index}',
+                label="L'Ancien",
+                emoji='🕰️',
+                description=f"{self.name} a traverse {month_index} mois reel(s) de bureau sans quitter la porcherie.",
+                pig_name=self.name,
+            )
+
     def mark_bad_state_if_needed(self):
         """Memorise si le cochon est deja passe par un mauvais etat."""
         if (self.hunger or 0) < 20 or (self.energy or 0) < 20:
@@ -250,8 +277,7 @@ class Pig(db.Model):
         self.adjust_weight(cereal.get('weight_delta', 0.0))
         self.apply_stat_boosts(cereal.get('stats', {}))
         self.last_fed_at = datetime.utcnow()
-        self.last_updated = self.last_fed_at
-        self.reset_freshness()
+        self.register_positive_interaction(self.last_fed_at)
         self.mark_bad_state_if_needed()
 
     def train(self, training: dict):
@@ -263,8 +289,7 @@ class Pig(db.Model):
         if 'happiness_bonus' in training:
             self.happiness = min(100, self.happiness + training['happiness_bonus'])
         self.apply_stat_boosts(training.get('stats', {}))
-        self.reset_freshness()
-        self.last_updated = datetime.utcnow()
+        self.register_positive_interaction(datetime.utcnow())
         self.mark_bad_state_if_needed()
 
     def study(self, lesson: dict, correct: bool) -> str:
@@ -285,8 +310,7 @@ class Pig(db.Model):
             self.happiness = max(0, self.happiness - lesson.get('wrong_happiness_penalty', 0))
             category = 'warning'
 
-        self.reset_freshness()
-        self.last_updated = datetime.utcnow()
+        self.register_positive_interaction(datetime.utcnow())
         self.mark_bad_state_if_needed()
         self.check_level_up()
         return category
@@ -342,6 +366,7 @@ class Pig(db.Model):
         from data import DEFAULT_PIG_WEIGHT_KG
 
         now = datetime.utcnow()
+        self.award_longevity_trophies()
         if not self.last_updated:
             self.last_updated = now
             return
@@ -356,9 +381,19 @@ class Pig(db.Model):
             db.session.commit()
             return
 
-        freshness_decay_hours = max(0.0, effective_hours - 48.0)
-        if freshness_decay_hours > 0:
-            self.freshness = max(0.0, (self.freshness or 100.0) - (freshness_decay_hours * (5.0 / 24.0)))
+        reference_interaction = self.last_interaction_at or self.last_updated
+        if reference_interaction:
+            grace_deadline = reference_interaction + timedelta(hours=48)
+            if now > grace_deadline:
+                elapsed_workdays = 0
+                cursor = grace_deadline.date()
+                while cursor <= now.date():
+                    if cursor.weekday() < 5:
+                        elapsed_workdays += 1
+                    cursor += timedelta(days=1)
+                self.freshness = max(0.0, 100.0 - (elapsed_workdays * 5.0))
+            else:
+                self.freshness = 100.0
 
         # Faim décroît avec le temps
         self.hunger = max(0, self.hunger - hours * 2)

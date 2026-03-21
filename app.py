@@ -71,6 +71,8 @@ def migrate_db():
         ('pig', 'origin_flag', 'VARCHAR(10) DEFAULT "🇫🇷"'),
         ('pig', 'last_school_at', 'DATETIME'),
         ('pig', 'last_fed_at', 'DATETIME'),
+        ('pig', 'last_interaction_at', 'DATETIME'),
+        ('pig', 'comeback_bonus_ready', 'BOOLEAN DEFAULT 0'),
         ('pig', 'school_sessions_completed', 'INTEGER DEFAULT 0'),
         ('pig', 'weight_kg', 'FLOAT DEFAULT 112.0'),
         ('pig', 'freshness', 'FLOAT DEFAULT 100.0'),

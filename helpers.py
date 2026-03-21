@@ -1356,6 +1356,7 @@ def run_race_if_needed():
 
         participants_by_id = {participant.id: participant for participant in participants}
         pig_start_freshness = {}
+        pig_comeback_bonus_flags = {}
 
         # New Tactical Simulation
         # Fetch actual pig stats for simulation
@@ -1366,20 +1367,27 @@ def run_race_if_needed():
                 if pig:
                     pig.strategy = p.strategy # Sync current player strategy
                     pig_start_freshness[p.pig_id] = float(pig.freshness or 100.0)
-                    pigs_for_sim.append(pig)
+                    pig_comeback_bonus_flags[p.pig_id] = bool(pig.comeback_bonus_ready)
+                    pigs_for_sim.append({
+                        'id': pig.id, 'name': pig.name, 'emoji': pig.emoji,
+                        'vitesse': pig.vitesse, 'endurance': pig.endurance, 'force': pig.force, 'agilite': pig.agilite,
+                        'intelligence': pig.intelligence, 'moral': pig.moral, 'strategy': p.strategy,
+                        'freshness': pig.freshness, 'is_happy': (pig.freshness or 0) > 90.0,
+                        'speed_bonus_multiplier': 1.1 if pig.comeback_bonus_ready else 1.0,
+                    })
                 else:
                     # Mock NPC pig stats based on odds
                     pigs_for_sim.append({
                         'id': p.id, 'name': p.name, 'emoji': p.emoji,
                         'vitesse': 20 + (1.0/p.odds)*100, 'endurance': 30, 'force': 30, 'agilite': 30,
-                        'intelligence': 30, 'moral': 50, 'strategy': 50
+                        'intelligence': 30, 'moral': 50, 'strategy': 50, 'freshness': 100.0, 'is_happy': True,
                     })
             else:
                 # Mock NPC pig stats based on odds
                 pigs_for_sim.append({
                     'id': p.id, 'name': p.name, 'emoji': p.emoji,
                     'vitesse': 20 + (1.0/p.odds)*100, 'endurance': 30, 'force': 30, 'agilite': 30,
-                    'intelligence': 30, 'moral': 50, 'strategy': 50
+                    'intelligence': 30, 'moral': 50, 'strategy': 50, 'freshness': 100.0, 'is_happy': True,
                 })
 
         segments = generate_course_segments()
@@ -1466,6 +1474,16 @@ def run_race_if_needed():
                             description="Gagner une course en partant avec moins de 80% de fraicheur.",
                             pig_name=pig.name,
                         )
+                    if pig_comeback_bonus_flags.get(pig.id) and owner:
+                        from models import Trophy
+                        Trophy.award(
+                            user_id=owner.id,
+                            code='coup_de_collier',
+                            label='Coup de Collier',
+                            emoji='💼',
+                            description="Remporter une course juste apres une periode d'inactivite.",
+                            pig_name=pig.name,
+                        )
                     pig.vitesse = min(100, pig.vitesse + random.uniform(0.5, 1.5))
                     pig.endurance = min(100, pig.endurance + random.uniform(0.5, 1.5))
                     pig.moral = min(100, pig.moral + 2)
@@ -1475,6 +1493,7 @@ def run_race_if_needed():
                     setattr(pig, stat, min(100, getattr(pig, stat) + random.uniform(0.3, 0.8)))
 
                 pig.energy = max(0, pig.energy - 15)
+                pig.comeback_bonus_ready = False
                 pig.hunger = max(0, pig.hunger - 10)
                 pig.adjust_weight(-0.3)
                 pig.mark_bad_state_if_needed()
