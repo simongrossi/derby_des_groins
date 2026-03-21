@@ -8,7 +8,6 @@ from extensions import db
 from models import (
     GameConfig, User, Pig, Race, Participant, Bet,
     BalanceTransaction, CoursePlan, Auction, GrainMarket,
-    CerealItem, TrainingItem, SchoolLessonItem,
 )
 from data import (
     PIGS, PIG_ORIGINS, PIG_EMOJIS, PIG_NAME_PREFIXES, PIG_NAME_SUFFIXES, PRELOADED_PIG_NAMES,
@@ -25,7 +24,8 @@ from data import (
     BOURSE_GRID_SIZE, BOURSE_GRID_VALUES, BOURSE_DEFAULT_POS,
     BOURSE_BLOCK_MIN, BOURSE_BLOCK_MAX, BOURSE_SURCHARGE_FACTOR,
     BOURSE_MOVEMENT_DIVISOR, BOURSE_MIN_MOVEMENT,
-    BOURSE_GRAIN_LAYOUT, CEREALS,
+    BOURSE_GRAIN_LAYOUT,
+    CEREALS,
 )
 from race_engine import CourseManager
 
@@ -805,66 +805,41 @@ def get_course_theme(slot_time):
     if weekday == 0:
         return {
             'emoji': '🌧️',
-            'name': 'Lundi de la Pataugeoire',
-            'tag': 'Boue + Force',
-            'description': "Boue lourde, appuis glissants et contacts rugueux : les cochons puissants y gagnent un vrai avantage.",
+            'name': 'Pataugeoire du Lundi Matin',
+            'tag': 'Variance totale',
+            'description': "Boue epaisse et trajectoires douteuses. Meme un outsider peut voler la vedette.",
             'accent': 'amber',
-            'focus_stat': 'force',
-            'focus_label': 'Force favorisee',
-            'reward_multiplier': 1,
-            'event_label': 'Theme quotidien',
-            'planning_hint': 'Ideal pour tes profils costauds qui aiment pousser dans la gadoue.',
-        }
-    if weekday == 2:
-        return {
-            'emoji': '🏃',
-            'name': 'Mercredi Marathon',
-            'tag': 'Longue distance',
-            'description': "Le rail s'etire, le tempo use les reserves et seuls les cochons endurants gardent leur allure jusqu'au bout.",
-            'accent': 'cyan',
-            'focus_stat': 'endurance',
-            'focus_label': 'Endurance favorisee',
-            'reward_multiplier': 1,
-            'event_label': 'Theme quotidien',
-            'planning_hint': 'A reserver a tes moteurs les plus constants pour securiser la semaine.',
-        }
-    if weekday == 4:
-        return {
-            'emoji': '🏆',
-            'name': 'Grand Prix du Vendredi',
-            'tag': 'Recompenses x3',
-            'description': "Le grand rendez-vous asynchrone de la semaine : plus de prestige, plus de pression et des primes d'elevage triplees.",
-            'accent': 'red',
-            'focus_stat': 'moral',
-            'focus_label': 'Prestige maximal',
-            'reward_multiplier': 3,
-            'event_label': 'Evenement majeur',
-            'planning_hint': 'Garde au moins un top cochon disponible pour ce pic de rentabilite.',
         }
     if weekday in (1, 3):
         return {
             'emoji': '🥓',
             'name': 'Trot du Jambon',
             'tag': 'Classique equilibre',
-            'description': "Le format le plus fiable pour remplir ton quota sans surprise majeure.",
+            'description': "Les courses les plus stables de la semaine. Le bon jour pour jouer propre.",
             'accent': 'pink',
-            'focus_stat': 'polyvalence',
-            'focus_label': 'Stats equilibrees',
-            'reward_multiplier': 1,
-            'event_label': 'Routine rentable',
-            'planning_hint': 'Parfait pour caser un cochon regulier entre deux gros rendez-vous.',
+        }
+    if weekday == 2:
+        return {
+            'emoji': '📞',
+            'name': "Marathon de la Conf' Call",
+            'tag': 'Endurance',
+            'description': "Distance longue et cardio en feu. Les cochons fragiles s'ecroulent avant la fin.",
+            'accent': 'cyan',
+        }
+    if weekday == 4:
+        return {
+            'emoji': '🔥',
+            'name': 'Grande Finale du Cochon Roti',
+            'tag': 'Prestige',
+            'description': "Le grand derby de la semaine. Les recompenses sont doubles et tout le bureau regarde.",
+            'accent': 'red',
         }
     return {
         'emoji': '🌿',
         'name': 'Derby des Bauges Calmes',
         'tag': 'Repos ou event',
-        'description': "Un creneau souple pour finir ton quota, tester des doublures ou garder du jus pour vendredi.",
+        'description': "Un creneau souple pour les semaines speciales, les tests ou les evenements admin.",
         'accent': 'emerald',
-        'focus_stat': 'rotation',
-        "focus_label": "Gestion d'effectif",
-        'reward_multiplier': 1,
-        'event_label': 'Souplesse',
-        'planning_hint': 'Utilise-le pour lisser la fatigue et terminer ta semaine en 5 minutes.',
     }
 
 def get_upcoming_course_slots(days=30):
@@ -1077,15 +1052,10 @@ def build_course_schedule(user, pigs, days=30):
                 part = next((p for p in slot_participants if p.pig_id == pig.id), None)
                 if part:
                     current_strategy = part.strategy
-            elif is_planned:
-                current_strategy = slot_user_plan_by_pig[pig.id].strategy
 
             exclude_slot = slot_time if (is_actual_participant or is_planned) else None
             weekly_commitments = count_pig_weekly_course_commitments(pig.id, slot_time, exclude_scheduled_at=exclude_slot)
-            projected_commitments = weekly_commitments + (0 if (is_actual_participant or is_planned) else 1)
             quota_reached = weekly_commitments >= WEEKLY_RACE_QUOTA and not (is_actual_participant or is_planned)
-            quota_remaining = max(0, WEEKLY_RACE_QUOTA - weekly_commitments)
-            projected_remaining = max(0, WEEKLY_RACE_QUOTA - projected_commitments)
 
             can_toggle = True
             disabled_reason = None
@@ -1106,16 +1076,8 @@ def build_course_schedule(user, pigs, days=30):
                 'current_strategy': current_strategy,
                 'can_toggle': can_toggle,
                 'disabled_reason': disabled_reason,
-                'weekly_commitments': projected_commitments,
-                'quota_remaining': quota_remaining,
-                'projected_remaining': projected_remaining,
+                'weekly_commitments': weekly_commitments + (0 if (is_actual_participant or is_planned) else 1),
             })
-
-        user_weekly_plans = len(slot_user_plans)
-        user_weekly_remaining = {
-            pig.id: max(0, WEEKLY_RACE_QUOTA - count_pig_weekly_course_commitments(pig.id, slot_time))
-            for pig in pigs
-        }
 
         schedule.append({
             'slot': slot_time,
@@ -1130,8 +1092,6 @@ def build_course_schedule(user, pigs, days=30):
             'is_next': slot_time == slots[0],
             'is_locked': slot_locked,
             'pig_options': pig_options,
-            'user_weekly_plan_count': user_weekly_plans,
-            'user_weekly_remaining': user_weekly_remaining,
         })
 
     return schedule
@@ -1487,17 +1447,12 @@ def run_race_if_needed():
                 xp_gained = POSITION_XP.get(p.finish_position, 3)
 
                 if owner:
-                    theme = get_course_theme(race.scheduled_at)
-                    reward_multiplier = theme.get('reward_multiplier', 1)
-                    reward = (RACE_APPEARANCE_REWARD + RACE_POSITION_REWARDS.get(p.finish_position, 0.0)) * reward_multiplier
-                    details = f"{pig.name} a termine {p.finish_position}e sur la course #{race.id}."
-                    if reward_multiplier > 1:
-                        details += f" Bonus {theme['name']} x{reward_multiplier} applique."
+                    reward = RACE_APPEARANCE_REWARD + RACE_POSITION_REWARDS.get(p.finish_position, 0.0)
                     credit_user_balance(
                         owner.id, reward,
                         reason_code='race_reward',
                         reason_label="Prime d'éleveur",
-                        details=details,
+                        details=f"{pig.name} a termine {p.finish_position}e sur la course #{race.id}.",
                         reference_type='race',
                         reference_id=race.id,
                     )
@@ -1758,8 +1713,7 @@ def get_bourse_cereals(market, feeding_multiplier=1.0):
     for (dx, dy), cereal_key in BOURSE_GRAIN_LAYOUT.items():
         if cereal_key is None:
             continue
-        cereals = get_cereals_dict()
-        cer = cereals[cereal_key]
+        cer = CEREALS[cereal_key]
         gx, gy = get_grain_grid_pos(market, dx, dy)
         surcharge = surcharges[cereal_key]
         c = dict(cer)
@@ -1800,9 +1754,8 @@ def get_bourse_grid_data(market):
             is_block = (abs(x - bx) <= 1 and abs(y - by) <= 1)
             is_center = (x == bx and y == by)
             grain_key = block_grains.get((x, y))  # None si hors bloc ou case vide
-            _cereals = get_cereals_dict()
-            grain_emoji = _cereals[grain_key]['emoji'] if grain_key and grain_key in _cereals else None
-            grain_name = _cereals[grain_key]['name'] if grain_key and grain_key in _cereals else None
+            grain_emoji = CEREALS[grain_key]['emoji'] if grain_key and grain_key in CEREALS else None
+            grain_name = CEREALS[grain_key]['name'] if grain_key and grain_key in CEREALS else None
 
             row.append({
                 'x': x, 'y': y,
@@ -1818,64 +1771,3 @@ def get_bourse_grid_data(market):
             })
         grid.append(row)
     return grid
-
-
-# ══════════════════════════════════════════════════════════════════════════════
-# Données de jeu dynamiques (DB) — remplace les constantes data.py
-# ══════════════════════════════════════════════════════════════════════════════
-
-def _is_available(item):
-    """Vérifie qu'un item est actif et dans sa fenêtre de disponibilité."""
-    if not item.is_active:
-        return False
-    now = datetime.utcnow()
-    if item.available_from and now < item.available_from:
-        return False
-    if item.available_until and now > item.available_until:
-        return False
-    return True
-
-
-def get_cereals_dict():
-    """Retourne un dict {key: {...}} identique à l'ancien data.CEREALS, depuis la DB.
-    Fallback sur data.CEREALS si la table est vide (1er lancement)."""
-    items = CerealItem.query.order_by(CerealItem.sort_order, CerealItem.id).all()
-    if not items:
-        return CEREALS  # fallback constantes
-    return {c.key: c.to_dict() for c in items if _is_available(c)}
-
-
-def get_trainings_dict():
-    """Retourne un dict {key: {...}} identique à l'ancien data.TRAININGS, depuis la DB."""
-    from data import TRAININGS
-    items = TrainingItem.query.order_by(TrainingItem.sort_order, TrainingItem.id).all()
-    if not items:
-        return TRAININGS
-    return {t.key: t.to_dict() for t in items if _is_available(t)}
-
-
-def get_school_lessons_dict():
-    """Retourne un dict {key: {...}} identique à l'ancien data.SCHOOL_LESSONS, depuis la DB."""
-    from data import SCHOOL_LESSONS
-    items = SchoolLessonItem.query.order_by(SchoolLessonItem.sort_order, SchoolLessonItem.id).all()
-    if not items:
-        return SCHOOL_LESSONS
-    return {l.key: l.to_dict() for l in items if _is_available(l)}
-
-
-def get_all_cereals_dict():
-    """Comme get_cereals_dict() mais inclut les items inactifs (pour l'admin)."""
-    items = CerealItem.query.order_by(CerealItem.sort_order, CerealItem.id).all()
-    return {c.key: c for c in items}
-
-
-def get_all_trainings_dict():
-    """Comme get_trainings_dict() mais inclut les items inactifs (pour l'admin)."""
-    items = TrainingItem.query.order_by(TrainingItem.sort_order, TrainingItem.id).all()
-    return {t.key: t for t in items}
-
-
-def get_all_school_lessons_dict():
-    """Comme get_school_lessons_dict() mais inclut les items inactifs (pour l'admin)."""
-    items = SchoolLessonItem.query.order_by(SchoolLessonItem.sort_order, SchoolLessonItem.id).all()
-    return {l.key: l for l in items}

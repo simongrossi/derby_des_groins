@@ -6,9 +6,8 @@ import os
 from extensions import db
 from models import (
     GameConfig, User, Pig, BalanceTransaction, GrainMarket,
-    CerealItem, TrainingItem, SchoolLessonItem,
 )
-from data import PIG_ORIGINS, CEREALS, TRAININGS, SCHOOL_LESSONS
+from data import PIG_ORIGINS
 from helpers import (
     init_default_config, apply_origin_bonus, generate_weight_kg_for_profile,
     clamp_pig_weight, record_balance_transaction, ensure_next_race,
@@ -49,7 +48,6 @@ def create_app():
         ensure_balance_transaction_snapshots()
         ensure_next_race()
         _init_grain_market()
-        seed_game_data()
 
     if should_autostart_scheduler(app):
         start_scheduler(app)
@@ -213,66 +211,6 @@ def ensure_balance_transaction_snapshots():
         )
         created = True
     if created:
-        db.session.commit()
-
-
-def seed_game_data():
-    """Peuple les tables CerealItem, TrainingItem, SchoolLessonItem depuis data.py
-    si elles sont vides (premier lancement uniquement)."""
-    import json as _json
-
-    if not CerealItem.query.first():
-        for i, (key, c) in enumerate(CEREALS.items()):
-            item = CerealItem(
-                key=key, name=c['name'], emoji=c['emoji'], cost=c['cost'],
-                description=c.get('description', ''),
-                hunger_restore=c.get('hunger_restore', 0),
-                energy_restore=c.get('energy_restore', 0),
-                weight_delta=c.get('weight_delta', 0),
-                valeur_fourragere=c.get('valeur_fourragere', 100),
-                sort_order=i,
-            )
-            for stat in ('vitesse', 'endurance', 'agilite', 'force', 'intelligence', 'moral'):
-                setattr(item, f'stat_{stat}', c.get('stats', {}).get(stat, 0.0))
-            db.session.add(item)
-        db.session.commit()
-
-    if not TrainingItem.query.first():
-        for i, (key, t) in enumerate(TRAININGS.items()):
-            item = TrainingItem(
-                key=key, name=t['name'], emoji=t['emoji'],
-                description=t.get('description', ''),
-                energy_cost=t.get('energy_cost', 0),
-                hunger_cost=t.get('hunger_cost', 0),
-                weight_delta=t.get('weight_delta', 0),
-                min_happiness=t.get('min_happiness', 0),
-                happiness_bonus=t.get('happiness_bonus', 0),
-                sort_order=i,
-            )
-            for stat in ('vitesse', 'endurance', 'agilite', 'force', 'intelligence', 'moral'):
-                setattr(item, f'stat_{stat}', t.get('stats', {}).get(stat, 0.0))
-            db.session.add(item)
-        db.session.commit()
-
-    if not SchoolLessonItem.query.first():
-        for i, (key, l) in enumerate(SCHOOL_LESSONS.items()):
-            item = SchoolLessonItem(
-                key=key, name=l['name'], emoji=l['emoji'],
-                description=l.get('description', ''),
-                question=l['question'],
-                answers_json=_json.dumps(l['answers'], ensure_ascii=False),
-                xp=l.get('xp', 20),
-                wrong_xp=l.get('wrong_xp', 5),
-                energy_cost=l.get('energy_cost', 10),
-                hunger_cost=l.get('hunger_cost', 4),
-                min_happiness=l.get('min_happiness', 15),
-                happiness_bonus=l.get('happiness_bonus', 5),
-                wrong_happiness_penalty=l.get('wrong_happiness_penalty', 5),
-                sort_order=i,
-            )
-            for stat in ('vitesse', 'endurance', 'agilite', 'force', 'intelligence', 'moral'):
-                setattr(item, f'stat_{stat}', l.get('stats', {}).get(stat, 0.0))
-            db.session.add(item)
         db.session.commit()
 
 
