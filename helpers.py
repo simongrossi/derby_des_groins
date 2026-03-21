@@ -1,8 +1,7 @@
-from datetime import datetime, timedelta, time
+from datetime import datetime
 from sqlalchemy import func, or_, update
 import random
 import math
-from zoneinfo import ZoneInfo
 
 from extensions import db
 from models import (
@@ -28,6 +27,7 @@ from data import (
     BOURSE_GRAIN_LAYOUT, CEREALS,
 )
 from race_engine import CourseManager
+from utils.time_utils import calculate_weekend_truce_hours
 
 
 # ─── HELPERS CONFIG ─────────────────────────────────────────────────────────
@@ -63,74 +63,6 @@ def init_default_config():
 
 # ─── HELPERS COCHON ─────────────────────────────────────────────────────────
  
-PARIS_TZ = ZoneInfo('Europe/Paris')
-WEEKEND_TRUCE_START = time(18, 0)
-WEEKEND_TRUCE_END = time(8, 0)
-
-def get_paris_now():
-    return datetime.now(PARIS_TZ)
-
-def to_paris_time(dt):
-    if dt is None:
-        return None
-    if dt.tzinfo is None:
-        return dt.replace(tzinfo=ZoneInfo('UTC')).astimezone(PARIS_TZ)
-    return dt.astimezone(PARIS_TZ)
-
-def is_weekend_truce_active(moment=None):
-    local_moment = to_paris_time(moment or datetime.utcnow())
-    weekday = local_moment.weekday()
-    local_time = local_moment.time()
-    if weekday == 4 and local_time >= WEEKEND_TRUCE_START:
-        return True
-    if weekday in (5, 6):
-        return True
-    if weekday == 0 and local_time < WEEKEND_TRUCE_END:
-        return True
-    return False
-
-def _next_weekend_truce_start(after_local):
-    candidate_day = after_local.date()
-    days_until_friday = (4 - after_local.weekday()) % 7
-    candidate_day = candidate_day + timedelta(days=days_until_friday)
-    candidate_start = datetime.combine(candidate_day, WEEKEND_TRUCE_START, tzinfo=PARIS_TZ)
-    if candidate_start <= after_local:
-        candidate_start += timedelta(days=7)
-    return candidate_start
-
-def calculate_weekend_truce_hours(start_dt, end_dt):
-    if not start_dt or not end_dt or end_dt <= start_dt:
-        return 0.0
-    start_local = to_paris_time(start_dt)
-    end_local = to_paris_time(end_dt)
-    overlap_seconds = 0.0
-
-    if is_weekend_truce_active(start_local):
-        weekday = start_local.weekday()
-        if weekday == 4:
-            truce_start = datetime.combine(start_local.date(), WEEKEND_TRUCE_START, tzinfo=PARIS_TZ)
-        elif weekday == 5:
-            truce_start = datetime.combine(start_local.date() - timedelta(days=1), WEEKEND_TRUCE_START, tzinfo=PARIS_TZ)
-        elif weekday == 6:
-            truce_start = datetime.combine(start_local.date() - timedelta(days=2), WEEKEND_TRUCE_START, tzinfo=PARIS_TZ)
-        else:
-            truce_start = datetime.combine(start_local.date() - timedelta(days=3), WEEKEND_TRUCE_START, tzinfo=PARIS_TZ)
-        truce_end = truce_start + timedelta(days=2, hours=14)
-        overlap_seconds += (min(end_local, truce_end) - start_local).total_seconds()
-        cursor = truce_end
-    else:
-        cursor = start_local
-
-    while cursor < end_local:
-        truce_start = _next_weekend_truce_start(cursor)
-        if truce_start >= end_local:
-            break
-        truce_end = truce_start + timedelta(days=2, hours=14)
-        overlap_seconds += (min(end_local, truce_end) - truce_start).total_seconds()
-        cursor = truce_end
-
-    return max(0.0, overlap_seconds / 3600.0)
-
 def get_freshness_bonus(pig):
     if not pig or not pig.last_fed_at:
         return {'active': False, 'multiplier': 1.0, 'bonus_percent': 0.0, 'hours_remaining': 0.0}

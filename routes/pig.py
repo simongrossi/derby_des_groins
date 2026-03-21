@@ -12,9 +12,10 @@ from data import (
 from helpers import (
     get_user_active_pigs,
     get_cooldown_remaining, format_duration_short, get_seconds_until,
-    is_weekend_truce_active,
     get_cereals_dict, get_trainings_dict, get_school_lessons_dict,
 )
+from utils.time_utils import is_weekend_truce_active
+
 from services.finance_service import (
     maybe_grant_emergency_relief, reserve_pig_challenge_slot, release_pig_challenge_slot,
 )

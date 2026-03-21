@@ -295,7 +295,7 @@ class Pig(db.Model):
     def update_vitals(self):
         """Décroissance Tamagotchi en fonction du temps écoulé.
         Appelé avant chaque interaction pour synchroniser l'état."""
-        from helpers import calculate_weekend_truce_hours
+        from utils.time_utils import calculate_weekend_truce_hours
         from data import DEFAULT_PIG_WEIGHT_KG
 
         now = datetime.utcnow()

@@ -14,7 +14,7 @@ from data import (
 from extensions import db
 from models import Auction, Pig
 
-from helpers import calculate_weekend_truce_hours
+from utils.time_utils import calculate_weekend_truce_hours
 
 
 @dataclass(frozen=True)
