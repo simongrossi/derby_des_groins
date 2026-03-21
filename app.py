@@ -9,14 +9,11 @@ from models import (
     CerealItem, TrainingItem, SchoolLessonItem,
 )
 from data import PIG_ORIGINS, CEREALS, TRAININGS, SCHOOL_LESSONS
-from helpers import (
-    init_default_config, apply_origin_bonus, generate_weight_kg_for_profile,
-    clamp_pig_weight, record_balance_transaction, ensure_next_race,
-    get_first_injured_pig, create_preloaded_admin_pigs, build_unique_pig_name,
-)
+from helpers import init_default_config, ensure_next_race, get_first_injured_pig
+from services.finance_service import record_balance_transaction
+from services.pig_service import apply_origin_bonus, generate_weight_kg_for_profile, clamp_pig_weight, create_preloaded_admin_pigs, build_unique_pig_name
 from routes import all_blueprints
 from scheduler import start_scheduler, should_autostart_scheduler
-
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 

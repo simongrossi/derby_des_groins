@@ -5,12 +5,13 @@ from datetime import datetime, timedelta
 from extensions import db
 from models import User, Pig, Race, Participant, Bet, CoursePlan
 from data import BET_TYPES, WEEKLY_RACE_QUOTA, WEEKLY_BACON_TICKETS
-from helpers import (
-    ensure_next_race, get_user_active_pigs, calculate_pig_power,
-    get_weight_profile, count_pig_weekly_course_commitments, build_course_schedule,
+from helpers import ensure_next_race, get_user_active_pigs, apply_row_lock
+from services.pig_service import calculate_pig_power, get_weight_profile
+from services.race_service import (
+    count_pig_weekly_course_commitments, build_course_schedule,
     populate_race_participants, get_user_weekly_bet_count,
     normalize_bet_type, parse_selection_ids, serialize_selection_ids,
-    format_bet_label, calculate_bet_odds, apply_row_lock,
+    format_bet_label, calculate_bet_odds,
 )
 
 race_bp = Blueprint('race', __name__)

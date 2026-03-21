@@ -4,12 +4,11 @@ from datetime import datetime
 from extensions import db
 from models import User, Pig, BalanceTransaction
 from data import BOURSE_BLOCK_MIN, BOURSE_BLOCK_MAX, BOURSE_GRAIN_LAYOUT
-from helpers import (
+from helpers import get_feeding_cost_multiplier, get_user_active_pigs, get_cereals_dict
+from services.market_service import (
     get_grain_market, get_all_grain_surcharges, get_bourse_movement_points,
     move_bourse_cursor, is_grain_blocked, update_vitrine,
     get_bourse_cereals, get_bourse_grid_data,
-    get_feeding_cost_multiplier, get_user_active_pigs,
-    get_cereals_dict,
 )
 
 bourse_bp = Blueprint('bourse', __name__)
