@@ -1,0 +1,809 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Derby des Groins — Chasse aux Truffes 🍄</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        /* ═══════════════════════════════════════════════════════════════
+           BASE
+        ═══════════════════════════════════════════════════════════════ */
+        * { font-family: 'Nunito', sans-serif; box-sizing: border-box; }
+        .font-title { font-family: 'Lilita One', cursive; }
+
+        body {
+            background: #0b1a0f;
+            background-image:
+                radial-gradient(at 10% 15%, rgba(34, 197, 94, 0.15) 0, transparent 50%),
+                radial-gradient(at 85% 10%, rgba(161, 110, 40, 0.14) 0, transparent 50%),
+                radial-gradient(at 50% 90%, rgba(88, 28, 135, 0.12) 0, transparent 50%);
+            color: #f0fdf4;
+            min-height: 100vh;
+        }
+
+        /* ═══════════════════════════════════════════════════════════════
+           PLATEAU — grille 20×20
+           Chaque cellule est un carré responsive.
+           On contraint le plateau à ne pas dépasser 560px.
+        ═══════════════════════════════════════════════════════════════ */
+        #grid-wrapper {
+            /* Conteneur carré qui s'adapte à la largeur disponible */
+            width: 100%;
+            max-width: 560px;
+            aspect-ratio: 1 / 1;
+            position: relative;
+        }
+
+        #grid {
+            display: grid;
+            grid-template-columns: repeat(20, 1fr);
+            grid-template-rows:    repeat(20, 1fr);
+            width: 100%;
+            height: 100%;
+            border: 3px solid #166534;
+            border-radius: 0.75rem;
+            overflow: hidden;
+            background: #14532d;
+            box-shadow:
+                0 0 0 4px #052e16,
+                0 12px 40px rgba(0,0,0,0.6),
+                inset 0 0 60px rgba(0,0,0,0.25);
+        }
+
+        /* ── Cellule ─────────────────────────────────────────────────── */
+        .cell {
+            /* Fond herbe alterné pour le damier */
+            background: #166534;
+            border: 1px solid rgba(0,0,0,0.18);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: clamp(0.45rem, 1.3vw, 0.9rem); /* emoji adaptatif */
+            transition: background 0.12s, transform 0.1s;
+            position: relative;
+            user-select: none;
+            /* Ombre légère par damier via nth-child */
+        }
+        /* Damier clair/sombre */
+        .cell:nth-child(odd)  { background: #15803d; }
+        .cell:nth-child(even) { background: #166534; }
+
+        /* Survol */
+        .cell:not(.revealed):not(.game-over-cell):hover {
+            background: #22c55e !important;
+            transform: scale(1.15);
+            z-index: 10;
+            border-color: #4ade80;
+        }
+
+        /* ── États de la cellule après clic ─────────────────────────── */
+        /* Froid  (dist > 10) */
+        .cell.cold {
+            background: #1e3a5f !important;
+            cursor: default;
+            animation: reveal 0.25s ease-out;
+        }
+        /* Tiède  (5 < dist <= 10) */
+        .cell.warm {
+            background: #92400e !important;
+            cursor: default;
+            animation: reveal 0.25s ease-out;
+        }
+        /* Chaud  (dist <= 5) */
+        .cell.hot {
+            background: #991b1b !important;
+            cursor: default;
+            animation: reveal 0.25s ease-out;
+        }
+        /* Gagné */
+        .cell.found {
+            background: #78350f !important;
+            cursor: default;
+            animation: found-bounce 0.5s cubic-bezier(0.34,1.56,0.64,1);
+        }
+        /* Reveal de la truffe en fin de partie perdue */
+        .cell.truffle-reveal {
+            background: #7c3aed !important;
+            animation: truffle-pulse 0.8s ease-in-out 3;
+        }
+        /* Curseur désactivé sur cases déjà cliquées */
+        .cell.revealed { cursor: not-allowed; }
+
+        /* Petit point de couleur sur les cases cliquées (repère visuel) */
+        .cell.cold::after  { content: '❄️'; font-size: 0.6em; }
+        .cell.warm::after  { content: '🌡️'; font-size: 0.6em; }
+        .cell.hot::after   { content: '🔥'; font-size: 0.6em; }
+        .cell.found::after { content: '🍄'; font-size: 0.9em; }
+        .cell.truffle-reveal::after { content: '🍄'; font-size: 0.9em; }
+
+        @keyframes reveal {
+            from { opacity: 0; transform: scale(0.6); }
+            to   { opacity: 1; transform: scale(1); }
+        }
+        @keyframes found-bounce {
+            0%  { transform: scale(0.4) rotate(-15deg); opacity: 0; }
+            60% { transform: scale(1.3) rotate(5deg);  opacity: 1; }
+            100%{ transform: scale(1)   rotate(0deg);  }
+        }
+        @keyframes truffle-pulse {
+            0%,100% { box-shadow: none; }
+            50%     { box-shadow: 0 0 24px 8px rgba(167,139,250,0.6); }
+        }
+
+        /* ═══════════════════════════════════════════════════════════════
+           PANNEAU LATÉRAL — indicateurs, stats, bouton
+        ═══════════════════════════════════════════════════════════════ */
+        .panel-card {
+            background: rgba(5, 46, 22, 0.55);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(74, 222, 128, 0.12);
+            border-radius: 1.25rem;
+        }
+
+        /* ── Indicateur de proximité ─────────────────────────────────── */
+        #proximity-indicator {
+            width: 100%;
+            aspect-ratio: 1 / 1;
+            max-width: 180px;
+            border-radius: 50%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.8rem;
+            font-weight: 900;
+            transition: background 0.4s, box-shadow 0.4s;
+            /* État initial : neutre */
+            background: radial-gradient(circle, #1e293b 60%, #0f172a 100%);
+            box-shadow: 0 0 30px rgba(0,0,0,0.5), inset 0 0 20px rgba(0,0,0,0.3);
+            border: 3px solid rgba(255,255,255,0.08);
+        }
+        #proximity-indicator.state-idle {
+            background: radial-gradient(circle, #1e293b 60%, #0f172a 100%);
+            box-shadow: 0 0 30px rgba(0,0,0,0.5);
+            border-color: rgba(255,255,255,0.08);
+        }
+        #proximity-indicator.state-cold {
+            background: radial-gradient(circle, #1d4ed8 40%, #1e3a8a 100%);
+            box-shadow: 0 0 40px rgba(59, 130, 246, 0.45), inset 0 0 20px rgba(29,78,216,0.4);
+            border-color: #93c5fd;
+        }
+        #proximity-indicator.state-warm {
+            background: radial-gradient(circle, #d97706 40%, #92400e 100%);
+            box-shadow: 0 0 40px rgba(217, 119, 6, 0.5), inset 0 0 20px rgba(180,83,9,0.4);
+            border-color: #fbbf24;
+        }
+        #proximity-indicator.state-hot {
+            background: radial-gradient(circle, #dc2626 40%, #7f1d1d 100%);
+            box-shadow: 0 0 50px rgba(220, 38, 38, 0.6), inset 0 0 24px rgba(185,28,28,0.5);
+            border-color: #f87171;
+            animation: hot-pulse 0.8s ease-in-out infinite;
+        }
+        #proximity-indicator.state-found {
+            background: radial-gradient(circle, #78350f 40%, #451a03 100%);
+            box-shadow: 0 0 60px rgba(180, 83, 9, 0.8), inset 0 0 30px rgba(120,53,15,0.6);
+            border-color: #d97706;
+            animation: found-glow 0.6s ease-in-out 4;
+        }
+        @keyframes hot-pulse {
+            0%,100% { box-shadow: 0 0 50px rgba(220,38,38,0.6); }
+            50%     { box-shadow: 0 0 80px rgba(220,38,38,0.9), 0 0 120px rgba(220,38,38,0.3); }
+        }
+        @keyframes found-glow {
+            0%,100% { box-shadow: 0 0 60px rgba(180,83,9,0.8); }
+            50%     { box-shadow: 0 0 100px rgba(251,191,36,1), 0 0 160px rgba(251,191,36,0.4); }
+        }
+
+        #proximity-label {
+            font-size: 0.72rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            margin-top: 6px;
+            color: rgba(255,255,255,0.65);
+        }
+
+        /* ── Compteurs ───────────────────────────────────────────────── */
+        .counter-box {
+            background: rgba(0,0,0,0.3);
+            border: 1px solid rgba(255,255,255,0.07);
+            border-radius: 0.75rem;
+            padding: 0.75rem 1rem;
+        }
+        .counter-label {
+            font-size: 0.65rem;
+            text-transform: uppercase;
+            letter-spacing: 0.15em;
+            color: rgba(255,255,255,0.35);
+            font-weight: 800;
+        }
+        .counter-value {
+            font-family: 'Lilita One', cursive;
+            font-size: 1.6rem;
+            line-height: 1.1;
+        }
+
+        /* ── Bouton Nouvelle Partie ──────────────────────────────────── */
+        .btn-newgame {
+            background: linear-gradient(135deg, #16a34a, #15803d);
+            border: 2px solid #4ade80;
+            color: white;
+            font-weight: 800;
+            border-radius: 0.75rem;
+            padding: 0.65rem 1.25rem;
+            cursor: pointer;
+            transition: all 0.18s;
+            font-size: 0.9rem;
+            width: 100%;
+            text-align: center;
+            box-shadow: 0 4px 16px rgba(22,163,74,0.3);
+        }
+        .btn-newgame:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(22,163,74,0.5); }
+        .btn-newgame:active { transform: translateY(0); }
+
+        /* ── Banner résultat ─────────────────────────────────────────── */
+        #result-banner {
+            display: none;
+            border-radius: 1rem;
+            padding: 1rem 1.5rem;
+            text-align: center;
+            font-weight: 800;
+            animation: result-pop 0.45s cubic-bezier(0.34,1.56,0.64,1);
+        }
+        #result-banner.win {
+            background: linear-gradient(135deg, rgba(120,53,15,0.6), rgba(180,83,9,0.4));
+            border: 2px solid #d97706;
+            color: #fbbf24;
+            display: block;
+        }
+        #result-banner.lose {
+            background: linear-gradient(135deg, rgba(127,29,29,0.6), rgba(153,27,27,0.4));
+            border: 2px solid #ef4444;
+            color: #fca5a5;
+            display: block;
+        }
+        @keyframes result-pop {
+            from { transform: scale(0.7); opacity: 0; }
+            60%  { transform: scale(1.08); }
+            to   { transform: scale(1); opacity: 1; }
+        }
+
+        /* ── Légende ─────────────────────────────────────────────────── */
+        .legend-dot {
+            width: 14px; height: 14px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        /* ── Clics restants visuels (cercles) ────────────────────────── */
+        .clic-dot {
+            width: 20px; height: 20px;
+            border-radius: 50%;
+            border: 2px solid rgba(255,255,255,0.25);
+            background: rgba(74, 222, 128, 0.25);
+            transition: all 0.2s;
+        }
+        .clic-dot.used {
+            background: rgba(239, 68, 68, 0.5);
+            border-color: #ef4444;
+        }
+        .clic-dot.last {
+            background: rgba(251, 191, 36, 0.5);
+            border-color: #fbbf24;
+            animation: hot-pulse 0.6s ease-in-out infinite;
+        }
+
+        /* Flash messages */
+        .flash-msg {
+            border-radius: 0.75rem;
+            padding: 0.75rem 1.25rem;
+            font-weight: 700;
+            font-size: 0.9rem;
+        }
+
+        /* ── Responsive ──────────────────────────────────────────────── */
+        @media (max-width: 768px) {
+            .game-layout { flex-direction: column !important; align-items: center; }
+            #grid-wrapper { max-width: 100%; }
+            .side-panel { width: 100% !important; max-width: 560px; }
+            #proximity-indicator { max-width: 120px; font-size: 2rem; }
+        }
+    </style>
+</head>
+<body>
+    {% include '_site_header.html' %}
+
+    <main class="max-w-5xl mx-auto px-4 py-8">
+
+        <!-- Flash messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+        <div class="space-y-2 mb-6">
+            {% for cat, msg in messages %}
+            <div class="flash-msg
+                {% if cat == 'success' %}bg-emerald-900/50 border border-emerald-500/30 text-emerald-200
+                {% elif cat == 'error' %}bg-red-900/50 border border-red-500/30 text-red-200
+                {% else %}bg-amber-900/50 border border-amber-500/30 text-amber-200{% endif %}">
+                {{ msg }}
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+        {% endwith %}
+
+        <!-- Titre -->
+        <div class="text-center mb-6">
+            <h1 class="font-title text-5xl text-emerald-300 drop-shadow-[0_0_24px_rgba(74,222,128,0.3)] mb-1">
+                🍄 Chasse aux Truffes
+            </h1>
+            <p style="color:rgba(240,253,244,0.45); font-weight:600; font-size:0.85rem;">
+                7 clics pour flairer la truffe cachée dans la prairie porcine · Gagner rapporte {{ reward }} 🪙 BitGroins
+            </p>
+        </div>
+
+        <!-- Layout principal : plateau + panneau -->
+        <div class="game-layout flex gap-6 items-start justify-center">
+
+            <!-- ═══════════════════════════════════════════
+                 PLATEAU 20×20
+            ═══════════════════════════════════════════ -->
+            <div id="grid-wrapper">
+                <!--
+                    PLATEAU DE JEU (généré en JS)
+                    Structure : div#grid > div.cell[data-x][data-y] × 400
+                    Chaque cellule stocke ses coordonnées en attributs data-
+                    pour que le handler de clic puisse calculer la distance.
+                -->
+                <div id="grid" role="grid" aria-label="Plateau de recherche de truffes"></div>
+            </div>
+
+            <!-- ═══════════════════════════════════════════
+                 PANNEAU LATÉRAL
+            ═══════════════════════════════════════════ -->
+            <div class="side-panel panel-card p-5 flex flex-col gap-4" style="width:220px; min-width:200px;">
+
+                <!-- Solde BitGroins session -->
+                <div class="counter-box text-center">
+                    <div class="counter-label">BitGroins</div>
+                    <div class="counter-value text-yellow-400" id="balance-display">
+                        {{ "%.0f"|format(user.balance) }} 🪙
+                    </div>
+                    <div style="font-size:0.65rem; color:rgba(251,191,36,0.45); margin-top:2px;">solde du compte</div>
+                </div>
+
+                <!-- Indicateur de proximité -->
+                <div class="flex flex-col items-center gap-2">
+                    <div class="counter-label" style="text-align:center;">Radar à Groin</div>
+                    <div id="proximity-indicator" class="state-idle">
+                        <span id="proximity-emoji">🐽</span>
+                        <span id="proximity-label">En attente…</span>
+                    </div>
+                    <div id="proximity-text" style="font-size:0.78rem; font-weight:700; text-align:center; color:rgba(255,255,255,0.5); min-height:1.2em;">
+                        Cliquez une case
+                    </div>
+                </div>
+
+                <!-- Clics restants -->
+                <div class="counter-box">
+                    <div class="counter-label mb-2">Clics restants</div>
+                    <!-- 7 cercles visuels -->
+                    <div id="clic-dots" class="flex flex-wrap gap-1.5 justify-center mb-2">
+                        <!-- Générés en JS -->
+                    </div>
+                    <div class="text-center">
+                        <span class="counter-value" id="clics-left-display" style="color:#4ade80;">7</span>
+                        <span style="font-size:0.8rem; color:rgba(255,255,255,0.4);"> / 7</span>
+                    </div>
+                </div>
+
+                <!-- Banner résultat -->
+                <div id="result-banner"></div>
+
+                <!-- Bouton nouvelle partie -->
+                <button class="btn-newgame" id="btn-new" onclick="startNewGame()">
+                    🌿 Nouvelle Partie
+                </button>
+
+                <!-- Légende -->
+                <div class="panel-card p-3" style="font-size:0.7rem;">
+                    <div style="color:rgba(255,255,255,0.35); font-weight:800; text-transform:uppercase; letter-spacing:0.1em; margin-bottom:6px;">Légende</div>
+                    <div class="flex items-center gap-2 mb-1.5">
+                        <div class="legend-dot" style="background:#1d4ed8;"></div>
+                        <span style="color:rgba(255,255,255,0.55);">Froid (dist > 10)</span>
+                    </div>
+                    <div class="flex items-center gap-2 mb-1.5">
+                        <div class="legend-dot" style="background:#d97706;"></div>
+                        <span style="color:rgba(255,255,255,0.55);">Tiède (5 < dist ≤ 10)</span>
+                    </div>
+                    <div class="flex items-center gap-2 mb-1.5">
+                        <div class="legend-dot" style="background:#dc2626;"></div>
+                        <span style="color:rgba(255,255,255,0.55);">Brûlant (dist ≤ 5)</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <div class="legend-dot" style="background:#78350f;"></div>
+                        <span style="color:rgba(255,255,255,0.55);">Trouvé ! 🍄</span>
+                    </div>
+                </div>
+
+                <!-- Règles -->
+                <div style="font-size:0.68rem; color:rgba(255,255,255,0.3); line-height:1.5; text-align:center;">
+                    Plateau 20×20 · Distance de Manhattan<br>
+                    Max 7 clics · Victoire = +{{ reward }} 🪙
+                </div>
+
+            </div>
+        </div>
+
+        <!-- Retour menu -->
+        <div class="text-center mt-6">
+            <a href="/" style="display:inline-flex;align-items:center;gap:8px;padding:10px 20px;border-radius:10px;border:2px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.04);color:rgba(255,255,255,0.6);font-weight:700;font-size:0.85rem;text-decoration:none;transition:all 0.18s;"
+               onmouseover="this.style.borderColor='rgba(255,255,255,0.25)';this.style.color='rgba(255,255,255,0.9)'"
+               onmouseout="this.style.borderColor='rgba(255,255,255,0.1)';this.style.color='rgba(255,255,255,0.6)'">
+                ← Retour au Derby
+            </a>
+        </div>
+
+    </main>
+
+    <!-- ═══════════════════════════════════════════════════════════════════
+         JAVASCRIPT — Mini-jeu autonome
+         ─────────────────────────────────────────────────────────────────
+         Organisation :
+           1. CONFIG          — constantes paramétrables
+           2. STATE           — état de la partie en cours
+           3. INIT / RENDER   — construction du DOM
+           4. GAME LOGIC      — mécanique tour par tour
+           5. UI UPDATES      — mise à jour des indicateurs
+           6. INTEGRATION     — hook onTruffleFound() vers Flask
+    ═══════════════════════════════════════════════════════════════════ -->
+    <script>
+    /* ══════════════════════════════════════════════════════════════════
+       1. CONFIG
+    ══════════════════════════════════════════════════════════════════ */
+    const CONFIG = {
+        GRID_SIZE:   20,          // Côté du quadrillage (20×20 = 400 cases)
+        MAX_CLICKS:  7,           // Nombre de tours maximum
+        REWARD:      {{ reward }}, // BitGroins gagnés (injecté depuis Flask)
+
+        // Seuils de distance de Manhattan pour l'indicateur de proximité
+        DIST_HOT:    5,           // dist <= HOT → "On brûle"
+        DIST_WARM:   10,          // dist <= WARM → "On chauffe"
+        // dist > WARM → "Froid"
+
+        // Textures visuelles des cases (peuvent être remplacées par des <img>)
+        EMOJI_GRASS: '🌿',        // Case non cliquée
+        EMOJI_TRUFFLE: '🍄',      // Truffe trouvée
+    };
+
+    /* ══════════════════════════════════════════════════════════════════
+       2. STATE — objet mutable représentant la partie en cours
+    ══════════════════════════════════════════════════════════════════ */
+    const STATE = {
+        truffleX:    0,           // Coordonnée X de la truffe cachée (0-based)
+        truffleY:    0,           // Coordonnée Y de la truffe cachée (0-based)
+        clicksLeft:  CONFIG.MAX_CLICKS,
+        clicksUsed:  0,
+        gameActive:  false,       // false = partie terminée ou non démarrée
+        lastDist:    null,        // Distance du dernier clic (pour l'affichage)
+    };
+
+    /* ══════════════════════════════════════════════════════════════════
+       3. INIT & RENDER
+    ══════════════════════════════════════════════════════════════════ */
+
+    /**
+     * buildGrid()
+     * Construit le DOM du plateau une seule fois au chargement.
+     * Chaque cellule reçoit :
+     *   - data-x, data-y : coordonnées (0-based)
+     *   - role="gridcell" et aria-label pour l'accessibilité
+     *   - un listener de clic
+     */
+    function buildGrid() {
+        const grid = document.getElementById('grid');
+        grid.innerHTML = '';
+
+        for (let y = 0; y < CONFIG.GRID_SIZE; y++) {
+            for (let x = 0; x < CONFIG.GRID_SIZE; x++) {
+                const cell = document.createElement('div');
+                cell.className = 'cell';
+                cell.dataset.x = x;
+                cell.dataset.y = y;
+                cell.setAttribute('role', 'gridcell');
+                cell.setAttribute('aria-label', `Case ${x},${y}`);
+                // L'emoji herbe est en pseudo-content CSS pour ne pas polluer le DOM
+                // Si vous souhaitez le remplacer par une image :
+                //   cell.innerHTML = '<img src="/static/grass.png" alt="herbe">';
+                cell.addEventListener('click', onCellClick);
+                grid.appendChild(cell);
+            }
+        }
+    }
+
+    /**
+     * buildClicDots()
+     * Construit les 7 cercles visuels représentant les clics restants.
+     */
+    function buildClicDots() {
+        const container = document.getElementById('clic-dots');
+        container.innerHTML = '';
+        for (let i = 0; i < CONFIG.MAX_CLICKS; i++) {
+            const dot = document.createElement('div');
+            dot.className = 'clic-dot';
+            dot.id = `dot-${i}`;
+            container.appendChild(dot);
+        }
+    }
+
+    /* ══════════════════════════════════════════════════════════════════
+       4. GAME LOGIC
+    ══════════════════════════════════════════════════════════════════ */
+
+    /**
+     * startNewGame()
+     * Réinitialise l'état, place la truffe aléatoirement, nettoie le plateau.
+     * Appelé au chargement initial et par le bouton "Nouvelle Partie".
+     */
+    function startNewGame() {
+        // Placer la truffe à une position aléatoire
+        STATE.truffleX   = Math.floor(Math.random() * CONFIG.GRID_SIZE);
+        STATE.truffleY   = Math.floor(Math.random() * CONFIG.GRID_SIZE);
+        STATE.clicksLeft = CONFIG.MAX_CLICKS;
+        STATE.clicksUsed = 0;
+        STATE.gameActive = true;
+        STATE.lastDist   = null;
+
+        // Nettoyer toutes les cellules (retirer états précédents)
+        document.querySelectorAll('.cell').forEach(cell => {
+            cell.className = 'cell';          // reset classes
+            cell.removeAttribute('style');    // reset inline styles éventuels
+        });
+
+        // Réinitialiser les dots
+        buildClicDots();
+
+        // Réinitialiser l'indicateur
+        setProximityState('idle', '🐽', 'En attente…', 'Cliquez une case');
+
+        // Cacher le banner résultat
+        const banner = document.getElementById('result-banner');
+        banner.className = '';
+        banner.style.display = 'none';
+        banner.textContent  = '';
+
+        // Mettre à jour l'affichage du compteur
+        updateClicksDisplay();
+
+        // Log de debug (retirez en prod)
+        console.log(`[TruffleHunt] Truffe cachée en (${STATE.truffleX}, ${STATE.truffleY})`);
+    }
+
+    /**
+     * onCellClick(event)
+     * Handler principal — appelé à chaque clic sur une case du plateau.
+     * Gère :
+     *   - L'ignorance des clics invalides (partie finie, case déjà cliquée)
+     *   - Le calcul de la distance de Manhattan
+     *   - La mise à jour de l'état de la cellule
+     *   - La vérification des conditions de fin (victoire / épuisement des clics)
+     */
+    function onCellClick(event) {
+        // Ignorer si la partie est terminée
+        if (!STATE.gameActive) return;
+
+        const cell = event.currentTarget;
+
+        // Ignorer si la case a déjà été cliquée
+        if (cell.classList.contains('revealed')) return;
+
+        // Récupérer les coordonnées de la case cliquée
+        const clickX = parseInt(cell.dataset.x, 10);
+        const clickY = parseInt(cell.dataset.y, 10);
+
+        // ── Calcul de la distance de Manhattan ──────────────────────────
+        // dist = |truffe_x - clic_x| + |truffe_y - clic_y|
+        const dist = Math.abs(STATE.truffleX - clickX) + Math.abs(STATE.truffleY - clickY);
+        STATE.lastDist = dist;
+
+        // ── Décrémenter les clics ────────────────────────────────────────
+        STATE.clicksLeft--;
+        STATE.clicksUsed++;
+        updateClicksDisplay();
+
+        // ── Marquer la cellule selon la distance ─────────────────────────
+        cell.classList.add('revealed');
+
+        if (dist === 0) {
+            // ✅ VICTOIRE : le joueur a trouvé la truffe !
+            cell.classList.add('found');
+            STATE.gameActive = false;
+            setProximityState('found', '🍄', 'Trouvé !', `Trouvé en ${STATE.clicksUsed} coup${STATE.clicksUsed > 1 ? 's' : ''} !`);
+            showResultBanner('win', `🍄 TRUFFE TROUVÉE en ${STATE.clicksUsed} clic${STATE.clicksUsed > 1 ? 's' : ''} !`);
+            onTruffleFound(STATE.clicksUsed);   // ← Hook d'intégration
+        } else {
+            // Colorer la case selon la distance
+            if (dist <= CONFIG.DIST_HOT) {
+                cell.classList.add('hot');
+                setProximityState('hot', '🔥', 'ON BRÛLE !', `Distance : ${dist} case${dist > 1 ? 's' : ''}`);
+            } else if (dist <= CONFIG.DIST_WARM) {
+                cell.classList.add('warm');
+                setProximityState('warm', '🌡️', 'On chauffe…', `Distance : ${dist} cases`);
+            } else {
+                cell.classList.add('cold');
+                setProximityState('cold', '❄️', 'Froid…', `Distance : ${dist} cases`);
+            }
+
+            // ── Vérifier si le joueur a épuisé ses clics ────────────────
+            if (STATE.clicksLeft === 0) {
+                STATE.gameActive = false;
+                revealTruffle();
+                setProximityState('cold', '😿', 'Perdu !', `La truffe était là !`);
+                showResultBanner('lose', `💀 PERDU ! La truffe était en (${STATE.truffleX}, ${STATE.truffleY})`);
+            }
+        }
+    }
+
+    /**
+     * revealTruffle()
+     * En fin de partie perdue, révèle la position de la truffe sur le plateau.
+     */
+    function revealTruffle() {
+        // Trouver la cellule correspondante
+        const cells = document.querySelectorAll('.cell');
+        cells.forEach(cell => {
+            if (parseInt(cell.dataset.x) === STATE.truffleX
+             && parseInt(cell.dataset.y) === STATE.truffleY) {
+                cell.classList.remove('cold', 'warm', 'hot', 'revealed');
+                cell.classList.add('truffle-reveal', 'revealed');
+            }
+            // Désactiver le curseur sur toutes les autres cases non cliquées
+            if (!cell.classList.contains('revealed')) {
+                cell.style.cursor = 'not-allowed';
+                cell.style.opacity = '0.5';
+            }
+        });
+    }
+
+    /* ══════════════════════════════════════════════════════════════════
+       5. UI UPDATES
+    ══════════════════════════════════════════════════════════════════ */
+
+    /**
+     * setProximityState(state, emoji, label, text)
+     * Met à jour l'indicateur de proximité circulaire.
+     * @param {string} state  - 'idle' | 'cold' | 'warm' | 'hot' | 'found'
+     * @param {string} emoji  - Emoji affiché dans le cercle
+     * @param {string} label  - Texte court sous l'emoji (dans le cercle)
+     * @param {string} text   - Texte informatif sous le cercle
+     */
+    function setProximityState(state, emoji, label, text) {
+        const indicator = document.getElementById('proximity-indicator');
+        const emojiEl   = document.getElementById('proximity-emoji');
+        const labelEl   = document.getElementById('proximity-label');
+        const textEl    = document.getElementById('proximity-text');
+
+        // Retirer toutes les classes d'état précédentes
+        indicator.className = `state-${state}`;
+
+        emojiEl.textContent = emoji;
+        labelEl.textContent = label;
+        textEl.textContent  = text;
+    }
+
+    /**
+     * updateClicksDisplay()
+     * Met à jour le compteur de clics et les cercles visuels.
+     */
+    function updateClicksDisplay() {
+        // Affichage numérique
+        const display = document.getElementById('clics-left-display');
+        display.textContent = STATE.clicksLeft;
+        display.style.color = STATE.clicksLeft <= 1 ? '#fbbf24' : (STATE.clicksLeft <= 3 ? '#f87171' : '#4ade80');
+
+        // Cercles visuels : marquer les clics utilisés
+        for (let i = 0; i < CONFIG.MAX_CLICKS; i++) {
+            const dot = document.getElementById(`dot-${i}`);
+            if (!dot) continue;
+            dot.className = 'clic-dot';
+            if (i < STATE.clicksUsed) {
+                dot.classList.add('used');
+            } else if (i === STATE.clicksUsed && STATE.clicksLeft === 1) {
+                dot.classList.add('last');
+            }
+        }
+    }
+
+    /**
+     * showResultBanner(type, message)
+     * Affiche le banner de résultat (victoire ou défaite).
+     * @param {string} type    - 'win' | 'lose'
+     * @param {string} message - Texte du banner
+     */
+    function showResultBanner(type, message) {
+        const banner = document.getElementById('result-banner');
+        banner.className = type;
+        banner.style.display = 'block';
+        banner.innerHTML = message;
+        if (type === 'win') {
+            banner.innerHTML += `<div style="font-size:0.8rem;margin-top:6px;color:rgba(251,191,36,0.8);">+${CONFIG.REWARD} 🪙 crédités !</div>`;
+        }
+    }
+
+    /* ══════════════════════════════════════════════════════════════════
+       6. INTÉGRATION — Hook onTruffleFound()
+       ─────────────────────────────────────────────────────────────────
+       Cette fonction est le point d'entrée pour intégrer le mini-jeu
+       dans un système de récompense externe.
+
+       Elle appelle l'endpoint Flask /truffes/win (POST) qui :
+         - Crédite le joueur de CONFIG.REWARD BitGroins en BDD
+         - Retourne le nouveau solde en JSON
+         - Enregistre la transaction dans l'historique
+
+       Pour adapter à un autre système, modifiez uniquement cette
+       fonction — le reste du mini-jeu est indépendant.
+    ══════════════════════════════════════════════════════════════════ */
+
+    /**
+     * onTruffleFound(clicsUsed)
+     * Appelé automatiquement par le moteur de jeu lors d'une victoire.
+     * @param {number} clicsUsed - Nombre de clics utilisés pour trouver la truffe
+     */
+    async function onTruffleFound(clicsUsed) {
+        console.log(`[onTruffleFound] Victoire en ${clicsUsed} clic(s) ! Appel de l'API...`);
+
+        try {
+            const response = await fetch('/truffes/win', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ clics: clicsUsed }),
+            });
+
+            if (!response.ok) {
+                console.error('[onTruffleFound] Erreur HTTP', response.status);
+                return;
+            }
+
+            const data = await response.json();
+
+            if (data.ok) {
+                console.log(`[onTruffleFound] +${data.reward} 🪙 crédités. Nouveau solde : ${data.new_balance}`);
+
+                // ── Mettre à jour l'affichage du solde dans la page ──────
+                const balanceEl = document.getElementById('balance-display');
+                if (balanceEl) {
+                    // Animation de mise à jour
+                    balanceEl.style.transition = 'transform 0.3s, color 0.3s';
+                    balanceEl.style.transform  = 'scale(1.3)';
+                    balanceEl.style.color      = '#34d399';
+                    balanceEl.textContent      = `${Math.round(data.new_balance)} 🪙`;
+                    setTimeout(() => {
+                        balanceEl.style.transform = 'scale(1)';
+                        balanceEl.style.color     = '#facc15';
+                    }, 400);
+                }
+            } else {
+                console.warn('[onTruffleFound] Réponse inattendue :', data);
+            }
+
+        } catch (err) {
+            // Erreur réseau ou JSON invalide — le jeu continue quand même
+            console.error('[onTruffleFound] Erreur réseau :', err);
+        }
+    }
+
+    /* ══════════════════════════════════════════════════════════════════
+       DÉMARRAGE
+    ══════════════════════════════════════════════════════════════════ */
+    // 1. Construire le DOM du plateau (une seule fois)
+    buildGrid();
+
+    // 2. Démarrer la première partie
+    startNewGame();
+
+    </script>
+</body>
+</html>

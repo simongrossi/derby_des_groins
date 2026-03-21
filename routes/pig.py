@@ -5,7 +5,7 @@ import random
 from extensions import db
 from models import User, Pig
 from data import (
-    SCHOOL_COOLDOWN_MINUTES,
+    CEREALS, TRAININGS, SCHOOL_LESSONS, SCHOOL_COOLDOWN_MINUTES,
     PIG_EMOJIS, PIG_ORIGINS, STAT_LABELS, STAT_DESCRIPTIONS, RARITIES, BREEDING_COST,
     OFFICE_SNACKS, SNACK_SHARE_DAILY_LIMIT, PIG_TYPING_WORDS,
 )
@@ -21,7 +21,6 @@ from helpers import (
     get_pig_performance_flags, is_weekend_truce_active, reset_snack_share_limit_if_needed,
     reserve_pig_challenge_slot, release_pig_challenge_slot,
     is_pig_name_taken, build_unique_pig_name,
-    get_cereals_dict, get_trainings_dict, get_school_lessons_dict,
 )
 
 pig_bp = Blueprint('pig', __name__)
@@ -76,8 +75,8 @@ def mon_cochon():
         })
 
     return render_template('mon_cochon.html',
-        user=user, pigs_data=pigs_data, cereals=get_cereals_dict(), trainings=get_trainings_dict(),
-        school_lessons=get_school_lessons_dict(), school_cooldown_minutes=SCHOOL_COOLDOWN_MINUTES,
+        user=user, pigs_data=pigs_data, cereals=CEREALS, trainings=TRAININGS,
+        school_lessons=SCHOOL_LESSONS, school_cooldown_minutes=SCHOOL_COOLDOWN_MINUTES,
         pig_emojis=PIG_EMOJIS, stat_labels=STAT_LABELS, stat_descriptions=STAT_DESCRIPTIONS,
         adoption_cost=adoption_cost, active_listing_count=active_listing_count,
         feeding_multiplier=feeding_multiplier, max_slots=max_slots, breeding_cost=BREEDING_COST
@@ -142,11 +141,10 @@ def feed():
         return redirect(url_for('pig.mon_cochon'))
 
     pig.update_vitals()
-    cereals = get_cereals_dict()
     cereal_key = request.form.get('cereal')
-    if cereal_key not in cereals:
+    if cereal_key not in CEREALS:
         return redirect(url_for('pig.mon_cochon'))
-    cereal = cereals[cereal_key]
+    cereal = CEREALS[cereal_key]
     if pig.hunger >= 95:
         flash("Ton cochon n'a plus faim !", "warning")
         return redirect(url_for('pig.mon_cochon'))
@@ -222,11 +220,10 @@ def train():
     if not pig.can_train:
         flash("Ton cochon est blessé. Passe d'abord par le vétérinaire.", "warning")
         return redirect(url_for('api.veterinaire', pig_id=pig.id))
-    trainings = get_trainings_dict()
     training_key = request.form.get('training')
-    if training_key not in trainings:
+    if training_key not in TRAININGS:
         return redirect(url_for('pig.mon_cochon'))
-    training = trainings[training_key]
+    training = TRAININGS[training_key]
     if training['energy_cost'] > 0 and pig.energy < training['energy_cost']:
         flash("Ton cochon est trop fatigué !", "error")
         return redirect(url_for('pig.mon_cochon'))
@@ -257,13 +254,12 @@ def school():
     if not pig.can_school:
         flash("L'école attendra. Ton cochon doit d'abord passer au vétérinaire.", "warning")
         return redirect(url_for('api.veterinaire', pig_id=pig.id))
-    school_lessons = get_school_lessons_dict()
     lesson_key = request.form.get('lesson')
-    if lesson_key not in school_lessons:
+    if lesson_key not in SCHOOL_LESSONS:
         flash("Cours introuvable !", "error")
         return redirect(url_for('pig.mon_cochon'))
 
-    lesson = school_lessons[lesson_key]
+    lesson = SCHOOL_LESSONS[lesson_key]
     cooldown = get_cooldown_remaining(pig.last_school_at, SCHOOL_COOLDOWN_MINUTES)
     if cooldown > 0:
         flash(f"La salle de classe est fermee pour l'instant. Reviens dans {format_duration_short(cooldown)}.", "warning")
