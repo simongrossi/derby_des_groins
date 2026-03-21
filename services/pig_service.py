@@ -42,16 +42,13 @@ class PigHeritageSnapshot:
 
 
 def get_freshness_bonus(pig):
-    if not pig or not pig.last_fed_at:
-        return {'active': False, 'multiplier': 1.0, 'bonus_percent': 0.0, 'hours_remaining': 0.0}
-    elapsed_hours = max(0.0, (datetime.utcnow() - pig.last_fed_at).total_seconds() / 3600.0)
-    active = elapsed_hours < FRESHNESS_BONUS_HOURS
-    remaining = max(0.0, FRESHNESS_BONUS_HOURS - elapsed_hours)
+    freshness_value = max(0.0, min(100.0, float(getattr(pig, 'freshness', 100.0) or 100.0))) if pig else 100.0
     return {
-        'active': active,
-        'multiplier': round(1.0 + FRESHNESS_MORAL_BONUS, 3) if active else 1.0,
-        'bonus_percent': round(FRESHNESS_MORAL_BONUS * 100, 1) if active else 0.0,
-        'hours_remaining': round(remaining, 2),
+        'active': freshness_value >= 95.0,
+        'multiplier': 1.0,
+        'bonus_percent': 0.0,
+        'hours_remaining': 0.0,
+        'value': round(freshness_value, 1),
     }
 
 

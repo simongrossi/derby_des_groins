@@ -281,11 +281,11 @@ def get_pig_dashboard_status(pig):
     health_base = ((pig.energy or 0) * 0.4) + ((pig.hunger or 0) * 0.25) + ((pig.happiness or 0) * 0.35) - (35 if pig.is_injured else 0)
     health_pct = max(0, min(100, int(round(health_base))))
     if rest_days >= 5:
-        rest_label, rest_note = 'Frais comme un Porcelet', "Long repos accumule. Excellent signal pour un retour qui claque."
+        rest_label, rest_note = 'En pause cafe', "Il prend son temps loin de la piste. La fraicheur remontera au premier geste positif."
     elif rest_days >= 2:
-        rest_label, rest_note = 'Repos utile', "Le cochon recharge tranquillement ses batteries avant sa prochaine sortie."
+        rest_label, rest_note = 'Se repose', "Un rythme doux, parfait pour garder le cochon serein avant la prochaine sortie."
     else:
-        rest_label, rest_note = 'Rythme soutenu', "Mieux vaut surveiller les enchainements de courses et la fatigue."
+        rest_label, rest_note = 'Routine legere', "Petit passage recent sur la piste, rien d'alarmant : il suit simplement son tempo."
     return {'health_pct': health_pct, 'fatigue_pct': fatigue_pct, 'rest_days': rest_days, 'last_race_at': last_race_at, 'rest_label': rest_label, 'rest_note': rest_note}
 
 

@@ -334,12 +334,12 @@
                         {% endif %}
                         <div class="px-3 py-3 rounded-xl border {{ 'border-emerald-400/20 bg-emerald-500/10' if freshness.active else 'border-white/10 bg-white/5' }}">
                             <div class="flex items-center justify-between text-[10px] font-bold uppercase">
-                                <span class="{{ 'text-emerald-200' if freshness.active else 'text-white/45' }}">Fraicheur de repas</span>
-                                <span class="{{ 'text-emerald-300' if freshness.active else 'text-white/35' }}">{% if freshness.active %}+{{ "%.0f"|format(freshness.bonus_percent) }}% moral{% else %}Aucun bonus{% endif %}</span>
+                                <span class="text-emerald-200">Fraicheur</span>
+                                <span class="text-emerald-300">{{ "%.0f"|format(pig.freshness or 100) }}%</span>
                             </div>
-                            {% set fresh_val = 100 if freshness.active else 0 %}
-                            <div class="mt-2 stat-bar border border-white/5"><div class="stat-bar-fill {{ 'bg-emerald-400' if freshness.active else 'bg-white/20' }}" style="width: {{ fresh_val }}%"></div></div>
-                            <p class="mt-2 text-[11px] font-bold {{ 'text-emerald-100' if freshness.active else 'text-white/35' }}">{% if freshness.active %}Le prochain depart profite encore du dernier repas. Fenetre restante: ~{{ "%.1f"|format(freshness.hours_remaining) }} h.{% else %}Un repas dans les 2 prochaines heures relance le buff de fraicheur avant la course.{% endif %}</p>
+                            {% set fresh_val = pig.freshness or 100 %}
+                            <div class="mt-2 stat-bar border border-white/5"><div class="stat-bar-fill bg-emerald-400" style="width: {{ fresh_val }}%"></div></div>
+                            <p class="mt-2 text-[11px] font-bold text-emerald-100">Toute action positive remet la jauge a 100. Sans activite, la fraicheur ne commence a baisser qu'apres 48 h et reste en treve du vendredi soir au lundi matin.</p>
                         </div>
                     </div>
                 </div>

@@ -5,7 +5,7 @@ import os
 
 from extensions import db
 from models import (
-    GameConfig, User, Pig, BalanceTransaction, GrainMarket,
+    GameConfig, User, Pig, BalanceTransaction, GrainMarket, Trophy,
     CerealItem, TrainingItem, SchoolLessonItem,
 )
 from data import PIG_ORIGINS, CEREALS, TRAININGS, SCHOOL_LESSONS
@@ -73,6 +73,8 @@ def migrate_db():
         ('pig', 'last_fed_at', 'DATETIME'),
         ('pig', 'school_sessions_completed', 'INTEGER DEFAULT 0'),
         ('pig', 'weight_kg', 'FLOAT DEFAULT 112.0'),
+        ('pig', 'freshness', 'FLOAT DEFAULT 100.0'),
+        ('pig', 'ever_bad_state', 'BOOLEAN DEFAULT 0'),
         ('pig', 'is_injured', 'BOOLEAN DEFAULT 0'),
         ('pig', 'injury_risk', 'FLOAT DEFAULT 10.0'),
         ('pig', 'vet_deadline', 'DATETIME'),
@@ -98,14 +100,34 @@ def migrate_db():
         ('bet', 'bet_type', 'VARCHAR(20) DEFAULT "win"'),
         ('bet', 'selection_order', 'VARCHAR(240)'),
         ('user', 'last_daily_reward_at', 'DATETIME'),
+        ('trophy', 'pig_name', 'VARCHAR(80)'),
+    ]
+    table_migrations = [
+        """CREATE TABLE IF NOT EXISTS trophy (
+            id INTEGER PRIMARY KEY,
+            user_id INTEGER NOT NULL,
+            code VARCHAR(50) NOT NULL,
+            label VARCHAR(80) NOT NULL,
+            emoji VARCHAR(10) NOT NULL DEFAULT '🏆',
+            description VARCHAR(255) NOT NULL,
+            pig_name VARCHAR(80),
+            earned_at DATETIME
+        )""",
     ]
     index_migrations = [
+        'CREATE UNIQUE INDEX IF NOT EXISTS ux_trophy_user_code ON trophy(user_id, code)',
         'CREATE UNIQUE INDEX IF NOT EXISTS ux_bet_user_race ON bet(user_id, race_id)',
         'CREATE INDEX IF NOT EXISTS ix_auction_status_ends_at ON auction(status, ends_at)',
         'CREATE INDEX IF NOT EXISTS ix_race_status_scheduled_at ON race(status, scheduled_at)',
         'CREATE INDEX IF NOT EXISTS ix_pig_vet_deadline ON pig(is_injured, is_alive, vet_deadline)',
     ]
     with db.engine.connect() as conn:
+        for statement in table_migrations:
+            try:
+                conn.execute(db.text(statement))
+                conn.commit()
+            except Exception:
+                pass
         for table, col, col_type in migrations:
             try:
                 conn.execute(db.text(f"SELECT {col} FROM {table} LIMIT 1"))

@@ -203,6 +203,7 @@ def share_snack():
     recipient_pig.hunger = min(100, recipient_pig.hunger + snack['hunger_restore'])
     recipient_pig.last_fed_at = datetime.utcnow()
     recipient_pig.last_updated = recipient_pig.last_fed_at
+    recipient_pig.reset_freshness()
     user.snack_shares_today = (user.snack_shares_today or 0) + 1
     user.snack_share_reset_at = datetime.utcnow()
     db.session.commit()
@@ -542,6 +543,8 @@ def typing_complete():
     pig.xp += 20
     pig.last_school_at = datetime.utcnow()
     pig.last_updated = pig.last_school_at
+    pig.reset_freshness()
+    pig.mark_bad_state_if_needed()
     pig.check_level_up()
     db.session.commit()
     

@@ -64,16 +64,13 @@ def init_default_config():
 # ─── HELPERS COCHON ─────────────────────────────────────────────────────────
  
 def get_freshness_bonus(pig):
-    if not pig or not pig.last_fed_at:
-        return {'active': False, 'multiplier': 1.0, 'bonus_percent': 0.0, 'hours_remaining': 0.0}
-    elapsed_hours = max(0.0, (datetime.utcnow() - pig.last_fed_at).total_seconds() / 3600.0)
-    active = elapsed_hours < FRESHNESS_BONUS_HOURS
-    remaining = max(0.0, FRESHNESS_BONUS_HOURS - elapsed_hours)
+    freshness_value = max(0.0, min(100.0, float(getattr(pig, 'freshness', 100.0) or 100.0))) if pig else 100.0
     return {
-        'active': active,
-        'multiplier': round(1.0 + FRESHNESS_MORAL_BONUS, 3) if active else 1.0,
-        'bonus_percent': round(FRESHNESS_MORAL_BONUS * 100, 1) if active else 0.0,
-        'hours_remaining': round(remaining, 2),
+        'active': freshness_value >= 95.0,
+        'multiplier': 1.0,
+        'bonus_percent': 0.0,
+        'hours_remaining': 0.0,
+        'value': round(freshness_value, 1),
     }
 
 def get_pig_performance_flags(pig):
@@ -1358,7 +1355,8 @@ def run_race_if_needed():
             continue
 
         participants_by_id = {participant.id: participant for participant in participants}
-        
+        pig_start_freshness = {}
+
         # New Tactical Simulation
         # Fetch actual pig stats for simulation
         pigs_for_sim = []
@@ -1367,6 +1365,7 @@ def run_race_if_needed():
                 pig = Pig.query.get(p.pig_id)
                 if pig:
                     pig.strategy = p.strategy # Sync current player strategy
+                    pig_start_freshness[p.pig_id] = float(pig.freshness or 100.0)
                     pigs_for_sim.append(pig)
                 else:
                     # Mock NPC pig stats based on odds
@@ -1457,6 +1456,16 @@ def run_race_if_needed():
                 pig.xp += xp_gained
                 if p.finish_position == 1:
                     pig.races_won += 1
+                    if (pig_start_freshness.get(pig.id, 100.0) < 80.0) and owner:
+                        from models import Trophy
+                        Trophy.award(
+                            user_id=owner.id,
+                            code='comeback_win',
+                            label='Retour Gagnant',
+                            emoji='🔁',
+                            description="Gagner une course en partant avec moins de 80% de fraicheur.",
+                            pig_name=pig.name,
+                        )
                     pig.vitesse = min(100, pig.vitesse + random.uniform(0.5, 1.5))
                     pig.endurance = min(100, pig.endurance + random.uniform(0.5, 1.5))
                     pig.moral = min(100, pig.moral + 2)
@@ -1468,6 +1477,7 @@ def run_race_if_needed():
                 pig.energy = max(0, pig.energy - 15)
                 pig.hunger = max(0, pig.hunger - 10)
                 pig.adjust_weight(-0.3)
+                pig.mark_bad_state_if_needed()
                 pig.last_updated = datetime.utcnow()
                 pig.check_level_up()
 

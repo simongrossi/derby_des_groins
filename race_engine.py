@@ -43,6 +43,7 @@ class RaceParticipant:
     intelligence: float = 10.0
     moral: float = 10.0
     strategy: int = 50
+    freshness: float = 100.0
     # État mutable pendant la simulation
     distance: float = 0.0
     fatigue: float = 0.0
@@ -73,6 +74,7 @@ class RaceParticipant:
             intelligence=float(_get('intelligence', 10)),
             moral=float(_get('moral', 10)),
             strategy=int(_get('strategy', 50)),
+            freshness=float(_get('freshness', 100.0)),
         )
 
 
@@ -179,7 +181,8 @@ class CourseManager:
             terrain_mod = RACE_BOUE_TERRAIN_MOD if segment['type'] == 'BOUE' else RACE_VIRAGE_TERRAIN_MOD
 
         # 5. Final Speed for this turn
-        final_speed = base_speed * strat_speed_mod * speed_penalty * terrain_mod
+        freshness_factor = 0.9 + (max(0.0, min(100.0, p.freshness)) / 1000.0)
+        final_speed = base_speed * strat_speed_mod * speed_penalty * terrain_mod * freshness_factor
 
         # 6. Apply stumble
         if stumble_roll:

@@ -3,7 +3,7 @@ from sqlalchemy import func
 from datetime import datetime
 
 from extensions import db
-from models import User, Pig, Race, Participant, Bet, BalanceTransaction, CoursePlan
+from models import User, Pig, Race, Participant, Bet, BalanceTransaction, CoursePlan, Trophy
 from data import BET_TYPES, WEEKLY_BACON_TICKETS, DAILY_LOGIN_REWARD
 from helpers import ensure_next_race, get_user_active_pigs, get_race_history_entries
 from services.market_service import get_prix_moyen_groin, is_market_open, get_next_market_time
@@ -279,6 +279,9 @@ def classement():
         if legendary_dead >= 1: trophies.append({'n': 'Sacrilege', 'e': '⚱️', 'd': 'Avoir perdu un cochon legendaire'})
         if total_bets > 0 and len(won_bets) == 0: trophies.append({'n': 'La Poisse', 'e': '🐌', 'd': 'Aucun pari gagne'})
         if win_rate >= 40 and total_races >= 10: trophies.append({'n': 'Stratege', 'e': '🧠', 'd': '40%+ win rate (10+ courses)'})
+        memorial_trophies = Trophy.query.filter_by(user_id=u.id).order_by(Trophy.earned_at.asc()).all()
+        for trophy in memorial_trophies:
+            trophies.append({'n': trophy.label, 'e': trophy.emoji, 'd': trophy.description})
 
         rankings.append({
             'user': u,

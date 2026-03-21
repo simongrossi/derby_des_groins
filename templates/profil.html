@@ -201,6 +201,31 @@
             </div>
 
             <div class="card p-6">
+                <div class="flex items-center justify-between gap-3 mb-4">
+                    <h2 class="font-title text-2xl text-white">Palmares memoire</h2>
+                    <span class="px-3 py-1 rounded-full text-xs font-bold status-ok">{{ memorial_trophies|length }} trophée{{ 's' if memorial_trophies|length != 1 else '' }}</span>
+                </div>
+                {% if memorial_trophies %}
+                <div class="space-y-3">
+                    {% for trophy in memorial_trophies %}
+                    <div class="pig-pill p-4">
+                        <div class="flex items-start gap-3">
+                            <div class="text-2xl">{{ trophy.emoji }}</div>
+                            <div>
+                                <p class="text-white font-bold">{{ trophy.label }}</p>
+                                <p class="text-white/55 text-sm font-semibold">{{ trophy.description }}</p>
+                                <p class="text-white/35 text-xs font-bold mt-1">{{ trophy.pig_name or 'Elevage' }} • {{ trophy.earned_at.strftime('%d/%m/%Y') if trophy.earned_at else 'archive' }}</p>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="text-white/45 text-sm font-semibold">Aucun trophée mémoriel pour l'instant. Les grands exploits survivront ici après la fin de carrière d'un cochon.</p>
+                {% endif %}
+            </div>
+
+            <div class="card p-6">
                 <h2 class="font-title text-2xl text-white mb-2">Mot de passe</h2>
                 <p class="text-white/45 text-sm font-semibold mb-5">Change ton mot de passe sans quitter la piste.</p>
                 <form method="POST" action="/profil" class="space-y-4">

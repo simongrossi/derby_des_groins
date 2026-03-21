@@ -25,6 +25,7 @@ class User(db.Model):
     bets = db.relationship('Bet', backref='user', lazy=True)
     balance_transactions = db.relationship('BalanceTransaction', backref='user', lazy=True)
     course_plans = db.relationship('CoursePlan', backref='user', lazy=True)
+    trophies = db.relationship('Trophy', backref='user', lazy=True, cascade='all, delete-orphan')
 
     # ── Méthodes métier ─────────────────────────────────────────────────
 
@@ -104,6 +105,8 @@ class Pig(db.Model):
     hunger = db.Column(db.Float, default=60.0)
     happiness = db.Column(db.Float, default=70.0)
     weight_kg = db.Column(db.Float, default=112.0)
+    freshness = db.Column(db.Float, default=100.0)
+    ever_bad_state = db.Column(db.Boolean, default=False)
 
     # Progression
     xp = db.Column(db.Integer, default=0)
@@ -207,6 +210,38 @@ class Pig(db.Model):
             self.level += 1
             self.happiness = min(100, self.happiness + 10)
 
+    def reset_freshness(self):
+        """Remet la fraicheur a fond apres une interaction positive."""
+        self.freshness = 100.0
+
+    def mark_bad_state_if_needed(self):
+        """Memorise si le cochon est deja passe par un mauvais etat."""
+        if (self.hunger or 0) < 20 or (self.energy or 0) < 20:
+            self.ever_bad_state = True
+
+    def maybe_award_memorial_trophies(self):
+        """Attribue les trophees memoriels lies a la fin de carriere."""
+        if not self.owner:
+            return
+        if self.created_at and (datetime.utcnow() - self.created_at).days >= 90:
+            Trophy.award(
+                user_id=self.owner.id,
+                code='office_pillar',
+                label='Le Pilier de Bureau',
+                emoji='🪑',
+                description='Un cochon a tenu plus de 3 mois reels avant de quitter la piste.',
+                pig_name=self.name,
+            )
+        if (self.max_races and self.races_entered >= self.max_races and not self.ever_bad_state):
+            Trophy.award(
+                user_id=self.owner.id,
+                code='golden_retirement',
+                label='Retraite Doree',
+                emoji='☕',
+                description="Atteindre la limite de courses sans jamais tomber en mauvais etat.",
+                pig_name=self.name,
+            )
+
     def feed(self, cereal: dict):
         """Nourrir le cochon avec une céréale (dict issu de data.CEREALS).
         Met à jour faim, énergie, poids, stats et timestamps."""
@@ -216,6 +251,8 @@ class Pig(db.Model):
         self.apply_stat_boosts(cereal.get('stats', {}))
         self.last_fed_at = datetime.utcnow()
         self.last_updated = self.last_fed_at
+        self.reset_freshness()
+        self.mark_bad_state_if_needed()
 
     def train(self, training: dict):
         """Entraîner le cochon (dict issu de data.TRAININGS).
@@ -226,7 +263,9 @@ class Pig(db.Model):
         if 'happiness_bonus' in training:
             self.happiness = min(100, self.happiness + training['happiness_bonus'])
         self.apply_stat_boosts(training.get('stats', {}))
+        self.reset_freshness()
         self.last_updated = datetime.utcnow()
+        self.mark_bad_state_if_needed()
 
     def study(self, lesson: dict, correct: bool) -> str:
         """Suivre un cours (dict issu de data.SCHOOL_LESSONS).
@@ -246,7 +285,9 @@ class Pig(db.Model):
             self.happiness = max(0, self.happiness - lesson.get('wrong_happiness_penalty', 0))
             category = 'warning'
 
+        self.reset_freshness()
         self.last_updated = datetime.utcnow()
+        self.mark_bad_state_if_needed()
         self.check_level_up()
         return category
 
@@ -274,6 +315,7 @@ class Pig(db.Model):
         self.charcuterie_emoji = charcuterie['emoji']
         self.epitaph = epitaph_template.format(name=self.name, wins=self.races_won)
         self.challenge_mort_wager = 0
+        self.maybe_award_memorial_trophies()
 
     def retire(self):
         """Retire le cochon pour vieillesse (charcuterie premium)."""
@@ -291,6 +333,7 @@ class Pig(db.Model):
             f"Un cochon bien vieilli fait le meilleur jambon."
         )
         self.challenge_mort_wager = 0
+        self.maybe_award_memorial_trophies()
 
     def update_vitals(self):
         """Décroissance Tamagotchi en fonction du temps écoulé.
@@ -306,11 +349,16 @@ class Pig(db.Model):
         if elapsed_hours < 0.01:
             return
         truce_hours = calculate_weekend_truce_hours(self.last_updated, now)
-        hours = min(max(0.0, elapsed_hours - truce_hours), 24)
-        if hours < 0.01:
+        effective_hours = max(0.0, elapsed_hours - truce_hours)
+        hours = min(effective_hours, 24)
+        if effective_hours < 0.01:
             self.last_updated = now
             db.session.commit()
             return
+
+        freshness_decay_hours = max(0.0, effective_hours - 48.0)
+        if freshness_decay_hours > 0:
+            self.freshness = max(0.0, (self.freshness or 100.0) - (freshness_decay_hours * (5.0 / 24.0)))
 
         # Faim décroît avec le temps
         self.hunger = max(0, self.hunger - hours * 2)
@@ -338,8 +386,34 @@ class Pig(db.Model):
         elif self.energy > 80 and self.hunger < 60:
             self.weight_kg = round(min(190.0, max(75.0, current_weight - hours * 0.08)), 1)
 
+        self.mark_bad_state_if_needed()
         self.last_updated = now
         db.session.commit()
+
+
+
+class Trophy(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
+    code = db.Column(db.String(50), nullable=False)
+    label = db.Column(db.String(80), nullable=False)
+    emoji = db.Column(db.String(10), nullable=False, default='🏆')
+    description = db.Column(db.String(255), nullable=False)
+    pig_name = db.Column(db.String(80), nullable=True)
+    earned_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+
+    __table_args__ = (
+        db.UniqueConstraint('user_id', 'code', name='ux_trophy_user_code'),
+    )
+
+    @classmethod
+    def award(cls, user_id: int, code: str, label: str, emoji: str, description: str, pig_name: str | None = None):
+        trophy = cls.query.filter_by(user_id=user_id, code=code).first()
+        if trophy:
+            return trophy
+        trophy = cls(user_id=user_id, code=code, label=label, emoji=emoji, description=description, pig_name=pig_name)
+        db.session.add(trophy)
+        return trophy
 
 
 class Race(db.Model):

@@ -5,7 +5,7 @@ import random
 import math
 
 from extensions import db
-from models import User, Pig, Bet, Auction
+from models import User, Pig, Bet, Auction, Trophy
 from data import PIG_ORIGINS, BET_TYPES, RARITIES
 from helpers import get_market_unlock_progress, get_market_lock_reason
 from services.finance_service import record_balance_transaction
@@ -129,6 +129,7 @@ def profil():
     bet_win_rate = round((len(won_bets) / len(settled_bets)) * 100, 1) if settled_bets else 0.0
 
     market_unlocked, market_progress_races, account_age_hours = get_market_unlock_progress(user)
+    memorial_trophies = Trophy.query.filter_by(user_id=user.id).order_by(Trophy.earned_at.desc(), Trophy.id.desc()).all()
     market_hours_left = max(0, int(math.ceil(24 - account_age_hours)))
 
     return render_template(
@@ -158,4 +159,5 @@ def profil():
         market_lock_reason=get_market_lock_reason(user),
         active_listing_count=get_active_listing_count(user),
         active_listing_ids=active_listing_ids,
+        memorial_trophies=memorial_trophies,
     )
