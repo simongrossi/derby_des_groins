@@ -94,6 +94,7 @@ def migrate_db():
         ('participant', 'strategy', 'INTEGER DEFAULT 50'),
         ('race', 'replay_json', 'TEXT'),
         ('course_plan', 'strategy', 'INTEGER DEFAULT 50'),
+        ('course_plan', 'strategy_profile', 'TEXT DEFAULT \'{"phase_1": 35, "phase_2": 50, "phase_3": 80}\''),
         ('auction', 'seller_id', 'INTEGER'),
         ('auction', 'source_pig_id', 'INTEGER'),
         ('auction', 'pig_weight', 'FLOAT DEFAULT 112.0'),
@@ -103,6 +104,8 @@ def migrate_db():
         ('bet', 'selection_order', 'VARCHAR(240)'),
         ('user', 'last_daily_reward_at', 'DATETIME'),
         ('trophy', 'pig_name', 'VARCHAR(80)'),
+        ('trophy', 'trophy_key', 'VARCHAR(50)'),
+        ('trophy', 'date_earned', 'DATETIME'),
     ]
     table_migrations = [
         """CREATE TABLE IF NOT EXISTS trophy (
@@ -145,6 +148,24 @@ def migrate_db():
                 conn.commit()
             except Exception:
                 pass
+        try:
+            conn.execute(db.text("""
+                UPDATE course_plan
+                SET strategy_profile = json_object(
+                    'phase_1', COALESCE(strategy, 50),
+                    'phase_2', COALESCE(strategy, 50),
+                    'phase_3', COALESCE(strategy, 50)
+                )
+                WHERE strategy_profile IS NULL OR strategy_profile = ''
+            """))
+            conn.execute(db.text("""
+                UPDATE trophy
+                SET trophy_key = COALESCE(trophy_key, code),
+                    date_earned = COALESCE(date_earned, earned_at)
+            """))
+            conn.commit()
+        except Exception:
+            pass
 
 
 def seed_users():

@@ -67,10 +67,14 @@ def plan_course():
 
     pig_id = request.form.get('pig_id', type=int)
     scheduled_at_raw = (request.form.get('scheduled_at') or '').strip()
-    strategy = request.form.get('strategy', 50, type=int)
+    strategy_profile = {
+        'phase_1': request.form.get('strategy_phase_1', 35, type=int),
+        'phase_2': request.form.get('strategy_phase_2', 50, type=int),
+        'phase_3': request.form.get('strategy_phase_3', 80, type=int),
+    }
 
     try:
-        action = plan_pig_for_race(user.id, pig_id, scheduled_at_raw, strategy)
+        action = plan_pig_for_race(user.id, pig_id, scheduled_at_raw, strategy_profile)
     except RacePlanningError as exc:
         category = 'error' if 'invalide' in str(exc).lower() or 'introuvable' in str(exc).lower() else 'warning'
         flash(str(exc), category)

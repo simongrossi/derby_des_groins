@@ -82,6 +82,22 @@
             background: rgba(255, 232, 240, 0.04);
         }
         .table-shell tr:last-child td { border-bottom: none; }
+        .pig-live-preview {
+            transition: filter 0.2s ease, opacity 0.2s ease, transform 0.2s ease;
+        }
+        .pig-live-preview[data-live-event="sprint"] {
+            filter: drop-shadow(0 0 0.65rem rgba(250, 204, 21, 0.75));
+            transform: scale(1.06);
+        }
+        .pig-live-preview[data-live-event="tired"] {
+            opacity: 0.7;
+        }
+        .pig-live-preview[data-live-event="stumble"] {
+            filter: grayscale(0.2) drop-shadow(0 0 0.45rem rgba(248, 113, 113, 0.7));
+        }
+        .pig-live-preview[data-is-drafting="true"] {
+            filter: drop-shadow(0 0 0.55rem rgba(34, 211, 238, 0.65));
+        }
     </style>
 </head>
 <body>
@@ -286,16 +302,29 @@
                             <form method="POST" action="/courses/plan">
                                 <input type="hidden" name="pig_id" value="{{ pig.id }}">
                                 <input type="hidden" name="scheduled_at" value="{{ slot.slot_key }}">
-                                
-                                <div class="mb-3 px-1">
-                                    <div class="flex justify-between text-[10px] font-bold text-white/40 uppercase mb-1">
-                                        <span>🐢 Éco</span>
-                                        <span class="text-white/60">Stratégie: {{ option.current_strategy }}%</span>
-                                        <span>Attaque 🚀</span>
+                                <div class="mb-3 px-1 space-y-3">
+                                    <div class="flex items-center justify-between">
+                                        <div>
+                                            <p class="text-[10px] font-bold text-white/40 uppercase">Plan Flamme Rouge</p>
+                                            <p class="text-xs text-white/60 font-semibold">{{ option.current_strategy_summary }}</p>
+                                        </div>
+                                        <span class="pig-live-preview text-2xl" data-live-event="sprint" data-is-drafting="true">{{ pig.emoji }}</span>
                                     </div>
-                                    <input type="range" name="strategy" min="0" max="100" value="{{ option.current_strategy }}" 
-                                           class="w-full accent-pink-500 bg-white/10 rounded-lg appearance-none h-1.5 cursor-pointer"
-                                           oninput="this.previousElementSibling.querySelector('.text-white\\/60').innerText = 'Stratégie: ' + this.value + '%'">
+                                    <div class="grid grid-cols-3 gap-2 text-xs">
+                                        {% set profile = option.current_strategy_profile %}
+                                        {% set labels = [('strategy_phase_1', 'Départ', profile.phase_1), ('strategy_phase_2', 'Milieu', profile.phase_2), ('strategy_phase_3', 'Final', profile.phase_3)] %}
+                                        {% for field_name, phase_label, current_value in labels %}
+                                        <label class="soft-card p-2 block">
+                                            <span class="text-white/55 font-bold uppercase tracking-wide text-[10px]">{{ phase_label }}</span>
+                                            <select name="{{ field_name }}" class="mt-2 w-full rounded-lg bg-white/10 border border-white/10 text-white text-sm font-bold px-2 py-2">
+                                                <option value="35" {% if current_value == 35 %}selected{% endif %}>Économie</option>
+                                                <option value="50" {% if current_value == 50 %}selected{% endif %}>Neutre</option>
+                                                <option value="85" {% if current_value == 85 %}selected{% endif %}>Attaque</option>
+                                            </select>
+                                        </label>
+                                        {% endfor %}
+                                    </div>
+                                    <p class="text-[11px] text-white/40 font-semibold">Prévu pour le live replay : halo sprint, opacité fatigue, et aspiration visible via les flags JSON.</p>
                                 </div>
 
                                 <button type="submit" class="btn-plan

@@ -250,6 +250,15 @@ class Pig(db.Model):
         """Attribue les trophees memoriels lies a la fin de carriere."""
         if not self.owner:
             return
+        if self.created_at and (datetime.utcnow() - self.created_at).days >= 30:
+            Trophy.award(
+                user_id=self.owner.id,
+                code='office_elder',
+                label="L'Ancien du Bureau",
+                emoji='🗄️',
+                description='Un cochon a tenu plus de 30 jours reels avant son post-mortem.',
+                pig_name=self.name,
+            )
         if self.created_at and (datetime.utcnow() - self.created_at).days >= 90:
             Trophy.award(
                 user_id=self.owner.id,
@@ -268,6 +277,50 @@ class Pig(db.Model):
                 description="Atteindre la limite de courses sans jamais tomber en mauvais etat.",
                 pig_name=self.name,
             )
+        winning_track_profiles = self.get_winning_track_profiles()
+        if len(winning_track_profiles) >= 3:
+            Trophy.award(
+                user_id=self.owner.id,
+                code='segment_expert',
+                label='Expert des Segments',
+                emoji='🧭',
+                description='Ce cochon a gagne sur 3 profils de piste differents.',
+                pig_name=self.name,
+            )
+        if (self.school_sessions_completed or 0) > 20:
+            Trophy.award(
+                user_id=self.owner.id,
+                code='iron_memory',
+                label='Memoire de Fer',
+                emoji='🧠',
+                description="Plus de 20 passages a l'ecole porcine avant la fin de carriere.",
+                pig_name=self.name,
+            )
+
+    def get_winning_track_profiles(self) -> set[str]:
+        if not self.id:
+            return set()
+        winning_rows = (
+            db.session.query(Race.replay_json)
+            .join(Participant, Participant.race_id == Race.id)
+            .filter(
+                Participant.pig_id == self.id,
+                Participant.finish_position == 1,
+                Race.status == 'finished',
+            )
+            .all()
+        )
+        profiles = set()
+        for (replay_json,) in winning_rows:
+            if not replay_json:
+                continue
+            try:
+                replay = json.loads(replay_json)
+            except (TypeError, ValueError):
+                continue
+            if isinstance(replay, dict) and replay.get('track_profile'):
+                profiles.add(replay['track_profile'])
+        return profiles
 
     def feed(self, cereal: dict):
         """Nourrir le cochon avec une céréale (dict issu de data.CEREALS).
@@ -430,11 +483,13 @@ class Pig(db.Model):
 class Trophy(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
+    trophy_key = db.Column(db.String(50), nullable=True)
     code = db.Column(db.String(50), nullable=False)
     label = db.Column(db.String(80), nullable=False)
     emoji = db.Column(db.String(10), nullable=False, default='🏆')
     description = db.Column(db.String(255), nullable=False)
     pig_name = db.Column(db.String(80), nullable=True)
+    date_earned = db.Column(db.DateTime, nullable=True, index=True)
     earned_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
 
     __table_args__ = (
@@ -446,7 +501,16 @@ class Trophy(db.Model):
         trophy = cls.query.filter_by(user_id=user_id, code=code).first()
         if trophy:
             return trophy
-        trophy = cls(user_id=user_id, code=code, label=label, emoji=emoji, description=description, pig_name=pig_name)
+        trophy = cls(
+            user_id=user_id,
+            trophy_key=code,
+            code=code,
+            label=label,
+            emoji=emoji,
+            description=description,
+            pig_name=pig_name,
+            date_earned=datetime.utcnow(),
+        )
         db.session.add(trophy)
         return trophy
 
@@ -505,8 +569,40 @@ class CoursePlan(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
     pig_id = db.Column(db.Integer, db.ForeignKey('pig.id'), nullable=False, index=True)
     scheduled_at = db.Column(db.DateTime, nullable=False, index=True)
-    strategy = db.Column(db.Integer, default=50)
+    strategy_profile = db.Column(
+        db.Text,
+        nullable=False,
+        default='{"phase_1": 35, "phase_2": 50, "phase_3": 80}',
+    )
     created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+
+    @staticmethod
+    def build_strategy_profile(phase_1=35, phase_2=50, phase_3=80) -> str:
+        return json.dumps({
+            'phase_1': int(phase_1),
+            'phase_2': int(phase_2),
+            'phase_3': int(phase_3),
+        })
+
+    @property
+    def strategy_segments(self) -> dict:
+        default_profile = {'phase_1': 35, 'phase_2': 50, 'phase_3': 80}
+        if not self.strategy_profile:
+            return default_profile
+        try:
+            profile = json.loads(self.strategy_profile)
+        except (TypeError, ValueError):
+            return default_profile
+        return {
+            'phase_1': int(profile.get('phase_1', default_profile['phase_1'])),
+            'phase_2': int(profile.get('phase_2', default_profile['phase_2'])),
+            'phase_3': int(profile.get('phase_3', default_profile['phase_3'])),
+        }
+
+    @property
+    def strategy_summary(self) -> str:
+        profile = self.strategy_segments
+        return f"Départ {profile['phase_1']} • Milieu {profile['phase_2']} • Final {profile['phase_3']}"
 
     pig = db.relationship('Pig', backref=db.backref('course_plans', lazy=True))
 

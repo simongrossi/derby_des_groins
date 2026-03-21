@@ -899,7 +899,8 @@ def populate_race_participants(race, respect_course_plans=True, allow_rebuild_if
         all_powers.append(power)
         owner = User.query.get(pig.user_id)
         plan = CoursePlan.query.filter_by(pig_id=pig.id, scheduled_at=race.scheduled_at).first()
-        strategy = plan.strategy if plan else 50
+        plan_profile = plan.strategy_segments if plan else {'phase_1': 35, 'phase_2': 50, 'phase_3': 80}
+        strategy = plan_profile['phase_1']
         participant = Participant(
             race_id=race.id,
             name=pig.name,
@@ -1000,14 +1001,11 @@ def build_course_schedule(user, pigs, days=30):
             is_actual_participant = pig.id in slot_actual_pig_ids
             is_planned = pig.id in slot_user_plan_by_pig
             
-            # Find current strategy if already participant
-            current_strategy = 50
-            if is_actual_participant:
-                part = next((p for p in slot_participants if p.pig_id == pig.id), None)
-                if part:
-                    current_strategy = part.strategy
-            elif is_planned:
-                current_strategy = slot_user_plan_by_pig[pig.id].strategy
+            current_strategy = (
+                slot_user_plan_by_pig[pig.id].strategy_segments
+                if is_planned else
+                {'phase_1': 35, 'phase_2': 50, 'phase_3': 80}
+            )
 
             exclude_slot = slot_time if (is_actual_participant or is_planned) else None
             weekly_commitments = count_pig_weekly_course_commitments(pig.id, slot_time, exclude_scheduled_at=exclude_slot)
@@ -1032,7 +1030,8 @@ def build_course_schedule(user, pigs, days=30):
                 'pig': pig,
                 'is_planned': is_planned,
                 'is_actual_participant': is_actual_participant,
-                'current_strategy': current_strategy,
+                'current_strategy_profile': current_strategy,
+                'current_strategy_summary': f"D {current_strategy['phase_1']} • M {current_strategy['phase_2']} • F {current_strategy['phase_3']}",
                 'can_toggle': can_toggle,
                 'disabled_reason': disabled_reason,
                 'weekly_commitments': projected_commitments,
@@ -1365,13 +1364,15 @@ def run_race_if_needed():
             if p.pig_id:
                 pig = Pig.query.get(p.pig_id)
                 if pig:
-                    pig.strategy = p.strategy # Sync current player strategy
                     pig_start_freshness[p.pig_id] = float(pig.freshness or 100.0)
                     pig_comeback_bonus_flags[p.pig_id] = bool(pig.comeback_bonus_ready)
+                    plan = CoursePlan.query.filter_by(pig_id=pig.id, scheduled_at=race.scheduled_at).first()
+                    strategy_profile = plan.strategy_segments if plan else {'phase_1': 35, 'phase_2': 50, 'phase_3': 80}
                     pigs_for_sim.append({
                         'id': pig.id, 'name': pig.name, 'emoji': pig.emoji,
                         'vitesse': pig.vitesse, 'endurance': pig.endurance, 'force': pig.force, 'agilite': pig.agilite,
                         'intelligence': pig.intelligence, 'moral': pig.moral, 'strategy': p.strategy,
+                        'strategy_profile': strategy_profile,
                         'freshness': pig.freshness, 'is_happy': (pig.freshness or 0) > 90.0,
                         'speed_bonus_multiplier': 1.1 if pig.comeback_bonus_ready else 1.0,
                     })

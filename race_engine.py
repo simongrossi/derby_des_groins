@@ -43,6 +43,7 @@ class RaceParticipant:
     intelligence: float = 10.0
     moral: float = 10.0
     strategy: int = 50
+    strategy_profile: dict = field(default_factory=lambda: {'phase_1': 35, 'phase_2': 50, 'phase_3': 80})
     freshness: float = 100.0
     is_happy: bool = False
     speed_bonus_multiplier: float = 1.0
@@ -65,6 +66,13 @@ class RaceParticipant:
                 return source.get(key, default)
             return default
 
+        strategy_profile = _get('strategy_profile', {'phase_1': 35, 'phase_2': 50, 'phase_3': 80})
+        if isinstance(strategy_profile, str):
+            try:
+                strategy_profile = json.loads(strategy_profile)
+            except (TypeError, ValueError):
+                strategy_profile = {'phase_1': 35, 'phase_2': 50, 'phase_3': 80}
+
         return cls(
             id=_get('id', 0),
             name=_get('name', 'Inconnu'),
@@ -76,6 +84,7 @@ class RaceParticipant:
             intelligence=float(_get('intelligence', 10)),
             moral=float(_get('moral', 10)),
             strategy=int(_get('strategy', 50)),
+            strategy_profile=strategy_profile,
             freshness=float(_get('freshness', 100.0)),
             is_happy=bool(_get('is_happy', float(_get('freshness', 100.0)) > 90.0)),
             speed_bonus_multiplier=float(_get('speed_bonus_multiplier', 1.0)),
@@ -104,6 +113,28 @@ class CourseManager:
         self.total_length = sum(s['length'] for s in segments)
         self.history: list[dict] = []
         self.current_turn: int = 0
+        self.track_profile = self._compute_track_profile()
+
+    def _compute_track_profile(self) -> str:
+        terrain_lengths = {}
+        for seg in self.segments:
+            seg_type = seg.get('type', 'PLAT')
+            terrain_lengths[seg_type] = terrain_lengths.get(seg_type, 0) + seg.get('length', 0)
+        filtered = {k: v for k, v in terrain_lengths.items() if k != 'PLAT'}
+        profile_source = filtered or terrain_lengths or {'PLAT': 0}
+        return max(profile_source, key=profile_source.get)
+
+    def _resolve_phase_strategy(self, participant: RaceParticipant, segment_index: int) -> int:
+        total_segments = max(1, len(self.segments))
+        phase_step = total_segments / 3
+        if segment_index < phase_step:
+            phase_key = 'phase_1'
+        elif segment_index < phase_step * 2:
+            phase_key = 'phase_2'
+        else:
+            phase_key = 'phase_3'
+        profile = participant.strategy_profile or {}
+        return int(profile.get(phase_key, participant.strategy))
 
     def run(self):
         """Lance la simulation complète."""
@@ -122,11 +153,15 @@ class CourseManager:
             # Find current segment
             temp_dist = 0
             current_seg = self.segments[-1]
-            for seg in self.segments:
+            current_seg_index = len(self.segments) - 1
+            for seg_index, seg in enumerate(self.segments):
                 temp_dist += seg['length']
                 if p.distance < temp_dist:
                     current_seg = seg
+                    current_seg_index = seg_index
                     break
+
+            p.strategy = self._resolve_phase_strategy(p, current_seg_index)
 
             progression = self.calculate_progression(p, current_seg)
             p.distance += progression
@@ -222,7 +257,15 @@ class CourseManager:
                     'is_finished': p.is_finished,
                     'stumbled': p.stumbled,
                     'has_draft': p.has_draft,
+                    'is_drafting': p.has_draft,
                     'is_happy': p.is_happy,
+                    'strategy': p.strategy,
+                    'visual_event': (
+                        'stumble' if p.stumbled
+                        else 'sprint' if p.strategy > 80
+                        else 'tired' if p.fatigue > p.endurance
+                        else None
+                    ),
                 }
                 for p in self.participants
             ],
@@ -230,4 +273,8 @@ class CourseManager:
         self.history.append(turn_data)
 
     def to_json(self):
-        return json.dumps(self.history)
+        return json.dumps({
+            'track_profile': self.track_profile,
+            'segments': self.segments,
+            'turns': self.history,
+        })
