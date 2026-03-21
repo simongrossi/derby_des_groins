@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Derby des Groins — Groin Jack 🃏</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * { font-family: 'Nunito', sans-serif; }
+        .font-title { font-family: 'Lilita One', cursive; }
+
+        body {
+            background: #0f0a1a;
+            background-image:
+                radial-gradient(at 15% 20%, rgba(22, 101, 52, 0.25) 0, transparent 55%),
+                radial-gradient(at 85% 15%, rgba(30, 58, 138, 0.20) 0, transparent 55%),
+                radial-gradient(at 50% 90%, rgba(88, 28, 135, 0.18) 0, transparent 50%);
+            color: #f8fafc;
+            min-height: 100vh;
+        }
+
+        /* ── Table de jeu ── */
+        .table-felt {
+            background: radial-gradient(ellipse at center, #166534 0%, #14532d 50%, #0f3d21 100%);
+            border: 6px solid #78350f;
+            box-shadow:
+                0 0 0 3px #92400e,
+                0 0 60px rgba(22, 101, 52, 0.5),
+                inset 0 0 80px rgba(0,0,0,0.4);
+            border-radius: 2rem;
+            position: relative;
+        }
+        .table-felt::before {
+            content: '';
+            position: absolute;
+            inset: 12px;
+            border-radius: 1.5rem;
+            border: 2px solid rgba(255, 255, 255, 0.06);
+            pointer-events: none;
+        }
+
+        /* ── Cartes ── */
+        .card {
+            width: 72px;
+            height: 108px;
+            background: #fff;
+            border-radius: 10px;
+            border: 2px solid rgba(0,0,0,0.15);
+            display: inline-flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+            font-weight: 800;
+            box-shadow: 2px 4px 12px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.8);
+            transition: transform 0.2s, box-shadow 0.2s;
+            position: relative;
+            flex-shrink: 0;
+        }
+        .card:hover {
+            transform: translateY(-6px) rotate(-1deg);
+            box-shadow: 4px 12px 24px rgba(0,0,0,0.6);
+        }
+        .card.red { color: #dc2626 !important; }
+        .card.red * { color: #dc2626 !important; }
+        .card.black { color: #111827 !important; }
+        .card.black * { color: #111827 !important; }
+        .card.joker {
+            background: linear-gradient(135deg, #1e1b4b, #312e81);
+            color: #fbbf24;
+            border-color: #7c3aed;
+            font-size: 2rem;
+        }
+        .card.face-down {
+            background: repeating-linear-gradient(
+                45deg,
+                #1e3a5f,
+                #1e3a5f 8px,
+                #1a3352 8px,
+                #1a3352 16px
+            );
+            color: transparent;
+            border: 2px solid #2563eb;
+        }
+        .card-rank {
+            font-size: 1.4rem;
+            line-height: 1;
+            font-weight: 900;
+        }
+        .card-suit {
+            font-size: 1rem;
+            line-height: 1;
+            margin-top: 2px;
+        }
+        .card-corner-tl {
+            position: absolute;
+            top: 5px;
+            left: 7px;
+            font-size: 0.7rem;
+            font-weight: 900;
+            line-height: 1.1;
+            text-align: center;
+        }
+        .card-corner-br {
+            position: absolute;
+            bottom: 5px;
+            right: 7px;
+            font-size: 0.7rem;
+            font-weight: 900;
+            line-height: 1.1;
+            text-align: center;
+            transform: rotate(180deg);
+        }
+
+        /* Carte animée à l'apparition */
+        @keyframes card-deal {
+            from { opacity: 0; transform: translateY(-30px) rotate(-5deg); }
+            to   { opacity: 1; transform: translateY(0) rotate(0deg); }
+        }
+        .card { animation: card-deal 0.3s ease-out; }
+
+        /* ── Boutons ── */
+        .btn-action {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 24px;
+            border-radius: 12px;
+            font-weight: 800;
+            font-size: 1rem;
+            border: 2px solid transparent;
+            cursor: pointer;
+            transition: all 0.18s;
+            text-decoration: none;
+        }
+        .btn-hit {
+            background: linear-gradient(135deg, #16a34a, #15803d);
+            border-color: #22c55e;
+            color: white;
+            box-shadow: 0 4px 16px rgba(22, 163, 74, 0.35);
+        }
+        .btn-hit:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(22, 163, 74, 0.5); }
+
+        .btn-stand {
+            background: linear-gradient(135deg, #dc2626, #b91c1c);
+            border-color: #f87171;
+            color: white;
+            box-shadow: 0 4px 16px rgba(220, 38, 38, 0.35);
+        }
+        .btn-stand:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(220, 38, 38, 0.5); }
+
+        .btn-double {
+            background: linear-gradient(135deg, #d97706, #b45309);
+            border-color: #fbbf24;
+            color: white;
+            box-shadow: 0 4px 16px rgba(217, 119, 6, 0.35);
+        }
+        .btn-double:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(217, 119, 6, 0.5); }
+
+        .btn-deal {
+            background: linear-gradient(135deg, #7c3aed, #6d28d9);
+            border-color: #a78bfa;
+            color: white;
+            box-shadow: 0 4px 20px rgba(124, 58, 237, 0.4);
+            font-size: 1.1rem;
+            padding: 14px 32px;
+        }
+        .btn-deal:hover { transform: translateY(-2px); box-shadow: 0 8px 28px rgba(124, 58, 237, 0.6); }
+
+        .btn-new {
+            background: linear-gradient(135deg, #0f172a, #1e293b);
+            border-color: rgba(255,255,255,0.15);
+            color: #e2e8f0;
+        }
+        .btn-new:hover { border-color: rgba(255,255,255,0.35); transform: translateY(-1px); }
+
+        /* ── Résultat ── */
+        @keyframes result-pop {
+            0% { transform: scale(0.5); opacity: 0; }
+            70% { transform: scale(1.1); }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        .result-banner {
+            animation: result-pop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        /* ── Score ── */
+        .score-badge {
+            background: rgba(0,0,0,0.45);
+            border: 1px solid rgba(255,255,255,0.12);
+            border-radius: 8px;
+            padding: 4px 12px;
+            font-size: 0.85rem;
+            font-weight: 700;
+        }
+        .score-bust { color: #f87171; }
+        .score-21 { color: #fbbf24; }
+        .score-ok { color: #86efac; }
+
+        /* ── Input mise ── */
+        .bet-input {
+            background: rgba(255, 255, 255, 0.07);
+            border: 2px solid rgba(255, 255, 255, 0.12);
+            border-radius: 12px;
+            color: white;
+            font-size: 1.3rem;
+            font-weight: 800;
+            padding: 12px 20px;
+            text-align: center;
+            outline: none;
+            width: 160px;
+            transition: border-color 0.2s;
+        }
+        .bet-input:focus { border-color: rgba(167, 139, 250, 0.6); }
+
+        /* ── Joker alert ── */
+        .joker-alert {
+            background: linear-gradient(135deg, rgba(124, 58, 237, 0.25), rgba(30, 27, 75, 0.35));
+            border: 2px solid rgba(167, 139, 250, 0.4);
+            border-radius: 1rem;
+            animation: result-pop 0.4s ease-out;
+        }
+
+        /* ── Hand separator ── */
+        .hand-divider {
+            border: none;
+            border-top: 1px dashed rgba(255,255,255,0.1);
+            margin: 0;
+        }
+
+        /* ── Responsive cards stacking ── */
+        .hand-cards {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            align-items: flex-start;
+        }
+        @media (max-width: 640px) {
+            .card { width: 56px; height: 84px; font-size: 1rem; }
+            .card-rank { font-size: 1.1rem; }
+        }
+
+        /* Flash messages */
+        .flash-msg {
+            border-radius: 0.75rem;
+            padding: 0.75rem 1.25rem;
+            font-weight: 700;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+    {% include '_site_header.html' %}
+
+    <main class="max-w-3xl mx-auto px-4 py-8">
+
+        <!-- Flash messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+        <div class="space-y-2 mb-6">
+            {% for cat, msg in messages %}
+            <div class="flash-msg
+                {% if cat == 'success' %}bg-emerald-900/50 border border-emerald-500/30 text-emerald-200
+                {% elif cat == 'error' %}bg-red-900/50 border border-red-500/30 text-red-200
+                {% else %}bg-amber-900/50 border border-amber-500/30 text-amber-200{% endif %}">
+                {{ msg }}
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+        {% endwith %}
+
+        <!-- Titre -->
+        <div class="text-center mb-8">
+            <h1 class="font-title text-5xl text-emerald-300 drop-shadow-[0_0_24px_rgba(52,211,153,0.3)] mb-2">
+                🃏 Groin Jack
+            </h1>
+            <p class="text-pink-100/50 font-semibold text-sm">Le Blackjack le plus porcin de l'internet · 54 cartes · Jokers inclus</p>
+        </div>
+
+        <!-- Solde -->
+        <div class="flex justify-center mb-6">
+            <div class="inline-flex items-center gap-3 rounded-2xl border border-pink-200/12 bg-[linear-gradient(135deg,rgba(244,114,182,0.08),rgba(255,255,255,0.03))] px-5 py-3">
+                <span class="text-xs uppercase tracking-widest text-pink-100/40 font-bold">Ton magot</span>
+                <span class="font-title text-2xl text-yellow-400">{{ "%.2f"|format(user.balance) }}</span>
+                <span class="text-sm font-bold text-pink-100/40">🪙 BitGroins</span>
+            </div>
+        </div>
+
+        {% if not game or game.phase == 'finished' %}
+        <!-- ═══════════════════════════════════════════════════════════════
+             RÉSULTAT de la partie précédente
+        ════════════════════════════════════════════════════════════════ -->
+        {% if game and game.phase == 'finished' %}
+        <div class="table-felt p-6 mb-6">
+            <!-- Résultat banner -->
+            <div class="result-banner text-center mb-6">
+                {% if game.result == 'blackjack' %}
+                <div class="inline-block rounded-2xl bg-gradient-to-r from-yellow-500/30 to-amber-400/20 border-2 border-yellow-400/60 px-8 py-4 shadow-[0_0_40px_rgba(251,191,36,0.3)]">
+                    <p class="font-title text-4xl text-yellow-300">🌟 BLACKJACK !</p>
+                    <p class="text-yellow-200/80 font-bold text-lg mt-1">Ton cochon a le génie des cartes !</p>
+                    <p class="text-yellow-300 font-black text-xl mt-2">+{{ "%.0f"|format(game.winnings) }} 🪙</p>
+                </div>
+                {% elif game.result == 'win' or game.result == 'dealer_bust' %}
+                <div class="inline-block rounded-2xl bg-gradient-to-r from-emerald-600/30 to-green-500/20 border-2 border-emerald-400/60 px-8 py-4 shadow-[0_0_40px_rgba(52,211,153,0.3)]">
+                    {% if game.result == 'dealer_bust' %}
+                    <p class="font-title text-4xl text-emerald-300">🐽 CROUPIER CRAMÉ !</p>
+                    <p class="text-emerald-200/80 font-bold text-lg mt-1">Le croupier a dépassé 21 comme un porc ivre !</p>
+                    {% else %}
+                    <p class="font-title text-4xl text-emerald-300">🏆 VICTOIRE !</p>
+                    <p class="text-emerald-200/80 font-bold text-lg mt-1">Ton cochon a écrasé le croupier !</p>
+                    {% endif %}
+                    <p class="text-emerald-300 font-black text-xl mt-2">+{{ "%.0f"|format(game.winnings) }} 🪙</p>
+                </div>
+                {% elif game.result == 'lose' %}
+                <div class="inline-block rounded-2xl bg-gradient-to-r from-red-800/30 to-rose-700/20 border-2 border-red-500/60 px-8 py-4">
+                    <p class="font-title text-4xl text-red-300">💀 PERDU !</p>
+                    <p class="text-red-200/80 font-bold text-lg mt-1">Le croupier grogne de satisfaction.</p>
+                    <p class="text-red-300/70 font-bold text-lg mt-1">-{{ "%.0f"|format(game.bet) }} 🪙 partis en fumée</p>
+                </div>
+                {% elif game.result == 'bust' %}
+                <div class="inline-block rounded-2xl bg-gradient-to-r from-orange-800/30 to-red-700/20 border-2 border-orange-500/60 px-8 py-4">
+                    <p class="font-title text-4xl text-orange-300">💥 BUST !</p>
+                    <p class="text-orange-200/80 font-bold text-lg mt-1">T'as dépassé 21 comme un grand naïf.</p>
+                    <p class="text-orange-300/70 font-bold text-lg mt-1">-{{ "%.0f"|format(game.bet) }} 🪙</p>
+                </div>
+                {% elif game.result == 'push' %}
+                <div class="inline-block rounded-2xl bg-[rgba(30,41,59,0.7)] border-2 border-slate-400/40 px-8 py-4">
+                    <p class="font-title text-4xl text-slate-300">🤝 ÉGALITÉ</p>
+                    <p class="text-slate-300/80 font-bold text-lg mt-1">Personne ne gagne, personne ne perd. Bof.</p>
+                    <p class="text-slate-400 font-bold text-lg mt-1">Mise remboursée : {{ "%.0f"|format(game.bet) }} 🪙</p>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Recap mains finales -->
+            <div class="grid grid-cols-2 gap-6 mb-4">
+                <div>
+                    <p class="text-xs uppercase tracking-widest text-pink-100/40 font-bold mb-3">🐷 Toi</p>
+                    <div class="hand-cards mb-2">
+                        {% for card in game.player_hand %}
+                        <div class="card {{ card.color }}" style="color: {% if card.color == 'red' %}#dc2626{% elif card.color == 'black' %}#1a1a1a{% else %}#fbbf24{% endif %} !important;">
+                            {% if not card.is_joker %}
+                            <div style="position:absolute;top:5px;left:7px;font-size:0.7rem;font-weight:900;line-height:1.1;text-align:center;color:inherit;">{{ card.rank }}<br>{{ card.suit }}</div>
+                            <div style="font-size:1.5rem;line-height:1;font-weight:900;color:inherit;">{{ card.rank }}</div>
+                            <div style="font-size:1.1rem;line-height:1;margin-top:2px;color:inherit;">{{ card.suit }}</div>
+                            <div style="position:absolute;bottom:5px;right:7px;font-size:0.7rem;font-weight:900;line-height:1.1;text-align:center;transform:rotate(180deg);color:inherit;">{{ card.rank }}<br>{{ card.suit }}</div>
+                            {% else %}
+                            <div style="font-size:2rem;color:inherit;">{{ card.suit }}</div>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% set pv = game.player_hand|map(attribute='value')|list %}
+                    <span class="score-badge {% if game.result in ('bust',) %}score-bust{% elif game.result in ('blackjack','win','dealer_bust') %}score-21{% else %}score-ok{% endif %}">
+                        {{ game.player_hand|length }} carte(s)
+                    </span>
+                </div>
+                <div>
+                    <p class="text-xs uppercase tracking-widest text-pink-100/40 font-bold mb-3">🎩 Croupier</p>
+                    <div class="hand-cards mb-2">
+                        {% for card in game.dealer_hand %}
+                        <div class="card {{ card.color }}" style="color: {% if card.color == 'red' %}#dc2626{% elif card.color == 'black' %}#1a1a1a{% else %}#fbbf24{% endif %} !important;">
+                            {% if not card.is_joker %}
+                            <div style="position:absolute;top:5px;left:7px;font-size:0.7rem;font-weight:900;line-height:1.1;text-align:center;color:inherit;">{{ card.rank }}<br>{{ card.suit }}</div>
+                            <div style="font-size:1.5rem;line-height:1;font-weight:900;color:inherit;">{{ card.rank }}</div>
+                            <div style="font-size:1.1rem;line-height:1;margin-top:2px;color:inherit;">{{ card.suit }}</div>
+                            <div style="position:absolute;bottom:5px;right:7px;font-size:0.7rem;font-weight:900;line-height:1.1;text-align:center;transform:rotate(180deg);color:inherit;">{{ card.rank }}<br>{{ card.suit }}</div>
+                            {% else %}
+                            <div style="font-size:2rem;color:inherit;">{{ card.suit }}</div>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+
+            {% if game.joker_msg %}
+            <div class="joker-alert p-4 mt-4">
+                <p class="text-purple-200 font-bold">🃟 Intervention du Joker Porcin :</p>
+                <p class="text-purple-100/80 text-sm mt-1">{{ game.joker_msg }}</p>
+            </div>
+            {% endif %}
+        </div>
+        {% endif %}
+
+        <!-- ═══════════════════════════════════════════════════════════════
+             FORMULAIRE DE MISE
+        ════════════════════════════════════════════════════════════════ -->
+        <div class="table-felt p-8 text-center">
+            <p class="font-title text-2xl text-emerald-200 mb-1">🎲 Nouvelle donne</p>
+            <p class="text-emerald-100/50 text-sm mb-6">Le sabot contient 54 cartes dont 2 jokers porcins.</p>
+
+            <form action="/blackjack/deal" method="POST">
+                <div class="flex flex-wrap items-center justify-center gap-4 mb-4">
+                    <label class="text-sm font-bold text-pink-100/60 uppercase tracking-widest">Mise</label>
+                    <input
+                        type="number"
+                        name="bet"
+                        class="bet-input"
+                        value="10"
+                        min="{{ min_bet }}"
+                        max="{{ max_bet if max_bet < user.balance else user.balance|int }}"
+                        step="5"
+                    >
+                    <span class="text-yellow-400 font-bold">🪙 BitGroins</span>
+                </div>
+
+                <!-- Mises rapides -->
+                <div class="flex flex-wrap justify-center gap-2 mb-6">
+                    {% for v in [5, 10, 25, 50, 100, 200] %}
+                    {% if v <= user.balance %}
+                    <button type="button"
+                        onclick="document.querySelector('[name=bet]').value={{ v }}"
+                        class="btn-action btn-new text-sm px-4 py-2">
+                        {{ v }} 🪙
+                    </button>
+                    {% endif %}
+                    {% endfor %}
+                    <button type="button"
+                        onclick="document.querySelector('[name=bet]').value={{ user.balance|int if user.balance < max_bet else max_bet }}"
+                        class="btn-action btn-new text-sm px-4 py-2 text-yellow-300">
+                        Tout miser 🐷
+                    </button>
+                </div>
+
+                <button type="submit" class="btn-action btn-deal text-lg">
+                    🃏 Distribuer les cartes
+                </button>
+            </form>
+
+            <!-- Règles rapides -->
+            <div class="mt-8 text-left rounded-xl bg-black/20 border border-white/5 p-5">
+                <p class="font-title text-lg text-emerald-300 mb-3">📜 Règles du Groin Jack</p>
+                <ul class="space-y-1.5 text-sm text-pink-100/60">
+                    <li>🃏 <strong class="text-pink-100/80">54 cartes</strong> — 52 classiques + 2 Jokers qui font n'importe quoi</li>
+                    <li>🏆 <strong class="text-pink-100/80">Blackjack naturel</strong> (21 en 2 cartes) paye x2.5</li>
+                    <li>✅ <strong class="text-pink-100/80">Victoire ordinaire</strong> paye x2 (mise remboursée + gain)</li>
+                    <li>🤝 <strong class="text-pink-100/80">Égalité</strong> (push) : mise remboursée</li>
+                    <li>💀 <strong class="text-pink-100/80">Défaite / Bust</strong> : la mise disparaît dans l'estomac du croupier</li>
+                    <li>🔁 <strong class="text-pink-100/80">Double</strong> : possible uniquement avec 2 cartes en main</li>
+                    <li>🎰 <strong class="text-pink-100/80">Joker</strong> : effets aléatoires et imprévisibles, comme d'habitude</li>
+                </ul>
+            </div>
+        </div>
+
+        {% else %}
+        <!-- ═══════════════════════════════════════════════════════════════
+             PARTIE EN COURS
+        ════════════════════════════════════════════════════════════════ -->
+        <div class="table-felt p-6">
+
+            <!-- Info mise -->
+            <div class="flex justify-between items-center mb-6 flex-wrap gap-3">
+                <div class="score-badge text-emerald-300">
+                    🎯 Mise : <strong>{{ "%.0f"|format(game.bet) }} 🪙</strong>
+                </div>
+                <div class="score-badge text-amber-300">
+                    Sabot : {{ game.deck|length }} cartes restantes
+                </div>
+            </div>
+
+            <!-- Joker alert en cours -->
+            {% if game.joker_msg %}
+            <div class="joker-alert p-4 mb-6">
+                <p class="text-purple-200 font-bold">🃟 Alerte Joker Porcin !</p>
+                <p class="text-purple-100/80 text-sm mt-1">{{ game.joker_msg }}</p>
+            </div>
+            {% endif %}
+
+            <!-- ── Main du croupier ── -->
+            <div class="mb-6">
+                <div class="flex items-center justify-between mb-3">
+                    <p class="text-xs uppercase tracking-widest text-pink-100/40 font-bold">🎩 Croupier</p>
+                    <span class="score-badge text-pink-100/50">Carte cachée…</span>
+                </div>
+                <div class="hand-cards">
+                    {% for card in game.dealer_hand %}
+                    {% if loop.index0 == 1 and not game.dealer_reveal %}
+                    <!-- Carte cachée -->
+                    <div class="card face-down" title="Carte cachée">
+                        <span style="font-size:2rem;color:#334155">🔒</span>
+                    </div>
+                    {% else %}
+                    <div class="card {{ card.color }}" style="color: {% if card.color == 'red' %}#dc2626{% elif card.color == 'black' %}#1a1a1a{% else %}#fbbf24{% endif %} !important;">
+                        {% if not card.is_joker %}
+                        <div style="position:absolute;top:5px;left:7px;font-size:0.7rem;font-weight:900;line-height:1.1;text-align:center;color:inherit;">{{ card.rank }}<br>{{ card.suit }}</div>
+                        <div style="font-size:1.5rem;line-height:1;font-weight:900;color:inherit;">{{ card.rank }}</div>
+                        <div style="font-size:1.1rem;line-height:1;margin-top:2px;color:inherit;">{{ card.suit }}</div>
+                        <div style="position:absolute;bottom:5px;right:7px;font-size:0.7rem;font-weight:900;line-height:1.1;text-align:center;transform:rotate(180deg);color:inherit;">{{ card.rank }}<br>{{ card.suit }}</div>
+                        {% else %}
+                        <div style="font-size:2rem;color:inherit;">{{ card.suit }}</div>
+                        <div style="font-size:0.6rem;color:#a78bfa;margin-top:2px;">JOKER</div>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                    {% endfor %}
+                </div>
+            </div>
+
+            <hr class="hand-divider my-5">
+
+            <!-- ── Main du joueur ── -->
+            <div class="mb-7">
+                <div class="flex items-center justify-between mb-3">
+                    <p class="text-xs uppercase tracking-widest text-pink-100/40 font-bold">🐷 Toi</p>
+                    <span class="score-badge score-ok" id="score-badge">
+                        Score : <strong id="player-score">?</strong>
+                    </span>
+                </div>
+                <div class="hand-cards">
+                    {% for card in game.player_hand %}
+                    <div class="card {{ card.color }}" style="color: {% if card.color == 'red' %}#dc2626{% elif card.color == 'black' %}#1a1a1a{% else %}#fbbf24{% endif %} !important;">
+                        {% if not card.is_joker %}
+                        <div style="position:absolute;top:5px;left:7px;font-size:0.7rem;font-weight:900;line-height:1.1;text-align:center;color:inherit;">{{ card.rank }}<br>{{ card.suit }}</div>
+                        <div style="font-size:1.5rem;line-height:1;font-weight:900;color:inherit;">{{ card.rank }}</div>
+                        <div style="font-size:1.1rem;line-height:1;margin-top:2px;color:inherit;">{{ card.suit }}</div>
+                        <div style="position:absolute;bottom:5px;right:7px;font-size:0.7rem;font-weight:900;line-height:1.1;text-align:center;transform:rotate(180deg);color:inherit;">{{ card.rank }}<br>{{ card.suit }}</div>
+                        {% else %}
+                        <div style="font-size:2rem;color:inherit;">{{ card.suit }}</div>
+                        <div style="font-size:0.6rem;color:#a78bfa;margin-top:2px;">JOKER</div>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- ── Actions ── -->
+            <div class="flex flex-wrap gap-3 justify-center">
+                <form action="/blackjack/hit" method="POST">
+                    <button type="submit" class="btn-action btn-hit">
+                        👊 Tirer
+                    </button>
+                </form>
+                <form action="/blackjack/stand" method="POST">
+                    <button type="submit" class="btn-action btn-stand">
+                        🛑 Rester
+                    </button>
+                </form>
+                {% if game.player_hand|length == 2 %}
+                <form action="/blackjack/double" method="POST">
+                    <button type="submit" class="btn-action btn-double"
+                        {% if not user.can_afford(game.bet) %}disabled title="Pas assez de BitGroins"{% endif %}>
+                        💰 Doubler ({{ "%.0f"|format(game.bet) }} 🪙 de plus)
+                    </button>
+                </form>
+                {% endif %}
+            </div>
+
+        </div>
+
+        {% endif %}
+
+        <!-- Retour menu -->
+        <div class="text-center mt-6">
+            <a href="/" class="btn-action btn-new text-sm">← Retour au Derby</a>
+        </div>
+
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        {% if game and game.phase == 'playing' %}
+        // Données de la main injectées depuis Flask
+        const playerHand = {{ game.player_hand | tojson }};
+
+        function calcHandValue(cards) {
+            let total = 0, aces = 0;
+            for (const c of cards) {
+                if (c.is_joker) continue;
+                if (c.rank === 'A') { aces++; total += 11; }
+                else if (Array.isArray(c.value)) { aces++; total += 11; }
+                else total += c.value;
+            }
+            while (total > 21 && aces > 0) { total -= 10; aces--; }
+            return total;
+        }
+
+        // Afficher le score joueur au chargement
+        const scoreEl = document.getElementById('player-score');
+        const scoreBadge = document.getElementById('score-badge');
+        if (scoreEl && playerHand) {
+            const val = calcHandValue(playerHand);
+            scoreEl.textContent = val;
+            if (val > 21) {
+                scoreBadge.classList.remove('score-ok');
+                scoreBadge.classList.add('score-bust');
+            } else if (val === 21) {
+                scoreBadge.classList.remove('score-ok');
+                scoreBadge.classList.add('score-21');
+            }
+        }
+        {% endif %}
+
+        // Mise rapide max dynamique
+        const betInput = document.querySelector('[name=bet]');
+        if (betInput) {
+            betInput.addEventListener('change', () => {
+                const max = parseFloat(betInput.max);
+                const min = parseFloat(betInput.min);
+                if (parseFloat(betInput.value) > max) betInput.value = max;
+                if (parseFloat(betInput.value) < min) betInput.value = min;
+            });
+        }
+    </script>
+</body>
+</html>

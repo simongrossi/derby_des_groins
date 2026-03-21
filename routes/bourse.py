@@ -3,13 +3,12 @@ from datetime import datetime
 
 from extensions import db
 from models import User, Pig, BalanceTransaction
-from data import BOURSE_BLOCK_MIN, BOURSE_BLOCK_MAX, BOURSE_GRAIN_LAYOUT
+from data import CEREALS, BOURSE_BLOCK_MIN, BOURSE_BLOCK_MAX, BOURSE_GRAIN_LAYOUT
 from helpers import (
     get_grain_market, get_all_grain_surcharges, get_bourse_movement_points,
     move_bourse_cursor, is_grain_blocked, update_vitrine,
     get_bourse_cereals, get_bourse_grid_data,
     get_feeding_cost_multiplier, get_user_active_pigs,
-    get_cereals_dict,
 )
 
 bourse_bp = Blueprint('bourse', __name__)
@@ -47,12 +46,11 @@ def bourse():
             'at': market.last_move_at,
         })
     if market.vitrine_user:
-        _cereals = get_cereals_dict()
         last_movers.append({
             'action': 'achat',
             'user': market.vitrine_user.username,
-            'grain': _cereals.get(market.vitrine_grain, {}).get('name', '?'),
-            'grain_emoji': _cereals.get(market.vitrine_grain, {}).get('emoji', '?'),
+            'grain': CEREALS.get(market.vitrine_grain, {}).get('name', '?'),
+            'grain_emoji': CEREALS.get(market.vitrine_grain, {}).get('emoji', '?'),
             'at': market.last_purchase_at,
         })
 
@@ -131,11 +129,10 @@ def bourse_buy():
         return redirect(url_for('bourse.bourse'))
 
     market = get_grain_market()
-    cereals = get_cereals_dict()
 
     # Verifier le blocage vitrine
     if is_grain_blocked(cereal_key, market):
-        blocked_name = cereals[cereal_key]['name']
+        blocked_name = CEREALS[cereal_key]['name']
         flash(f"{blocked_name} est en vitrine ! Achete autre chose pour debloquer.", "warning")
         return redirect(url_for('bourse.bourse'))
 
@@ -143,7 +140,7 @@ def bourse_buy():
     surcharges = get_all_grain_surcharges(market)
     surcharge = surcharges.get(cereal_key, 1.0)
     feeding_multiplier = get_feeding_cost_multiplier(user)
-    base_cost = cereals[cereal_key]['cost']
+    base_cost = CEREALS[cereal_key]['cost']
     effective_cost = round(base_cost * surcharge * feeding_multiplier, 2)
 
     # Debiter
@@ -152,7 +149,7 @@ def bourse_buy():
         reason_code='feed_purchase',
         reason_label='Achat Bourse aux Grains',
         details=(
-            f"{cereals[cereal_key]['name']} pour {pig.name}. "
+            f"{CEREALS[cereal_key]['name']} pour {pig.name}. "
             f"Surcout Bourse x{surcharge:.2f}, "
             f"Pression x{feeding_multiplier:.2f}."
         ),
@@ -163,15 +160,15 @@ def bourse_buy():
         return redirect(url_for('bourse.bourse'))
 
     # Appliquer les effets
-    pig.feed(cereals[cereal_key])
+    pig.feed(CEREALS[cereal_key])
 
     # Mettre a jour la vitrine
     update_vitrine(market, cereal_key, user.id)
 
     db.session.commit()
 
-    emoji = cereals[cereal_key]['emoji']
-    name = cereals[cereal_key]['name']
+    emoji = CEREALS[cereal_key]['emoji']
+    name = CEREALS[cereal_key]['name']
     flash(
         f"{emoji} {name} achete a la Bourse ! "
         f"Prix: {effective_cost:.0f} 🪙 (surcout x{surcharge:.2f})",
