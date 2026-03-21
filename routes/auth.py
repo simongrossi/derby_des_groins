@@ -7,11 +7,9 @@ import math
 from extensions import db
 from models import User, Pig, Bet, Auction
 from data import PIG_ORIGINS, BET_TYPES, RARITIES
-from helpers import (
-    apply_origin_bonus, generate_weight_kg_for_profile, record_balance_transaction,
-    get_market_unlock_progress, get_market_lock_reason, get_active_listing_count,
-    build_unique_pig_name,
-)
+from helpers import get_market_unlock_progress, get_market_lock_reason
+from services.finance_service import record_balance_transaction
+from services.pig_service import apply_origin_bonus, generate_weight_kg_for_profile, get_active_listing_count, build_unique_pig_name
 
 auth_bp = Blueprint('auth', __name__)
 

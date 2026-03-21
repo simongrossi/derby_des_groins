@@ -37,7 +37,7 @@ class User(db.Model):
             reference_type: str = None, reference_id: int = None) -> bool:
         """Débite le solde de manière atomique (SQL UPDATE + transaction).
         Renvoie False si le solde est insuffisant."""
-        from helpers import debit_user_balance
+        from services.finance_service import debit_user_balance
         return debit_user_balance(
             self.id, amount,
             reason_code=reason_code, reason_label=reason_label,
@@ -49,7 +49,7 @@ class User(db.Model):
              reason_label: str = 'Crédit BitGroins', details: str = None,
              reference_type: str = None, reference_id: int = None) -> bool:
         """Crédite le solde de manière atomique (SQL UPDATE + transaction)."""
-        from helpers import credit_user_balance
+        from services.finance_service import credit_user_balance
         return credit_user_balance(
             self.id, amount,
             reason_code=reason_code, reason_label=reason_label,
@@ -175,7 +175,7 @@ class Pig(db.Model):
     @property
     def ideal_weight(self) -> float:
         """Poids de forme calculé à partir des stats."""
-        from helpers import calculate_target_weight_kg
+        from services.pig_service import calculate_target_weight_kg
         return calculate_target_weight_kg(self)
 
     @property

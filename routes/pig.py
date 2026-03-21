@@ -10,18 +10,22 @@ from data import (
     OFFICE_SNACKS, SNACK_SHARE_DAILY_LIMIT, PIG_TYPING_WORDS,
 )
 from helpers import (
-    get_user_active_pigs, calculate_pig_power, xp_for_level,
+    get_user_active_pigs,
     get_cooldown_remaining, format_duration_short, get_seconds_until,
-    get_weight_profile, get_adoption_cost, get_active_listing_count,
-    get_pig_slot_count, get_max_pig_slots, get_feeding_cost_multiplier,
-    get_lineage_label, get_pig_heritage_value, can_retire_into_heritage,
-    retire_pig_into_heritage, create_offspring, maybe_grant_emergency_relief,
-    apply_origin_bonus, generate_weight_kg_for_profile,
-    get_freshness_bonus,
-    get_pig_performance_flags, is_weekend_truce_active, reset_snack_share_limit_if_needed,
-    reserve_pig_challenge_slot, release_pig_challenge_slot,
-    is_pig_name_taken, build_unique_pig_name,
+    is_weekend_truce_active,
     get_cereals_dict, get_trainings_dict, get_school_lessons_dict,
+)
+from services.finance_service import (
+    maybe_grant_emergency_relief, reserve_pig_challenge_slot, release_pig_challenge_slot,
+)
+from services.pig_service import (
+    calculate_pig_power, xp_for_level, get_weight_profile, get_adoption_cost,
+    get_active_listing_count, get_pig_slot_count, get_max_pig_slots,
+    get_feeding_cost_multiplier, get_lineage_label, get_pig_heritage_value,
+    can_retire_into_heritage, retire_pig_into_heritage, create_offspring,
+    apply_origin_bonus, generate_weight_kg_for_profile, get_freshness_bonus,
+    get_pig_performance_flags, reset_snack_share_limit_if_needed,
+    is_pig_name_taken, build_unique_pig_name,
 )
 
 pig_bp = Blueprint('pig', __name__)

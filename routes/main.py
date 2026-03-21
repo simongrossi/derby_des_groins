@@ -5,12 +5,10 @@ from datetime import datetime
 from extensions import db
 from models import User, Pig, Race, Participant, Bet, BalanceTransaction, CoursePlan
 from data import BET_TYPES, WEEKLY_BACON_TICKETS, DAILY_LOGIN_REWARD
-from helpers import (
-    ensure_next_race, get_user_active_pigs, calculate_pig_power,
-    get_weight_profile, get_pig_dashboard_status, build_course_schedule,
-    get_user_weekly_bet_count, get_course_theme, get_prix_moyen_groin,
-    is_market_open, get_next_market_time, get_race_history_entries,
-)
+from helpers import ensure_next_race, get_user_active_pigs, get_race_history_entries
+from services.market_service import get_prix_moyen_groin, is_market_open, get_next_market_time
+from services.pig_service import calculate_pig_power, get_weight_profile
+from services.race_service import get_pig_dashboard_status, build_course_schedule, get_user_weekly_bet_count, get_course_theme
 
 main_bp = Blueprint('main', __name__)
 
