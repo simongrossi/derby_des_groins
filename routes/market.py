@@ -9,7 +9,6 @@ from helpers import (
     get_market_unlock_progress, get_market_lock_reason, get_config,
     is_market_open, get_next_market_time, get_market_close_time,
     get_prix_moyen_groin, apply_row_lock,
-    debit_user_balance, credit_user_balance,
 )
 
 market_bp = Blueprint('market', __name__)
@@ -70,8 +69,8 @@ def bid():
         flash(f"Enchère minimum : {min_bid:.0f} 🪙 !", "error")
         return redirect(url_for('market.marche'))
 
-    if not debit_user_balance(
-        user.id, bid_amount,
+    if not user.pay(
+        bid_amount,
         reason_code='auction_bid',
         reason_label='Mise bloquee en enchere',
         details=f"Enchere sur {auction.pig_name}.",
@@ -105,14 +104,16 @@ def bid():
         return redirect(url_for('market.marche'))
 
     if previous_bidder_id and previous_bid_amount > 0:
-        credit_user_balance(
-            previous_bidder_id, previous_bid_amount,
-            reason_code='auction_outbid_refund',
-            reason_label='Remboursement enchere depassee',
-            details=f"Ton offre sur {auction.pig_name} a ete depassee.",
-            reference_type='auction',
-            reference_id=auction.id,
-        )
+        previous_user = User.query.get(previous_bidder_id)
+        if previous_user:
+            previous_user.earn(
+                previous_bid_amount,
+                reason_code='auction_outbid_refund',
+                reason_label='Remboursement enchere depassee',
+                details=f"Ton offre sur {auction.pig_name} a ete depassee.",
+                reference_type='auction',
+                reference_id=auction.id,
+            )
 
     db.session.commit()
     flash(f"Enchère placée : {bid_amount:.0f} 🪙 sur {auction.pig_name} !", "success")

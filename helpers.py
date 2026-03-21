@@ -409,7 +409,7 @@ def retire_pig_into_heritage(user, pig):
     for descendant in related_pigs:
         descendant.lineage_boost = round((descendant.lineage_boost or 0.0) + bonus, 2)
         descendant.moral = min(100, (descendant.moral or 0.0) + min(4.0, bonus * 0.4))
-    retire_pig_old_age(pig, commit=False)
+    pig.retire()
     pig.death_cause = 'retraite_honoree'
     pig.epitaph = f"{pig.name} entre au haras des legends. Sa lignee inspire toute la porcherie (+{bonus:.1f} heritage)."
     db.session.commit()
@@ -1145,7 +1145,7 @@ def check_vet_deadlines():
     injured_pigs = Pig.query.filter_by(is_injured=True, is_alive=True).all()
     for pig in injured_pigs:
         if pig.vet_deadline and now > pig.vet_deadline:
-            send_to_abattoir(pig, cause='blessure')
+            pig.kill(cause='blessure')
 
 def send_to_abattoir(pig, cause='abattoir', commit=True):
     charcuterie = random.choice(CHARCUTERIE)
@@ -1281,7 +1281,7 @@ def resolve_auctions():
             if winner:
                 active_pigs = Pig.query.filter_by(user_id=winner.id, is_alive=True).order_by(Pig.id).all()
                 if len(active_pigs) >= 2:
-                    send_to_abattoir(active_pigs[0], cause='sacrifice', commit=False)
+                    active_pigs[0].kill(cause='sacrifice')
 
                 origin_data = next((o for o in PIG_ORIGINS if o['country'] == auction.pig_origin), PIG_ORIGINS[0])
                 new_pig = Pig(
@@ -1472,7 +1472,7 @@ def run_race_if_needed():
                         xp_gained *= 2
                         pig.happiness = min(100, pig.happiness + 15)
                     elif p.finish_position == num_participants:
-                        send_to_abattoir(pig, cause='challenge', commit=False)
+                        pig.kill(cause='challenge')
                         pig.challenge_mort_wager = 0
                         continue
                     pig.challenge_mort_wager = 0
@@ -1490,9 +1490,9 @@ def run_race_if_needed():
 
                 pig.energy = max(0, pig.energy - 15)
                 pig.hunger = max(0, pig.hunger - 10)
-                adjust_pig_weight(pig, -0.3)
+                pig.adjust_weight(-0.3)
                 pig.last_updated = datetime.utcnow()
-                check_level_up(pig)
+                pig.check_level_up()
 
                 base_risk = (pig.injury_risk or MIN_INJURY_RISK) / 100.0
                 fatigue_factor = 1.0 + max(0, (50 - pig.energy) / 100)
@@ -1507,7 +1507,7 @@ def run_race_if_needed():
                     pig.injury_risk = min(MAX_INJURY_RISK, (pig.injury_risk or MIN_INJURY_RISK) + random.uniform(0.3, 0.8))
 
                 if pig.max_races and pig.races_entered >= pig.max_races:
-                    retire_pig_old_age(pig, commit=False)
+                    pig.retire()
 
         bets = Bet.query.filter_by(race_id=race.id, status='pending').all()
         finish_order_ids = [participant.id for participant in order]

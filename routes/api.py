@@ -5,9 +5,9 @@ from extensions import db
 from models import User, Pig, Race, Participant
 from data import SCHOOL_COOLDOWN_MINUTES, MIN_INJURY_RISK, DEFAULT_PIG_WEIGHT_KG
 from helpers import (
-    get_user_active_pigs, update_pig_state, calculate_pig_power,
+    get_user_active_pigs, calculate_pig_power,
     get_weight_profile, get_seconds_until, get_cooldown_remaining,
-    xp_for_level, get_first_injured_pig, send_to_abattoir,
+    xp_for_level, get_first_injured_pig,
     get_prix_moyen_groin,
 )
 
@@ -42,7 +42,7 @@ def veterinaire_index():
     pigs = get_user_active_pigs(user)
     pigs_data = []
     for pig in pigs:
-        update_pig_state(pig)
+        pig.update_vitals()
         injury_risk = round(pig.injury_risk or MIN_INJURY_RISK, 1)
         pigs_data.append({
             'pig': pig,
@@ -79,11 +79,11 @@ def vet_solve():
     if not pig.is_injured:
         return jsonify({'already_healed': True}), 200
     if pig.vet_deadline and datetime.utcnow() > pig.vet_deadline:
-        send_to_abattoir(pig, cause='blessure')
+        pig.kill(cause='blessure')
+        db.session.commit()
         return jsonify({'dead': True, 'message': 'Le délai était dépassé. RIP.'}), 200
 
-    pig.is_injured = False
-    pig.vet_deadline = None
+    pig.heal()
     pig.injury_risk = min(35.0, max(MIN_INJURY_RISK, (pig.injury_risk or MIN_INJURY_RISK) + 2.0))
     pig.energy = max(0, pig.energy - 10)
     pig.happiness = max(0, pig.happiness - 5)
@@ -102,7 +102,8 @@ def vet_timeout():
     if not pig or pig.user_id != user.id:
         return jsonify({'error': 'Cochon introuvable'}), 404
     if pig.is_alive and pig.is_injured:
-        send_to_abattoir(pig, cause='blessure')
+        pig.kill(cause='blessure')
+        db.session.commit()
     return jsonify({'dead': True})
 
 
@@ -143,7 +144,7 @@ def api_pig():
     pig = Pig.query.filter_by(user_id=user.id, is_alive=True).first()
     if not pig:
         return jsonify({'error': 'Pas de cochon'}), 404
-    update_pig_state(pig)
+    pig.update_vitals()
     return jsonify({
         'name': pig.name, 'emoji': pig.emoji,
         'level': pig.level, 'xp': pig.xp,

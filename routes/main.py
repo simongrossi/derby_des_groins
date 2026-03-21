@@ -6,7 +6,7 @@ from extensions import db
 from models import User, Pig, Race, Participant, Bet, BalanceTransaction, CoursePlan
 from data import BET_TYPES, WEEKLY_BACON_TICKETS, DAILY_LOGIN_REWARD
 from helpers import (
-    ensure_next_race, get_user_active_pigs, update_pig_state, calculate_pig_power,
+    ensure_next_race, get_user_active_pigs, calculate_pig_power,
     get_weight_profile, get_pig_dashboard_status, build_course_schedule,
     get_user_weekly_bet_count, get_course_theme, get_prix_moyen_groin,
     is_market_open, get_next_market_time, get_race_history_entries,
@@ -37,25 +37,14 @@ def index():
         user = User.query.get(session['user_id'])
         if user:
             # --- Prime de pointage journalière ---
-            today = datetime.utcnow().date()
-            if user.last_daily_reward_at is None or user.last_daily_reward_at.date() < today:
-                before = user.balance
-                user.balance += DAILY_LOGIN_REWARD
-                user.last_daily_reward_at = datetime.utcnow()
-                db.session.add(BalanceTransaction(
-                    user_id=user.id,
-                    amount=DAILY_LOGIN_REWARD,
-                    balance_before=before,
-                    balance_after=user.balance,
-                    reason_code='daily_reward',
-                    reason_label='Prime de pointage journalière',
-                ))
+            reward = user.claim_daily_reward()
+            if reward > 0:
                 db.session.commit()
-                flash(f"🎁 Prime de pointage : Vous avez reçu {DAILY_LOGIN_REWARD:.0f} 🪙 BitGroins pour votre première connexion de la journée !", "success")
+                flash(f"🎁 Prime de pointage : Vous avez reçu {reward:.0f} 🪙 BitGroins pour votre première connexion de la journée !", "success")
 
             pigs = Pig.query.filter_by(user_id=user.id, is_alive=True).all()
             for pig in pigs:
-                update_pig_state(pig)
+                pig.update_vitals()
             pigs_data = [{
                 'pig': pig,
                 'power': round(calculate_pig_power(pig), 1),

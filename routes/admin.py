@@ -121,8 +121,9 @@ def admin_cancel_race(race_id):
     # Refund bets if any
     for bet in race.bets:
         if bet.status == 'pending':
-            from helpers import credit_user_balance
-            credit_user_balance(bet.user_id, bet.amount, reason_code='bet_refund', reason_label='Remboursement (Course annulée)', reference_type='race', reference_id=race.id)
+            bet_user = User.query.get(bet.user_id)
+            if bet_user:
+                bet_user.earn(bet.amount, reason_code='bet_refund', reason_label='Remboursement (Course annulée)', reference_type='race', reference_id=race.id)
             bet.status = 'cancelled'
 
     db.session.delete(race)
@@ -150,15 +151,13 @@ def admin_trigger_event():
     elif event_type == 'vet_visit':
         injured_pigs = Pig.query.filter_by(is_alive=True, is_injured=True).all()
         for p in injured_pigs:
-            p.is_injured = False
-            p.injured_until = None
+            p.heal()
         db.session.commit()
         flash(f"🏥 Visite vétérinaire ! {len(injured_pigs)} groins soignés.", "success")
     elif event_type == 'bonus_bg':
-        from helpers import credit_user_balance
         all_users = User.query.all()
         for u in all_users:
-            credit_user_balance(u.id, 50.0, reason_code='admin_gift', reason_label='Cadeau Admin', reference_type='user', reference_id=user.id)
+            u.earn(50.0, reason_code='admin_gift', reason_label='Cadeau Admin', reference_type='user', reference_id=user.id)
         db.session.commit()
         flash("💰 Bonus de 50 🪙 BitGroins accordé à tous les joueurs !", "success")
     else:

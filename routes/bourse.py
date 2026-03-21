@@ -8,8 +8,7 @@ from helpers import (
     get_grain_market, get_all_grain_surcharges, get_bourse_movement_points,
     move_bourse_cursor, is_grain_blocked, update_vitrine,
     get_bourse_cereals, get_bourse_grid_data,
-    get_feeding_cost_multiplier, get_user_active_pigs, update_pig_state,
-    adjust_pig_weight, debit_user_balance,
+    get_feeding_cost_multiplier, get_user_active_pigs,
 )
 
 bourse_bp = Blueprint('bourse', __name__)
@@ -30,7 +29,7 @@ def bourse():
     # Cochons actifs du joueur
     active_pigs = Pig.query.filter_by(user_id=user.id, is_alive=True).all()
     for pig in active_pigs:
-        update_pig_state(pig)
+        pig.update_vitals()
 
     # Compteur d'achats total de l'utilisateur (pour affichage)
     total_purchases = db.session.query(db.func.count(BalanceTransaction.id)).filter(
@@ -123,7 +122,7 @@ def bourse_buy():
         flash("Cochon introuvable !", "error")
         return redirect(url_for('bourse.bourse'))
 
-    update_pig_state(pig)
+    pig.update_vitals()
 
     if pig.hunger >= 95:
         flash("Ton cochon n'a plus faim !", "warning")
@@ -145,8 +144,8 @@ def bourse_buy():
     effective_cost = round(base_cost * surcharge * feeding_multiplier, 2)
 
     # Debiter
-    if not debit_user_balance(
-        user.id, effective_cost,
+    if not user.pay(
+        effective_cost,
         reason_code='feed_purchase',
         reason_label='Achat Bourse aux Grains',
         details=(
@@ -160,19 +159,8 @@ def bourse_buy():
         flash("Pas assez de BitGroins !", "error")
         return redirect(url_for('bourse.bourse'))
 
-    # Appliquer les effets (pas de modificateur de qualite, stats inherentes)
-    cereal = CEREALS[cereal_key]
-    pig.hunger = min(100, pig.hunger + cereal['hunger_restore'])
-    pig.energy = min(100, pig.energy + cereal.get('energy_restore', 0))
-    adjust_pig_weight(pig, cereal.get('weight_delta', 0.0))
-
-    for stat, boost in cereal['stats'].items():
-        current = getattr(pig, stat, None)
-        if current is not None:
-            setattr(pig, stat, min(100, current + boost))
-
-    pig.last_fed_at = datetime.utcnow()
-    pig.last_updated = pig.last_fed_at
+    # Appliquer les effets
+    pig.feed(CEREALS[cereal_key])
 
     # Mettre a jour la vitrine
     update_vitrine(market, cereal_key, user.id)

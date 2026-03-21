@@ -10,17 +10,17 @@ from data import (
     OFFICE_SNACKS, SNACK_SHARE_DAILY_LIMIT, PIG_TYPING_WORDS,
 )
 from helpers import (
-    get_user_active_pigs, update_pig_state, calculate_pig_power, xp_for_level,
+    get_user_active_pigs, calculate_pig_power, xp_for_level,
     get_cooldown_remaining, format_duration_short, get_seconds_until,
     get_weight_profile, get_adoption_cost, get_active_listing_count,
     get_pig_slot_count, get_max_pig_slots, get_feeding_cost_multiplier,
     get_lineage_label, get_pig_heritage_value, can_retire_into_heritage,
-    retire_pig_into_heritage, create_offspring, maybe_grant_emergency_relief, check_level_up,
-    adjust_pig_weight, apply_origin_bonus, generate_weight_kg_for_profile,
-    debit_user_balance, credit_user_balance, get_freshness_bonus,
+    retire_pig_into_heritage, create_offspring, maybe_grant_emergency_relief,
+    apply_origin_bonus, generate_weight_kg_for_profile,
+    get_freshness_bonus,
     get_pig_performance_flags, is_weekend_truce_active, reset_snack_share_limit_if_needed,
     reserve_pig_challenge_slot, release_pig_challenge_slot,
-    send_to_abattoir, is_pig_name_taken, build_unique_pig_name,
+    is_pig_name_taken, build_unique_pig_name,
 )
 
 pig_bp = Blueprint('pig', __name__)
@@ -45,7 +45,7 @@ def mon_cochon():
 
     pigs_data = []
     for p in pigs:
-        update_pig_state(p)
+        p.update_vitals()
         races_remaining = max(0, (p.max_races or 80) - p.races_entered)
         age_days = (datetime.utcnow() - p.created_at).days if p.created_at else 0
         rarity_info = RARITIES.get(p.rarity or 'commun', RARITIES['commun'])
@@ -98,8 +98,8 @@ def adopt_second_pig():
     if cost is None:
         flash("Impossible d'adopter un nouveau cochon pour l'instant.", "warning")
         return redirect(url_for('pig.mon_cochon'))
-    if not debit_user_balance(
-        user.id, cost,
+    if not user.pay(
+        cost,
         reason_code='pig_adoption',
         reason_label='Adoption de cochon',
         details="Ouverture d'une nouvelle place dans l'elevage.",
@@ -140,7 +140,7 @@ def feed():
         flash("Cochon introuvable !", "error")
         return redirect(url_for('pig.mon_cochon'))
 
-    update_pig_state(pig)
+    pig.update_vitals()
     cereal_key = request.form.get('cereal')
     if cereal_key not in CEREALS:
         return redirect(url_for('pig.mon_cochon'))
@@ -150,26 +150,18 @@ def feed():
         return redirect(url_for('pig.mon_cochon'))
     feeding_multiplier = get_feeding_cost_multiplier(user)
     effective_cost = round(cereal['cost'] * feeding_multiplier, 2)
-    if not debit_user_balance(
-        user.id, effective_cost,
+    if not user.pay(
+        effective_cost,
         reason_code='feed_purchase',
         reason_label='Nourriture achetee',
-        details=f"{cereal['name']} pour {pig.name}. Cout x{feeding_multiplier:.2f} avec {Pig.query.filter_by(user_id=user.id, is_alive=True).count()} cochon(s).",
+        details=f"{cereal['name']} pour {pig.name}. Cout x{feeding_multiplier:.2f} avec {user.pig_count} cochon(s).",
         reference_type='pig',
         reference_id=pig.id,
     ):
         flash("Pas assez de BitGroins !", "error")
         return redirect(url_for('pig.mon_cochon'))
 
-    pig.hunger = min(100, pig.hunger + cereal['hunger_restore'])
-    pig.energy = min(100, pig.energy + cereal.get('energy_restore', 0))
-    adjust_pig_weight(pig, cereal.get('weight_delta', 0.0))
-    for stat, boost in cereal['stats'].items():
-        current = getattr(pig, stat, None)
-        if current is not None:
-            setattr(pig, stat, min(100, current + boost))
-    pig.last_fed_at = datetime.utcnow()
-    pig.last_updated = pig.last_fed_at
+    pig.feed(cereal)
     db.session.commit()
     flash(f"{cereal['emoji']} {cereal['name']} donné ! Miam ! Coût réel: {effective_cost:.0f} 🪙 (x{feeding_multiplier:.2f} de pression d'élevage).", "success")
     return redirect(url_for('pig.mon_cochon'))
@@ -200,7 +192,7 @@ def share_snack():
         flash(f"Tu as deja distribue tes {SNACK_SHARE_DAILY_LIMIT} en-cas solidaires aujourd'hui.", "warning")
         return redirect(url_for('pig.mon_cochon'))
 
-    update_pig_state(recipient_pig)
+    recipient_pig.update_vitals()
     recipient_pig.hunger = min(100, recipient_pig.hunger + snack['hunger_restore'])
     recipient_pig.last_fed_at = datetime.utcnow()
     recipient_pig.last_updated = recipient_pig.last_fed_at
@@ -224,8 +216,8 @@ def train():
         flash("Cochon introuvable !", "error")
         return redirect(url_for('pig.mon_cochon'))
 
-    update_pig_state(pig)
-    if pig.is_injured:
+    pig.update_vitals()
+    if not pig.can_train:
         flash("Ton cochon est blessé. Passe d'abord par le vétérinaire.", "warning")
         return redirect(url_for('api.veterinaire', pig_id=pig.id))
     training_key = request.form.get('training')
@@ -241,16 +233,7 @@ def train():
     if pig.happiness < training.get('min_happiness', 0):
         flash("Ton cochon n'est pas assez heureux !", "error")
         return redirect(url_for('pig.mon_cochon'))
-    pig.energy = max(0, min(100, pig.energy - training['energy_cost']))
-    pig.hunger = max(0, pig.hunger - training.get('hunger_cost', 0))
-    adjust_pig_weight(pig, training.get('weight_delta', 0.0))
-    if 'happiness_bonus' in training:
-        pig.happiness = min(100, pig.happiness + training['happiness_bonus'])
-    for stat, boost in training['stats'].items():
-        current = getattr(pig, stat, None)
-        if current is not None:
-            setattr(pig, stat, min(100, current + boost))
-    pig.last_updated = datetime.utcnow()
+    pig.train(training)
     db.session.commit()
     flash(f"{training['emoji']} {training['name']} terminé !", "success")
     return redirect(url_for('pig.mon_cochon'))
@@ -267,8 +250,8 @@ def school():
         flash("Cochon introuvable !", "error")
         return redirect(url_for('pig.mon_cochon'))
 
-    update_pig_state(pig)
-    if pig.is_injured:
+    pig.update_vitals()
+    if not pig.can_school:
         flash("L'école attendra. Ton cochon doit d'abord passer au vétérinaire.", "warning")
         return redirect(url_for('api.veterinaire', pig_id=pig.id))
     lesson_key = request.form.get('lesson')
@@ -299,28 +282,12 @@ def school():
         return redirect(url_for('pig.mon_cochon'))
 
     selected_answer = answers[answer_idx]
-    pig.energy = max(0, pig.energy - lesson['energy_cost'])
-    pig.hunger = max(0, pig.hunger - lesson['hunger_cost'])
-    pig.last_school_at = datetime.utcnow()
-    pig.school_sessions_completed = (pig.school_sessions_completed or 0) + 1
-
-    if selected_answer['correct']:
-        for stat, boost in lesson['stats'].items():
-            current = getattr(pig, stat, None)
-            if current is not None:
-                setattr(pig, stat, min(100, current + boost))
-        pig.xp += lesson['xp']
-        pig.happiness = min(100, pig.happiness + lesson.get('happiness_bonus', 0))
+    category = pig.study(lesson, correct=selected_answer['correct'])
+    if category == 'success':
         feedback_prefix = "Cours valide avec mention groin-tres-bien."
-        category = "success"
     else:
-        pig.xp += lesson.get('wrong_xp', 0)
-        pig.happiness = max(0, pig.happiness - lesson.get('wrong_happiness_penalty', 0))
         feedback_prefix = "Le cours etait plus complique que prevu."
-        category = "warning"
 
-    pig.last_updated = datetime.utcnow()
-    check_level_up(pig)
     db.session.commit()
     flash(f"{lesson['emoji']} {lesson['name']} - {feedback_prefix} {selected_answer['feedback']}", category)
     return redirect(url_for('pig.mon_cochon'))
@@ -363,7 +330,7 @@ def challenge_mort():
         flash("Cochon introuvable !", "error")
         return redirect(url_for('pig.mon_cochon'))
 
-    update_pig_state(pig)
+    pig.update_vitals()
     if pig.is_injured:
         flash("Impossible d'inscrire un cochon blessé au Challenge de la Mort.", "error")
         return redirect(url_for('api.veterinaire', pig_id=pig.id))
@@ -378,8 +345,8 @@ def challenge_mort():
         flash("Ton cochon est trop faible pour le Challenge !", "error")
         return redirect(url_for('pig.mon_cochon'))
 
-    if not debit_user_balance(
-        user.id, wager,
+    if not user.pay(
+        wager,
         reason_code='challenge_entry',
         reason_label='Inscription Challenge de la Mort',
         details=f"{pig.name} engagé pour {wager:.0f} 🪙.",
@@ -416,8 +383,8 @@ def cancel_challenge():
     if refund <= 0:
         flash("Le challenge a déjà été annulé ou réglé ailleurs.", "warning")
         return redirect(url_for('pig.mon_cochon'))
-    credit_user_balance(
-        user.id, refund,
+    user.earn(
+        refund,
         reason_code='challenge_refund',
         reason_label='Remboursement Challenge de la Mort',
         details=f"Annulation du challenge pour {pig.name}.",
@@ -448,8 +415,8 @@ def breed_pig():
     if get_pig_slot_count(user) >= get_max_pig_slots(user):
         flash("La porcherie est pleine. Vends, retire ou perds un cochon avant de lancer une nouvelle portée.", "warning")
         return redirect(url_for('pig.mon_cochon'))
-    if not debit_user_balance(
-        user.id, BREEDING_COST,
+    if not user.pay(
+        BREEDING_COST,
         reason_code='pig_breeding',
         reason_label='Lancement de portee',
         details=f"Portee entre {parent_a.name} et {parent_b.name}.",
@@ -497,7 +464,8 @@ def sacrifice_pig():
         flash("Cochon introuvable !", "error")
         return redirect(url_for('pig.mon_cochon'))
 
-    send_to_abattoir(pig, cause='sacrifice_volontaire')
+    pig.kill(cause='sacrifice_volontaire')
+    db.session.commit()
     flash(f"🔪 {pig.name} a été envoyé à l'abattoir volontairement. Paix à ses côtelettes.", "warning")
     return redirect(url_for('pig.mon_cochon'))
 
@@ -565,7 +533,7 @@ def typing_complete():
     pig.xp += 20
     pig.last_school_at = datetime.utcnow()
     pig.last_updated = pig.last_school_at
-    check_level_up(pig)
+    pig.check_level_up()
     db.session.commit()
     
     flash(f"🏆 Typing Derby termine ! {bonus_msg} (WPM: {wpm:.1f}, Erreurs: {errors})", category)

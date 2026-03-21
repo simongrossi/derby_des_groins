@@ -1,4 +1,6 @@
 from datetime import datetime
+import random
+
 from extensions import db
 
 
@@ -22,6 +24,65 @@ class User(db.Model):
     bets = db.relationship('Bet', backref='user', lazy=True)
     balance_transactions = db.relationship('BalanceTransaction', backref='user', lazy=True)
     course_plans = db.relationship('CoursePlan', backref='user', lazy=True)
+
+    # ── Méthodes métier ─────────────────────────────────────────────────
+
+    def can_afford(self, amount: float) -> bool:
+        """Vérifie si l'utilisateur a assez de BitGroins."""
+        return (self.balance or 0.0) >= amount
+
+    def pay(self, amount: float, reason_code: str = 'debit',
+            reason_label: str = 'Débit BitGroins', details: str = None,
+            reference_type: str = None, reference_id: int = None) -> bool:
+        """Débite le solde de manière atomique (SQL UPDATE + transaction).
+        Renvoie False si le solde est insuffisant."""
+        from helpers import debit_user_balance
+        return debit_user_balance(
+            self.id, amount,
+            reason_code=reason_code, reason_label=reason_label,
+            details=details, reference_type=reference_type,
+            reference_id=reference_id,
+        )
+
+    def earn(self, amount: float, reason_code: str = 'credit',
+             reason_label: str = 'Crédit BitGroins', details: str = None,
+             reference_type: str = None, reference_id: int = None) -> bool:
+        """Crédite le solde de manière atomique (SQL UPDATE + transaction)."""
+        from helpers import credit_user_balance
+        return credit_user_balance(
+            self.id, amount,
+            reason_code=reason_code, reason_label=reason_label,
+            details=details, reference_type=reference_type,
+            reference_id=reference_id,
+        )
+
+    def claim_daily_reward(self) -> float:
+        """Verse la prime de pointage journalière si elle n'a pas encore été
+        réclamée aujourd'hui. Renvoie le montant crédité (0 si déjà perçue)."""
+        from data import DAILY_LOGIN_REWARD
+        today = datetime.utcnow().date()
+        if self.last_daily_reward_at and self.last_daily_reward_at.date() >= today:
+            return 0.0
+        self.earn(
+            DAILY_LOGIN_REWARD,
+            reason_code='daily_reward',
+            reason_label='Prime de pointage journalière',
+        )
+        self.last_daily_reward_at = datetime.utcnow()
+        # Refresh en mémoire car earn() utilise un SQL UPDATE
+        db.session.refresh(self)
+        return DAILY_LOGIN_REWARD
+
+    @property
+    def active_pigs(self):
+        """Liste des cochons vivants de l'utilisateur."""
+        return Pig.query.filter_by(user_id=self.id, is_alive=True).all()
+
+    @property
+    def pig_count(self) -> int:
+        """Nombre de cochons vivants."""
+        return Pig.query.filter_by(user_id=self.id, is_alive=True).count()
+
 
 class Pig(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -86,6 +147,199 @@ class Pig(db.Model):
     retired_into_heritage = db.Column(db.Boolean, default=False)
 
     owner = db.relationship('User', backref=db.backref('pigs', lazy=True))
+
+    # ── Propriétés calculées ────────────────────────────────────────────
+
+    @property
+    def races_remaining(self) -> int:
+        """Nombre de courses restantes avant la retraite."""
+        return max(0, (self.max_races or 80) - self.races_entered)
+
+    @property
+    def can_race(self) -> bool:
+        """Le cochon est-il apte à courir ?"""
+        return (self.is_alive and not self.is_injured
+                and self.energy > 20 and self.hunger > 20)
+
+    @property
+    def can_train(self) -> bool:
+        """Le cochon peut-il s'entraîner ? (vivant, pas blessé)"""
+        return self.is_alive and not self.is_injured
+
+    @property
+    def can_school(self) -> bool:
+        """Le cochon peut-il aller à l'école ? (vivant, pas blessé)"""
+        return self.is_alive and not self.is_injured
+
+    @property
+    def ideal_weight(self) -> float:
+        """Poids de forme calculé à partir des stats."""
+        from helpers import calculate_target_weight_kg
+        return calculate_target_weight_kg(self)
+
+    @property
+    def power(self) -> float:
+        """Puissance de course effective (stats + condition + poids)."""
+        from helpers import calculate_pig_power
+        return round(calculate_pig_power(self), 1)
+
+    # ── Méthodes de mutation d'état ─────────────────────────────────────
+
+    def apply_stat_boosts(self, stats: dict):
+        """Applique un dictionnaire {stat_name: boost_value} en capant à 100."""
+        for stat, boost in stats.items():
+            current = getattr(self, stat, None)
+            if current is not None:
+                setattr(self, stat, min(100, current + boost))
+
+    def adjust_weight(self, delta: float) -> float:
+        """Modifie le poids avec clamping min/max. Renvoie le nouveau poids."""
+        from data import MIN_PIG_WEIGHT_KG, MAX_PIG_WEIGHT_KG, DEFAULT_PIG_WEIGHT_KG
+        w = (self.weight_kg or DEFAULT_PIG_WEIGHT_KG) + delta
+        self.weight_kg = round(min(MAX_PIG_WEIGHT_KG, max(MIN_PIG_WEIGHT_KG, w)), 1)
+        return self.weight_kg
+
+    def check_level_up(self):
+        """Monte de niveau tant que l'XP le permet (+10 bonheur par level)."""
+        from helpers import xp_for_level
+        while self.xp >= xp_for_level(self.level + 1):
+            self.level += 1
+            self.happiness = min(100, self.happiness + 10)
+
+    def feed(self, cereal: dict):
+        """Nourrir le cochon avec une céréale (dict issu de data.CEREALS).
+        Met à jour faim, énergie, poids, stats et timestamps."""
+        self.hunger = min(100, self.hunger + cereal['hunger_restore'])
+        self.energy = min(100, self.energy + cereal.get('energy_restore', 0))
+        self.adjust_weight(cereal.get('weight_delta', 0.0))
+        self.apply_stat_boosts(cereal.get('stats', {}))
+        self.last_fed_at = datetime.utcnow()
+        self.last_updated = self.last_fed_at
+
+    def train(self, training: dict):
+        """Entraîner le cochon (dict issu de data.TRAININGS).
+        Consomme énergie/faim, modifie poids, stats et bonheur."""
+        self.energy = max(0, min(100, self.energy - training['energy_cost']))
+        self.hunger = max(0, self.hunger - training.get('hunger_cost', 0))
+        self.adjust_weight(training.get('weight_delta', 0.0))
+        if 'happiness_bonus' in training:
+            self.happiness = min(100, self.happiness + training['happiness_bonus'])
+        self.apply_stat_boosts(training.get('stats', {}))
+        self.last_updated = datetime.utcnow()
+
+    def study(self, lesson: dict, correct: bool) -> str:
+        """Suivre un cours (dict issu de data.SCHOOL_LESSONS).
+        Renvoie 'success' ou 'warning' selon la réponse."""
+        self.energy = max(0, self.energy - lesson['energy_cost'])
+        self.hunger = max(0, self.hunger - lesson['hunger_cost'])
+        self.last_school_at = datetime.utcnow()
+        self.school_sessions_completed = (self.school_sessions_completed or 0) + 1
+
+        if correct:
+            self.apply_stat_boosts(lesson.get('stats', {}))
+            self.xp += lesson['xp']
+            self.happiness = min(100, self.happiness + lesson.get('happiness_bonus', 0))
+            category = 'success'
+        else:
+            self.xp += lesson.get('wrong_xp', 0)
+            self.happiness = max(0, self.happiness - lesson.get('wrong_happiness_penalty', 0))
+            category = 'warning'
+
+        self.last_updated = datetime.utcnow()
+        self.check_level_up()
+        return category
+
+    def heal(self):
+        """Soigne le cochon : retire blessure et deadline vétérinaire."""
+        self.is_injured = False
+        self.vet_deadline = None
+
+    def injure(self, deadline: datetime):
+        """Blesse le cochon avec une deadline vétérinaire."""
+        self.is_injured = True
+        self.vet_deadline = deadline
+
+    def kill(self, cause: str = 'abattoir'):
+        """Tue le cochon et le transforme en charcuterie."""
+        from data import CHARCUTERIE, EPITAPHS
+        charcuterie = random.choice(CHARCUTERIE)
+        epitaph_template = random.choice(EPITAPHS)
+        self.is_alive = False
+        self.is_injured = False
+        self.vet_deadline = None
+        self.death_date = datetime.utcnow()
+        self.death_cause = cause
+        self.charcuterie_type = charcuterie['name']
+        self.charcuterie_emoji = charcuterie['emoji']
+        self.epitaph = epitaph_template.format(name=self.name, wins=self.races_won)
+        self.challenge_mort_wager = 0
+
+    def retire(self):
+        """Retire le cochon pour vieillesse (charcuterie premium)."""
+        from data import CHARCUTERIE_PREMIUM
+        charcuterie = random.choice(CHARCUTERIE_PREMIUM)
+        self.is_alive = False
+        self.is_injured = False
+        self.vet_deadline = None
+        self.death_date = datetime.utcnow()
+        self.death_cause = 'vieillesse'
+        self.charcuterie_type = charcuterie['name']
+        self.charcuterie_emoji = charcuterie['emoji']
+        self.epitaph = (
+            f"{self.name} a pris sa retraite après {self.races_entered} courses glorieuses. "
+            f"Un cochon bien vieilli fait le meilleur jambon."
+        )
+        self.challenge_mort_wager = 0
+
+    def update_vitals(self):
+        """Décroissance Tamagotchi en fonction du temps écoulé.
+        Appelé avant chaque interaction pour synchroniser l'état."""
+        from helpers import calculate_weekend_truce_hours
+        from data import DEFAULT_PIG_WEIGHT_KG
+
+        now = datetime.utcnow()
+        if not self.last_updated:
+            self.last_updated = now
+            return
+        elapsed_hours = (now - self.last_updated).total_seconds() / 3600
+        if elapsed_hours < 0.01:
+            return
+        truce_hours = calculate_weekend_truce_hours(self.last_updated, now)
+        hours = min(max(0.0, elapsed_hours - truce_hours), 24)
+        if hours < 0.01:
+            self.last_updated = now
+            db.session.commit()
+            return
+
+        # Faim décroît avec le temps
+        self.hunger = max(0, self.hunger - hours * 2)
+
+        # Énergie dépend de la faim
+        if self.hunger > 30:
+            self.energy = min(100, self.energy + hours * 5)
+        else:
+            self.energy = max(0, self.energy - hours * 1)
+
+        # Bonheur dépend de la faim
+        if self.hunger < 15:
+            self.happiness = max(0, self.happiness - hours * 3)
+        elif self.hunger < 30:
+            self.happiness = max(0, self.happiness - hours * 1)
+        elif self.happiness < 60:
+            self.happiness = min(60, self.happiness + hours * 0.3)
+
+        # Poids fluctue selon faim/énergie
+        current_weight = self.weight_kg or DEFAULT_PIG_WEIGHT_KG
+        if self.hunger < 25:
+            self.weight_kg = round(min(190.0, max(75.0, current_weight - hours * 0.25)), 1)
+        elif self.hunger > 75 and self.energy < 45:
+            self.weight_kg = round(min(190.0, max(75.0, current_weight + hours * 0.18)), 1)
+        elif self.energy > 80 and self.hunger < 60:
+            self.weight_kg = round(min(190.0, max(75.0, current_weight - hours * 0.08)), 1)
+
+        self.last_updated = now
+        db.session.commit()
+
 
 class Race(db.Model):
     id = db.Column(db.Integer, primary_key=True)

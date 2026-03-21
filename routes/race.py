@@ -6,12 +6,11 @@ from extensions import db
 from models import User, Pig, Race, Participant, Bet, CoursePlan
 from data import BET_TYPES, WEEKLY_RACE_QUOTA, WEEKLY_BACON_TICKETS
 from helpers import (
-    ensure_next_race, get_user_active_pigs, update_pig_state, calculate_pig_power,
+    ensure_next_race, get_user_active_pigs, calculate_pig_power,
     get_weight_profile, count_pig_weekly_course_commitments, build_course_schedule,
     populate_race_participants, get_user_weekly_bet_count,
     normalize_bet_type, parse_selection_ids, serialize_selection_ids,
     format_bet_label, calculate_bet_odds, apply_row_lock,
-    debit_user_balance,
 )
 
 race_bp = Blueprint('race', __name__)
@@ -32,7 +31,7 @@ def courses():
 
     pigs_data = []
     for pig in pigs:
-        update_pig_state(pig)
+        pig.update_vitals()
         pigs_data.append({
             'pig': pig,
             'power': round(calculate_pig_power(pig), 1),
@@ -196,8 +195,8 @@ def place_bet():
         status='pending'
     )
     try:
-        if not debit_user_balance(
-            user.id, amount,
+        if not user.pay(
+            amount,
             reason_code='bet_stake',
             reason_label='Mise de pari',
             details=f"Ticket {BET_TYPES[bet_type]['label'].lower()} sur la course #{race_id}: {bet_label}.",
