@@ -1368,6 +1368,13 @@ def run_race_if_needed():
                     pig_comeback_bonus_flags[p.pig_id] = bool(pig.comeback_bonus_ready)
                     plan = CoursePlan.query.filter_by(pig_id=pig.id, scheduled_at=race.scheduled_at).first()
                     strategy_profile = plan.strategy_segments if plan else {'phase_1': 35, 'phase_2': 50, 'phase_3': 80}
+                    last_race_at = get_pig_last_race_datetime(pig)
+                    hours_since_last_race = ((race.scheduled_at - last_race_at).total_seconds() / 3600.0) if last_race_at else 999.0
+                    recent_race_penalty_multiplier = 1.0
+                    if hours_since_last_race < 24:
+                        recent_race_penalty_multiplier = 0.9
+                    elif hours_since_last_race < 48:
+                        recent_race_penalty_multiplier = 0.95
                     pigs_for_sim.append({
                         'id': pig.id, 'name': pig.name, 'emoji': pig.emoji,
                         'vitesse': pig.vitesse, 'endurance': pig.endurance, 'force': pig.force, 'agilite': pig.agilite,
@@ -1375,6 +1382,7 @@ def run_race_if_needed():
                         'strategy_profile': strategy_profile,
                         'freshness': pig.freshness, 'is_happy': (pig.freshness or 0) > 90.0,
                         'speed_bonus_multiplier': 1.1 if pig.comeback_bonus_ready else 1.0,
+                        'recent_race_penalty_multiplier': recent_race_penalty_multiplier,
                     })
                 else:
                     # Mock NPC pig stats based on odds

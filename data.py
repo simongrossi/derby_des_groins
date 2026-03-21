@@ -410,51 +410,59 @@ PIG_COURSE_SEGMENT_TYPES = ['PLAT', 'MONTEE', 'DESCENTE', 'VIRAGE', 'BOUE']
 # Limite de tours pour eviter une boucle infinie
 RACE_MAX_TURNS = 500
 
+# -- Strategie --
+RACE_ATTACK_THRESHOLD = 71
+RACE_NEUTRAL_MAX = 70
+RACE_STRATEGY_ECONOMY_MIN_MULT = 0.72
+RACE_STRATEGY_ATTACK_MAX_MULT = 1.18
+RACE_STRATEGY_ECONOMY_RECOVERY = 2.2
+RACE_STRATEGY_NEUTRAL_FATIGUE = 1.2
+RACE_ATTACK_FATIGUE_EXPONENT = 1.6
+
 # -- Vitesse de base --
-RACE_BASE_SPEED_VIT_MULT = 0.2       # coefficient de vitesse dans base_speed (plat)
+RACE_BASE_SPEED_VIT_MULT = 0.75      # coefficient principal sur le plat
 RACE_BASE_SPEED_CONSTANT = 2.0       # plancher additif de base_speed
 RACE_MIN_FINAL_SPEED = 0.5           # vitesse minimale garantie par tour
-
-# -- Strategie --
-RACE_STRATEGY_NEUTRAL = 50           # valeur neutre (pas de bonus/malus)
-RACE_STRATEGY_SPEED_FACTOR = 0.005   # impact de la strategie sur la vitesse par point
-RACE_STRATEGY_FATIGUE_BASE = 1.0     # base de gain de fatigue
-RACE_STRATEGY_FATIGUE_DIVISOR = 50.0 # diviseur pour le calcul du gain fatigue
+RACE_SEGMENT_SPEED_CAP = 30.0        # plafond de vitesse sur terrain libre
+RACE_VIRAGE_SPEED_CAP = 18.0         # plafond dans les virages
+RACE_BOUE_SPEED_CAP = 14.0           # plafond dans la boue
 
 # -- Fatigue --
-RACE_FATIGUE_SPEED_PENALTY_FLOOR = 0.4    # malus de vitesse minimum (40% de speed restant)
-RACE_FATIGUE_SPEED_PENALTY_DIVISOR = 100.0  # diviseur pour le calcul du malus
-RACE_ECONOMY_THRESHOLD = 25               # strat en dessous de ce seuil = mode economie
-RACE_ECONOMY_FATIGUE_RECOVERY = 0.1       # recuperation de fatigue par tour en mode economie
+RACE_FATIGUE_SPEED_PENALTY_FLOOR = 0.4
+RACE_FATIGUE_SPEED_PENALTY_DIVISOR = 100.0
+RACE_ENDURANCE_FATIGUE_DIVISOR = 1.0
+RACE_RECENT_RACE_PENALTY_FLOOR = 0.88
 
 # -- Terrain : MONTEE --
-RACE_MONTEE_VIT_MULT = 0.1           # part de vitesse en montee
-RACE_MONTEE_FORCE_MULT = 0.1         # part de force en montee
-RACE_MONTEE_TERRAIN_MOD = 0.8        # modificateur terrain montee
+RACE_MONTEE_SPEED_MULT = 0.8
+RACE_MONTEE_FORCE_MULT = 1.2
+RACE_MONTEE_TERRAIN_MOD = 0.86
 
 # -- Terrain : DESCENTE --
-RACE_DESCENTE_TERRAIN_MOD = 1.4      # modificateur terrain descente
-RACE_DESCENTE_STUMBLE_AGI_REF = 40   # seuil d'agilite pour risque de chute
-RACE_DESCENTE_STUMBLE_AGI_DIV = 200.0  # diviseur risque agilite
-RACE_DESCENTE_STUMBLE_CHANCE_DIV = 500.0  # diviseur chance (reduit le risque)
-RACE_STUMBLE_SPEED_MULT = 0.3       # multiplicateur vitesse en cas de chute
+RACE_DESCENTE_SPEED_MULT = 0.95
+RACE_DESCENTE_TERRAIN_MOD = 1.08
+RACE_DESCENTE_AGI_RISK_REDUCTION = 140.0
+RACE_STUMBLE_BASE_CHANCE_DESCENTE = 0.12
+RACE_STUMBLE_SPEED_MULT = 0.5
 
 # -- Terrain : VIRAGE / BOUE --
-RACE_VIRAGE_VIT_MULT = 0.05          # part de vitesse en virage/boue
-RACE_VIRAGE_AGI_MULT = 0.15          # part d'agilite en virage/boue
-RACE_VIRAGE_TERRAIN_MOD = 0.9        # modificateur terrain virage
-RACE_BOUE_TERRAIN_MOD = 0.7          # modificateur terrain boue
+RACE_STUMBLE_BASE_CHANCE_VIRAGE = 0.09
+RACE_VIRAGE_AGI_MULT = 0.9
+RACE_VIRAGE_TERRAIN_MOD = 0.88
+RACE_BOUE_AGI_MULT = 0.75
+RACE_BOUE_TERRAIN_MOD = 0.76
 
 # -- Aspiration (Drafting) --
-RACE_DRAFT_MIN_DIST = 0.5            # distance min pour declencher l'aspiration
-RACE_DRAFT_MAX_DIST = 4.0            # distance max pour declencher l'aspiration
-RACE_DRAFT_BASE_CHANCE = 0.7         # probabilite de base d'aspiration
-RACE_DRAFT_STRATEGY_FACTOR = 0.003   # bonus de chance par point d'economie
-RACE_DRAFT_SPEED_BONUS = 0.8         # boost de vitesse en aspiration
+RACE_DRAFT_MIN_DIST = 1.0
+RACE_DRAFT_MAX_DIST = 3.0
+RACE_DRAFT_BONUS_MIN = 0.8
+RACE_DRAFT_BONUS_MAX = 1.8
+RACE_DRAFT_NO_FATIGUE_BONUS = 1.8
+RACE_FATIGUE_HEADWIND_PENALTY = 0.8
 
 # -- Variance --
-RACE_VARIANCE_MIN = 0.95             # borne basse du facteur aleatoire
-RACE_VARIANCE_MAX = 1.05             # borne haute du facteur aleatoire
+RACE_VARIANCE_MIN = 0.98
+RACE_VARIANCE_MAX = 1.02
 
 # ---------------------------------------------------------------------------
 # Bourse aux Grains -- marche dynamique de cereales
