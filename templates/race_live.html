@@ -1,0 +1,1040 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🐷 Derby des Groins — Live Race</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        * { font-family: 'Nunito', sans-serif; box-sizing: border-box; }
+        .font-title { font-family: 'Lilita One', cursive; }
+
+        body {
+            background: #180a20;
+            background-image:
+                radial-gradient(circle at 15% 18%, rgba(244,114,182,0.22), transparent 32%),
+                radial-gradient(circle at 82% 10%, rgba(251,146,60,0.12), transparent 28%),
+                radial-gradient(circle at 50% 100%, rgba(190,24,93,0.10), transparent 35%),
+                linear-gradient(180deg, #210d29 0%, #100915 100%);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* ── TRACK ── */
+        #track-container {
+            position: relative;
+            width: 100%;
+            border-radius: 1.5rem;
+            overflow: hidden;
+            border: 2px solid rgba(244,114,182,0.22);
+            box-shadow: 0 0 60px rgba(244,114,182,0.12), inset 0 1px 0 rgba(255,255,255,0.06);
+            background: linear-gradient(180deg, #1a0825 0%, #120920 100%);
+        }
+
+        .track-lane {
+            position: relative;
+            display: flex;
+            align-items: center;
+            border-bottom: 1px solid rgba(255,255,255,0.04);
+            transition: background 0.3s ease;
+        }
+        .track-lane:last-child { border-bottom: none; }
+        .track-lane.is-leader { background: rgba(250,204,21,0.05); }
+        .track-lane.is-finished { background: rgba(34,197,94,0.04); }
+
+        /* Finish line */
+        .finish-line {
+            position: absolute;
+            right: 0;
+            top: 0;
+            bottom: 0;
+            width: 6px;
+            background: repeating-linear-gradient(
+                180deg,
+                #fff 0px, #fff 6px,
+                #111 6px, #111 12px
+            );
+            opacity: 0.7;
+            z-index: 10;
+        }
+
+        /* Ground */
+        .track-ground {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 5px;
+            background: linear-gradient(90deg, rgba(139,92,246,0.2), rgba(244,114,182,0.15), rgba(251,146,60,0.15), rgba(139,92,246,0.2));
+        }
+
+        /* Pig on track */
+        .pig-racer {
+            position: absolute;
+            left: 0;
+            transform: translateX(0%);
+            transition: left 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            pointer-events: none;
+            z-index: 5;
+        }
+
+        .pig-emoji {
+            display: block;
+            line-height: 1;
+            filter: drop-shadow(0 2px 6px rgba(0,0,0,0.5));
+            transition: filter 0.2s ease, transform 0.2s ease;
+        }
+
+        /* Bounce animation while running */
+        @keyframes pig-run {
+            0%, 100% { transform: translateY(0) rotate(-2deg); }
+            50% { transform: translateY(-3px) rotate(2deg); }
+        }
+        .pig-racer.is-running .pig-emoji { animation: pig-run 0.35s ease-in-out infinite; }
+
+        /* Sprint glow */
+        .pig-racer.event-sprint .pig-emoji {
+            filter: drop-shadow(0 0 14px rgba(250,204,21,0.9)) drop-shadow(0 2px 6px rgba(0,0,0,0.5));
+            animation: pig-run 0.2s ease-in-out infinite;
+        }
+        /* Tired fade */
+        .pig-racer.event-tired .pig-emoji {
+            opacity: 0.65;
+            animation: pig-run 0.7s ease-in-out infinite;
+        }
+        /* Stumble shake */
+        @keyframes stumble {
+            0% { transform: rotate(-15deg); }
+            25% { transform: rotate(15deg); }
+            50% { transform: rotate(-8deg); }
+            75% { transform: rotate(8deg); }
+            100% { transform: rotate(0deg); }
+        }
+        .pig-racer.event-stumble .pig-emoji {
+            animation: stumble 0.5s ease-out;
+            filter: drop-shadow(0 0 10px rgba(248,113,113,0.8)) drop-shadow(0 2px 6px rgba(0,0,0,0.5));
+        }
+        /* Draft glow */
+        .pig-racer.event-drafting .pig-emoji {
+            filter: drop-shadow(0 0 12px rgba(34,211,238,0.8)) drop-shadow(0 2px 6px rgba(0,0,0,0.5));
+        }
+        /* Finished */
+        @keyframes wiggle-celebrate {
+            0%, 100% { transform: rotate(-8deg) scale(1.05); }
+            50% { transform: rotate(8deg) scale(1.12); }
+        }
+        .pig-racer.event-finished .pig-emoji {
+            animation: wiggle-celebrate 0.4s ease-in-out infinite;
+            filter: drop-shadow(0 0 18px rgba(250,204,21,1)) drop-shadow(0 2px 6px rgba(0,0,0,0.5));
+        }
+
+        /* Speed trail particles */
+        .speed-trail {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            pointer-events: none;
+            animation: trail-fade 0.5s ease-out forwards;
+        }
+        @keyframes trail-fade {
+            0% { opacity: 0.7; transform: scale(1); }
+            100% { opacity: 0; transform: scale(0.2) translateX(-10px); }
+        }
+
+        /* Dust puff for stumble */
+        .dust-puff {
+            position: absolute;
+            font-size: 1.4rem;
+            pointer-events: none;
+            animation: dust 0.6s ease-out forwards;
+            z-index: 20;
+        }
+        @keyframes dust {
+            0%   { opacity: 1; transform: translateY(0) scale(0.5); }
+            100% { opacity: 0; transform: translateY(-20px) scale(1.4); }
+        }
+
+        /* Lane label */
+        .lane-label {
+            position: absolute;
+            left: 8px;
+            top: 50%;
+            transform: translateY(-50%);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            z-index: 6;
+            pointer-events: none;
+        }
+
+        /* Segment markers on top of track */
+        .segment-marker {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            pointer-events: none;
+            opacity: 0.22;
+        }
+
+        /* Scoreboard */
+        .score-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 0.5rem 0.75rem;
+            border-radius: 0.75rem;
+            border: 1px solid rgba(255,255,255,0.05);
+            background: rgba(255,255,255,0.02);
+            transition: all 0.3s ease;
+        }
+        .score-row.pos-1 { border-color: rgba(250,204,21,0.35); background: rgba(250,204,21,0.06); }
+        .score-row.pos-2 { border-color: rgba(203,213,225,0.25); background: rgba(203,213,225,0.04); }
+        .score-row.pos-3 { border-color: rgba(205,127,50,0.25); background: rgba(205,127,50,0.04); }
+        .score-row.is-finished-row { opacity: 0.75; }
+
+        /* Commentary box */
+        #commentary-box {
+            min-height: 52px;
+            background: rgba(255,240,246,0.04);
+            border: 1px solid rgba(244,114,182,0.15);
+            border-radius: 1rem;
+            padding: 0.85rem 1.1rem;
+            position: relative;
+            overflow: hidden;
+        }
+        .commentary-text {
+            color: rgba(255,220,240,0.9);
+            font-size: 0.95rem;
+            font-weight: 700;
+            line-height: 1.45;
+        }
+        .commentary-text.fade-in { animation: comment-fade 0.4s ease-out; }
+        @keyframes comment-fade {
+            from { opacity: 0; transform: translateY(6px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Progress bar */
+        .progress-bar {
+            height: 4px;
+            border-radius: 999px;
+            background: rgba(255,255,255,0.08);
+            overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%;
+            border-radius: 999px;
+            background: linear-gradient(90deg, #f472b6, #fb923c);
+            transition: width 0.22s ease;
+        }
+
+        /* Control buttons */
+        .btn-ctrl {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 0.6rem 1.2rem;
+            border-radius: 0.85rem;
+            font-weight: 800;
+            font-size: 0.85rem;
+            border: 1px solid rgba(255,255,255,0.12);
+            background: rgba(255,255,255,0.05);
+            color: rgba(255,255,255,0.8);
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .btn-ctrl:hover { background: rgba(255,255,255,0.1); color: #fff; border-color: rgba(244,114,182,0.35); }
+        .btn-ctrl.primary {
+            background: linear-gradient(135deg, rgba(244,114,182,0.25), rgba(251,146,60,0.18));
+            border-color: rgba(244,114,182,0.4);
+            color: #fff;
+        }
+        .btn-ctrl.primary:hover { background: linear-gradient(135deg, rgba(244,114,182,0.4), rgba(251,146,60,0.3)); }
+        .btn-ctrl:disabled { opacity: 0.35; cursor: not-allowed; }
+
+        /* Speed indicator */
+        .speed-badge {
+            font-size: 0.65rem;
+            font-weight: 800;
+            padding: 2px 7px;
+            border-radius: 999px;
+            background: rgba(255,255,255,0.08);
+            color: rgba(255,255,255,0.5);
+        }
+
+        /* Confetti */
+        .confetti-piece {
+            position: fixed;
+            width: 10px;
+            height: 10px;
+            border-radius: 2px;
+            pointer-events: none;
+            animation: confetti-fall linear forwards;
+            z-index: 999;
+        }
+        @keyframes confetti-fall {
+            0% { transform: translateY(-20px) rotate(0deg); opacity: 1; }
+            100% { transform: translateY(110vh) rotate(720deg); opacity: 0; }
+        }
+
+        /* Finish podium */
+        #finish-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 900;
+            background: rgba(10,4,18,0.85);
+            backdrop-filter: blur(8px);
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+        }
+        #finish-overlay.show { display: flex; }
+
+        .podium-card {
+            background: linear-gradient(135deg, rgba(255,255,255,0.07), rgba(255,240,246,0.04));
+            border: 1px solid rgba(244,114,182,0.2);
+            border-radius: 1.5rem;
+            padding: 2rem 2.5rem;
+            text-align: center;
+            max-width: 480px;
+            width: 90%;
+        }
+
+        /* Loading state */
+        #loading-screen {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 320px;
+            gap: 1rem;
+        }
+        @keyframes oink-spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .oink-spinner {
+            font-size: 3rem;
+            display: inline-block;
+            animation: oink-spin 1.2s linear infinite;
+        }
+
+        /* Terrain zone colors */
+        .zone-MONTEE { background: rgba(139,92,246,0.35); }
+        .zone-DESCENTE { background: rgba(251,146,60,0.35); }
+        .zone-VIRAGE { background: rgba(244,114,182,0.35); }
+        .zone-BOUE { background: rgba(120,90,40,0.5); }
+        .zone-PLAT { background: rgba(255,255,255,0.0); }
+    </style>
+</head>
+<body>
+    {% include '_site_header.html' %}
+
+    <div class="max-w-5xl mx-auto px-4 py-6">
+
+        <!-- Header -->
+        <div class="flex items-center justify-between mb-5">
+            <div>
+                <h1 class="font-title text-3xl text-pink-200 drop-shadow-[0_0_18px_rgba(251,113,133,0.22)]">
+                    🏁 Hippodrome des Groins
+                </h1>
+                <p class="text-pink-100/50 text-sm font-semibold mt-0.5">
+                    Simulation temps réel · Les cochons ont mis leur casque
+                </p>
+            </div>
+            <a href="/" class="btn-ctrl text-sm">← Retour</a>
+        </div>
+
+        <!-- Loading state -->
+        <div id="loading-screen">
+            <span class="oink-spinner">🐷</span>
+            <p class="text-pink-200/60 font-bold">Chargement de la course… les cochons enfilent leurs chaussures</p>
+        </div>
+
+        <!-- Main content (hidden until loaded) -->
+        <div id="race-content" style="display:none">
+
+            <!-- Race info bar -->
+            <div class="flex items-center gap-3 mb-4 flex-wrap">
+                <span id="race-label" class="text-xs font-bold uppercase tracking-widest text-pink-100/40">Course #—</span>
+                <span class="text-pink-100/20">·</span>
+                <span id="turn-display" class="text-xs font-bold text-pink-100/50">Tour 0 / —</span>
+                <span class="text-pink-100/20">·</span>
+                <div id="overall-progress" class="flex-1 max-w-xs">
+                    <div class="progress-bar"><div id="overall-fill" class="progress-fill" style="width:0%"></div></div>
+                </div>
+                <span id="phase-badge" class="text-xs font-bold px-2.5 py-0.5 rounded-full bg-pink-500/15 text-pink-300/70"></span>
+            </div>
+
+            <!-- Controls -->
+            <div class="flex items-center gap-2 mb-4 flex-wrap">
+                <button id="btn-play" class="btn-ctrl primary" onclick="togglePlay()">▶ Lancer la course</button>
+                <button id="btn-restart" class="btn-ctrl" onclick="restartRace()">↺ Recommencer</button>
+                <div class="flex items-center gap-1.5 ml-2">
+                    <span class="text-xs text-white/40 font-bold">Vitesse</span>
+                    <button class="speed-badge cursor-pointer hover:bg-white/15 transition-colors" onclick="setSpeed(0.5)" id="speed-0.5">×0.5</button>
+                    <button class="speed-badge cursor-pointer hover:bg-white/15 transition-colors" onclick="setSpeed(1)" id="speed-1">×1</button>
+                    <button class="speed-badge cursor-pointer hover:bg-white/15 transition-colors" onclick="setSpeed(2)" id="speed-2">×2</button>
+                    <button class="speed-badge cursor-pointer hover:bg-white/15 transition-colors" onclick="setSpeed(4)" id="speed-4">×4</button>
+                </div>
+            </div>
+
+            <!-- Commentary -->
+            <div id="commentary-box" class="mb-4">
+                <p class="commentary-text" id="commentary-text">🎙️ Michel Groin au micro… Les cochons sont sur la ligne de départ, l'excitation est palpable !</p>
+            </div>
+
+            <!-- Track + Scoreboard layout -->
+            <div class="flex gap-4" id="main-layout">
+
+                <!-- Track -->
+                <div class="flex-1 min-w-0">
+                    <!-- Segment legend -->
+                    <div class="flex flex-wrap gap-2 mb-2" id="segment-legend"></div>
+
+                    <!-- Track container -->
+                    <div id="track-container">
+                        <div class="finish-line"></div>
+                        <div id="track-lanes"></div>
+                    </div>
+                </div>
+
+                <!-- Scoreboard -->
+                <div style="width: 200px; flex-shrink: 0;">
+                    <div class="text-xs font-bold uppercase tracking-widest text-pink-100/35 mb-2">🏆 Classement live</div>
+                    <div id="scoreboard" class="flex flex-col gap-1.5"></div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Finish overlay -->
+    <div id="finish-overlay">
+        <div class="podium-card">
+            <div id="podium-fireworks" class="text-5xl mb-3">🎉</div>
+            <h2 class="font-title text-3xl text-yellow-300 mb-1" id="podium-winner">—</h2>
+            <p class="text-pink-100/60 text-sm font-bold mb-4" id="podium-subtitle">remporte le Derby des Groins !</p>
+            <div id="podium-positions" class="flex flex-col gap-2 mb-5"></div>
+            <div class="flex gap-2 justify-center flex-wrap">
+                <button class="btn-ctrl primary" onclick="restartRace()">↺ Revoir la course</button>
+                <button class="btn-ctrl" onclick="closeFinish()">✕ Fermer</button>
+                <a href="/" class="btn-ctrl">🏠 Accueil</a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    // ════════════════════════════════════════════════════════════════
+    //  DERBY DES GROINS — RACE LIVE ANIMATION
+    //  "Si t'as parié sur le cochon qui trébuche, t'as bien joué"
+    // ════════════════════════════════════════════════════════════════
+
+    const RACE_ID = {{ race_id | tojson }};
+    const LANE_HEIGHT = 72;   // px per pig
+    const TRACK_PADDING_LEFT = 110; // px for name label
+    const TRACK_PADDING_RIGHT = 14; // px for finish line
+    const PIG_SIZE = 36;      // emoji font size px
+    const TRAIL_COLORS = ['#f472b6','#fb923c','#facc15','#a78bfa','#34d399'];
+
+    let replayData = null;
+    let turns = [];
+    let currentTurnIdx = 0;
+    let playing = false;
+    let animTimer = null;
+    let playSpeed = 1;  // turns per second base is 4
+    let totalLength = 0;
+    let segments = [];
+    let pigElements = {};   // id -> { lane, emoji, progress, badge }
+    let scoreboardRows = {}; // id -> element
+    let pigColors = {};
+    let pigOrder = [];  // stable pig id order
+
+    const TERRAIN_ICONS = { PLAT:'🏃', MONTEE:'⛰️', DESCENTE:'🎿', VIRAGE:'↪️', BOUE:'💩' };
+    const TERRAIN_LABELS = { PLAT:'Ligne droite', MONTEE:'Montée', DESCENTE:'Descente', VIRAGE:'Virage', BOUE:'Zone de boue' };
+
+    const COMMENTARY_POOL = {
+        sprint: [
+            "⚡ {name} appuie sur le champignon — ou sur la queue de son voisin !",
+            "🔥 {name} est en FEU ! Quelqu'un a mis du piment dans sa gamelle ?",
+            "💨 {name} décolle ! À ce rythme là il va brûler son groin.",
+            "🚀 {name} passe en mode fusée porcine. La NASA est jalouse.",
+        ],
+        stumble: [
+            "😱 {name} trébuche ! Il a pas vu la flaque ou bien il danse ?",
+            "🤣 {name} se vautre ! C'est le moment qu'il choisit pour faire de la gym.",
+            "💥 {name} se rate, les paris sont ouverts pour le prochain vol plané.",
+            "🐷 {name} fait un triple axel non volontaire. Nota: 2/10.",
+        ],
+        tired: [
+            "😮‍💨 {name} souffle comme un phoque dans un hammam.",
+            "🥱 {name} est sur les rotules. La retraite, c'est pour les cochons en forme.",
+            "💤 {name} ralentit... il réfléchit peut-être à reconversion professionnelle.",
+            "😴 {name} s'économise. Stratégie ou flemme ? Mystère.",
+        ],
+        drafting: [
+            "🌀 {name} se planque dans l'aspiration — le coquin !",
+            "🤫 {name} joue les parasites. Petit malin va.",
+            "🏄 {name} surfe dans le sillage. Tu veux un café aussi ?",
+        ],
+        lead_change: [
+            "🔄 {name} prend la tête ! Le classement est plus chaotique qu'un buffet cochon.",
+            "👑 {name} s'empare du commandement ! Les autres cochons sont sous le choc.",
+            "📣 Changement de leader — {name} devant ! La foule est en délire.",
+        ],
+        finish: [
+            "🏁 {name} FRANCHIT LA LIGNE ! VICTOIRE OINKTACULAIRE !",
+            "🎉 {name} GAGNE ! Quelqu'un peut appeler ses parents ?",
+            "🥇 {name} EN PREMIER ! Le groin le plus rapide de l'Ouest !",
+        ],
+        boue: [
+            "💩 {name} entre dans la boue. On espère que c'est de la boue.",
+            "🐖 {name} adore ça, la boue ! C'est dans ses gènes (et partout ailleurs).",
+        ],
+        montee: [
+            "⛰️ {name} attaque la montée. Les cuisses, c'est fait pour ça.",
+            "😤 {name} dans la côte — respire {name}, respire !",
+        ],
+    };
+
+    const PIG_COLORS = ['#f472b6','#fb923c','#facc15','#a78bfa','#34d399','#38bdf8','#f87171','#4ade80'];
+
+    // ─── INIT ────────────────────────────────────────────────────────
+
+    async function initRace() {
+        const url = RACE_ID ? `/api/race/${RACE_ID}/replay` : '/api/race/latest/replay';
+        try {
+            const res = await fetch(url);
+            if (!res.ok) {
+                const err = await res.json();
+                showError(err.error || 'Erreur inconnue');
+                return;
+            }
+            replayData = await res.json();
+        } catch(e) {
+            showError('Impossible de contacter le serveur des cochons (réseau mort ?)');
+            return;
+        }
+
+        totalLength = 0;
+        segments = replayData.segments || [];
+        turns = replayData.turns || [];
+        for (const s of segments) totalLength += s.length;
+
+        // Assign pig colors from first turn
+        if (turns.length > 0) {
+            pigOrder = turns[0].pigs.map(p => p.id);
+            pigOrder.forEach((id, i) => { pigColors[id] = PIG_COLORS[i % PIG_COLORS.length]; });
+        }
+
+        document.getElementById('loading-screen').style.display = 'none';
+        document.getElementById('race-content').style.display = 'block';
+        document.getElementById('race-label').textContent = `Course #${replayData.race_id || '?'}`;
+
+        buildSegmentLegend();
+        buildTrack();
+        buildScoreboard();
+        updateDisplay(0);
+    }
+
+    function showError(msg) {
+        document.getElementById('loading-screen').innerHTML = `
+            <span style="font-size:3rem">😭</span>
+            <p class="text-pink-300/70 font-bold text-center">${msg}</p>
+            <a href="/" class="btn-ctrl mt-2">Retour à l'accueil</a>
+        `;
+    }
+
+    // ─── BUILD UI ────────────────────────────────────────────────────
+
+    function buildSegmentLegend() {
+        const legend = document.getElementById('segment-legend');
+        const seen = new Set();
+        for (const s of segments) {
+            if (seen.has(s.type)) continue;
+            seen.add(s.type);
+            const el = document.createElement('span');
+            el.className = 'text-xs font-bold px-2 py-0.5 rounded-full border border-white/10 text-white/50';
+            el.textContent = `${TERRAIN_ICONS[s.type] || '🏁'} ${TERRAIN_LABELS[s.type] || s.type}`;
+            legend.appendChild(el);
+        }
+    }
+
+    function buildTrack() {
+        const container = document.getElementById('track-lanes');
+        container.innerHTML = '';
+
+        // Build segment zone background
+        const segZones = buildSegmentZones();
+
+        pigOrder.forEach((pigId, laneIdx) => {
+            const lane = document.createElement('div');
+            lane.className = 'track-lane';
+            lane.style.height = LANE_HEIGHT + 'px';
+            lane.id = `lane-${pigId}`;
+
+            // Segment zones behind everything
+            lane.appendChild(segZones.cloneNode(true));
+
+            // Ground line
+            const ground = document.createElement('div');
+            ground.className = 'track-ground';
+            lane.appendChild(ground);
+
+            // Pig element
+            const pigEl = document.createElement('div');
+            pigEl.className = 'pig-racer';
+            pigEl.id = `pig-racer-${pigId}`;
+            pigEl.style.bottom = '8px';
+            pigEl.style.left = TRACK_PADDING_LEFT + 'px';
+
+            const emojiEl = document.createElement('span');
+            emojiEl.className = 'pig-emoji';
+            emojiEl.style.fontSize = PIG_SIZE + 'px';
+            emojiEl.textContent = getPigEmoji(pigId);
+
+            // Small name badge
+            const nameBadge = document.createElement('span');
+            nameBadge.style.cssText = `font-size:9px; font-weight:800; color:rgba(255,255,255,0.55); margin-top:1px; white-space:nowrap; max-width:60px; overflow:hidden; text-overflow:ellipsis;`;
+            nameBadge.textContent = getPigName(pigId);
+
+            pigEl.appendChild(emojiEl);
+            pigEl.appendChild(nameBadge);
+            lane.appendChild(pigEl);
+
+            // Lane name label (fixed left)
+            const label = document.createElement('div');
+            label.className = 'lane-label';
+            label.style.cssText = `left: 8px; z-index: 8;`;
+            label.innerHTML = `
+                <span style="font-size:0.7rem; font-weight:800; color:${pigColors[pigId]}; opacity:0.7; writing-mode:horizontal-tb; width:${TRACK_PADDING_LEFT - 16}px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                    ${getPigName(pigId)}
+                </span>`;
+            lane.appendChild(label);
+
+            // Progress bar at bottom of lane
+            const progWrap = document.createElement('div');
+            progWrap.style.cssText = `position:absolute; bottom:0; left:${TRACK_PADDING_LEFT}px; right:${TRACK_PADDING_RIGHT}px; height:3px; border-radius:999px; background:rgba(255,255,255,0.05); overflow:hidden;`;
+            const progFill = document.createElement('div');
+            progFill.style.cssText = `height:100%; border-radius:999px; background:${pigColors[pigId]}; width:0%; transition:width 0.22s ease; opacity:0.5;`;
+            progFill.id = `prog-${pigId}`;
+            progWrap.appendChild(progFill);
+            lane.appendChild(progWrap);
+
+            container.appendChild(lane);
+
+            // Position badge overlay
+            const posBadge = document.createElement('div');
+            posBadge.id = `posbadge-${pigId}`;
+            posBadge.style.cssText = `position:absolute; top:6px; right:${TRACK_PADDING_RIGHT + 6}px; font-size:0.65rem; font-weight:900; color:rgba(255,255,255,0.35); z-index:9;`;
+            posBadge.textContent = '';
+            lane.appendChild(posBadge);
+
+            pigElements[pigId] = { lane, emojiEl, nameBadge };
+        });
+    }
+
+    function buildSegmentZones() {
+        const wrap = document.createElement('div');
+        wrap.style.cssText = `position:absolute; inset:0; pointer-events:none; display:flex;`;
+
+        const trackWidth = 100; // in %
+        const usableWidth = 100 - ((TRACK_PADDING_LEFT + TRACK_PADDING_RIGHT) / (document.getElementById('track-container').offsetWidth || 800) * 100);
+
+        let covered = 0;
+        for (const seg of segments) {
+            const pct = (seg.length / totalLength) * usableWidth;
+            const left = TRACK_PADDING_LEFT / (document.getElementById('track-container').offsetWidth || 800) * 100 + (covered / totalLength) * usableWidth;
+            const zone = document.createElement('div');
+            zone.className = `segment-marker zone-${seg.type}`;
+            zone.style.cssText = `left:${left}%; width:${pct}%;`;
+            wrap.appendChild(zone);
+            covered += seg.length;
+        }
+        return wrap;
+    }
+
+    function buildScoreboard() {
+        const sb = document.getElementById('scoreboard');
+        sb.innerHTML = '';
+        pigOrder.forEach(pigId => {
+            const row = document.createElement('div');
+            row.className = 'score-row';
+            row.id = `sbrow-${pigId}`;
+            row.innerHTML = `
+                <span style="font-size:1.1rem; width:22px; text-align:center;">${getPigEmoji(pigId)}</span>
+                <span style="font-size:0.78rem; font-weight:800; color:rgba(255,255,255,0.75); flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${getPigName(pigId)}</span>
+                <span id="sbpct-${pigId}" style="font-size:0.7rem; font-weight:800; color:rgba(255,255,255,0.35);">0%</span>
+            `;
+            sb.appendChild(row);
+            scoreboardRows[pigId] = row;
+        });
+    }
+
+    // ─── DISPLAY UPDATE ──────────────────────────────────────────────
+
+    function getPigEmoji(id) {
+        if (!replayData) return '🐷';
+        const meta = replayData.participant_meta;
+        if (meta && meta[id]) return meta[id].emoji || '🐷';
+        if (turns.length > 0) {
+            const p = turns[0].pigs.find(x => x.id == id);
+            if (p) return '🐷';
+        }
+        return '🐷';
+    }
+
+    function getPigName(id) {
+        if (!replayData || !turns.length) return '???';
+        const p = turns[0].pigs.find(x => x.id == id);
+        return p ? p.name : '???';
+    }
+
+    function updateDisplay(turnIdx) {
+        if (!turns.length) return;
+        const turnIdx2 = Math.min(turnIdx, turns.length - 1);
+        const turn = turns[turnIdx2];
+
+        document.getElementById('turn-display').textContent = `Tour ${turn.turn} / ${turns[turns.length-1].turn}`;
+        const globalPct = Math.round((turn.turn / turns[turns.length-1].turn) * 100);
+        document.getElementById('overall-fill').style.width = globalPct + '%';
+
+        // Sort pigs by distance descending for ranking
+        const sorted = [...turn.pigs].sort((a, b) => b.distance - a.distance);
+
+        // Update phase badge from leader
+        if (sorted[0]) {
+            const phases = { phase_1:'Phase 1 — Départ', phase_2:'Phase 2 — Mi-course', phase_3:'Phase 3 — Sprint final' };
+            document.getElementById('phase-badge').textContent = phases[sorted[0].phase] || sorted[0].phase || '';
+        }
+
+        const trackWidth = document.getElementById('track-container').offsetWidth || 800;
+        const usableWidth = trackWidth - TRACK_PADDING_LEFT - TRACK_PADDING_RIGHT - PIG_SIZE;
+
+        turn.pigs.forEach(pig => {
+            const pct = Math.min(1, pig.distance / totalLength);
+            const leftPx = TRACK_PADDING_LEFT + pct * usableWidth;
+
+            const racer = document.getElementById(`pig-racer-${pig.id}`);
+            if (!racer) return;
+            racer.style.left = leftPx + 'px';
+
+            // Event class
+            racer.className = 'pig-racer';
+            if (pig.visual_event === 'sprint') racer.classList.add('event-sprint');
+            else if (pig.visual_event === 'stumble') racer.classList.add('event-stumble');
+            else if (pig.visual_event === 'tired') racer.classList.add('event-tired');
+            else if (pig.visual_event === 'drafting') racer.classList.add('event-drafting');
+            else if (pig.visual_event === 'finished') racer.classList.add('event-finished');
+            else if (!pig.is_finished) racer.classList.add('is-running');
+
+            // Progress bar
+            const prog = document.getElementById(`prog-${pig.id}`);
+            if (prog) prog.style.width = (pct * 100) + '%';
+
+            // Lane highlight
+            const lane = document.getElementById(`lane-${pig.id}`);
+            if (lane) {
+                lane.className = 'track-lane';
+                if (pig.is_finished) lane.classList.add('is-finished');
+                else if (sorted[0] && sorted[0].id === pig.id) lane.classList.add('is-leader');
+            }
+
+            // Speed trail when sprinting
+            if (pig.visual_event === 'sprint' && playing && Math.random() < 0.4) {
+                spawnTrail(pig.id, leftPx, lane);
+            }
+            // Dust on stumble
+            if (pig.visual_event === 'stumble' && lane) {
+                spawnDust(leftPx, lane);
+            }
+        });
+
+        // Scoreboard
+        const prevFirst = document.querySelector('.score-row.pos-1');
+        const prevFirstId = prevFirst ? parseInt(prevFirst.id.replace('sbrow-','')) : null;
+
+        sorted.forEach((pig, rank) => {
+            const row = document.getElementById(`sbrow-${pig.id}`);
+            if (!row) return;
+            row.className = 'score-row' + (pig.is_finished ? ' is-finished-row' : '');
+            if (rank === 0) row.classList.add('pos-1');
+            else if (rank === 1) row.classList.add('pos-2');
+            else if (rank === 2) row.classList.add('pos-3');
+
+            const pct = document.getElementById(`sbpct-${pig.id}`);
+            if (pct) pct.textContent = Math.round((pig.distance / totalLength)*100) + '%';
+
+            // Reorder DOM
+            document.getElementById('scoreboard').appendChild(row);
+
+            // Position badge
+            const posBadge = document.getElementById(`posbadge-${pig.id}`);
+            if (posBadge) {
+                const medals = ['🥇','🥈','🥉'];
+                posBadge.textContent = pig.is_finished ? (medals[rank] || `#${rank+1}`) : `#${rank+1}`;
+            }
+        });
+
+        // Commentary (only on notable events, avoid spam)
+        if (playing && turnIdx % 3 === 0) {
+            generateCommentary(turn, sorted, prevFirstId);
+        }
+    }
+
+    // ─── COMMENTARY ──────────────────────────────────────────────────
+
+    let lastCommentaryTurn = -99;
+
+    function generateCommentary(turn, sorted, prevLeaderId) {
+        if (turn.turn - lastCommentaryTurn < 2) return;
+
+        let msg = null;
+        const leader = sorted[0];
+
+        // Lead change
+        if (prevLeaderId && leader && leader.id !== prevLeaderId && !leader.is_finished) {
+            msg = pick(COMMENTARY_POOL.lead_change).replace('{name}', leader.name);
+        }
+
+        // Notable events
+        if (!msg) {
+            for (const pig of turn.pigs) {
+                if (pig.visual_event === 'stumble') {
+                    msg = pick(COMMENTARY_POOL.stumble).replace('{name}', pig.name);
+                    break;
+                }
+            }
+        }
+        if (!msg) {
+            for (const pig of turn.pigs) {
+                if (pig.visual_event === 'sprint' && Math.random() < 0.3) {
+                    msg = pick(COMMENTARY_POOL.sprint).replace('{name}', pig.name);
+                    break;
+                }
+            }
+        }
+        if (!msg) {
+            for (const pig of turn.pigs) {
+                if (pig.visual_event === 'tired' && Math.random() < 0.2) {
+                    msg = pick(COMMENTARY_POOL.tired).replace('{name}', pig.name);
+                    break;
+                }
+            }
+        }
+        if (!msg) {
+            for (const pig of turn.pigs) {
+                if (pig.has_draft && Math.random() < 0.15) {
+                    msg = pick(COMMENTARY_POOL.drafting).replace('{name}', pig.name);
+                    break;
+                }
+            }
+        }
+        // Segment-based
+        if (!msg && leader && leader.segment_type === 'BOUE' && Math.random() < 0.2) {
+            msg = pick(COMMENTARY_POOL.boue).replace('{name}', leader.name);
+        }
+        if (!msg && leader && leader.segment_type === 'MONTEE' && Math.random() < 0.15) {
+            msg = pick(COMMENTARY_POOL.montee).replace('{name}', leader.name);
+        }
+
+        if (msg) {
+            setCommentary(msg);
+            lastCommentaryTurn = turn.turn;
+        }
+    }
+
+    function setCommentary(text) {
+        const el = document.getElementById('commentary-text');
+        el.textContent = text;
+        el.className = 'commentary-text fade-in';
+        setTimeout(() => el.classList.remove('fade-in'), 500);
+    }
+
+    function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+
+    // ─── PARTICLES ───────────────────────────────────────────────────
+
+    function spawnTrail(pigId, leftPx, laneEl) {
+        if (!laneEl) return;
+        const trail = document.createElement('div');
+        trail.className = 'speed-trail';
+        trail.style.left = (leftPx - 10 + Math.random()*6) + 'px';
+        trail.style.bottom = (10 + Math.random() * 20) + 'px';
+        trail.style.background = pigColors[pigId] || '#f472b6';
+        trail.style.width = trail.style.height = (4 + Math.random()*6) + 'px';
+        laneEl.appendChild(trail);
+        setTimeout(() => trail.remove(), 500);
+    }
+
+    function spawnDust(leftPx, laneEl) {
+        if (!laneEl) return;
+        const dust = document.createElement('div');
+        dust.className = 'dust-puff';
+        dust.style.left = (leftPx - 5) + 'px';
+        dust.style.bottom = '12px';
+        dust.textContent = pick(['💨','💥','🌪️']);
+        laneEl.appendChild(dust);
+        setTimeout(() => dust.remove(), 700);
+    }
+
+    // ─── PLAYBACK ────────────────────────────────────────────────────
+
+    const BASE_INTERVAL_MS = 250; // ms between turns at ×1
+
+    function togglePlay() {
+        if (playing) pauseRace();
+        else playRace();
+    }
+
+    function playRace() {
+        if (currentTurnIdx >= turns.length) { currentTurnIdx = 0; }
+        playing = true;
+        document.getElementById('btn-play').textContent = '⏸ Pause';
+        scheduleNext();
+    }
+
+    function pauseRace() {
+        playing = false;
+        document.getElementById('btn-play').textContent = '▶ Reprendre';
+        clearTimeout(animTimer);
+    }
+
+    function scheduleNext() {
+        if (!playing) return;
+        const delay = BASE_INTERVAL_MS / playSpeed;
+        animTimer = setTimeout(() => {
+            if (currentTurnIdx < turns.length) {
+                updateDisplay(currentTurnIdx);
+                checkFinishEvents(currentTurnIdx);
+                currentTurnIdx++;
+                scheduleNext();
+            } else {
+                playing = false;
+                document.getElementById('btn-play').textContent = '▶ Rejouer';
+                setTimeout(showFinishScreen, 500);
+            }
+        }, delay);
+    }
+
+    function restartRace() {
+        clearTimeout(animTimer);
+        playing = false;
+        currentTurnIdx = 0;
+        lastCommentaryTurn = -99;
+        document.getElementById('btn-play').textContent = '▶ Lancer la course';
+        document.getElementById('finish-overlay').classList.remove('show');
+        updateDisplay(0);
+        setCommentary('🎙️ Les cochons reprennent position sur la ligne de départ. Fais pas la honte cette fois !');
+    }
+
+    function setSpeed(s) {
+        playSpeed = s;
+        ['0.5','1','2','4'].forEach(v => {
+            const btn = document.getElementById(`speed-${v}`);
+            if (btn) btn.style.background = (parseFloat(v) === s) ? 'rgba(244,114,182,0.35)' : '';
+            if (btn) btn.style.color = (parseFloat(v) === s) ? '#fff' : '';
+        });
+    }
+
+    // ─── FINISH ──────────────────────────────────────────────────────
+
+    let announcedFinishers = new Set();
+
+    function checkFinishEvents(turnIdx) {
+        const turn = turns[turnIdx];
+        if (!turn) return;
+        turn.pigs.forEach(pig => {
+            if (pig.is_finished && !announcedFinishers.has(pig.id)) {
+                announcedFinishers.add(pig.id);
+                const msg = pick(COMMENTARY_POOL.finish).replace('{name}', pig.name);
+                setCommentary(msg);
+                lastCommentaryTurn = turn.turn;
+            }
+        });
+    }
+
+    function showFinishScreen() {
+        const meta = replayData.participant_meta || {};
+        const winner = replayData.winner_name || '???';
+
+        document.getElementById('podium-winner').textContent = winner + ' 🐷';
+        document.getElementById('podium-subtitle').textContent = 'remporte le Derby des Groins !';
+
+        // Build final positions
+        const posDiv = document.getElementById('podium-positions');
+        posDiv.innerHTML = '';
+        const medals = ['🥇','🥈','🥉'];
+        const lastTurn = turns[turns.length - 1];
+        const sorted = [...lastTurn.pigs].sort((a, b) => {
+            const fa = a.is_finished ? (turns.find(t => t.pigs.find(p => p.id === a.id && p.is_finished))?.turn || 9999) : 9999;
+            const fb = b.is_finished ? (turns.find(t => t.pigs.find(p => p.id === b.id && p.is_finished))?.turn || 9999) : 9999;
+            if (fa !== fb) return fa - fb;
+            return b.distance - a.distance;
+        });
+
+        sorted.slice(0,5).forEach((pig, i) => {
+            const row = document.createElement('div');
+            row.style.cssText = 'display:flex; align-items:center; gap:10px; padding:8px 12px; border-radius:10px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.06);';
+            row.innerHTML = `
+                <span style="font-size:1.3rem; width:24px;">${medals[i] || '#' + (i+1)}</span>
+                <span style="font-size:1.3rem;">${getPigEmoji(pig.id)}</span>
+                <span style="font-weight:800; color:rgba(255,255,255,0.8); font-size:0.85rem; flex:1;">${pig.name}</span>
+                <span style="font-size:0.7rem; color:rgba(255,255,255,0.35); font-weight:800;">${pig.is_finished ? '✅ Finisheur' : '🏃 Course libre'}</span>
+            `;
+            posDiv.appendChild(row);
+        });
+
+        document.getElementById('finish-overlay').classList.add('show');
+        launchConfetti();
+    }
+
+    function closeFinish() {
+        document.getElementById('finish-overlay').classList.remove('show');
+    }
+
+    // ─── CONFETTI ────────────────────────────────────────────────────
+
+    function launchConfetti() {
+        const colors = ['#f472b6','#fb923c','#facc15','#a78bfa','#34d399','#fff'];
+        for (let i = 0; i < 80; i++) {
+            setTimeout(() => {
+                const el = document.createElement('div');
+                el.className = 'confetti-piece';
+                el.style.left = Math.random() * 100 + 'vw';
+                el.style.top = '-20px';
+                el.style.background = colors[Math.floor(Math.random() * colors.length)];
+                el.style.width = (6 + Math.random() * 10) + 'px';
+                el.style.height = (6 + Math.random() * 10) + 'px';
+                el.style.animationDuration = (2 + Math.random() * 3) + 's';
+                el.style.animationDelay = '0s';
+                document.body.appendChild(el);
+                setTimeout(() => el.remove(), 5000);
+            }, i * 40);
+        }
+    }
+
+    // ─── KEYBOARD SHORTCUTS ──────────────────────────────────────────
+
+    document.addEventListener('keydown', (e) => {
+        if (e.code === 'Space') { e.preventDefault(); togglePlay(); }
+        if (e.code === 'KeyR') restartRace();
+        if (e.key === '1') setSpeed(0.5);
+        if (e.key === '2') setSpeed(1);
+        if (e.key === '3') setSpeed(2);
+        if (e.key === '4') setSpeed(4);
+    });
+
+    // ─── GO ──────────────────────────────────────────────────────────
+
+    setSpeed(1);
+    initRace();
+    </script>
+</body>
+</html>

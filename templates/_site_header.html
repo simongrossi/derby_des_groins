@@ -51,6 +51,7 @@
             {% if user %}
             <nav class="flex flex-wrap items-center gap-2">
                 <a href="/courses" class="{{ nav_base }} {{ nav_active if active_page == 'courses' else nav_idle }}">📅 Courses</a>
+                <a href="/live" class="{{ nav_base }} {{ nav_active if active_page == 'live' else nav_idle }}" style="{{ 'border-color: rgba(244,114,182,0.5); background: linear-gradient(135deg, rgba(244,114,182,0.18), rgba(251,146,60,0.12));' if active_page != 'live' else '' }}">🏁 Live Replay</a>
                 <a href="/mon-cochon" class="{{ nav_base }} {{ nav_active if active_page == 'mon_cochon' else nav_idle }}">🐷 Mon Cochon</a>
                 <a href="/veterinaire" class="{{ nav_base }} {{ 'border-red-400/35 bg-red-500/15 text-red-100 shadow-[0_8px_24px_rgba(248,113,113,0.12)]' if injured_pig_nav_id else (nav_active if active_page == 'veterinaire' else nav_idle) }}">{{ '🏥 Véto urgent' if injured_pig_nav_id else '🏥 Vétérinaire' }}</a>
                 <a href="/bourse" class="{{ nav_base }} {{ nav_active if active_page == 'bourse' else nav_idle }}">🌾 Bourse</a>
