@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🗃️ {{ 'Modifier' if mode == 'edit' else 'Nouveau' }} — Derby des Groins</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * { font-family: 'Nunito', sans-serif; }
+        .font-title { font-family: 'Lilita One', cursive; }
+        body {
+            background: #0f0a1e;
+            background-image:
+                radial-gradient(ellipse at 20% 50%, rgba(99, 102, 241, 0.12) 0%, transparent 60%),
+                radial-gradient(ellipse at 80% 20%, rgba(139, 92, 246, 0.08) 0%, transparent 50%);
+            min-height: 100vh;
+        }
+        .card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 1.5rem;
+        }
+        .input-admin {
+            background: rgba(255, 255, 255, 0.07);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 0.75rem;
+            padding: 0.6rem 1rem;
+            color: white;
+            font-weight: 700;
+            font-size: 0.9rem;
+            outline: none;
+            transition: border-color 0.2s;
+            width: 100%;
+        }
+        .input-admin:focus { border-color: #8b5cf6; }
+        .input-admin::placeholder { color: rgba(255,255,255,0.25); }
+        textarea.input-admin { min-height: 3rem; resize: vertical; }
+        .btn-admin {
+            background: linear-gradient(135deg, #6366f1, #8b5cf6);
+            border: none; color: white; font-weight: 800;
+            border-radius: 0.75rem; padding: 0.65rem 1.5rem;
+            cursor: pointer; transition: all 0.2s; font-size: 0.85rem;
+            text-transform: uppercase; letter-spacing: 0.05em;
+            text-decoration: none; display: inline-block;
+        }
+        .btn-admin:hover { transform: translateY(-1px); box-shadow: 0 8px 25px rgba(99, 102, 241, 0.4); }
+        .btn-sm { padding: 0.35rem 0.8rem; font-size: 0.7rem; border-radius: 0.5rem; }
+        label { display: block; color: rgba(255,255,255,0.6); font-size: 0.75rem; font-weight: 800; margin-bottom: 0.25rem; }
+        .section-title { color: rgba(255,255,255,0.5); font-size: 0.7rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 0.5rem; }
+        .answer-block {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 0.75rem;
+            padding: 1rem;
+        }
+        .toggle-checkbox { accent-color: #8b5cf6; width: 1.2rem; height: 1.2rem; cursor: pointer; }
+    </style>
+</head>
+<body>
+{% set active_page = 'admin' %}
+{% include "_site_header.html" %}
+
+{% set type_labels = {'cereal': 'Cereale', 'training': 'Entrainement', 'lesson': 'Lecon'} %}
+{% set type_label = type_labels.get(item_type, 'Item') %}
+{% set type_emojis = {'cereal': '🌾', 'training': '💪', 'lesson': '📚'} %}
+{% set type_emoji = type_emojis.get(item_type, '📦') %}
+
+<main class="max-w-3xl mx-auto px-4 py-8">
+
+    <div class="flex items-center justify-between mb-6">
+        <h1 class="font-title text-3xl text-white">
+            {{ type_emoji }} {{ 'Modifier' if mode == 'edit' else 'Nouveau' }} {{ type_label }}
+        </h1>
+        <a href="/admin/data" class="btn-admin btn-sm">← Retour</a>
+    </div>
+
+    <form method="POST" action="/admin/data/{{ item_type }}/save">
+        {% if mode == 'edit' and item %}
+        <input type="hidden" name="item_id" value="{{ item.id }}">
+        {% endif %}
+
+        <div class="card p-6 mb-6">
+            <p class="section-title">Informations generales</p>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                <div class="{{ 'col-span-2' if mode == 'new' else '' }}">
+                    <label>Cle unique</label>
+                    {% if mode == 'edit' %}
+                    <p class="text-white font-bold text-sm py-2">{{ item.key }}</p>
+                    {% else %}
+                    <input type="text" name="key" class="input-admin" placeholder="ex: galette_rois" required
+                           pattern="[a-z0-9_]+" title="Minuscules, chiffres et underscores">
+                    {% endif %}
+                </div>
+                <div>
+                    <label>Nom</label>
+                    <input type="text" name="name" class="input-admin" value="{{ item.name if item else '' }}" required>
+                </div>
+                <div>
+                    <label>Emoji</label>
+                    <input type="text" name="emoji" class="input-admin" value="{{ item.emoji if item else '' }}" maxlength="4">
+                </div>
+                <div>
+                    <label>Ordre d'affichage</label>
+                    <input type="number" name="sort_order" class="input-admin" value="{{ item.sort_order if item else 0 }}">
+                </div>
+            </div>
+
+            <div class="mb-4">
+                <label>Description</label>
+                <textarea name="description" class="input-admin" rows="2">{{ item.description if item else '' }}</textarea>
+            </div>
+
+            <div class="flex items-center gap-3 mb-2">
+                <input type="checkbox" name="is_active" class="toggle-checkbox" id="is_active"
+                    {{ 'checked' if (not item or item.is_active) else '' }}>
+                <label for="is_active" class="mb-0 cursor-pointer text-white/80">Actif en jeu</label>
+            </div>
+        </div>
+
+        <!-- PARAMETRES SPECIFIQUES -->
+        <div class="card p-6 mb-6">
+            {% if item_type == 'cereal' %}
+            <p class="section-title">Parametres de la cereale</p>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div>
+                    <label>Prix (🪙)</label>
+                    <input type="number" name="cost" class="input-admin" step="0.5" value="{{ item.cost if item else 5 }}">
+                </div>
+                <div>
+                    <label>Faim restauree</label>
+                    <input type="number" name="hunger_restore" class="input-admin" step="1" value="{{ item.hunger_restore|int if item else 20 }}">
+                </div>
+                <div>
+                    <label>Energie restauree</label>
+                    <input type="number" name="energy_restore" class="input-admin" step="1" value="{{ item.energy_restore|int if item else 5 }}">
+                </div>
+                <div>
+                    <label>Delta poids (kg)</label>
+                    <input type="number" name="weight_delta" class="input-admin" step="0.1" value="{{ item.weight_delta if item else 0 }}">
+                </div>
+                <div>
+                    <label>Valeur fourragere</label>
+                    <input type="number" name="valeur_fourragere" class="input-admin" step="1" value="{{ item.valeur_fourragere|int if item else 100 }}">
+                </div>
+            </div>
+
+            {% elif item_type == 'training' %}
+            <p class="section-title">Parametres de l'entrainement</p>
+            <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
+                <div>
+                    <label>Cout energie</label>
+                    <input type="number" name="energy_cost" class="input-admin" value="{{ item.energy_cost if item else 25 }}">
+                </div>
+                <div>
+                    <label>Cout faim</label>
+                    <input type="number" name="hunger_cost" class="input-admin" value="{{ item.hunger_cost if item else 10 }}">
+                </div>
+                <div>
+                    <label>Delta poids (kg)</label>
+                    <input type="number" name="weight_delta" class="input-admin" step="0.1" value="{{ item.weight_delta if item else 0 }}">
+                </div>
+                <div>
+                    <label>Bonheur minimum</label>
+                    <input type="number" name="min_happiness" class="input-admin" value="{{ item.min_happiness if item else 20 }}">
+                </div>
+                <div>
+                    <label>Bonus bonheur</label>
+                    <input type="number" name="happiness_bonus" class="input-admin" value="{{ item.happiness_bonus if item else 0 }}">
+                </div>
+            </div>
+
+            {% elif item_type == 'lesson' %}
+            <p class="section-title">Parametres du cours</p>
+            <div class="mb-4">
+                <label>Question</label>
+                <textarea name="question" class="input-admin" rows="2" required>{{ item.question if item else '' }}</textarea>
+            </div>
+
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                <div>
+                    <label>XP (bonne reponse)</label>
+                    <input type="number" name="xp" class="input-admin" value="{{ item.xp if item else 20 }}">
+                </div>
+                <div>
+                    <label>XP (mauvaise)</label>
+                    <input type="number" name="wrong_xp" class="input-admin" value="{{ item.wrong_xp if item else 5 }}">
+                </div>
+                <div>
+                    <label>Cout energie</label>
+                    <input type="number" name="energy_cost" class="input-admin" value="{{ item.energy_cost if item else 10 }}">
+                </div>
+                <div>
+                    <label>Cout faim</label>
+                    <input type="number" name="hunger_cost" class="input-admin" value="{{ item.hunger_cost if item else 4 }}">
+                </div>
+                <div>
+                    <label>Bonheur minimum</label>
+                    <input type="number" name="min_happiness" class="input-admin" value="{{ item.min_happiness if item else 15 }}">
+                </div>
+                <div>
+                    <label>Bonus bonheur</label>
+                    <input type="number" name="happiness_bonus" class="input-admin" value="{{ item.happiness_bonus if item else 5 }}">
+                </div>
+                <div>
+                    <label>Malus bonheur (erreur)</label>
+                    <input type="number" name="wrong_happiness_penalty" class="input-admin" value="{{ item.wrong_happiness_penalty if item else 5 }}">
+                </div>
+            </div>
+
+            <!-- REPONSES -->
+            <p class="section-title">Reponses (4 max, cochez la bonne)</p>
+            {% set answers = item.answers if (item and item_type == 'lesson') else [{},{},{},{}] %}
+            {% for i in range(4) %}
+            {% set a = answers[i] if i < answers|length else {} %}
+            <div class="answer-block mb-3">
+                <div class="flex items-center gap-3 mb-2">
+                    <span class="text-white/40 font-bold text-sm">{{ i + 1 }}.</span>
+                    <input type="checkbox" name="answer_{{ i }}_correct" class="toggle-checkbox"
+                        {{ 'checked' if a.get('correct') else '' }}>
+                    <span class="text-green-400/60 text-xs font-bold">Bonne reponse</span>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div>
+                        <label>Texte de la reponse</label>
+                        <input type="text" name="answer_{{ i }}_text" class="input-admin" value="{{ a.get('text', '') }}">
+                    </div>
+                    <div>
+                        <label>Feedback</label>
+                        <input type="text" name="answer_{{ i }}_feedback" class="input-admin" value="{{ a.get('feedback', '') }}">
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+            {% endif %}
+        </div>
+
+        <!-- STATS -->
+        <div class="card p-6 mb-6">
+            <p class="section-title">Bonus de stats {{ '(bonne reponse)' if item_type == 'lesson' else '' }}</p>
+            <div class="grid grid-cols-3 md:grid-cols-6 gap-4">
+                {% for s in stat_names %}
+                <div>
+                    <label>{{ s[:3]|upper }}</label>
+                    <input type="number" name="stat_{{ s }}" class="input-admin" step="0.1"
+                           value="{{ item['stat_' + s] if item else 0 }}">
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- SAISONNALITE -->
+        <div class="card p-6 mb-6">
+            <p class="section-title">Saisonnalite (optionnel)</p>
+            <p class="text-white/30 text-xs font-semibold mb-3">
+                Laisse vide pour un item permanent. Remplis pour un item temporaire (ex: Galette des Rois en janvier).
+            </p>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label>Disponible a partir de</label>
+                    <input type="datetime-local" name="available_from" class="input-admin"
+                           value="{{ item.available_from.strftime('%Y-%m-%dT%H:%M') if item and item.available_from else '' }}">
+                </div>
+                <div>
+                    <label>Disponible jusqu'a</label>
+                    <input type="datetime-local" name="available_until" class="input-admin"
+                           value="{{ item.available_until.strftime('%Y-%m-%dT%H:%M') if item and item.available_until else '' }}">
+                </div>
+            </div>
+        </div>
+
+        <button type="submit" class="btn-admin w-full text-center text-lg py-4">
+            💾 {{ 'Sauvegarder' if mode == 'edit' else 'Creer' }} {{ type_label }}
+        </button>
+    </form>
+
+</main>
+
+<footer class="text-center py-8 text-white/15 text-sm font-semibold">
+    🗃️ Donnees de jeu — Derby des Groins
+</footer>
+
+</body>
+</html>

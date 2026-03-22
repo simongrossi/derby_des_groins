@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🗃️ Derby des Groins — Donnees de jeu</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * { font-family: 'Nunito', sans-serif; }
+        .font-title { font-family: 'Lilita One', cursive; }
+        body {
+            background: #0f0a1e;
+            background-image:
+                radial-gradient(ellipse at 20% 50%, rgba(99, 102, 241, 0.12) 0%, transparent 60%),
+                radial-gradient(ellipse at 80% 20%, rgba(139, 92, 246, 0.08) 0%, transparent 50%);
+            min-height: 100vh;
+        }
+        .card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 1.5rem;
+        }
+        .item-row {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 0.75rem;
+            transition: background 0.2s;
+        }
+        .item-row:hover { background: rgba(255, 255, 255, 0.06); }
+        .btn-admin {
+            background: linear-gradient(135deg, #6366f1, #8b5cf6);
+            border: none; color: white; font-weight: 800;
+            border-radius: 0.75rem; padding: 0.5rem 1.2rem;
+            cursor: pointer; transition: all 0.2s; font-size: 0.8rem;
+            text-transform: uppercase; letter-spacing: 0.05em;
+            text-decoration: none; display: inline-block;
+        }
+        .btn-admin:hover { transform: translateY(-1px); box-shadow: 0 8px 25px rgba(99, 102, 241, 0.4); }
+        .btn-sm {
+            padding: 0.35rem 0.8rem; font-size: 0.7rem; border-radius: 0.5rem;
+        }
+        .btn-danger {
+            background: linear-gradient(135deg, #dc2626, #991b1b);
+            border: none; color: white; font-weight: 800;
+            border-radius: 0.5rem; padding: 0.35rem 0.8rem;
+            cursor: pointer; font-size: 0.7rem;
+        }
+        .btn-toggle-off {
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+        }
+        .btn-toggle-on {
+            background: linear-gradient(135deg, #10b981, #059669);
+        }
+        .stat-pill {
+            display: inline-block; padding: 0.15rem 0.5rem;
+            border-radius: 9999px; font-size: 0.65rem; font-weight: 800;
+            background: rgba(99, 102, 241, 0.15); color: #a5b4fc;
+            margin-right: 0.25rem;
+        }
+        .badge-inactive {
+            background: rgba(239, 68, 68, 0.15); color: #fca5a5;
+            padding: 0.1rem 0.5rem; border-radius: 9999px;
+            font-size: 0.65rem; font-weight: 800;
+        }
+        .badge-seasonal {
+            background: rgba(245, 158, 11, 0.15); color: #fcd34d;
+            padding: 0.1rem 0.5rem; border-radius: 9999px;
+            font-size: 0.65rem; font-weight: 800;
+        }
+        .flash-msg { animation: flashIn 0.4s ease-out; }
+        @keyframes flashIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body>
+{% set active_page = 'admin' %}
+{% include "_site_header.html" %}
+
+<main class="max-w-5xl mx-auto px-4 py-8">
+
+    <div class="flex items-center justify-between mb-2">
+        <h1 class="font-title text-4xl text-white">🗃️ Donnees de jeu</h1>
+        <a href="/admin" class="btn-admin btn-sm">← Retour Admin</a>
+    </div>
+    <p class="text-white/40 font-semibold text-sm mb-8">
+        Modifie cereales, entrainements et lecons sans redemarrer le serveur.
+        Les items desactives n'apparaissent plus en jeu.
+    </p>
+
+    <!-- FLASH MESSAGES -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    <div class="mb-6 space-y-2">
+        {% for category, message in messages %}
+        <div class="flash-msg p-4 rounded-xl text-sm font-bold text-center
+            {% if category == 'error' %}bg-red-500/15 border border-red-500/30 text-red-400
+            {% elif category == 'warning' %}bg-yellow-500/15 border border-yellow-500/30 text-yellow-400
+            {% else %}bg-green-500/15 border border-green-500/30 text-green-400{% endif %}">
+            {{ message }}
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+    {% endwith %}
+
+    <!-- ══════════════════ CEREALES ══════════════════ -->
+    <div class="card p-6 mb-8">
+        <div class="flex items-center justify-between mb-4">
+            <div>
+                <h2 class="font-title text-2xl text-white">🌾 Cereales ({{ cereals | length }})</h2>
+                <p class="text-white/40 text-sm font-semibold">Nourriture achetable pour nourrir les cochons.</p>
+            </div>
+            <a href="/admin/data/cereal/new" class="btn-admin btn-sm">+ Ajouter</a>
+        </div>
+
+        <div class="space-y-2">
+            {% for c in cereals %}
+            <div class="item-row p-4 flex items-center justify-between gap-4">
+                <div class="flex items-center gap-3 flex-1 min-w-0">
+                    <span class="text-2xl">{{ c.emoji }}</span>
+                    <div class="min-w-0">
+                        <p class="text-white font-bold text-sm truncate">
+                            {{ c.name }}
+                            <span class="text-white/20 text-xs ml-1">[{{ c.key }}]</span>
+                            {% if not c.is_active %}<span class="badge-inactive ml-1">OFF</span>{% endif %}
+                            {% if c.available_from or c.available_until %}<span class="badge-seasonal ml-1">Saisonnier</span>{% endif %}
+                        </p>
+                        <p class="text-white/30 text-xs font-semibold truncate">
+                            {{ c.cost }} 🪙 · Faim +{{ c.hunger_restore|int }} · Energie +{{ c.energy_restore|int }} · Poids {{ "%+.1f"|format(c.weight_delta) }}kg
+                        </p>
+                        <div class="mt-1">
+                            {% for s in stat_names %}
+                            {% set v = c['stat_' + s] or 0 %}
+                            {% if v %}
+                            <span class="stat-pill">{{ s[:3]|upper }} +{{ v }}</span>
+                            {% endif %}
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+                <div class="flex items-center gap-2 shrink-0">
+                    <form method="POST" action="/admin/data/cereal/{{ c.id }}/toggle">
+                        <button type="submit" class="btn-sm {{ 'btn-toggle-on' if c.is_active else 'btn-toggle-off' }}" style="border:none;color:white;font-weight:800;cursor:pointer;">
+                            {{ '✅ Actif' if c.is_active else '⏸️ Inactif' }}
+                        </button>
+                    </form>
+                    <a href="/admin/data/cereal/{{ c.id }}" class="btn-admin btn-sm">Modifier</a>
+                    <form method="POST" action="/admin/data/cereal/{{ c.id }}/delete" onsubmit="return confirm('Supprimer {{ c.name }} ?');">
+                        <button type="submit" class="btn-danger">🗑️</button>
+                    </form>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- ══════════════════ ENTRAINEMENTS ══════════════════ -->
+    <div class="card p-6 mb-8">
+        <div class="flex items-center justify-between mb-4">
+            <div>
+                <h2 class="font-title text-2xl text-white">💪 Entrainements ({{ trainings | length }})</h2>
+                <p class="text-white/40 text-sm font-semibold">Exercices disponibles pour ameliorer les cochons.</p>
+            </div>
+            <a href="/admin/data/training/new" class="btn-admin btn-sm">+ Ajouter</a>
+        </div>
+
+        <div class="space-y-2">
+            {% for t in trainings %}
+            <div class="item-row p-4 flex items-center justify-between gap-4">
+                <div class="flex items-center gap-3 flex-1 min-w-0">
+                    <span class="text-2xl">{{ t.emoji }}</span>
+                    <div class="min-w-0">
+                        <p class="text-white font-bold text-sm truncate">
+                            {{ t.name }}
+                            <span class="text-white/20 text-xs ml-1">[{{ t.key }}]</span>
+                            {% if not t.is_active %}<span class="badge-inactive ml-1">OFF</span>{% endif %}
+                            {% if t.available_from or t.available_until %}<span class="badge-seasonal ml-1">Saisonnier</span>{% endif %}
+                        </p>
+                        <p class="text-white/30 text-xs font-semibold truncate">
+                            Energie -{{ t.energy_cost }} · Faim -{{ t.hunger_cost }} · Poids {{ "%+.1f"|format(t.weight_delta) }}kg · Bonheur min {{ t.min_happiness }}
+                            {% if t.happiness_bonus %} · Bonheur +{{ t.happiness_bonus }}{% endif %}
+                        </p>
+                        <div class="mt-1">
+                            {% for s in stat_names %}
+                            {% set v = t['stat_' + s] or 0 %}
+                            {% if v %}
+                            <span class="stat-pill">{{ s[:3]|upper }} +{{ v }}</span>
+                            {% endif %}
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+                <div class="flex items-center gap-2 shrink-0">
+                    <form method="POST" action="/admin/data/training/{{ t.id }}/toggle">
+                        <button type="submit" class="btn-sm {{ 'btn-toggle-on' if t.is_active else 'btn-toggle-off' }}" style="border:none;color:white;font-weight:800;cursor:pointer;">
+                            {{ '✅ Actif' if t.is_active else '⏸️ Inactif' }}
+                        </button>
+                    </form>
+                    <a href="/admin/data/training/{{ t.id }}" class="btn-admin btn-sm">Modifier</a>
+                    <form method="POST" action="/admin/data/training/{{ t.id }}/delete" onsubmit="return confirm('Supprimer {{ t.name }} ?');">
+                        <button type="submit" class="btn-danger">🗑️</button>
+                    </form>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- ══════════════════ LECONS D'ECOLE ══════════════════ -->
+    <div class="card p-6 mb-8">
+        <div class="flex items-center justify-between mb-4">
+            <div>
+                <h2 class="font-title text-2xl text-white">📚 Lecons d'ecole ({{ lessons | length }})</h2>
+                <p class="text-white/40 text-sm font-semibold">Quiz pour les cochons studieux.</p>
+            </div>
+            <a href="/admin/data/lesson/new" class="btn-admin btn-sm">+ Ajouter</a>
+        </div>
+
+        <div class="space-y-2">
+            {% for l in lessons %}
+            <div class="item-row p-4 flex items-center justify-between gap-4">
+                <div class="flex items-center gap-3 flex-1 min-w-0">
+                    <span class="text-2xl">{{ l.emoji }}</span>
+                    <div class="min-w-0">
+                        <p class="text-white font-bold text-sm truncate">
+                            {{ l.name }}
+                            <span class="text-white/20 text-xs ml-1">[{{ l.key }}]</span>
+                            {% if not l.is_active %}<span class="badge-inactive ml-1">OFF</span>{% endif %}
+                            {% if l.available_from or l.available_until %}<span class="badge-seasonal ml-1">Saisonnier</span>{% endif %}
+                        </p>
+                        <p class="text-white/30 text-xs font-semibold truncate">
+                            XP +{{ l.xp }} (erreur +{{ l.wrong_xp }}) · Energie -{{ l.energy_cost }} · Faim -{{ l.hunger_cost }}
+                        </p>
+                        <p class="text-white/20 text-xs italic mt-0.5 truncate">{{ l.question }}</p>
+                        <div class="mt-1">
+                            {% for s in stat_names %}
+                            {% set v = l['stat_' + s] or 0 %}
+                            {% if v %}
+                            <span class="stat-pill">{{ s[:3]|upper }} +{{ v }}</span>
+                            {% endif %}
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+                <div class="flex items-center gap-2 shrink-0">
+                    <form method="POST" action="/admin/data/lesson/{{ l.id }}/toggle">
+                        <button type="submit" class="btn-sm {{ 'btn-toggle-on' if l.is_active else 'btn-toggle-off' }}" style="border:none;color:white;font-weight:800;cursor:pointer;">
+                            {{ '✅ Actif' if l.is_active else '⏸️ Inactif' }}
+                        </button>
+                    </form>
+                    <a href="/admin/data/lesson/{{ l.id }}" class="btn-admin btn-sm">Modifier</a>
+                    <form method="POST" action="/admin/data/lesson/{{ l.id }}/delete" onsubmit="return confirm('Supprimer {{ l.name }} ?');">
+                        <button type="submit" class="btn-danger">🗑️</button>
+                    </form>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+</main>
+
+<footer class="text-center py-8 text-white/15 text-sm font-semibold">
+    🗃️ Donnees de jeu — Derby des Groins
+</footer>
+
+</body>
+</html>

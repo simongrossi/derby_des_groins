@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔧 Derby des Groins — Admin</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * { font-family: 'Nunito', sans-serif; }
+        .font-title { font-family: 'Lilita One', cursive; }
+
+        body {
+            background: #0f0a1e;
+            background-image:
+                radial-gradient(ellipse at 20% 50%, rgba(99, 102, 241, 0.12) 0%, transparent 60%),
+                radial-gradient(ellipse at 80% 20%, rgba(139, 92, 246, 0.08) 0%, transparent 50%);
+            min-height: 100vh;
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 1.5rem;
+        }
+
+        .input-admin {
+            background: rgba(255, 255, 255, 0.07);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 0.75rem;
+            padding: 0.6rem 1rem;
+            color: white;
+            font-weight: 700;
+            font-size: 0.9rem;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        .input-admin:focus { border-color: #8b5cf6; }
+
+        select.input-admin {
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23888' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 0.75rem center;
+            padding-right: 2.5rem;
+        }
+
+        .btn-admin {
+            background: linear-gradient(135deg, #6366f1, #8b5cf6);
+            border: none; color: white; font-weight: 800;
+            border-radius: 0.75rem; padding: 0.65rem 1.5rem;
+            cursor: pointer; transition: all 0.2s; font-size: 0.85rem;
+            text-transform: uppercase; letter-spacing: 0.05em;
+        }
+        .btn-admin:hover { transform: translateY(-1px); box-shadow: 0 8px 25px rgba(99, 102, 241, 0.4); }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #dc2626, #991b1b);
+            border: none; color: white; font-weight: 800;
+            border-radius: 0.75rem; padding: 0.65rem 1.5rem;
+            cursor: pointer; transition: all 0.2s; font-size: 0.85rem;
+            text-transform: uppercase; letter-spacing: 0.05em;
+        }
+        .btn-danger:hover { transform: translateY(-1px); box-shadow: 0 8px 25px rgba(220, 38, 38, 0.4); }
+
+        .flash-msg {
+            animation: flashIn 0.4s ease-out;
+        }
+        @keyframes flashIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .result-card {
+            background: linear-gradient(135deg, rgba(34, 197, 94, 0.1), rgba(16, 185, 129, 0.06));
+            border: 1px solid rgba(34, 197, 94, 0.2);
+            border-radius: 0.75rem;
+        }
+
+        .user-row {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 0.75rem;
+            transition: background 0.2s;
+        }
+        .user-row:hover { background: rgba(255, 255, 255, 0.06); }
+    </style>
+</head>
+<body>
+{% set active_page = 'admin' %}
+{% include "_site_header.html" %}
+
+<main class="max-w-5xl mx-auto px-4 py-8">
+
+    <h1 class="font-title text-4xl text-white mb-2">🔧 Panneau d'Administration</h1>
+    <p class="text-white/40 font-semibold text-sm mb-8">Gère les horaires de courses, le marché, les joueurs et tous les cochons.</p>
+
+    <!-- FLASH MESSAGES -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    <div class="mb-6 space-y-2">
+        {% for category, message in messages %}
+        <div class="flash-msg p-4 rounded-xl text-sm font-bold text-center
+            {% if category == 'error' %}bg-red-500/15 border border-red-500/30 text-red-400
+            {% elif category == 'warning' %}bg-yellow-500/15 border border-yellow-500/30 text-yellow-400
+            {% else %}bg-green-500/15 border border-green-500/30 text-green-400{% endif %}">
+            {{ message }}
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+    {% endwith %}
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+
+        <!-- CONFIGURATION COURSES -->
+        <div class="card p-6">
+            <h2 class="font-title text-2xl text-white mb-1">🏁 Horaire des Courses</h2>
+            <p class="text-white/40 text-sm font-semibold mb-5">Une course par jour à l'heure configurée.</p>
+
+            <form method="POST" action="/admin/save">
+                <div class="grid grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <label class="text-white/60 text-xs font-bold block mb-1">Heure</label>
+                        <input type="number" name="race_hour" value="{{ config.race_hour }}" min="0" max="23"
+                               class="input-admin w-full">
+                    </div>
+                    <div>
+                        <label class="text-white/60 text-xs font-bold block mb-1">Minutes</label>
+                        <input type="number" name="race_minute" value="{{ config.race_minute }}" min="0" max="59"
+                               class="input-admin w-full">
+                    </div>
+                </div>
+
+                <div class="bg-indigo-500/10 border border-indigo-500/20 rounded-xl p-3 mb-4">
+                    <p class="text-indigo-300/70 text-xs font-bold">
+                        ⏰ Prochaine course :
+                        {% if next_race %}
+                            <span class="text-indigo-300">{{ next_race.scheduled_at.strftime('%d/%m/%Y à %H:%M') }}</span>
+                        {% else %}
+                            <span class="text-white/40">Aucune planifiée</span>
+                        {% endif %}
+                    </p>
+                </div>
+
+                <h3 class="font-title text-lg text-white mb-3 mt-6">🏪 Horaire du Marché aux Groins</h3>
+                <p class="text-white/40 text-xs font-semibold mb-4">Le marché ouvre une fois par semaine.</p>
+
+                <div class="grid grid-cols-2 gap-4 mb-4">
+                    <div class="col-span-2">
+                        <label class="text-white/60 text-xs font-bold block mb-1">Jour de la semaine</label>
+                        <select name="market_day" class="input-admin w-full">
+                            {% for i in range(7) %}
+                            <option value="{{ i }}" {% if config.market_day == i|string %}selected{% endif %}>
+                                {{ jours[i] }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-white/60 text-xs font-bold block mb-1">Heure</label>
+                        <input type="number" name="market_hour" value="{{ config.market_hour }}" min="0" max="23"
+                               class="input-admin w-full">
+                    </div>
+                    <div>
+                        <label class="text-white/60 text-xs font-bold block mb-1">Minutes</label>
+                        <input type="number" name="market_minute" value="{{ config.market_minute }}" min="0" max="59"
+                               class="input-admin w-full">
+                    </div>
+                    <div class="col-span-2">
+                        <label class="text-white/60 text-xs font-bold block mb-1">Durée du marché (minutes)</label>
+                        <input type="number" name="market_duration" value="{{ config.market_duration }}" min="15" max="1440"
+                               class="input-admin w-full">
+                    </div>
+                </div>
+
+                <h3 class="font-title text-lg text-white mb-3 mt-6">⚙️ Gestion des Courses Vides</h3>
+                <p class="text-white/40 text-xs font-semibold mb-4">Règle si le nombre de participants réels est insuffisant.</p>
+
+                <div class="grid grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <label class="text-white/60 text-xs font-bold block mb-1">Minimum réels</label>
+                        <input type="number" name="min_real_participants" value="{{ config.min_real_participants }}" min="0" max="8"
+                               class="input-admin w-full">
+                    </div>
+                    <div>
+                        <label class="text-white/60 text-xs font-bold block mb-1">Action</label>
+                        <select name="empty_race_mode" class="input-admin w-full">
+                            <option value="fill" {% if config.empty_race_mode == 'fill' %}selected{% endif %}>Remplir avec PNJ</option>
+                            <option value="cancel" {% if config.empty_race_mode == 'cancel' %}selected{% endif %}>Annuler la course</option>
+                        </select>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn-admin w-full mt-2">
+                    💾 Sauvegarder la configuration
+                </button>
+            </form>
+        </div>
+
+        <!-- ACTIONS RAPIDES -->
+        <div class="space-y-6">
+            <!-- FORCER UNE COURSE -->
+            <div class="card p-6">
+                <h2 class="font-title text-2xl text-white mb-1">⚡ Actions rapides</h2>
+                <p class="text-white/40 text-sm font-semibold mb-5">Opérations manuelles.</p>
+
+                <form method="POST" action="/admin/force-race" class="mb-4">
+                    <button type="submit" class="btn-danger w-full"
+                            onclick="return confirm('Lancer une course immédiatement ?');">
+                        🏁 Forcer une course maintenant
+                    </button>
+                </form>
+                <p class="text-white/30 text-xs font-semibold mb-4">
+                    Lance une course immédiatement avec tous les cochons en forme + PNJ.
+                </p>
+
+                <a href="/admin/data" class="btn-admin w-full text-center block">
+                    🗃️ Gerer les donnees de jeu
+                </a>
+                <p class="text-white/30 text-xs font-semibold mt-2">
+                    Cereales, entrainements, lecons — modifiables en direct sans redemarrage.
+                </p>
+            </div>
+
+            <!-- JOUEURS -->
+            <div class="card p-6">
+                <h2 class="font-title text-2xl text-white mb-4">👥 Joueurs ({{ users | length }})</h2>
+
+                <div class="space-y-2 max-h-96 overflow-y-auto">
+                    {% for u in users %}
+                    {% set u_pig = u.pigs | selectattr('is_alive') | first %}
+                    <div class="user-row p-3 flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <span class="text-lg">{{ u_pig.emoji if u_pig else '💀' }}</span>
+                            <div>
+                                <p class="text-white font-bold text-sm">
+                                    {{ u.username }}
+                                    {% if u.is_admin %}
+                                    <span class="text-indigo-400/60 text-xs ml-1">ADMIN</span>
+                                    {% endif %}
+                                </p>
+                                <p class="text-white/30 text-xs font-semibold">
+                                    {% if u_pig %}
+                                        {{ u_pig.name }} — Niv. {{ u_pig.level }}
+                                    {% else %}
+                                        Pas de cochon vivant
+                                    {% endif %}
+                                </p>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-yellow-400 font-bold text-sm">{{ "%.0f"|format(u.balance) }} 🪙</p>
+                            <p class="text-white/20 text-xs">
+                                {% if u_pig %}🏁 {{ u_pig.races_entered }} | 🏆 {{ u_pig.races_won }}{% endif %}
+                            </p>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card p-6 mb-8">
+        <div class="flex items-center justify-between gap-3 mb-4">
+            <div>
+                <h2 class="font-title text-2xl text-white">🐷 Tous les cochons ({{ pigs | length }})</h2>
+                <p class="text-white/40 text-sm font-semibold">Vue admin globale avec propriétaire, état et actions rapides.</p>
+            </div>
+        </div>
+
+        <div class="space-y-3 max-h-[34rem] overflow-y-auto pr-1">
+            {% for pig in pigs %}
+            <div class="user-row p-4 flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+                <div class="flex items-start gap-3">
+                    <span class="text-2xl">{{ pig.emoji }}</span>
+                    <div>
+                        <p class="text-white font-bold text-base">{{ pig.name }}</p>
+                        <p class="text-white/40 text-xs font-semibold">
+                            Propriétaire : {{ pig.owner.username if pig.owner else 'Ordinateur' }}
+                            · {{ pig.origin_flag }} {{ pig.origin_country }}
+                            · Niveau {{ pig.level }}
+                            · Gén. {{ pig.generation or 1 }}
+                        </p>
+                        <p class="text-white/30 text-xs font-semibold mt-1">
+                            Statut :
+                            {% if pig.is_alive %}
+                                <span class="text-green-400">Vivant</span>
+                            {% else %}
+                                <span class="text-red-400">Décédé</span>
+                            {% endif %}
+                            {% if pig.is_injured %}· <span class="text-yellow-300">Blessé</span>{% endif %}
+                            · 🏁 {{ pig.races_entered }} · 🏆 {{ pig.races_won }}
+                        </p>
+                    </div>
+                </div>
+
+                <form method="POST" action="/admin/pigs/{{ pig.id }}/toggle-life">
+                    <button type="submit" class="{{ 'btn-danger' if pig.is_alive else 'btn-admin' }}">
+                        {{ '☠️ Marquer décédé' if pig.is_alive else '✨ Réanimer' }}
+                    </button>
+                </form>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- COURSES À VENIR ET ÉVÉNEMENTS -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+        <!-- PROCHAINES COURSES -->
+        <div class="card p-6">
+            <h2 class="font-title text-2xl text-white mb-4">📅 Courses à venir</h2>
+            <div class="space-y-3 max-h-96 overflow-y-auto pr-1">
+                {% if upcoming_races %}
+                    {% for race in upcoming_races %}
+                    <div class="user-row p-3 flex items-center justify-between">
+                        <div>
+                            <p class="text-white font-bold text-sm">
+                                Course #{{ race.id }} 
+                                <span class="ml-2 {% if race.status == 'open' %}text-green-400{% else %}text-yellow-400{% endif %} text-[10px] border border-current px-1 rounded">
+                                    {{ race.status | upper }}
+                                </span>
+                            </p>
+                            <p class="text-white/40 text-xs font-semibold">
+                                {{ race.scheduled_at.strftime('%d/%m à %H:%M') }}
+                                · {{ race.participants | length }} partants
+                                · {{ race.bets | length }} paris
+                            </p>
+                        </div>
+                        <form method="POST" action="/admin/races/{{ race.id }}/cancel" onsubmit="return confirm('Annuler cette course et rembourser les paris ?');">
+                            <button type="submit" class="text-red-400 hover:text-red-300 text-xs font-bold uppercase transition-colors">
+                                🗑️ Annuler
+                            </button>
+                        </form>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <p class="text-white/20 text-sm italic py-4">Aucune course à venir.</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- ÉVÉNEMENTS -->
+        <div class="card p-6">
+            <h2 class="font-title text-2xl text-white mb-4">🎭 Événements mondiaux</h2>
+            <p class="text-white/40 text-sm font-semibold mb-6">Déclenche des actions affectant tous les joueurs ou groins.</p>
+
+            <div class="grid grid-cols-1 gap-4">
+                <form method="POST" action="/admin/events/trigger">
+                    <input type="hidden" name="event_type" value="food_drop">
+                    <button type="submit" class="btn-admin w-full text-left flex items-center gap-3">
+                        <span class="text-xl">📦</span>
+                        <div>
+                            <p class="text-sm">Parachutage de Vivres</p>
+                            <p class="text-[10px] opacity-70 normal-case">+30 Énergie & Faim pour TOUT le monde</p>
+                        </div>
+                    </button>
+                </form>
+
+                <form method="POST" action="/admin/events/trigger">
+                    <input type="hidden" name="event_type" value="vet_visit">
+                    <button type="submit" class="btn-admin w-full text-left flex items-center gap-3" style="background: linear-gradient(135deg, #10b981, #059669);">
+                        <span class="text-xl">🏥</span>
+                        <div>
+                            <p class="text-sm">Passage du Vétérinaire</p>
+                            <p class="text-[10px] opacity-70 normal-case">Soigne IMMEDIATEMENT tous les groins blessés</p>
+                        </div>
+                    </button>
+                </form>
+
+                <form method="POST" action="/admin/events/trigger">
+                    <input type="hidden" name="event_type" value="bonus_bg">
+                    <button type="submit" class="btn-admin w-full text-left flex items-center gap-3" style="background: linear-gradient(135deg, #f59e0b, #d97706);">
+                        <span class="text-xl">💰</span>
+                        <div>
+                            <p class="text-sm">Prime Exceptionnelle</p>
+                            <p class="text-[10px] opacity-70 normal-case">Offre 50 BitGroins à tous les dresseurs</p>
+                        </div>
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- COURSES RÉCENTES -->
+    {% if recent_races %}
+    <div class="card p-6">
+        <h2 class="font-title text-2xl text-white mb-4">📜 Dernières courses</h2>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {% for race in recent_races %}
+            <div class="result-card p-4">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-green-400 font-bold text-sm">Course #{{ race.id }}</span>
+                    <span class="text-white/30 text-xs">{{ race.finished_at.strftime('%d/%m %H:%M') if race.finished_at }}</span>
+                </div>
+                <p class="text-white font-bold">🥇 {{ race.winner_name }}</p>
+                <p class="text-white/40 text-xs mt-1">Cote : x{{ race.winner_odds }}</p>
+                {% set sorted_parts = race.participants | sort(attribute='finish_position', case_sensitive=False) if false else (race.participants | selectattr('finish_position') | sort(attribute='finish_position') | list) + (race.participants | rejectattr('finish_position') | list) %}
+                <div class="mt-2 space-y-0.5">
+                    {% for p in sorted_parts %}
+                    {% if p.finish_position %}
+                    <div class="flex items-center gap-2 text-xs">
+                        <span class="text-white/30 w-4">{{ p.finish_position }}.</span>
+                        <span>{{ p.emoji }}</span>
+                        <span class="text-white/50">{{ p.name }}</span>
+                        {% if p.owner_name %}
+                        <span class="text-pink-400/50">({{ p.owner_name }})</span>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                    {% endfor %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+</main>
+
+<footer class="text-center py-8 text-white/15 text-sm font-semibold">
+    🔧 Administration — Derby des Groins
+</footer>
+
+</body>
+</html>
