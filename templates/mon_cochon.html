@@ -9,6 +9,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
     <style>
         * { font-family: 'Nunito', sans-serif; }
+        html, body { overflow-x: hidden; max-width: 100vw; }
         .font-title { font-family: 'Lilita One', cursive; }
 
         body {
@@ -52,6 +53,13 @@
         .emoji-picker-btn.selected { border-color: #f472b6; background: rgba(244,114,182,0.2); }
 
         ::-webkit-scrollbar { width: 6px; }
+
+        /* Layout responsive cochon */
+        @media (max-width: 1023px) {
+            .pig-card-grid {
+                grid-template-columns: 1fr !important;
+            }
+        }
         ::-webkit-scrollbar-thumb { background: rgba(244, 114, 182, 0.4); border-radius: 3px; }
 
         .cereal-card, .training-card {
@@ -99,12 +107,12 @@
         }
     </style>
 </head>
-<body class="pb-12">
+<body class="pb-12 overflow-x-hidden">
 {% set active_page = 'mon_cochon' %}
 
 {% include "_site_header.html" %}
 
-<main class="max-w-6xl mx-auto px-4 py-8">
+<main class="max-w-7xl mx-auto px-4 py-8 overflow-x-hidden">
 
     <!-- FLASH MESSAGES -->
     {% with messages = get_flashed_messages(with_categories=true) %}
@@ -173,10 +181,10 @@
         {% set weight_profile = pd.weight_profile %}
         {% set freshness = pd.freshness_bonus %}
         {% set performance_flags = pd.performance_flags %}
-        <div class="grid grid-cols-1 xl:grid-cols-3 gap-8 p-1 relative">
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:1.5rem; width:100%; position:relative;" class="pig-card-grid">
             
-            <!-- LEFT COLUMN: Main ID Card -->
-            <div class="xl:col-span-1">
+            <!-- COLONNE GAUCHE : identité + radar + stats -->
+            <div style="min-width:0; overflow:hidden; display:flex; flex-direction:column; gap:1.5rem;">
                 <div class="card p-8 h-full flex flex-col items-center justify-center text-center relative overflow-hidden group">
                     <!-- Sacrifier -->
                     <form method="POST" action="/sacrifice-pig" class="absolute top-4 right-4 z-10">
@@ -266,13 +274,12 @@
                         <p class="text-white/45 text-[11px] font-bold mt-2">Valeur patrimoniale actuelle : +{{ "%.1f"|format(pd.heritage_value) }}. Les retraites d'honneur renforcent durablement la lignée et toute la porcherie.</p>
                     </div>
                 </div>
-            </div>
-
-            <!-- CENTER COLUMN: Radar Chart & Life State -->
-            <div class="xl:col-span-1 space-y-6">
+            <!-- CENTER COLUMN fusionnée avec LEFT -->
                 <!-- RADAR -->
-                <div class="card p-6 flex flex-col items-center justify-center h-fit">
-                    <canvas id="radarChart-{{ pig.id }}"></canvas>
+                <div class="card p-6 flex flex-col items-center justify-center h-fit overflow-hidden">
+                    <div style="width:240px; height:240px; margin:0 auto;">
+                    <canvas id="radarChart-{{ pig.id }}" width="240" height="240"></canvas>
+                    </div>
                     <div class="mt-4 grid grid-cols-3 gap-2 w-full text-[9px] font-bold uppercase text-white/40">
                         {% for stat, label in stat_labels.items() %}
                         <div class="cursor-help border border-white/5 bg-white/5 rounded px-1 py-1 flex items-center justify-center text-center hover:bg-white/10 transition-colors" title="{{ stat_descriptions[stat] }}">
@@ -390,7 +397,7 @@
             </div>
 
             <!-- RIGHT COLUMN: Actions (Feed / Train) -->
-            <div class="xl:col-span-1 space-y-6">
+            <div style="min-width:0; overflow:hidden; display:flex; flex-direction:column; gap:1.5rem;">
                 {% if pig.is_injured and pig.is_alive %}
                 <div class="card p-5 animate-pulse" style="background:rgba(220,38,38,0.15);border:2px solid rgba(220,38,38,0.5);">
                     <p class="font-title text-red-400 text-xl mb-1">🚨 Cochon Blessé</p>
@@ -685,7 +692,9 @@
                             pointLabels: { color: 'rgba(255,255,255,0.4)', font: { size: 10, weight: 'bold' } }
                         }
                     },
-                    plugins: { legend: { display: false } }
+                    plugins: { legend: { display: false } },
+                    responsive: false,
+                    maintainAspectRatio: true
                 }
             });
             })();

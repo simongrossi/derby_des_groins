@@ -1359,7 +1359,11 @@ def run_race_if_needed():
 
         # New Tactical Simulation
         # Fetch actual pig stats for simulation
+        # sim_id_to_participant : mappe sim_id -> participant DB
+        # Les vrais cochons utilisent pig.id comme sim id, les NPC utilisent participant.id
+        # Sans ce mapping, le lookup order echoue silencieusement et order[0] explose.
         pigs_for_sim = []
+        sim_id_to_participant = {}
         for p in participants:
             if p.pig_id:
                 pig = Pig.query.get(p.pig_id)
@@ -1384,6 +1388,7 @@ def run_race_if_needed():
                         'speed_bonus_multiplier': 1.1 if pig.comeback_bonus_ready else 1.0,
                         'recent_race_penalty_multiplier': recent_race_penalty_multiplier,
                     })
+                    sim_id_to_participant[pig.id] = p
                 else:
                     # Mock NPC pig stats based on odds
                     pigs_for_sim.append({
@@ -1391,6 +1396,7 @@ def run_race_if_needed():
                         'vitesse': 20 + (1.0/p.odds)*100, 'endurance': 30, 'force': 30, 'agilite': 30,
                         'intelligence': 30, 'moral': 50, 'strategy': 50, 'freshness': 100.0, 'is_happy': True,
                     })
+                    sim_id_to_participant[p.id] = p
             else:
                 # Mock NPC pig stats based on odds
                 pigs_for_sim.append({
@@ -1398,6 +1404,7 @@ def run_race_if_needed():
                     'vitesse': 20 + (1.0/p.odds)*100, 'endurance': 30, 'force': 30, 'agilite': 30,
                     'intelligence': 30, 'moral': 50, 'strategy': 50, 'freshness': 100.0, 'is_happy': True,
                 })
+                sim_id_to_participant[p.id] = p
 
         segments = generate_course_segments()
         manager = CourseManager(pigs_for_sim, segments)
@@ -1405,13 +1412,18 @@ def run_race_if_needed():
         race.replay_json = manager.to_json()
 
         # Determine order from finish_time and distance
+        # Utiliser sim_id_to_participant pour le lookup (corrige le bug pig.id vs participant.id)
         final_pigs = sorted(manager.participants, key=lambda x: (x.finish_time or 9999, -x.distance))
-        
+
         order = []
         for fp in final_pigs:
-            participant = participants_by_id.get(fp.id)
+            participant = sim_id_to_participant.get(fp.id)
             if participant:
                 order.append(participant)
+
+        # Securite : si order est vide (ne devrait pas arriver), fallback sur l'ordre DB
+        if not order:
+            order = list(participants)
 
         for i, p in enumerate(order):
             p.finish_position = i + 1
