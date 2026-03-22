@@ -2,6 +2,7 @@ from flask import Blueprint, render_template, request, redirect, url_for, sessio
 from sqlalchemy.exc import IntegrityError
 from datetime import datetime
 
+from extensions import db
 from models import User, Race, Participant, Bet
 from data import BET_TYPES, WEEKLY_RACE_QUOTA, WEEKLY_BACON_TICKETS
 from helpers import ensure_next_race, get_user_active_pigs, apply_row_lock
