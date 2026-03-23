@@ -128,7 +128,6 @@ def calculate_bet_odds(participants_by_id, ordered_ids, bet_type):
         
     multiplier = 1.0
     if not bet_config.get('order_matters', True):
-        import math
         # Unordered permutations: e.g. Tiercé any = 3!
         multiplier *= math.factorial(len(ordered_ids))
         
