@@ -4,7 +4,7 @@ import atexit
 import os
 
 from extensions import db, APP_TIMEZONE
-from helpers import run_race_if_needed, ensure_next_race, resolve_auctions, check_vet_deadlines
+from helpers import run_race_if_needed, ensure_next_race, resolve_auctions, check_vet_deadlines, resolve_market_history
 
 scheduler = None
 
@@ -50,6 +50,14 @@ def start_scheduler(app):
         lambda: run_scheduler_job(app, 'vet_tick', check_vet_deadlines),
         IntervalTrigger(seconds=15, timezone=APP_TIMEZONE),
         id='vet-tick',
+        replace_existing=True,
+        max_instances=1,
+        coalesce=True,
+    )
+    scheduler.add_job(
+        lambda: run_scheduler_job(app, 'market_history_tick', resolve_market_history),
+        IntervalTrigger(minutes=10, timezone=APP_TIMEZONE),
+        id='market-history-tick',
         replace_existing=True,
         max_instances=1,
         coalesce=True,

@@ -160,11 +160,21 @@ def index():
 def history():
     if 'user_id' not in session:
         return redirect(url_for('auth.login'))
-    user = User.query.get(session['user_id'])
-    bets = Bet.query.filter_by(user_id=user.id).order_by(Bet.placed_at.desc()).all()
-    transactions = BalanceTransaction.query.filter_by(user_id=user.id).order_by(BalanceTransaction.created_at.desc(), BalanceTransaction.id.desc()).all()
+    
+    current_user = User.query.get(session['user_id'])
+    view_user_id = request.args.get('u', type=int) or current_user.id
+    target_user = User.query.get(view_user_id)
+    
+    if not target_user:
+        target_user = current_user
+    
+    all_users = User.query.order_by(User.username).all()
+    
+    bets = Bet.query.filter_by(user_id=target_user.id).order_by(Bet.placed_at.desc()).all()
+    transactions = BalanceTransaction.query.filter_by(user_id=target_user.id).order_by(BalanceTransaction.created_at.desc(), BalanceTransaction.id.desc()).all()
+    
     global_transactions = []
-    if user.is_admin:
+    if current_user.is_admin:
         global_transactions = BalanceTransaction.query.order_by(BalanceTransaction.created_at.desc(), BalanceTransaction.id.desc()).all()
 
     race_history = get_race_history_entries()
@@ -177,7 +187,9 @@ def history():
 
     return render_template(
         'history.html',
-        user=user,
+        user=current_user,
+        target_user=target_user,
+        all_users=all_users,
         bets=bets,
         won_bets=won_bets,
         lost_bets=lost_bets,

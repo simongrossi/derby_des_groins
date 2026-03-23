@@ -1416,6 +1416,12 @@ def run_race_if_needed():
         for i, p in enumerate(order):
             p.finish_position = i + 1
 
+        if not order:
+            race.status = 'cancelled'
+            race.finished_at = now
+            db.session.commit()
+            continue
+
         winner_participant = order[0]
         race.winner_name = winner_participant.name
         race.winner_odds = winner_participant.odds
@@ -1528,20 +1534,39 @@ def run_race_if_needed():
         finish_order_ids = [participant.id for participant in order]
         for bet in bets:
             bet_type = normalize_bet_type(getattr(bet, 'bet_type', None))
-            expected_count = BET_TYPES[bet_type]['selection_count']
+            bet_config = BET_TYPES.get(bet_type, BET_TYPES['win'])
+            expected_count = bet_config['selection_count']
+            top_n = bet_config.get('top_n', expected_count)
+            order_matters = bet_config.get('order_matters', True)
+            
             selection_ids = get_bet_selection_ids(bet, participants_by_id)
-            if len(selection_ids) == expected_count and finish_order_ids[:expected_count] == selection_ids:
-                winnings = round(bet.amount * bet.odds_at_bet, 2)
-                bet.status = 'won'
-                bet.winnings = winnings
-                credit_user_balance(
-                    bet.user_id, winnings,
-                    reason_code='bet_payout',
-                    reason_label='Gain de pari',
-                    details=f"Ticket {BET_TYPES[bet_type]['label'].lower()} gagnant sur la course #{race.id}: {bet.pig_name}.",
-                    reference_type='bet',
-                    reference_id=bet.id,
-                )
+            
+            if len(selection_ids) == expected_count:
+                top_finishers = finish_order_ids[:top_n]
+                is_winner = False
+                
+                if order_matters:
+                    if top_finishers[:expected_count] == selection_ids:
+                        is_winner = True
+                else:
+                    if all(sid in top_finishers for sid in selection_ids):
+                        is_winner = True
+                        
+                if is_winner:
+                    winnings = round(bet.amount * bet.odds_at_bet, 2)
+                    bet.status = 'won'
+                    bet.winnings = winnings
+                    credit_user_balance(
+                        bet.user_id, winnings,
+                        reason_code='bet_payout',
+                        reason_label='Gain de pari',
+                        details=f"Ticket {bet_config['label'].lower()} gagnant sur la course #{race.id}: {bet.pig_name}.",
+                        reference_type='bet',
+                        reference_id=bet.id,
+                    )
+                else:
+                    bet.status = 'lost'
+                    bet.winnings = 0.0
             else:
                 bet.status = 'lost'
                 bet.winnings = 0.0
@@ -1863,6 +1888,7 @@ from services.market_service import (
     get_market_close_time, get_next_market_time, get_prix_moyen_groin,
     get_all_grain_surcharges, is_grain_blocked, is_market_open,
     move_bourse_cursor, resolve_auctions, update_vitrine, generate_auction_pig,
+    resolve_market_history,
 )
 from services.pig_service import (
     adjust_pig_weight, apply_origin_bonus, build_unique_pig_name,

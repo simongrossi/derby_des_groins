@@ -10,7 +10,7 @@ from data import (
     PIG_NAME_PREFIXES, PIG_NAME_SUFFIXES, PIG_ORIGINS, RARITIES,
 )
 from extensions import db
-from models import Auction, BalanceTransaction, GrainMarket, Pig, User
+from models import Auction, BalanceTransaction, GrainMarket, MarketHistory, Pig, User
 
 from helpers import apply_row_lock
 from services.game_settings_service import get_game_settings
@@ -37,7 +37,9 @@ def get_next_market_time():
     return now.replace(hour=settings.market_hour, minute=settings.market_minute, second=0, microsecond=0) + timedelta(days=days_ahead)
 
 
-def is_market_open():
+def is_market_open(user=None):
+    if user and user.is_admin:
+        return True
     settings = get_game_settings()
     now = datetime.now()
     if now.weekday() != settings.market_day:
@@ -151,6 +153,9 @@ def get_all_grain_surcharges(market):
 
 
 def get_bourse_movement_points(user_id):
+    user = User.query.get(user_id)
+    if user and user.is_admin:
+        return 99
     total_purchases = db.session.query(func.count(BalanceTransaction.id)).filter(BalanceTransaction.user_id == user_id, BalanceTransaction.reason_code == 'feed_purchase').scalar() or 0
     return max(BOURSE_MIN_MOVEMENT, total_purchases // BOURSE_MOVEMENT_DIVISOR)
 
@@ -183,6 +188,30 @@ def update_vitrine(market, grain_key, user_id):
     market.vitrine_user_id = user_id
     market.last_purchase_at = datetime.utcnow()
     market.total_transactions = (market.total_transactions or 0) + 1
+    log_market_state(market)
+
+
+def log_market_state(market):
+    """Enregistre l'état actuel des prix dans l'historique."""
+    from data import CEREALS
+    surcharges = get_all_grain_surcharges(market)
+    for key, surcharge in surcharges.items():
+        base_cost = CEREALS[key]['cost']
+        history = MarketHistory(
+            cereal_key=key,
+            price=round(base_cost * surcharge, 2),
+            surcharge=round(surcharge, 2),
+            recorded_at=datetime.utcnow()
+        )
+        db.session.add(history)
+
+
+def resolve_market_history():
+    """Tâche planifiée pour nettoyer le vieil historique ou agréger ?
+    Pour l'instant, on se contente de logger de temps en temps."""
+    market = get_grain_market()
+    log_market_state(market)
+    db.session.commit()
 
 
 def get_bourse_cereals(market, feeding_multiplier=1.0):

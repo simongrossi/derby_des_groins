@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Derby des Groins -- Bourse aux Grains</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
     <style>
         * { font-family: 'Nunito', sans-serif; }
@@ -108,6 +109,18 @@
         <p class="text-white/40 text-sm font-semibold">Deplacez le bloc pour ajuster les prix. Chaque grain a son propre surcout !</p>
     </div>
 
+    <!-- SOUS-MENU -->
+    <div class="max-w-xl mx-auto mb-8">
+        <div class="flex p-1.5 rounded-2xl bg-white/5 border border-white/10">
+            <button onclick="switchTab('market')" id="tab-market" class="flex-1 py-2.5 rounded-xl text-sm font-bold transition-all bg-yellow-400/20 text-yellow-100 border border-yellow-400/30">
+                🏪 Marché Temps Réel
+            </button>
+            <button onclick="switchTab('charts')" id="tab-charts" class="flex-1 py-2.5 rounded-xl text-sm font-bold transition-all text-white/50 hover:text-white hover:bg-white/5">
+                📉 Graphiques d'Évolution
+            </button>
+        </div>
+    </div>
+
     <!-- FLASH MESSAGES -->
     {% with messages = get_flashed_messages(with_categories=true) %}
     {% if messages %}
@@ -124,7 +137,8 @@
     {% endif %}
     {% endwith %}
 
-    <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
+    <div id="view-market" class="grid grid-cols-1 xl:grid-cols-3 gap-6">
+        <!-- ===== COLONNE GAUCHE : GRILLE 7x7 ===== -->
 
         <!-- ===== COLONNE GAUCHE : GRILLE 7x7 ===== -->
         <div class="xl:col-span-2">
@@ -433,6 +447,43 @@
         {% endif %}
     </section>
 
+    <!-- ===== VUE GRAPHIQUES (Hidden by default) ===== -->
+    <section id="view-charts" class="hidden space-y-6">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- Graphique des Prix -->
+            <div class="card p-6">
+                <h3 class="font-title text-xl text-yellow-400 mb-4 flex items-center gap-2">
+                    <span class="text-2xl">💰</span> Évolution des Prix (BitGroins)
+                </h3>
+                <div class="relative h-[400px]">
+                    <canvas id="priceChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Graphique des Surcouts -->
+            <div class="card p-6">
+                <h3 class="font-title text-xl text-pink-400 mb-4 flex items-center gap-2">
+                    <span class="text-2xl">📈</span> Évolution des Surcharges (%)
+                </h3>
+                <div class="relative h-[400px]">
+                    <canvas id="surchargeChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div class="card p-6">
+            <h3 class="font-title text-xl text-emerald-400 mb-4">Zoom sur une céréale</h3>
+            <div class="flex overflow-x-auto gap-3 pb-2 scrollbar-hide">
+                {% for key, cer in cereals.items() %}
+                <button onclick="toggleDataset('{{ key }}')" class="dataset-toggle flex items-center gap-2 px-4 py-2 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 transition-all text-sm font-bold whitespace-nowrap" id="toggle-{{ key }}">
+                    <span>{{ cer.emoji }}</span>
+                    <span>{{ cer.name }}</span>
+                </button>
+                {% endfor %}
+            </div>
+        </div>
+    </section>
+
 </main>
 
 <script>
@@ -444,6 +495,135 @@
                 input.value = pigSelector.value;
             });
         });
+    }
+
+    // Gestion des Onglets
+    function switchTab(tab) {
+        const viewMarket = document.getElementById('view-market');
+        const viewCharts = document.getElementById('view-charts');
+        const buySection = document.querySelector('section.mt-8'); // L'achat
+        const tabMarket = document.getElementById('tab-market');
+        const tabCharts = document.getElementById('tab-charts');
+
+        if (tab === 'charts') {
+            viewMarket.classList.add('hidden');
+            buySection.classList.add('hidden');
+            viewCharts.classList.remove('hidden');
+            tabCharts.className = "flex-1 py-2.5 rounded-xl text-sm font-bold transition-all bg-yellow-400/20 text-yellow-100 border border-yellow-400/30";
+            tabMarket.className = "flex-1 py-2.5 rounded-xl text-sm font-bold transition-all text-white/50 hover:text-white hover:bg-white/5";
+            loadCharts();
+        } else {
+            viewMarket.classList.remove('hidden');
+            buySection.classList.remove('hidden');
+            viewCharts.classList.add('hidden');
+            tabMarket.className = "flex-1 py-2.5 rounded-xl text-sm font-bold transition-all bg-yellow-400/20 text-yellow-100 border border-yellow-400/30";
+            tabCharts.className = "flex-1 py-2.5 rounded-xl text-sm font-bold transition-all text-white/50 hover:text-white hover:bg-white/5";
+        }
+    }
+
+    let priceChart, surchargeChart, chartData;
+    const colors = {
+        mais: '#facc15', // yellow
+        orge: '#60a5fa', // blue
+        avoine: '#c084fc', // purple
+        ble: '#fb923c', // orange
+        soja: '#4ade80', // green
+        tapioca: '#f472b6', // pink
+        pois: '#2dd4bf', // teal
+        colza: '#fb7185', // rose
+        tournesol: '#a78bfa' // violet
+    };
+
+    async function loadCharts() {
+        if (priceChart) return; // Déjà chargé
+
+        const res = await fetch('/bourse/history?days=7');
+        chartData = await res.json();
+
+        const ts = chartData.timestamps.map(t => new Date(t).toLocaleString('fr-FR', {
+            day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit'
+        }));
+
+        const priceDatasets = [];
+        const surchargeDatasets = [];
+
+        for (const [key, ds] of Object.entries(chartData.datasets)) {
+            const color = colors[key] || '#ffffff';
+            priceDatasets.push({
+                label: ds.label,
+                data: ds.prices,
+                borderColor: color,
+                backgroundColor: color + '20',
+                borderWidth: 2,
+                tension: 0.3,
+                pointRadius: 2,
+                key: key
+            });
+            surchargeDatasets.push({
+                label: ds.label,
+                data: ds.surcharges.map(s => (s - 1) * 100), // En % additionnel
+                borderColor: color,
+                backgroundColor: color + '20',
+                borderWidth: 2,
+                tension: 0.3,
+                pointRadius: 2,
+                key: key
+            });
+        }
+
+        const commonOptions = {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: { mode: 'index', intersect: false },
+            plugins: {
+                legend: { display: false }
+            },
+            scales: {
+                x: {
+                    grid: { color: 'rgba(255,255,255,0.05)' },
+                    ticks: { color: 'rgba(255,255,255,0.4)', font: { size: 10 } }
+                },
+                y: {
+                    grid: { color: 'rgba(255,255,255,0.05)' },
+                    ticks: { color: 'rgba(255,255,255,0.6)', font: { size: 10, weight: 'bold' } }
+                }
+            }
+        };
+
+        priceChart = new Chart(document.getElementById('priceChart'), {
+            type: 'line',
+            data: { labels: ts, datasets: priceDatasets },
+            options: commonOptions
+        });
+
+        surchargeChart = new Chart(document.getElementById('surchargeChart'), {
+            type: 'line',
+            data: { labels: ts, datasets: surchargeDatasets },
+            options: {
+                ...commonOptions,
+                scales: {
+                    ...commonOptions.scales,
+                    y: { ...commonOptions.scales.y, ticks: { ...commonOptions.scales.y.ticks, callback: v => '+' + v + '%' } }
+                }
+            }
+        });
+    }
+
+    function toggleDataset(key) {
+        const btn = document.getElementById('toggle-' + key);
+        priceChart.data.datasets.forEach(ds => {
+            if (ds.key === key) ds.hidden = !ds.hidden;
+        });
+        surchargeChart.data.datasets.forEach(ds => {
+            if (ds.key === key) ds.hidden = !ds.hidden;
+        });
+        
+        priceChart.update();
+        surchargeChart.update();
+        
+        const isHidden = priceChart.data.datasets.find(ds => ds.key === key).hidden;
+        btn.style.opacity = isHidden ? '0.4' : '1';
+        btn.style.borderColor = isHidden ? 'rgba(255,255,255,0.1)' : (colors[key] + '60');
     }
 </script>
 

@@ -627,6 +627,15 @@ class GrainMarket(db.Model):
     last_move_user = db.relationship('User', foreign_keys=[last_move_user_id])
 
 
+class MarketHistory(db.Model):
+    """Historique des prix de la Bourse."""
+    id = db.Column(db.Integer, primary_key=True)
+    cereal_key = db.Column(db.String(20), nullable=False, index=True)
+    price = db.Column(db.Float, nullable=False)
+    surcharge = db.Column(db.Float, nullable=False)
+    recorded_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+
+
 class Auction(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     # Cochon en vente

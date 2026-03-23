@@ -1,14 +1,16 @@
-from flask import Blueprint, render_template, redirect, url_for, session, flash, request
-from datetime import datetime
+from flask import Blueprint, render_template, redirect, url_for, session, flash, request, jsonify
+from datetime import datetime, timedelta
 
 from extensions import db
 from models import User, Pig, BalanceTransaction
+from models import User, Pig, BalanceTransaction, MarketHistory
 from data import BOURSE_BLOCK_MIN, BOURSE_BLOCK_MAX, BOURSE_GRAIN_LAYOUT
 from helpers import get_feeding_cost_multiplier, get_user_active_pigs, get_cereals_dict
 from services.market_service import (
     get_grain_market, get_all_grain_surcharges, get_bourse_movement_points,
     move_bourse_cursor, is_grain_blocked, update_vitrine,
     get_bourse_cereals, get_bourse_grid_data,
+    log_market_state,
 )
 
 bourse_bp = Blueprint('bourse', __name__)
@@ -177,3 +179,55 @@ def bourse_buy():
         "success"
     )
     return redirect(url_for('bourse.bourse'))
+
+
+@bourse_bp.route('/bourse/history')
+def bourse_history():
+    if 'user_id' not in session:
+        return jsonify({'error': 'Non connecté'}), 401
+
+    days = request.args.get('days', 7, type=int)
+    since = datetime.utcnow() - timedelta(days=days)
+
+    # Récupérer l'historique
+    history_rows = MarketHistory.query.filter(
+        MarketHistory.recorded_at >= since
+    ).order_by(MarketHistory.recorded_at.asc()).all()
+
+    from data import CEREALS
+    
+    # Organiser par céréale
+    data = {}
+    labels = []
+    
+    # On veut des labels temporels uniques pour l'axe X
+    # Mais comme on logue tout d'un coup, on peut grouper par "recorded_at"
+    timestamps = sorted(list(set(h.recorded_at.isoformat() for h in history_rows)))
+    
+    for key in CEREALS.keys():
+        data[key] = {
+            'label': CEREALS[key]['name'],
+            'emoji': CEREALS[key]['emoji'],
+            'prices': [],
+            'surcharges': []
+        }
+        
+    # On remplit les trous si nécessaire (même si normalement on logue tout le bloc)
+    for ts in timestamps:
+        rows_at_ts = [h for h in history_rows if h.recorded_at.isoformat() == ts]
+        for key in CEREALS.keys():
+            match = next((h for h in rows_at_ts if h.cereal_key == key), None)
+            if match:
+                data[key]['prices'].append(match.price)
+                data[key]['surcharges'].append(match.surcharge)
+            else:
+                # Valeur par défaut ou répétition de la dernière
+                prev_price = data[key]['prices'][-1] if data[key]['prices'] else CEREALS[key]['cost']
+                prev_sur = data[key]['surcharges'][-1] if data[key]['surcharges'] else 1.0
+                data[key]['prices'].append(prev_price)
+                data[key]['surcharges'].append(prev_sur)
+
+    return jsonify({
+        'timestamps': timestamps,
+        'datasets': data
+    })

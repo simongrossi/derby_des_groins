@@ -32,7 +32,7 @@ def marche():
             market_lock_reason = get_market_lock_reason(user)
 
     settings = get_game_settings()
-    market_open = is_market_open()
+    market_open = is_market_open(user)
     next_market = get_next_market_time()
     market_day_name = JOURS_FR[settings.market_day]
     market_time = f"{settings.market_hour}h{settings.market_minute:02d}"
@@ -130,7 +130,7 @@ def sell_pig():
     if not get_market_unlock_progress(user)[0]:
         flash(get_market_lock_reason(user), "warning")
         return redirect(url_for('market.marche'))
-    if not is_market_open():
+    if not is_market_open(user):
         flash("Le marché est fermé ! Reviens le jour du marché.", "error")
         return redirect(url_for('market.marche'))
     pig_id = request.form.get('pig_id', type=int)

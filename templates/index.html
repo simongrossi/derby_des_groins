@@ -292,12 +292,24 @@
                     <input type="hidden" name="selection_order" id="selection-order-input" value="">
                     <div class="mb-5">
                         <p class="text-white/60 text-sm font-bold mb-2">Format du ticket</p>
-                        <div class="grid gap-3" id="bet-type-switcher">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-2 gap-3 max-h-[22rem] overflow-y-auto pr-2" id="bet-type-switcher" style="scrollbar-width: thin; scrollbar-color: rgba(244,114,182,0.4) transparent;">
                             {% for bet_key, bet_meta in bet_types.items() %}
                             {% set disabled = participants|length < bet_meta.selection_count %}
-                            <button type="button" class="bet-type-btn {% if bet_key == 'win' %}active{% endif %}" data-bet-type-btn data-bet-type="{{ bet_key }}" data-selection-count="{{ bet_meta.selection_count }}" {% if disabled %}disabled{% endif %}>
-                                <p class="text-white font-bold">{{ bet_meta.icon }} {{ bet_meta.label }}</p>
-                                <p class="text-white/45 text-xs font-semibold mt-1">{{ bet_meta.description }}</p>
+                            <button type="button" class="bet-type-btn flex flex-col justify-between text-left {% if bet_key == 'win' %}active{% endif %}" data-bet-type-btn data-bet-type="{{ bet_key }}" data-selection-count="{{ bet_meta.selection_count }}" {% if disabled %}disabled{% endif %}>
+                                <div>
+                                    <div class="flex items-start justify-between gap-1 mb-1">
+                                        <p class="text-white font-extrabold text-sm">{{ bet_meta.icon }} {{ bet_meta.label }}</p>
+                                        <span class="text-[9px] font-black uppercase bg-white/10 px-1.5 py-0.5 rounded-full text-white/50 shrink-0">
+                                            {{ bet_meta.selection_count }} 🐷
+                                        </span>
+                                    </div>
+                                    <p class="text-white/45 text-[11px] font-semibold mt-1">{{ bet_meta.description }}</p>
+                                </div>
+                                {% if bet_meta.order_matters %}
+                                <div class="mt-2 text-[9px] font-bold text-rose-300/60 uppercase tracking-wider text-right">⚠️ Ordre exact</div>
+                                {% else %}
+                                <div class="mt-2 text-[9px] font-bold text-amber-300/60 uppercase tracking-wider text-right">Désordre accepté</div>
+                                {% endif %}
                             </button>
                             {% endfor %}
                         </div>
@@ -357,11 +369,30 @@ function calculateOrderedProbability(selectionIds) {
 }
 function calculateSelectionOdds() {
     if (selectedOrder.length !== getRequiredSelectionCount()) return 0;
-    if (activeBetType === 'win') return participantMap[selectedOrder[0]] ? participantMap[selectedOrder[0]].odds : 0;
+    const betConfig = betTypes[activeBetType];
     const probability = calculateOrderedProbability(selectedOrder);
     if (probability <= 0) return 0;
-    const edge = betTypes[activeBetType].house_edge;
-    return Math.max(1.1, Math.floor(((1 / probability) / edge) * 10) / 10);
+    
+    let multiplier = 1.0;
+    if (betConfig.order_matters === false) {
+        let f = 1; for(let i=1; i<=selectedOrder.length; i++) f *= i;
+        multiplier *= f;
+        
+        let topN = betConfig.top_n || selectedOrder.length;
+        let selCount = betConfig.selection_count || selectedOrder.length;
+        if (topN > selCount) {
+            let fTop = 1; for(let i=1; i<=topN; i++) fTop *= i;
+            let fSel = 1; for(let i=1; i<=selCount; i++) fSel *= i;
+            let fDiff = 1; for(let i=1; i<=(topN - selCount); i++) fDiff *= i;
+            multiplier *= (fTop / (fSel * fDiff));
+        }
+    }
+    
+    let finalProb = Math.min(probability * multiplier, 0.99);
+    if (finalProb <= 0) return 0;
+    
+    const edge = betConfig.house_edge || 1.18;
+    return Math.max(1.1, Math.floor(((1 / finalProb) / edge) * 10) / 10);
 }
 function renderSelectionSummary() {
     const display = document.getElementById('selected-pig-display');

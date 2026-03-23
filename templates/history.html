@@ -99,22 +99,22 @@
         <div class="card p-5">
             <p class="text-white/45 text-xs uppercase tracking-[0.2em] font-extrabold">Courses archivees</p>
             <p class="font-title text-4xl text-white mt-3">{{ race_history | length }}</p>
-            <p class="text-white/45 text-sm font-semibold mt-2">Toutes les arrivees conservees sur cette page.</p>
+            <p class="text-white/45 text-sm font-semibold mt-2">Arrivees partagees pour tout le Derby.</p>
         </div>
         <div class="card p-5">
-            <p class="text-white/45 text-xs uppercase tracking-[0.2em] font-extrabold">Tickets joues</p>
+            <p class="text-white/45 text-xs uppercase tracking-[0.2em] font-extrabold">Tickets de {{ target_user.username }}</p>
             <p class="font-title text-4xl text-white mt-3">{{ bets | length }}</p>
             <p class="text-white/45 text-sm font-semibold mt-2">{{ won_bets | length }} gagnes, {{ lost_bets | length }} perdus.</p>
         </div>
         <div class="card p-5">
-            <p class="text-white/45 text-xs uppercase tracking-[0.2em] font-extrabold">Credits 🪙</p>
+            <p class="text-white/45 text-xs uppercase tracking-[0.2em] font-extrabold">Credits ({{ target_user.username }})</p>
             <p class="font-title text-4xl text-emerald-300 mt-3">+{{ "%.2f"|format(credited_amount) }}</p>
-            <p class="text-white/45 text-sm font-semibold mt-2">Flux positifs journalises hors snapshot initial.</p>
+            <p class="text-white/45 text-sm font-semibold mt-2">Plus-values BitGroins journalisees.</p>
         </div>
         <div class="card p-5">
-            <p class="text-white/45 text-xs uppercase tracking-[0.2em] font-extrabold">Debits 🪙</p>
+            <p class="text-white/45 text-xs uppercase tracking-[0.2em] font-extrabold">Debits ({{ target_user.username }})</p>
             <p class="font-title text-4xl text-rose-300 mt-3">-{{ "%.2f"|format(debited_amount) }}</p>
-            <p class="text-white/45 text-sm font-semibold mt-2">Chaque depense ou blocage d'enchere reste visible.</p>
+            <p class="text-white/45 text-sm font-semibold mt-2">Flux negatifs BitGroins.</p>
         </div>
     </section>
 
@@ -227,18 +227,30 @@
     </section>
 
     <section id="bitgroins" class="space-y-4">
-        <div>
-            <h2 class="font-title text-3xl text-white">💰 Journal BitGroins</h2>
-            <p class="text-white/45 font-semibold mt-1">Chaque credit, debit, remboursement ou prime reste visible pour reconstituer ton solde.</p>
+        <div class="flex flex-col md:flex-row md:items-end justify-between gap-6">
+            <div>
+                <h2 class="font-title text-3xl text-white">💰 Journal BitGroins</h2>
+                <p class="text-white/45 font-semibold mt-1">Chaque credit, debit, remboursement ou prime reste visible pour reconstituer ton solde.</p>
+            </div>
+            
+            <form method="GET" action="/history" class="flex items-center gap-3">
+                <label for="u_filter" class="text-xs font-bold text-white/40 uppercase tracking-wider">Inspecter un eleveur :</label>
+                <select name="u" id="u_filter" onchange="this.form.submit()"
+                        class="bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-white font-bold text-sm focus:outline-none focus:border-cyan-500/50">
+                    {% for u in all_users %}
+                    <option value="{{ u.id }}" {% if u.id == target_user.id %}selected{% endif %}>{{ u.username }}</option>
+                    {% endfor %}
+                </select>
+            </form>
         </div>
 
         <div class="card p-5 lg:p-6 space-y-4">
             <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                    <h3 class="text-white text-xl font-extrabold">Mon journal 🪙 BitGroins</h3>
-                    <p class="text-white/45 text-sm font-semibold mt-1">Le snapshot initial sert de point de depart pour les comptes deja existants.</p>
+                    <h3 class="text-white text-xl font-extrabold">{% if target_user.id == user.id %}Mon journal{% else %}Journal de {{ target_user.username }}{% endif %} 🪙 BitGroins</h3>
+                    <p class="text-white/45 text-sm font-semibold mt-1">Les mouvements sont horodates et incluent le solde apres transaction.</p>
                 </div>
-                <span class="pill bg-white/8 text-white/70 border border-white/10">{{ transactions | length }} mouvement(s)</span>
+                <span class="pill bg-cyan-400/12 text-cyan-200 border border-cyan-400/20">{{ transactions | length }} mouvement(s)</span>
             </div>
 
             {% if transactions %}
@@ -345,8 +357,8 @@
 
     <section id="paris" class="space-y-4">
         <div>
-            <h2 class="font-title text-3xl text-white">🎯 Historique de mes paris</h2>
-            <p class="text-white/45 font-semibold mt-1">Tous les tickets gardent leur mise, leur cote et leur resultat.</p>
+            <h2 class="font-title text-3xl text-white">🎯 Paris de {{ target_user.username }}</h2>
+            <p class="text-white/45 font-semibold mt-1">Tickets avec mise, cote et resultat final.</p>
         </div>
 
         {% if bets %}
