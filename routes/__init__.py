@@ -7,6 +7,7 @@ from routes.abattoir import abattoir_bp
 from routes.admin import admin_bp
 from routes.api import api_bp
 from routes.bourse import bourse_bp
+from routes.blackjack import blackjack_bp
 
 all_blueprints = [
     auth_bp,
@@ -18,4 +19,5 @@ all_blueprints = [
     admin_bp,
     api_bp,
     bourse_bp,
+    blackjack_bp,
 ]
