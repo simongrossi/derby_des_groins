@@ -20,15 +20,15 @@
                 <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between xl:justify-end">
                     <div class="inline-flex items-center gap-3 rounded-2xl border border-pink-200/12 bg-[linear-gradient(135deg,rgba(244,114,182,0.08),rgba(255,255,255,0.035))] px-4 py-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]">
                         <div>
-                            <p class="text-[11px] uppercase tracking-[0.2em] text-pink-100/35 font-bold">Elevage</p>
+                            <p class="text-[11px] uppercase tracking-[0.2em] text-pink-100/35 font-bold">BitGroins</p>
                             <div class="flex items-center gap-2">
                                 <span class="font-title text-2xl leading-none text-yellow-400">{{ "%.2f"|format(user.balance) }}</span>
                                 <span class="text-xs font-bold uppercase text-pink-100/45">🪙</span>
                             </div>
                         </div>
                         <div class="h-8 w-px bg-pink-100/10"></div>
-                        <div>
-                            <p class="text-[11px] uppercase tracking-[0.2em] text-pink-100/35 font-bold">Tickets Bacon</p>
+                        <div class="cursor-help group relative" title="Chaque pari consomme 1 ticket. Ton quota de 3 tickets se réinitialise chaque lundi matin.">
+                            <p class="text-[11px] uppercase tracking-[0.2em] text-pink-100/35 font-bold group-hover:text-pink-300 transition-colors">Tickets Bacon</p>
                             <div class="flex items-center gap-2">
                                 <span class="font-title text-2xl leading-none text-pink-400">{{ user.bacon_tickets }}</span>
                                 <span class="text-xs font-bold uppercase text-pink-100/45">🎟️</span>
