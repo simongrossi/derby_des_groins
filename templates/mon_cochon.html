@@ -294,8 +294,9 @@
                         <div class="flex justify-between text-[10px] font-bold text-white/50 uppercase">
                             <span>Expérience (XP)</span>
                             <span>{{ pig.xp }} / {{ pd.xp_next }}</span>
+                        </div>
                         {% set xp_pct = (pig.xp / pd.xp_next * 100) %}
-                        <div class="stat-bar border border-white/5"><div class="stat-bar-fill bg-yellow-400" style="width: {{ xp_pct }}%"></div></div>
+                        <div class="stat-bar border border-white/5"><div class="stat-bar-fill bg-yellow-400" {{ ('style="width: ' ~ xp_pct ~ '%;"')|safe }}></div></div>
                     </div>
 
                     <!-- Énergie -->
@@ -304,7 +305,7 @@
                             <span>Énergie ⚡</span>
                             <span class="{% if pig.energy < 20 %}text-red-400{% endif %}">{{ "%.0f"|format(pig.energy) }}%</span>
                         </div>
-                        <div class="stat-bar border border-white/5"><div class="stat-bar-fill bg-blue-500" style="width: {{ pig.energy }}%"></div></div>
+                        <div class="stat-bar border border-white/5"><div class="stat-bar-fill bg-blue-500" {{ ('style="width: '~pig.energy~'%"')|safe }}></div></div>
                     </div>
 
                     <!-- Faim -->
@@ -313,7 +314,7 @@
                             <span>Satiété 🌾</span>
                             <span class="{% if pig.hunger < 20 %}text-red-400{% endif %}">{{ "%.0f"|format(pig.hunger) }}%</span>
                         </div>
-                        <div class="stat-bar border border-white/5"><div class="stat-bar-fill bg-green-500" style="width: {{ pig.hunger }}%"></div></div>
+                        <div class="stat-bar border border-white/5"><div class="stat-bar-fill bg-green-500" {{ ('style="width: '~pig.hunger~'%"')|safe }}></div></div>
                     </div>
 
                     <!-- Moral -->
@@ -322,7 +323,7 @@
                             <span>Moral 😄</span>
                             <span>{{ "%.0f"|format(pig.happiness) }}%</span>
                         </div>
-                        <div class="stat-bar border border-white/5"><div class="stat-bar-fill bg-pink-500" style="width: {{ pig.happiness }}%"></div></div>
+                        <div class="stat-bar border border-white/5"><div class="stat-bar-fill bg-pink-500" {{ ('style="width: '~pig.happiness~'%"')|safe }}></div></div>
                     </div>
 
                     <div class="mt-2 grid grid-cols-1 gap-2">
@@ -338,7 +339,7 @@
                                 <span class="text-emerald-300">{{ "%.0f"|format(pig.freshness or 100) }}%</span>
                             </div>
                             {% set fresh_val = pig.freshness or 100 %}
-                            <div class="mt-2 stat-bar border border-white/5"><div class="stat-bar-fill bg-emerald-400" style="width: {{ fresh_val }}%"></div></div>
+                            <div class="mt-2 stat-bar border border-white/5"><div class="stat-bar-fill bg-emerald-400" {{ ('style="width: '~fresh_val~'%"')|safe }}></div></div>
                             <p class="mt-2 text-[11px] font-bold text-emerald-100">Toute action positive remet la jauge a 100. Sans activite, la fraicheur ne commence a baisser qu'apres 48 h et reste en treve du vendredi soir au lundi matin.</p>
                         </div>
                     </div>
@@ -347,11 +348,11 @@
                 {% set rgb_bg = '16,185,129' if weight_profile.status == 'ideal' else ('245,158,11' if weight_profile.status == 'warning' else '239,68,68') %}
                 {% set rgb_border = '52,211,153' if weight_profile.status == 'ideal' else ('251,191,36' if weight_profile.status == 'warning' else '248,113,113') %}
                 {% set weight_card_style = 'background:rgba(' ~ rgb_bg ~ ',0.07); border:1px solid rgba(' ~ rgb_border ~ ',0.22);' %}
-                <div class="card p-5" style="{{ weight_card_style }}">
+                <div class="card p-5" {{ ('style="'~weight_card_style~'"')|safe }}>
                     <div class="flex items-start justify-between gap-4">
                         <div>
                             {% set weight_txt_color = '#6ee7b7' if weight_profile.status == 'ideal' else ('#fbbf24' if weight_profile.status == 'warning' else '#f87171') %}
-                            <h3 class="text-sm font-bold" style="color:{{ weight_txt_color }}">⚖️ Poids de Course</h3>
+                            <h3 class="text-sm font-bold" {{ ('style="color:'~weight_txt_color~'"')|safe }}>⚖️ Poids de Course</h3>
                             <p class="text-white/35 text-[11px] font-bold mt-1">{{ weight_profile.status_label }} • objectif {{ "%.1f"|format(weight_profile.min_weight) }} à {{ "%.1f"|format(weight_profile.max_weight) }} kg</p>
                         </div>
                         <div class="text-right">
@@ -361,12 +362,12 @@
                     </div>
                     <div class="mt-4 h-2 rounded-full bg-white/10 overflow-hidden">
                         {% set weight_bar_bg = 'linear-gradient(90deg,#059669,#6ee7b7)' if weight_profile.status == 'ideal' else ('linear-gradient(90deg,#d97706,#fbbf24)' if weight_profile.status == 'warning' else 'linear-gradient(90deg,#dc2626,#f87171)') %}
-                        <div class="h-2 rounded-full transition-all" style="width:{{ weight_profile.score_pct }}%; background:{{ weight_bar_bg }}"></div>
+                        <div class="h-2 rounded-full transition-all" {{ ('style="width:'~weight_profile.score_pct~'%; background:'~weight_bar_bg~'"')|safe }}></div>
                     </div>
                     <div class="flex items-center justify-between mt-3 text-[11px] font-bold">
                         <span class="text-white/45">Impact Global (Malus/Bonus)</span>
                         {% set impact_color = '#6ee7b7' if weight_profile.race_percent >= 0 else '#f87171' %}
-                        <span style="color:{{ impact_color }}">
+                        <span {{ ('style="color:'~impact_color~'"')|safe }}>
                             {{ '+' if weight_profile.race_percent >= 0 else '' }}{{ "%.1f"|format(weight_profile.race_percent) }}%
                         </span>
                     </div>
@@ -409,24 +410,24 @@
                 {% set injury_bg_rgb = '185,28,28' if injury_risk > 25 else ('217,119,6' if injury_risk > 15 else '15,118,110') %}
                 {% set injury_border_rgb = '239,68,68' if injury_risk > 25 else ('245,158,11' if injury_risk > 15 else '20,184,166') %}
                 {% set injury_card_style = 'background:rgba(' ~ injury_bg_rgb ~ ', 0.07); border:1px solid rgba(' ~ injury_border_rgb ~ ', 0.25);' %}
-                <div class="card p-5" style="{{ injury_card_style }}">
+                <div class="card p-5" {{ ('style="'~injury_card_style~'"')|safe }}>
                     <div class="flex items-center justify-between mb-2">
                         {% set injury_title_color = '#f87171' if injury_risk > 25 else ('#fbbf24' if injury_risk > 15 else '#2dd4bf') %}
-                        <h3 class="font-bold text-sm" style="color:{{ injury_title_color }}">
+                        <h3 class="font-bold text-sm" {{ ('style="color:'~injury_title_color~'"')|safe }}>
                             {% if injury_risk > 25 %}⚠️ Risque de Blessure ÉLEVÉ
                             {% elif injury_risk > 15 %}⚡ Risque de Blessure MODÉRÉ
                             {% else %}✅ Risque de Blessure FAIBLE
                             {% endif %}
                         </h3>
                         {% set injury_val_color = '#f87171' if injury_risk > 25 else ('#fbbf24' if injury_risk > 15 else '#2dd4bf') %}
-                        <span class="font-title text-2xl" style="color:{{ injury_val_color }}">
+                        <span class="font-title text-2xl" {{ ('style="color:'~injury_val_color~'"')|safe }}>
                             {{ injury_risk | round(1) }}%
                         </span>
                     </div>
                     <div class="h-2 rounded-full" style="background:rgba(255,255,255,0.07)">
                         {% set injury_bar_bg = 'linear-gradient(90deg,#dc2626,#f87171)' if injury_risk > 25 else ('linear-gradient(90deg,#d97706,#fbbf24)' if injury_risk > 15 else 'linear-gradient(90deg,#0f766e,#2dd4bf)') %}
                         {% set injury_bar_width = [injury_risk / 40 * 100, 100] | min %}
-                        <div class="h-2 rounded-full transition-all" style="width:{{ injury_bar_width }}%; background:{{ injury_bar_bg }}"></div>
+                        <div class="h-2 rounded-full transition-all" {{ ('style="width:'~injury_bar_width~'%; background:'~injury_bar_bg~'"')|safe }}></div>
                     </div>
                     <p class="text-white/35 text-xs mt-2 font-semibold">
                         {% if injury_risk > 25 %}Ton cochon est à bout. Repose-le avant la prochaine course.
