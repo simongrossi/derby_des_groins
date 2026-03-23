@@ -35,8 +35,10 @@
             cursor: pointer; transition: all 0.2s;
             text-transform: uppercase; font-size: 0.85rem;
         }
-        .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 8px 25px rgba(244, 114, 182, 0.35); }
-        .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
+        .btn-primary:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 8px 25px rgba(244, 114, 182, 0.35); }
+        .btn-primary:disabled { opacity: 0.35; cursor: not-allowed; filter: grayscale(0.8); }
+
+        button:disabled { opacity: 0.35; cursor: not-allowed; filter: grayscale(0.8); }
 
         .stat-bar { height: 8px; border-radius: 4px; background: rgba(255, 255, 255, 0.1); overflow: hidden; }
         .stat-bar-fill { height: 100%; border-radius: 4px; transition: width 0.5s ease; }
@@ -539,14 +541,21 @@
                                 <p class="text-cyan-300 font-bold text-[10px] mt-1">⚖️ {{ '+' if cer.weight_delta >= 0 else '' }}{{ "%.1f"|format(cer.weight_delta) }} kg</p>
                                 <p class="text-yellow-300 font-bold text-[10px] mt-1">🐖 Pression porcherie x{{ "%.2f"|format(feeding_multiplier) }}</p>
                             </div>
-                            <form method="POST" action="/feed">
+                            <form method="POST" action="/feed" class="flex flex-col items-end gap-1">
                                 <input type="hidden" name="pig_id" value="{{ pig.id }}">
                                 <input type="hidden" name="cereal" value="{{ k }}">
                                 {% set effective_feed_cost = cer.cost * feeding_multiplier %}
-                                <button type="submit" class="bg-green-600 hover:bg-green-500 px-3 py-1.5 rounded-lg font-bold text-[10px] h-fit"
-                                        {% if user.balance < effective_feed_cost or pig.hunger >= 95 %}disabled{% endif %}>
+                                {% set too_expensive = user.balance < effective_feed_cost %}
+                                {% set too_full = pig.hunger >= 95 %}
+                                <button type="submit" class="bg-green-600 hover:bg-green-500 px-3 py-1.5 rounded-lg font-bold text-[10px] text-white h-fit transition-all"
+                                        {% if too_expensive or too_full %}disabled{% endif %}>
                                     {{ "%.0f"|format(effective_feed_cost) }} 🪙
                                 </button>
+                                {% if too_full %}
+                                <span class="text-[8px] text-white/30 font-bold uppercase">Rassasié</span>
+                                {% elif too_expensive %}
+                                <span class="text-[8px] text-red-400 font-bold uppercase">Manque {{ "%.0f"|format(effective_feed_cost - user.balance) }} 🪙</span>
+                                {% endif %}
                             </form>
                         </div>
                         {% endfor %}
@@ -562,13 +571,17 @@
                                 <p class="text-indigo-400 font-bold text-[10px] mt-1">{% for st, b in trn.stats.items() %}<span class="cursor-help" title="{{ stat_descriptions[st] }}">+{{b}} {{st[:3]|upper}}</span> {% endfor %}</p>
                                 <p class="text-cyan-300 font-bold text-[10px] mt-1">⚖️ {{ '+' if trn.weight_delta >= 0 else '' }}{{ "%.1f"|format(trn.weight_delta) }} kg</p>
                             </div>
-                            <form method="POST" action="/train">
+                            <form method="POST" action="/train" class="flex flex-col items-end gap-1">
                                 <input type="hidden" name="pig_id" value="{{ pig.id }}">
                                 <input type="hidden" name="training" value="{{ k }}">
-                                <button type="submit" class="bg-indigo-600 hover:bg-indigo-500 px-3 py-1.5 rounded-lg font-bold text-[10px] h-fit"
-                                        {% if pig.is_injured or (trn.energy_cost > 0 and pig.energy < trn.energy_cost) %}disabled{% endif %}>
-                                    {% if pig.is_injured %}Véto{% else %}-{{ trn.energy_cost|abs }} ⚡{% endif %}
+                                {% set too_tired = trn.energy_cost > 0 and pig.energy < trn.energy_cost %}
+                                <button type="submit" class="bg-indigo-600 hover:bg-indigo-500 px-3 py-1.5 rounded-lg font-bold text-[10px] text-white h-fit transition-all"
+                                        {% if pig.is_injured or too_tired %}disabled{% endif %}>
+                                    {% if pig.is_injured %}Vétérinaire{% else %}-{{ trn.energy_cost|abs }} ⚡{% endif %}
                                 </button>
+                                {% if too_tired %}
+                                <span class="text-[8px] text-red-400 font-bold uppercase">Fatigué</span>
+                                {% endif %}
                             </form>
                         </div>
                         {% endfor %}
