@@ -228,7 +228,7 @@
       const leader = pigs[0];
       const completed = ((turnIndex + 1) / turns.length) * 100;
 
-      turnLabelNode.textContent = `Tour ${turn.turn}`;
+      turnLabelNode.textContent = `Tour ${turn.turn} / ${turns.length}`;
       progressNode.style.width = `${completed}%`;
       headlineNode.textContent = leader ? `${leader.name} mène la danse` : 'Replay en cours';
       subheadNode.textContent = leader ? `${leader.emoji || '🐷'} ${leader.name} parcourt ${leader.distance.toFixed(1)} m.` : 'Aucun participant.';
@@ -317,9 +317,16 @@
     function renderTrackSegments(segments) {
       const container = document.getElementById('track-segments');
       if (!segments || !segments.length) {
-        /* Generate fake segments for demo/old-format replays */
-        const types = ['PLAT', 'MONTEE', 'VIRAGE', 'DESCENTE', 'PLAT'];
-        segments = types.map(type => ({ type, length: totalDistance / types.length }));
+        /* Generate random segments for demo/old-format replays */
+        const allTypes = ['PLAT', 'MONTEE', 'VIRAGE', 'DESCENTE', 'BOUE'];
+        segments = [];
+        let remaining = totalDistance;
+        while (remaining > 0) {
+          const type = allTypes[Math.floor(Math.random() * allTypes.length)];
+          const len = Math.min(remaining, 60 + Math.floor(Math.random() * 120));
+          segments.push({ type, length: len });
+          remaining -= len;
+        }
       }
       const total = segments.reduce((s, seg) => s + seg.length, 0);
       container.innerHTML = segments.map(seg => {
@@ -366,15 +373,26 @@
         { id: 5, name: 'Jambon Volant', emoji: '🥓' },
       ];
       const owners = ['Alice', 'Bob', 'Charlie', 'Diane', 'Émile'];
-      const TOTAL = 300;
-      const TURNS = 60;
-      const speeds = pigs.map(() => 3 + Math.random() * 3);
+      const TOTAL = 600;
+      const TURNS = 70;
+      const speeds = pigs.map(() => 7 + Math.random() * 4);
       const turns = [];
+
+      /* Generate segments */
+      const segTypes = ['PLAT', 'MONTEE', 'VIRAGE', 'DESCENTE', 'BOUE'];
+      const demoSegments = [];
+      let segRemaining = TOTAL;
+      while (segRemaining > 0) {
+        const type = segTypes[Math.floor(Math.random() * segTypes.length)];
+        const len = Math.min(segRemaining, 60 + Math.floor(Math.random() * 120));
+        demoSegments.push({ type, length: len });
+        segRemaining -= len;
+      }
 
       for (let t = 1; t <= TURNS; t++) {
         const pigStates = pigs.map((pig, i) => {
           const prevDist = t > 1 ? turns[t - 2].pigs[i].distance : 0;
-          const variation = (Math.random() - 0.35) * 2;
+          const variation = (Math.random() - 0.4) * 3;
           const dist = Math.min(TOTAL, prevDist + speeds[i] + variation);
           const fatigue = Math.min(100, (dist / TOTAL) * 80 + Math.random() * 15);
           const stumbled = Math.random() < 0.04;
@@ -393,6 +411,7 @@
 
       return {
         turns,
+        segments: demoSegments,
         participant_meta: participantMeta,
         track_profile: ['PLAT', 'MONTEE', 'VIRAGE', 'BOUE', 'DESCENTE'][Math.floor(Math.random() * 5)],
         race_id: 'DEMO',

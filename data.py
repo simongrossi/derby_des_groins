@@ -408,7 +408,7 @@ PIG_COURSE_SEGMENT_TYPES = ['PLAT', 'MONTEE', 'DESCENTE', 'VIRAGE', 'BOUE']
 # au code algorithmique.
 
 # Limite de tours pour eviter une boucle infinie
-RACE_MAX_TURNS = 500
+RACE_MAX_TURNS = 120
 
 # -- Strategie --
 RACE_ATTACK_THRESHOLD = 71

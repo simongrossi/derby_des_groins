@@ -136,12 +136,12 @@ def build_weighted_finish_order(participants):
     return finish_order
 
 
-def generate_course_segments(length=1200):
+def generate_course_segments(length=600):
     segments = []
     current_dist = 0
     while current_dist < length:
         seg_type = random.choice(PIG_COURSE_SEGMENT_TYPES)
-        seg_len = random.randint(150, 400)
+        seg_len = random.randint(60, 180)
         actual_len = min(seg_len, length - current_dist)
         segments.append({'type': seg_type, 'length': actual_len})
         current_dist += actual_len
