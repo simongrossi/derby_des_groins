@@ -165,6 +165,55 @@ def api_pig():
     })
 
 
+
 @api_bp.route('/api/prix-groin')
 def api_prix_groin():
     return jsonify({'prix': get_prix_moyen_groin()})
+
+
+@api_bp.route('/api/race/<int:race_id>/replay')
+def api_race_replay(race_id):
+    """Retourne le replay JSON d'une course terminée pour l'animation."""
+    race = Race.query.get(race_id)
+    if not race:
+        return jsonify({'error': 'Course introuvable, comme un cochon dans un sauna'}), 404
+    if race.status not in ('finished', 'cancelled'):
+        return jsonify({'error': "La course n'est pas encore terminée, patience !"}), 425
+    if not race.replay_json:
+        return jsonify({'error': "Pas de replay disponible, le greffier a oublie de filmer"}), 404
+
+    import json as _json
+
+    replay = _json.loads(race.replay_json)
+    participants_db = Participant.query.filter_by(race_id=race_id).all()
+    participant_meta = {
+        str(p.id): {
+            'emoji': p.emoji,
+            'owner': p.owner_name,
+            'finish_position': p.finish_position,
+        }
+        for p in participants_db
+    }
+    replay['participant_meta'] = participant_meta
+    replay['race_id'] = race_id
+    replay['winner_name'] = race.winner_name
+    replay['finished_at'] = race.finished_at.strftime('%H:%M') if race.finished_at else None
+    return jsonify(replay)
+
+
+@api_bp.route('/api/race/latest/replay')
+def api_latest_race_replay():
+    """Retourne le replay de la derniere course terminee."""
+    race = Race.query.filter_by(status='finished').order_by(Race.finished_at.desc()).first()
+    if not race:
+        return jsonify({'error': 'Aucune course terminee, les cochons sont encore en pyjama'}), 404
+    return api_race_replay(race.id)
+
+
+@api_bp.route('/live')
+def race_live():
+    """Page d'animation live de la derniere course."""
+    user = User.query.get(session['user_id']) if 'user_id' in session else None
+    race = Race.query.filter_by(status='finished').order_by(Race.finished_at.desc()).first()
+    race_id = race.id if race else None
+    return render_template('race_live.html', user=user, race_id=race_id, active_page='live')
