@@ -63,6 +63,12 @@
         .odds-low { border:1px solid #16a34a; color:#86efac; background:linear-gradient(135deg,#052e16,#14532d); }
         .odds-mid { border:1px solid #d97706; color:#fcd34d; background:linear-gradient(135deg,#1c1007,#451a03); }
         .odds-high { border:1px solid #dc2626; color:#fca5a5; background:linear-gradient(135deg,#1c0707,#450a0a); }
+        .info-tile {
+            background: rgba(255,255,255,.045);
+            border: 1px solid rgba(255,255,255,.09);
+            border-radius: 1rem;
+            padding: 1rem;
+        }
         #countdown-display {
             font-family:'Lilita One', cursive;
             background:linear-gradient(135deg,#f472b6,#fb7185,#fdba74);
@@ -136,7 +142,27 @@
                 </span>
             </div>
             {% if user %}
-                    <p class="text-white/55 font-semibold mt-4">Il te reste <strong class="text-pink-200">{{ bacon_tickets_remaining }} Tickets Bacon</strong> cette semaine.</p>
+            <p class="text-white/70 font-semibold mt-4">Les <strong class="text-pink-200">Tickets Bacon</strong> limitent le nombre de paris. Les <strong class="text-yellow-300">BitGroins</strong> servent a payer la mise et a recevoir les gains.</p>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4">
+                <div class="info-tile">
+                    <p class="text-white/45 text-[11px] uppercase tracking-[0.18em] font-black">Quota hebdo</p>
+                    <p class="font-title text-3xl text-pink-200 mt-2">{{ bacon_tickets_remaining }} / {{ weekly_bacon_tickets }}</p>
+                    <p class="text-white/55 text-sm font-semibold mt-2">Tu as encore {{ bacon_tickets_remaining }} Ticket{% if bacon_tickets_remaining > 1 %}s{% endif %} Bacon a depenser cette semaine.</p>
+                </div>
+                <div class="info-tile">
+                    <p class="text-white/45 text-[11px] uppercase tracking-[0.18em] font-black">Solde de mise</p>
+                    <p class="font-title text-3xl text-yellow-300 mt-2">{{ "%.0f"|format(user.balance) }} 🪙</p>
+                    <p class="text-white/55 text-sm font-semibold mt-2">Chaque ticket pose consomme des BitGroins selon la mise choisie.</p>
+                </div>
+            </div>
+            <div class="mt-4 rounded-2xl border border-cyan-400/20 bg-cyan-500/10 px-4 py-4">
+                <p class="text-cyan-100 font-extrabold">Comment ca marche ?</p>
+                <ul class="mt-3 space-y-2 text-sm font-semibold text-cyan-50/85">
+                    <li>• 1 Ticket Bacon = le droit de poser 1 pari sur 1 course.</li>
+                    <li>• Au moment de valider le ticket, tu choisis combien de BitGroins tu mises.</li>
+                    <li>• Les gains et pertes sont visibles ensuite dans <a href="/history#bitgroins" class="text-yellow-200 underline decoration-dotted underline-offset-4">l'historique BitGroins</a>.</li>
+                </ul>
+            </div>
             {% if user_bets %}
             <div class="soft p-4 mt-4">
                 <p class="text-white font-extrabold">Ticket deja pose sur la prochaine course</p>
@@ -297,6 +323,35 @@
                     <input type="hidden" name="race_id" value="{{ next_race.id }}">
                     <input type="hidden" name="bet_type" id="bet-type-input" value="win">
                     <input type="hidden" name="selection_order" id="selection-order-input" value="">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-5">
+                        <div class="rounded-2xl border border-pink-400/20 bg-pink-500/10 px-4 py-4">
+                            <p class="text-pink-100 font-extrabold">🎟️ Ticket Bacon</p>
+                            <p class="text-white/70 text-sm font-semibold mt-2">Il t'en faut 1 pour valider ce pari.</p>
+                            <p class="font-title text-3xl text-pink-200 mt-2">{{ bacon_tickets_remaining }}</p>
+                        </div>
+                        <div class="rounded-2xl border border-yellow-400/20 bg-yellow-500/10 px-4 py-4">
+                            <p class="text-yellow-100 font-extrabold">🪙 BitGroins</p>
+                            <p class="text-white/70 text-sm font-semibold mt-2">Ta mise sera debitee de ton solde.</p>
+                            <p class="font-title text-3xl text-yellow-300 mt-2">{{ "%.0f"|format(user.balance) }}</p>
+                        </div>
+                    </div>
+                    <div class="rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-4 mb-5">
+                        <p class="text-white font-extrabold">Avant de valider</p>
+                        <div class="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm font-semibold">
+                            <div class="soft p-3">
+                                <p class="text-white/45 uppercase text-[11px] tracking-[0.18em] font-black">1. Ticket</p>
+                                <p class="text-white/80 mt-2">Selectionne le format du pari.</p>
+                            </div>
+                            <div class="soft p-3">
+                                <p class="text-white/45 uppercase text-[11px] tracking-[0.18em] font-black">2. Cochons</p>
+                                <p class="text-white/80 mt-2">Clique les partants dans l'ordre attendu.</p>
+                            </div>
+                            <div class="soft p-3">
+                                <p class="text-white/45 uppercase text-[11px] tracking-[0.18em] font-black">3. Mise</p>
+                                <p class="text-white/80 mt-2">Renseigne tes BitGroins puis valide.</p>
+                            </div>
+                        </div>
+                    </div>
                     <div class="mb-5">
                         <p class="text-white/60 text-sm font-bold mb-2">Format du ticket</p>
                         <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-2 gap-3 max-h-[22rem] overflow-y-auto pr-2" id="bet-type-switcher" style="scrollbar-width: thin; scrollbar-color: rgba(244,114,182,0.4) transparent;">
