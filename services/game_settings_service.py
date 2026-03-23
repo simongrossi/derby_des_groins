@@ -13,6 +13,7 @@ class GameSettings:
     market_minute: int
     market_duration: int
     min_real_participants: int
+    empty_race_mode: str
     race_schedule: str
 
     @classmethod
