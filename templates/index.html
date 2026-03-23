@@ -299,9 +299,16 @@
             {% endif %}
         </article>
 
-        <article class="card p-6 lg:p-7" id="bet-form-section">
-            <p class="text-white/40 text-xs uppercase tracking-[0.22em] font-extrabold">💰 Action rapide</p>
-            <h2 class="font-title text-3xl text-white mt-2">Placer un pari</h2>
+        <article class="card p-6 lg:p-7 bg-gradient-to-br from-[#2d0f39] to-[#1a0a24]" id="bet-form-section">
+            <div class="flex items-center justify-between gap-3 mb-2">
+                <p class="text-white/40 text-[10px] uppercase tracking-[0.25em] font-black">💰 Action rapide</p>
+                <div class="flex items-center gap-2 bg-pink-500/10 border border-pink-500/20 px-3 py-1 rounded-full">
+                    <span class="text-[10px] font-black text-pink-300 uppercase">Tickets Bacon : {{ user.bacon_tickets if user else '?' }}</span>
+                    <span class="text-xs">🎟️</span>
+                </div>
+            </div>
+            <h2 class="font-title text-3xl text-white">Prise de ticket</h2>
+            <p class="text-white/40 text-xs font-semibold mt-2">Choisis ton format et valide ton ticket.</p>
             {% if user and next_race %}
                 {% if user_bets %}
                 <div class="soft p-4 mt-5">
@@ -373,16 +380,13 @@
                     <div class="mb-4 p-4 rounded-xl border border-white/10 bg-white/5" id="selected-pig-display">
                         <p class="text-white/40 text-sm font-semibold">Choisis un ticket, puis clique sur les partants dans l'ordre d'arrivee attendu.</p>
                     </div>
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
-                        <div class="soft p-4">
-                            <p class="text-white/60 text-sm font-bold">Tickets Bacon restants</p>
-                            <p class="font-title text-3xl text-pink-200 mt-2">{{ bacon_tickets_remaining }}</p>
-                            <p class="text-white/40 text-xs font-bold mt-2">1 ticket consomme par pari valide.</p>
-                        </div>
-                        <div class="soft p-4">
-                            <p class="text-white/60 text-sm font-bold">Ou depenser les Tickets Bacon ?</p>
-                            <p class="text-white/75 text-sm font-semibold mt-2">Uniquement ici, sur le tableau de paris de la prochaine course.</p>
-                            <p class="text-white/40 text-xs font-bold mt-2">Les BitGroins, eux, servent partout ou une mise ou un achat est demande.</p>
+                    <div class="mb-5 soft p-4 border-l-4 border-yellow-400/50">
+                        <div class="flex items-start gap-3">
+                            <span class="text-2xl shrink-0">🎫</span>
+                            <div>
+                                <p class="text-white font-bold text-sm">Quota Hebdo : {{ user.bacon_tickets }} / {{ weekly_bacon_tickets }} tickets restants</p>
+                                <p class="text-white/40 text-[11px] font-semibold mt-1">Chaque pari validé consomme 1 Ticket Bacon. Ton quota se réinitialise chaque lundi matin.</p>
+                            </div>
                         </div>
                     </div>
                     <div class="flex gap-3 items-end">
@@ -392,7 +396,16 @@
                         </div>
                         <button type="submit" id="bet-submit" class="btn-primary" disabled>Parier</button>
                     </div>
-                    <div id="potential-win" class="mt-3 text-sm text-white/50 font-semibold hidden">Cote ticket : <span id="ticket-odds" class="text-yellow-300 font-bold"></span> • Gain potentiel : <span id="potential-amount" class="text-green-400 font-bold"></span> 🪙</div>
+                    <div id="potential-win" class="mt-4 p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 hidden">
+                        <div class="flex items-center justify-between text-sm font-bold">
+                            <span class="text-white/60">Cote totale du ticket</span>
+                            <span id="ticket-odds" class="text-yellow-400 text-lg font-black">--</span>
+                        </div>
+                        <div class="flex items-center justify-between mt-2 text-lg font-black">
+                            <span class="text-white">Gain potentiel</span>
+                            <span class="text-emerald-400"><span id="potential-amount">0.00</span> 🪙</span>
+                        </div>
+                    </div>
                 </form>
                 <p class="text-white/30 text-xs font-bold mt-3">Un seul ticket par course et {{ weekly_bacon_tickets }} tickets maximum par semaine.</p>
                 {% endif %}

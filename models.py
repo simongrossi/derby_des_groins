@@ -86,6 +86,15 @@ class User(db.Model):
         """Nombre de cochons vivants."""
         return Pig.query.filter_by(user_id=self.id, is_alive=True).count()
 
+    @property
+    def bacon_tickets(self) -> int:
+        """Nombre de tickets bacon (quota de paris hebdo) restants."""
+        from services.race_service import get_user_weekly_bet_count
+        from data import WEEKLY_BACON_TICKETS
+        # Utiliser datetime.utcnow() pour correspondre aux dates de paris en DB
+        count = get_user_weekly_bet_count(self, datetime.utcnow())
+        return max(0, WEEKLY_BACON_TICKETS - count)
+
 
 class Pig(db.Model):
     id = db.Column(db.Integer, primary_key=True)
