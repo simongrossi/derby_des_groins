@@ -7,7 +7,64 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     .lane-stripes {
-      background-image: repeating-linear-gradient(to bottom, transparent 0, transparent 48px, rgba(255,255,255,0.15) 48px, rgba(255,255,255,0.15) 50px);
+      background-image: repeating-linear-gradient(to bottom, transparent 0, transparent 48px, rgba(255,255,255,0.12) 48px, rgba(255,255,255,0.12) 50px);
+    }
+    /* ── Track surface ── */
+    .track-surface {
+      background:
+        linear-gradient(180deg, rgba(115,59,34,0.85) 0%, rgba(92,46,28,0.9) 40%, rgba(72,36,20,0.95) 100%);
+      position: relative;
+    }
+    .track-surface::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background:
+        repeating-linear-gradient(90deg, transparent 0, transparent 60px, rgba(255,255,255,0.03) 60px, rgba(255,255,255,0.03) 62px);
+      pointer-events: none;
+    }
+    /* ── Finish line ── */
+    .finish-line {
+      background: repeating-linear-gradient(to bottom, #fde047 0, #fde047 8px, transparent 8px, transparent 16px);
+      width: 4px;
+      opacity: 0.7;
+    }
+    /* ── Runner card ── */
+    .runner-card {
+      backdrop-filter: blur(8px);
+      transition: all 0.5s ease-out;
+    }
+    .runner-card .pig-emoji {
+      font-size: 1.6rem;
+      filter: drop-shadow(0 2px 4px rgba(0,0,0,0.4));
+      transition: transform 0.3s ease;
+    }
+    .runner-card:hover .pig-emoji {
+      transform: scale(1.2);
+    }
+    /* ── Event flash ── */
+    @keyframes event-flash {
+      0%   { opacity: 0; transform: translateY(4px); }
+      20%  { opacity: 1; transform: translateY(0); }
+      100% { opacity: 1; }
+    }
+    .event-badge { animation: event-flash 0.4s ease-out; }
+    /* ── Progress bar shimmer ── */
+    .progress-shimmer {
+      background-size: 200% 100%;
+      animation: shimmer 2s linear infinite;
+    }
+    @keyframes shimmer {
+      0%   { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+    /* ── Speed lines ── */
+    @keyframes speed-lines {
+      0%   { transform: translateX(0); opacity: 0.3; }
+      100% { transform: translateX(-20px); opacity: 0; }
+    }
+    .speed-line {
+      animation: speed-lines 0.6s linear infinite;
     }
   </style>
 </head>
@@ -35,8 +92,9 @@
               <div id="track-profile" class="mt-1 text-lg font-black text-white">Chargement…</div>
             </div>
             <div class="flex flex-wrap gap-2 text-xs font-bold">
-              <button id="play-pause" class="rounded-xl border border-cyan-300/20 bg-cyan-300/10 px-4 py-2 text-cyan-100">Pause</button>
-              <button id="restart" class="rounded-xl border border-white/10 bg-white/10 px-4 py-2 text-white">Recommencer</button>
+              <button id="play-pause" class="rounded-xl border border-cyan-300/20 bg-cyan-300/10 px-4 py-2 text-cyan-100 transition hover:bg-cyan-300/20">Pause</button>
+              <button id="restart" class="rounded-xl border border-white/10 bg-white/10 px-4 py-2 text-white transition hover:bg-white/20">Recommencer</button>
+              <button id="demo-btn" class="rounded-xl border border-emerald-300/20 bg-emerald-300/10 px-4 py-2 text-emerald-100 transition hover:bg-emerald-300/20">🎮 Démo</button>
             </div>
           </div>
 
@@ -45,9 +103,11 @@
               <span id="turn-label">Tour 0</span>
               <span id="finished-at">—</span>
             </div>
-            <div class="relative h-[28rem] overflow-hidden rounded-2xl border border-white/10 bg-[linear-gradient(180deg,rgba(115,59,34,0.85),rgba(82,41,24,0.95))] p-4">
+            <!-- Track segments bar -->
+            <div id="track-segments" class="mb-3 flex h-6 overflow-hidden rounded-full border border-white/10"></div>
+            <div class="track-surface relative h-[28rem] overflow-hidden rounded-2xl border border-white/10 p-4">
               <div class="lane-stripes pointer-events-none absolute inset-0 opacity-20"></div>
-              <div id="finish-line" class="absolute bottom-0 right-8 top-0 border-l-4 border-dashed border-yellow-300/80"></div>
+              <div id="finish-line" class="finish-line absolute bottom-0 right-8 top-0"></div>
               <div id="lanes" class="relative h-full"></div>
             </div>
           </div>
@@ -60,7 +120,7 @@
           <div id="headline" class="mt-2 text-2xl font-black text-cyan-100">Préparation du replay…</div>
           <p id="subhead" class="mt-2 text-sm text-white/65">Les cochons rejoignent leur ligne de départ.</p>
           <div class="mt-4 h-2 overflow-hidden rounded-full bg-white/10">
-            <div id="progress" class="h-full w-0 rounded-full bg-gradient-to-r from-cyan-400 via-sky-300 to-yellow-300 transition-all duration-300"></div>
+            <div id="progress" class="progress-shimmer h-full w-0 rounded-full bg-gradient-to-r from-cyan-400 via-sky-300 to-yellow-300 transition-all duration-300"></div>
           </div>
         </section>
 
@@ -143,16 +203,17 @@
       const laneHeight = 100 / Math.max(count, 1);
       lane.style.top = `${index * laneHeight}%`;
       lane.style.height = `${laneHeight}%`;
+      const eventName = pig.visual_event || deriveVisualEvent(pig);
+      const badgeClass = eventClass(eventName);
+      const badgeText = EVENT_LABELS[eventName] || '';
       lane.innerHTML = `
-        <div class="absolute inset-x-0 top-1/2 -translate-y-1/2 border-t border-dashed border-white/10"></div>
-        <div class="runner absolute top-1/2 -translate-y-1/2 transition-all duration-500 ease-out">
-          <div class="rounded-2xl border border-white/10 bg-slate-950/80 px-3 py-2 shadow-lg">
-            <div class="text-2xl">${pig.emoji || '🐷'}</div>
+        <div class="absolute inset-x-0 top-1/2 -translate-y-1/2 border-t border-dashed border-white/8"></div>
+        <div class="runner runner-card absolute top-1/2 -translate-y-1/2 flex items-center gap-2">
+          <div class="rounded-2xl border border-white/15 bg-slate-950/85 px-3 py-1.5 shadow-lg shadow-black/40 flex items-center gap-2">
+            <span class="pig-emoji">${pig.emoji || '🐷'}</span>
+            <span class="text-xs font-black text-white truncate max-w-[80px]">${pig.name}</span>
           </div>
-        </div>
-        <div class="runner-label absolute top-1/2 -translate-y-1/2 transition-all duration-500 ease-out min-w-0 rounded-2xl border border-white/10 bg-slate-950/80 px-3 py-2 shadow-lg">
-          <div class="truncate text-sm font-black text-white">${pig.name}</div>
-          <div class="text-xs text-white/50">${pig.owner || 'Invité'}</div>
+          ${badgeText ? `<span class="event-badge rounded-full border px-2 py-0.5 text-[10px] font-black whitespace-nowrap ${badgeClass}">${badgeText}</span>` : ''}
         </div>
       `;
       lanesNode.appendChild(lane);
@@ -178,15 +239,13 @@
       pigs.forEach((pig) => {
         const lane = laneEls.get(pig.id);
         const runner = lane.querySelector('.runner');
-        const card = lane.querySelector('.runner-label');
-        const offset = totalDistance > 0 ? Math.min(92, Math.max(0, (pig.distance / totalDistance) * 92)) : 0;
+        const offset = totalDistance > 0 ? Math.min(88, Math.max(0, (pig.distance / totalDistance) * 88)) : 0;
         runner.style.left = `${offset}%`;
-        card.style.left = `calc(${offset}% + 4.5rem)`;
       });
 
       scoreboardNode.innerHTML = pigs.map((pig, index) => {
         const meta = replay.participant_meta?.[pig.id] || {};
-        const eventName = pig.visual_event || (pig.is_finished ? 'finished' : 'none');
+        const eventName = pig.visual_event || deriveVisualEvent(pig);
         return `
           <div class="rounded-2xl border border-white/10 bg-black/15 p-4">
             <div class="flex items-start justify-between gap-3">
@@ -240,6 +299,108 @@
       startPlayback();
     }
 
+    const SEGMENT_COLORS = {
+      PLAT: 'bg-amber-700/60',
+      MONTEE: 'bg-red-800/50',
+      DESCENTE: 'bg-emerald-700/50',
+      VIRAGE: 'bg-purple-700/50',
+      BOUE: 'bg-yellow-900/60',
+    };
+    const SEGMENT_LABELS = {
+      PLAT: '🛣️ Plat',
+      MONTEE: '⛰️ Montée',
+      DESCENTE: '🛷 Descente',
+      VIRAGE: '🌀 Virage',
+      BOUE: '🟤 Boue',
+    };
+
+    function renderTrackSegments(segments) {
+      const container = document.getElementById('track-segments');
+      if (!segments || !segments.length) {
+        /* Generate fake segments for demo/old-format replays */
+        const types = ['PLAT', 'MONTEE', 'VIRAGE', 'DESCENTE', 'PLAT'];
+        segments = types.map(type => ({ type, length: totalDistance / types.length }));
+      }
+      const total = segments.reduce((s, seg) => s + seg.length, 0);
+      container.innerHTML = segments.map(seg => {
+        const pct = (seg.length / total) * 100;
+        return `<div class="${SEGMENT_COLORS[seg.type] || 'bg-white/10'} flex items-center justify-center text-[10px] font-bold text-white/70 overflow-hidden" style="width:${pct}%" title="${SEGMENT_LABELS[seg.type] || seg.type}">${pct > 15 ? (SEGMENT_LABELS[seg.type] || seg.type) : ''}</div>`;
+      }).join('');
+    }
+
+    function deriveVisualEvent(pig) {
+      if (pig.visual_event) return pig.visual_event;
+      if (pig.is_finished) return 'finished';
+      if (pig.stumbled) return 'stumble';
+      if (pig.has_draft) return 'drafting';
+      if (pig.fatigue > 60) return 'tired';
+      return 'none';
+    }
+
+    function enrichReplay(payload) {
+      /* Normalize turns and derive missing fields */
+      const turns = payload.turns || [];
+      turns.forEach(turn => {
+        turn.pigs.forEach(pig => {
+          if (!pig.visual_event) pig.visual_event = deriveVisualEvent(pig);
+        });
+      });
+      /* Compute totalDistance from max distance in last turn if no segments */
+      if (!payload.segments || !payload.segments.length) {
+        const lastTurn = turns[turns.length - 1];
+        if (lastTurn) {
+          const maxDist = Math.max(...lastTurn.pigs.map(p => p.distance));
+          totalDistance = maxDist > 0 ? maxDist : 300;
+        }
+      } else {
+        totalDistance = payload.segments.reduce((sum, s) => sum + Number(s.length || 0), 0);
+      }
+    }
+
+    function generateDemoReplay() {
+      const pigs = [
+        { id: 1, name: 'Rillette Express', emoji: '🐷' },
+        { id: 2, name: 'Boudin Turbo', emoji: '🐽' },
+        { id: 3, name: 'Saucisse Flash', emoji: '🌭' },
+        { id: 4, name: 'Groin de Tonnerre', emoji: '🐗' },
+        { id: 5, name: 'Jambon Volant', emoji: '🥓' },
+      ];
+      const owners = ['Alice', 'Bob', 'Charlie', 'Diane', 'Émile'];
+      const TOTAL = 300;
+      const TURNS = 60;
+      const speeds = pigs.map(() => 3 + Math.random() * 3);
+      const turns = [];
+
+      for (let t = 1; t <= TURNS; t++) {
+        const pigStates = pigs.map((pig, i) => {
+          const prevDist = t > 1 ? turns[t - 2].pigs[i].distance : 0;
+          const variation = (Math.random() - 0.35) * 2;
+          const dist = Math.min(TOTAL, prevDist + speeds[i] + variation);
+          const fatigue = Math.min(100, (dist / TOTAL) * 80 + Math.random() * 15);
+          const stumbled = Math.random() < 0.04;
+          const hasDraft = Math.random() < 0.12;
+          const isFinished = dist >= TOTAL;
+          return { id: pig.id, name: pig.name, emoji: pig.emoji, distance: parseFloat(dist.toFixed(1)), fatigue: parseFloat(fatigue.toFixed(1)), is_finished: isFinished, stumbled, has_draft: hasDraft };
+        });
+        turns.push({ turn: t, pigs: pigStates });
+        if (pigStates.every(p => p.is_finished)) break;
+      }
+
+      const participantMeta = {};
+      pigs.forEach((pig, i) => {
+        participantMeta[pig.id] = { emoji: pig.emoji, owner: owners[i], finish_position: i + 1 };
+      });
+
+      return {
+        turns,
+        participant_meta: participantMeta,
+        track_profile: ['PLAT', 'MONTEE', 'VIRAGE', 'BOUE', 'DESCENTE'][Math.floor(Math.random() * 5)],
+        race_id: 'DEMO',
+        winner_name: null,
+        finished_at: null,
+      };
+    }
+
     async function loadReplay() {
       try {
         const response = await fetch('/api/race/latest/replay');
@@ -247,19 +408,30 @@
         if (!response.ok) throw new Error(payload.error || 'Impossible de charger le replay.');
 
         replay = payload;
-        totalDistance = (payload.segments || []).reduce((sum, segment) => sum + Number(segment.length || 0), 0);
+        enrichReplay(replay);
+        renderTrackSegments(replay.segments);
         trackProfileNode.textContent = profileLabel(payload.track_profile);
         raceLabelNode.textContent = payload.race_id ? `#${payload.race_id}` : '—';
         finishedAtNode.textContent = payload.finished_at ? `Arrivée ${payload.finished_at}` : 'Dernière course';
         winnerPillNode.textContent = payload.winner_name ? `🏆 ${payload.winner_name}` : 'En course';
         restartPlayback();
       } catch (error) {
-        headlineNode.textContent = 'Aucun replay disponible';
-        subheadNode.textContent = error.message;
-        trackProfileNode.textContent = 'Indisponible';
-        playPauseButton.disabled = true;
-        restartButton.disabled = true;
+        /* Fallback: load demo replay */
+        loadDemo();
       }
+    }
+
+    function loadDemo() {
+      replay = generateDemoReplay();
+      enrichReplay(replay);
+      renderTrackSegments(replay.segments);
+      trackProfileNode.textContent = '🎮 ' + profileLabel(replay.track_profile) + ' (démo)';
+      raceLabelNode.textContent = 'DÉMO';
+      finishedAtNode.textContent = 'Mode démonstration';
+      winnerPillNode.textContent = 'En course';
+      headlineNode.textContent = 'Course de démonstration';
+      subheadNode.textContent = 'Données simulées pour le développement.';
+      restartPlayback();
     }
 
     playPauseButton.addEventListener('click', () => {
@@ -269,6 +441,7 @@
     });
 
     restartButton.addEventListener('click', restartPlayback);
+    document.getElementById('demo-btn').addEventListener('click', loadDemo);
 
     loadReplay();
   </script>

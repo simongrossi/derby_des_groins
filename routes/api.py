@@ -184,7 +184,13 @@ def api_race_replay(race_id):
 
     import json as _json
 
-    replay = _json.loads(race.replay_json)
+    raw = _json.loads(race.replay_json)
+    # replay_json may be a bare list of turns (old format) or a dict
+    if isinstance(raw, list):
+        replay = {'turns': raw}
+    else:
+        replay = raw
+
     participants_db = Participant.query.filter_by(race_id=race_id).all()
     participant_meta = {
         str(p.id): {

@@ -1,3 +1,5 @@
+from datetime import date, datetime
+
 from flask import Blueprint, jsonify, redirect, render_template, request, session, url_for
 
 from extensions import db
@@ -11,6 +13,13 @@ MAX_CLICKS = 7
 GRID_SIZE = 20
 
 
+def _already_played_today(user):
+    """Return True if the user already played the truffle hunt today."""
+    if not user.last_truffe_at:
+        return False
+    return user.last_truffe_at.date() >= date.today()
+
+
 @truffes_bp.route('/truffes')
 def truffes():
     user_id = session.get('user_id')
@@ -18,6 +27,7 @@ def truffes():
         return redirect(url_for('auth.login'))
 
     user = User.query.get(user_id)
+    already_played = _already_played_today(user)
     return render_template(
         'truffes.html',
         user=user,
@@ -25,7 +35,27 @@ def truffes():
         reward=TRUFFE_REWARD,
         max_clicks=MAX_CLICKS,
         grid_size=GRID_SIZE,
+        already_played=already_played,
     )
+
+
+@truffes_bp.route('/truffes/play', methods=['POST'])
+def truffes_play():
+    """Called when the user starts a game (first click). Marks the day as used."""
+    user_id = session.get('user_id')
+    if not user_id:
+        return jsonify({'ok': False, 'error': 'Non connecté'}), 401
+
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify({'ok': False, 'error': 'Utilisateur introuvable'}), 404
+
+    if _already_played_today(user):
+        return jsonify({'ok': False, 'error': 'Déjà joué aujourd\'hui'}), 429
+
+    user.last_truffe_at = datetime.utcnow()
+    db.session.commit()
+    return jsonify({'ok': True})
 
 
 @truffes_bp.route('/truffes/win', methods=['POST'])
