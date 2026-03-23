@@ -142,10 +142,10 @@
       </div>
 
       <aside class="space-y-6">
-        <section class="rounded-3xl border border-white/10 bg-white/5 p-6">
+        <section class="rounded-3xl border border-white/10 bg-white/5 p-6" style="min-height:140px">
           <p class="text-xs uppercase tracking-[0.25em] text-white/40">Etat</p>
-          <div id="headline" class="mt-2 text-2xl font-black text-cyan-100">Préparation du replay…</div>
-          <p id="subhead" class="mt-2 text-sm text-white/65">Les cochons rejoignent leur ligne de départ.</p>
+          <div id="headline" class="mt-2 text-xl font-black text-cyan-100 truncate">Préparation du replay…</div>
+          <p id="subhead" class="mt-2 text-sm text-white/65 truncate">Les cochons rejoignent leur ligne de départ.</p>
           <div class="mt-4 h-2 overflow-hidden rounded-full bg-white/10">
             <div id="progress" class="progress-shimmer h-full w-0 rounded-full bg-gradient-to-r from-cyan-400 via-sky-300 to-yellow-300 transition-all duration-300"></div>
           </div>
@@ -156,7 +156,7 @@
             <h2 class="text-lg font-black">Classement live</h2>
             <span id="winner-pill" class="rounded-full border border-yellow-300/20 bg-yellow-300/10 px-3 py-1 text-xs font-black text-yellow-100">En course</span>
           </div>
-          <div id="scoreboard" class="mt-4 space-y-3"></div>
+          <div id="scoreboard" class="mt-4 space-y-2"></div>
         </section>
 
         <section class="rounded-3xl border border-white/10 bg-white/5 p-6 text-sm text-white/70">
@@ -307,30 +307,30 @@
         const specInfo = specKey ? SPEC_TYPES[specKey] : null;
         const terrainLabel = pig.current_terrain ? (SEGMENT_LABELS[pig.current_terrain] || '') : '';
         return `
-          <div class="rounded-2xl border border-white/10 bg-black/15 p-3">
-            <div class="flex items-start justify-between gap-2">
+          <div class="rounded-xl border border-white/10 bg-black/15 px-3 py-2" style="height:68px">
+            <div class="flex items-center justify-between gap-2 h-full">
               <div class="min-w-0 flex-1">
-                <div class="flex items-center gap-2 text-sm font-black text-white">
-                  <span class="text-white/45">#${index + 1}</span>
+                <div class="flex items-center gap-1.5 text-xs font-black text-white">
+                  <span class="text-white/45 w-4">#${index + 1}</span>
                   <span>${meta.emoji || '🐷'}</span>
-                  <span class="truncate">${pig.name}</span>
-                  ${specInfo ? `<span class="spec-badge" style="background:${specInfo.color}22;color:${specInfo.color};border:1px solid ${specInfo.color}33">${specInfo.label}</span>` : ''}
+                  <span class="truncate max-w-[80px]">${pig.name}</span>
+                  ${specInfo ? `<span class="spec-badge flex-shrink-0" style="background:${specInfo.color}22;color:${specInfo.color};border:1px solid ${specInfo.color}33">${specInfo.label}</span>` : ''}
                 </div>
-                <p class="mt-1 text-[10px] text-white/40">${meta.owner || 'Invité'} · ${pig.distance.toFixed(0)} m ${terrainLabel}</p>
-                <div class="mt-1.5 flex gap-2 items-center">
-                  <div class="flex items-center gap-1 flex-1">
-                    <span class="stat-label text-green-400/70">⚡</span>
-                    <div class="stat-bar-bg rounded-full overflow-hidden flex-1 h-[5px]"><div class="stat-bar stat-energy" style="width:${energy}%"></div></div>
-                    <span class="stat-label text-white/30">${Math.round(energy)}</span>
+                <div class="mt-1 flex items-center gap-2 text-[10px] text-white/35">
+                  <span class="truncate">${pig.distance.toFixed(0)}m ${terrainLabel}</span>
+                  <span class="rounded-full border px-1.5 py-0 text-[9px] font-bold flex-shrink-0 ${eventClass(eventName)}">${EVENT_LABELS[eventName] || '—'}</span>
+                </div>
+                <div class="mt-1 flex gap-2 items-center">
+                  <div class="flex items-center gap-0.5 flex-1">
+                    <span class="stat-label text-green-400/60">⚡</span>
+                    <div class="stat-bar-bg rounded-full overflow-hidden flex-1 h-[4px]"><div class="stat-bar stat-energy" style="width:${energy}%"></div></div>
                   </div>
-                  <div class="flex items-center gap-1 flex-1">
-                    <span class="stat-label text-orange-400/70">🔥</span>
-                    <div class="stat-bar-bg rounded-full overflow-hidden flex-1 h-[5px]"><div class="stat-bar stat-fatigue" style="width:${fatigue}%"></div></div>
-                    <span class="stat-label text-white/30">${Math.round(fatigue)}</span>
+                  <div class="flex items-center gap-0.5 flex-1">
+                    <span class="stat-label text-orange-400/60">🔥</span>
+                    <div class="stat-bar-bg rounded-full overflow-hidden flex-1 h-[4px]"><div class="stat-bar stat-fatigue" style="width:${fatigue}%"></div></div>
                   </div>
                 </div>
               </div>
-              <span class="rounded-full border px-2 py-0.5 text-[10px] font-black ${eventClass(eventName)}">${EVENT_LABELS[eventName] || '—'}</span>
             </div>
           </div>
         `;
