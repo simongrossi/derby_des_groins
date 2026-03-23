@@ -145,6 +145,59 @@
         </div>
     </section>
 
+    <section class="card p-5 lg:p-6 space-y-5">
+        <div class="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+            <div>
+                <p class="text-xs uppercase tracking-[0.35em] text-pink-200/70 font-extrabold">Lecture express</p>
+                <h2 class="font-title text-3xl text-white mt-2">🐽 Grand calendrier des engagements</h2>
+                <p class="text-white/45 font-semibold mt-2 max-w-3xl">Repere d'un coup d'oeil les jours occupes : chaque icone de cochon signale une inscription deja posee sur le creneau.</p>
+            </div>
+            <div class="flex flex-wrap gap-2">
+                <span class="pill bg-white/8 text-white/70 border border-white/10">{{ month_slots | length }} jours affiches</span>
+                <span class="pill bg-pink-500/12 text-pink-200 border border-pink-400/20">{{ pigs_data | length }} cochon(s) suivis</span>
+            </div>
+        </div>
+        <div class="grid grid-cols-7 gap-2 text-center text-[11px] uppercase tracking-[0.18em] text-white/35 font-extrabold">
+            <div>Lun</div><div>Mar</div><div>Mer</div><div>Jeu</div><div>Ven</div><div>Sam</div><div>Dim</div>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-7 gap-3 xl:gap-2">
+            {% for slot in month_slots %}
+            {% set accent = slot.theme.accent %}
+            <article class="soft-card p-3 min-h-[10rem] flex flex-col {% if slot.is_next %}ring-1 ring-yellow-300/35{% endif %}">
+                <div class="flex items-start justify-between gap-2">
+                    <div>
+                        <p class="text-white font-extrabold text-lg leading-none">{{ slot.slot.strftime('%d') }}</p>
+                        <p class="text-white/40 text-[11px] font-semibold mt-1">{{ slot.day_name }} • {{ slot.slot.strftime('%H:%M') }}</p>
+                    </div>
+                    <span class="pill !px-2 !py-1 {% if accent == 'red' %}bg-red-500/12 text-red-200 border border-red-400/20{% elif accent == 'cyan' %}bg-cyan-500/12 text-cyan-200 border border-cyan-400/20{% elif accent == 'amber' %}bg-amber-500/12 text-amber-100 border border-amber-400/20{% elif accent == 'emerald' %}bg-emerald-500/12 text-emerald-200 border border-emerald-400/20{% else %}bg-pink-500/12 text-pink-200 border border-pink-400/20{% endif %}">{{ slot.theme.emoji }}</span>
+                </div>
+                <p class="text-white/75 text-xs font-bold mt-3 leading-snug">{{ slot.theme.name }}</p>
+                <div class="mt-3 flex flex-wrap gap-1.5">
+                    {% if slot.user_plans %}
+                        {% for plan in slot.user_plans %}
+                            {% if plan.pig %}
+                            <span class="inline-flex h-8 w-8 items-center justify-center rounded-full border border-pink-300/20 bg-pink-500/12 text-base" title="{{ plan.pig.name }} inscrit">{{ plan.pig.emoji }}</span>
+                            {% endif %}
+                        {% endfor %}
+                    {% else %}
+                    <span class="text-white/25 text-xs font-semibold">Aucun cochon inscrit</span>
+                    {% endif %}
+                </div>
+                <div class="mt-auto pt-3 flex flex-wrap gap-1.5">
+                    {% if slot.is_next %}
+                    <span class="pill !px-2 !py-1 bg-yellow-400/15 text-yellow-200 border border-yellow-400/20">Prochaine</span>
+                    {% endif %}
+                    {% if slot.race %}
+                    <span class="pill !px-2 !py-1 bg-indigo-500/12 text-indigo-200 border border-indigo-400/20">{{ slot.participants | length }} partants</span>
+                    {% else %}
+                    <span class="pill !px-2 !py-1 bg-white/8 text-white/60 border border-white/10">Planifiable</span>
+                    {% endif %}
+                </div>
+            </article>
+            {% endfor %}
+        </div>
+    </section>
+
     <section class="space-y-4">
         <div>
             <h2 class="font-title text-3xl text-white">🐷 Mes cochons a planifier</h2>
