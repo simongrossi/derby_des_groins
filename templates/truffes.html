@@ -1,0 +1,198 @@
+{% include '_site_header.html' %}
+
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <title>Derby des Groins — Chasse aux Truffes</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="min-h-screen bg-[radial-gradient(circle_at_top,rgba(50,34,20,0.98),rgba(18,10,7,1)_58%)] text-white">
+  <main class="max-w-6xl mx-auto px-4 py-8 space-y-8">
+    <section class="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
+      <div class="rounded-3xl border border-amber-200/10 bg-white/5 p-6 shadow-2xl shadow-amber-950/20">
+        <div class="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <p class="text-sm uppercase tracking-[0.35em] text-amber-200/45">Mini-jeu</p>
+            <h1 class="mt-2 text-4xl font-black text-amber-100">🍄 Chasse aux Truffes</h1>
+            <p class="mt-3 max-w-2xl text-sm text-white/70">Flairer la bonne case en moins de {{ max_clicks }} clics. Plus tu te rapproches, plus le radar à groin chauffe.</p>
+          </div>
+          <div class="rounded-2xl border border-yellow-300/20 bg-yellow-300/10 px-5 py-4 text-right">
+            <div class="text-xs uppercase tracking-[0.25em] text-yellow-100/55">Prime</div>
+            <div class="mt-1 text-3xl font-black text-yellow-300">+{{ reward }} 🪙</div>
+          </div>
+        </div>
+
+        <div class="mt-6 grid gap-6 xl:grid-cols-[1fr_290px]">
+          <section class="rounded-3xl border border-white/10 bg-black/15 p-4">
+            <div class="mb-4 flex items-center justify-between gap-4">
+              <div>
+                <p class="text-xs uppercase tracking-[0.25em] text-white/40">Prairie porcine</p>
+                <p class="text-sm text-white/70">Plateau {{ grid_size }}×{{ grid_size }} — distance de Manhattan</p>
+              </div>
+              <button id="new-game" class="rounded-2xl border border-amber-300/20 bg-amber-300/10 px-4 py-2 text-sm font-black text-amber-100 transition hover:bg-amber-300/15">Nouvelle partie</button>
+            </div>
+            <div id="grid" class="grid gap-1.5" style="grid-template-columns: repeat({{ grid_size }}, minmax(0, 1fr));"></div>
+          </section>
+
+          <aside class="space-y-4">
+            <section class="rounded-3xl border border-white/10 bg-black/15 p-5">
+              <p class="text-xs uppercase tracking-[0.25em] text-white/40">Radar à groin</p>
+              <div id="status" class="mt-2 text-2xl font-black text-amber-100">En attente…</div>
+              <p id="status-detail" class="mt-2 text-sm text-white/60">Clique une case pour commencer à fouiller.</p>
+            </section>
+            <section class="rounded-3xl border border-white/10 bg-black/15 p-5">
+              <div class="flex items-center justify-between gap-3">
+                <div>
+                  <p class="text-xs uppercase tracking-[0.25em] text-white/40">Clics restants</p>
+                  <div id="clicks-left" class="mt-2 text-3xl font-black text-white">{{ max_clicks }}</div>
+                </div>
+                <div>
+                  <p class="text-xs uppercase tracking-[0.25em] text-white/40">Solde</p>
+                  <div id="balance" class="mt-2 text-3xl font-black text-yellow-300">{{ '%.2f'|format(user.balance) }}</div>
+                </div>
+              </div>
+            </section>
+            <section class="rounded-3xl border border-white/10 bg-black/15 p-5 text-sm text-white/70">
+              <h2 class="text-lg font-black text-white">Légende</h2>
+              <ul class="mt-4 space-y-2 list-disc pl-5">
+                <li><strong>Froid</strong> : distance &gt; 10.</li>
+                <li><strong>Tiède</strong> : 6 à 10.</li>
+                <li><strong>Brûlant</strong> : 1 à 5.</li>
+                <li><strong>Trouvé</strong> : jackpot immédiat.</li>
+              </ul>
+            </section>
+          </aside>
+        </div>
+      </div>
+
+      <aside class="space-y-6">
+        <section class="rounded-3xl border border-white/10 bg-white/5 p-6 text-sm text-white/70">
+          <h2 class="text-lg font-black text-white">Règles</h2>
+          <ul class="mt-4 space-y-2 list-disc pl-5">
+            <li>Une truffe est cachée au hasard sur le plateau.</li>
+            <li>Tu disposes de {{ max_clicks }} tentatives maximum.</li>
+            <li>Le radar annonce si tu es froid, tiède ou brûlant.</li>
+            <li>Si tu trouves la truffe, tu gagnes <strong>{{ reward }} 🪙</strong>.</li>
+          </ul>
+        </section>
+      </aside>
+    </section>
+  </main>
+
+  <script>
+    const GRID_SIZE = {{ grid_size }};
+    const MAX_CLICKS = {{ max_clicks }};
+    const WIN_REWARD = {{ reward }};
+    const grid = document.getElementById('grid');
+    const status = document.getElementById('status');
+    const statusDetail = document.getElementById('status-detail');
+    const clicksLeftNode = document.getElementById('clicks-left');
+    const balanceNode = document.getElementById('balance');
+    const newGameButton = document.getElementById('new-game');
+
+    let hiddenX = 0;
+    let hiddenY = 0;
+    let clicksLeft = MAX_CLICKS;
+    let finished = false;
+
+    function randomCell() {
+      hiddenX = Math.floor(Math.random() * GRID_SIZE);
+      hiddenY = Math.floor(Math.random() * GRID_SIZE);
+    }
+
+    function distanceLabel(distance) {
+      if (distance === 0) return { title: 'Trouvé !', detail: `La truffe est à toi. +${WIN_REWARD} 🪙.`, tone: 'found' };
+      if (distance <= 5) return { title: 'Brûlant', detail: 'Tu renifles presque la truffe.', tone: 'hot' };
+      if (distance <= 10) return { title: 'Tiède', detail: 'Le groin capte quelque chose.', tone: 'warm' };
+      return { title: 'Froid', detail: 'Rien. Juste de la terre humide.', tone: 'cold' };
+    }
+
+    async function reportWin(clicksUsed) {
+      const response = await fetch('{{ url_for('truffes.truffes_win') }}', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ clicks: clicksUsed }),
+      });
+      const payload = await response.json();
+      if (payload.ok) {
+        balanceNode.textContent = Number(payload.new_balance).toFixed(2);
+      }
+    }
+
+    function setTone(tone) {
+      status.className = 'mt-2 text-2xl font-black';
+      if (tone === 'found') status.classList.add('text-emerald-300');
+      else if (tone === 'hot') status.classList.add('text-red-300');
+      else if (tone === 'warm') status.classList.add('text-amber-200');
+      else status.classList.add('text-sky-200');
+    }
+
+    function revealCell(button, tone) {
+      button.disabled = true;
+      button.classList.remove('hover:bg-amber-200/10');
+      if (tone === 'found') button.classList.add('bg-emerald-400/40');
+      else if (tone === 'hot') button.classList.add('bg-red-400/30');
+      else if (tone === 'warm') button.classList.add('bg-amber-300/25');
+      else button.classList.add('bg-sky-400/20');
+    }
+
+    function handleCellClick(event) {
+      if (finished) return;
+      const button = event.currentTarget;
+      const x = Number(button.dataset.x);
+      const y = Number(button.dataset.y);
+      const distance = Math.abs(hiddenX - x) + Math.abs(hiddenY - y);
+      const verdict = distanceLabel(distance);
+      clicksLeft -= 1;
+      clicksLeftNode.textContent = clicksLeft;
+      status.textContent = verdict.title;
+      statusDetail.textContent = verdict.detail;
+      setTone(verdict.tone);
+      revealCell(button, verdict.tone);
+
+      if (distance === 0) {
+        finished = true;
+        reportWin(MAX_CLICKS - clicksLeft);
+        return;
+      }
+
+      if (clicksLeft <= 0) {
+        finished = true;
+        status.textContent = 'Perdu';
+        statusDetail.textContent = `La truffe était en (${hiddenX + 1}, ${hiddenY + 1}).`;
+        setTone('cold');
+      }
+    }
+
+    function buildGrid() {
+      grid.innerHTML = '';
+      for (let y = 0; y < GRID_SIZE; y += 1) {
+        for (let x = 0; x < GRID_SIZE; x += 1) {
+          const button = document.createElement('button');
+          button.type = 'button';
+          button.dataset.x = x;
+          button.dataset.y = y;
+          button.className = 'aspect-square rounded-lg border border-white/8 bg-white/5 transition hover:bg-amber-200/10';
+          button.addEventListener('click', handleCellClick);
+          grid.appendChild(button);
+        }
+      }
+    }
+
+    function resetGame() {
+      clicksLeft = MAX_CLICKS;
+      finished = false;
+      randomCell();
+      clicksLeftNode.textContent = clicksLeft;
+      status.textContent = 'En attente…';
+      statusDetail.textContent = 'Clique une case pour commencer à fouiller.';
+      status.className = 'mt-2 text-2xl font-black text-amber-100';
+      buildGrid();
+    }
+
+    newGameButton.addEventListener('click', resetGame);
+    resetGame();
+  </script>
+</body>
+</html>
