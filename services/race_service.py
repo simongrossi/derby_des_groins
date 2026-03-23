@@ -119,11 +119,31 @@ def calculate_ordered_finish_probability(participants_by_id, ordered_ids):
 
 
 def calculate_bet_odds(participants_by_id, ordered_ids, bet_type):
-    bet_config = BET_TYPES[normalize_bet_type(bet_type)]
+    from data import BET_TYPES
+    bet_config = BET_TYPES.get(normalize_bet_type(bet_type), BET_TYPES['win'])
+    
     probability = calculate_ordered_finish_probability(participants_by_id, ordered_ids)
     if probability <= 0:
         return 0.0
-    return max(1.1, math.floor(((1 / probability) / bet_config['house_edge']) * 10) / 10)
+        
+    multiplier = 1.0
+    if not bet_config.get('order_matters', True):
+        import math
+        # Unordered permutations: e.g. Tiercé any = 3!
+        multiplier *= math.factorial(len(ordered_ids))
+        
+        # If we just need to find N among top_M, e.g. 2 of 4 (Two in Four), the combinations of positions
+        # Actually it's simpler: math.comb(top_n, selection_count)
+        top_n = bet_config.get('top_n', len(ordered_ids))
+        sel_count = bet_config.get('selection_count', len(ordered_ids))
+        if top_n > sel_count:
+            multiplier *= math.comb(top_n, sel_count)
+            
+    final_prob = min(probability * multiplier, 0.99)
+    if final_prob <= 0:
+        return 0.0
+        
+    return max(1.1, math.floor(((1 / final_prob) / bet_config['house_edge']) * 10) / 10)
 
 
 def build_weighted_finish_order(participants):

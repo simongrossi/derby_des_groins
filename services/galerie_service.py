@@ -38,7 +38,7 @@ SHOPS_DATA = [
         'slogan': 'Livraison Prime dans l\'auge',
         'description': 'Consommables premium livrés rapidement.',
         'items': [
-            {'nom': 'Sérum de Rillettes d\'Alençon', 'description': 'Soin complet et immédiat.', 'prix_glands': 400, 'prix_truffes': 30, 'type_effet': 'soin_total', 'valeur_effet': 100, 'fiabilite': 100},
+            {'nom': 'Sérum de Rillettes du Mans', 'description': 'Soin complet et immédiat.', 'prix_glands': 400, 'prix_truffes': 30, 'type_effet': 'soin_total', 'valeur_effet': 100, 'fiabilite': 100},
             {'nom': 'Cape de Bat-Cochon', 'description': 'Augmente l\'agilité en pleine nuit.', 'prix_glands': 180, 'prix_truffes': 12, 'type_effet': 'agilite', 'valeur_effet': 6, 'fiabilite': 95},
         ]
     },

@@ -176,211 +176,252 @@
         </div>
     </div>
 
-    <!-- VENDRE SON COCHON -->
-    {% if user and not market_access %}
-    <div class="card p-5 mb-8 text-center border-yellow-900/20">
-        <p class="text-yellow-300 font-bold text-sm">🔐 Marché verrouillé pour les nouveaux éleveurs</p>
-        <p class="text-white/45 text-sm mt-2 font-semibold">{{ market_lock_reason }}</p>
+    <!-- TABS ACHETER / VENDRE -->
+    {% if user and market_access %}
+    <div class="flex gap-6 mb-6 border-b border-white/10 pb-2">
+        <button id="tab-acheter" class="text-xl font-title text-yellow-400 border-b-2 border-yellow-400 pb-2 px-2 transition-colors cursor-pointer" onclick="switchTab('acheter')">
+            🛒 Acheter (Enchères)
+        </button>
+        <button id="tab-vendre" class="text-xl font-title text-white/40 hover:text-white pb-2 px-2 transition-colors cursor-pointer" onclick="switchTab('vendre')">
+            🏷️ Vendre mes cochons
+        </button>
     </div>
     {% endif %}
-    {% if user and pigs and market_open and market_access %}
-    <div class="card p-6 mb-8 border-yellow-900/30">
-        <h2 class="font-title text-xl text-white mb-4">🏷️ Vendre un cochon</h2>
-        
-        <div class="space-y-6">
-            {% for pig in pigs %}
-            {% set sale_locked = pig.is_injured %}
-            <div class="p-4 rounded-2xl bg-white/5 border border-white/10">
-                <div class="flex items-center gap-4 mb-4">
-                    <span class="text-4xl">{{ pig.emoji }}</span>
-                    <div>
-                        <p class="text-white font-bold">{{ pig.name }}</p>
-                        <p class="text-white/40 text-xs font-semibold">
-                            {{ pig.origin_flag }} {{ pig.origin_country }} —
-                            Niv. {{ pig.level }} — Puissance :
-                            {{ "%.0f"|format((pig.vitesse + pig.endurance + pig.agilite + pig.force + pig.intelligence + pig.moral) / 6) }}
-                        </p>
-                        <div class="flex gap-1 mt-1 flex-wrap text-[10px]">
-                            <span class="stat-mini px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-300">VIT {{ "%.0f"|format(pig.vitesse) }}</span>
-                            <span class="stat-mini px-1.5 py-0.5 rounded bg-green-500/20 text-green-300">END {{ "%.0f"|format(pig.endurance) }}</span>
-                            <span class="stat-mini px-1.5 py-0.5 rounded bg-yellow-500/20 text-yellow-300">AGI {{ "%.0f"|format(pig.agilite) }}</span>
-                            <span class="stat-mini px-1.5 py-0.5 rounded bg-red-500/20 text-red-300">FOR {{ "%.0f"|format(pig.force) }}</span>
-                            <span class="stat-mini px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-300">INT {{ "%.0f"|format(pig.intelligence) }}</span>
-                            <span class="stat-mini px-1.5 py-0.5 rounded bg-pink-500/20 text-pink-300">MOR {{ "%.0f"|format(pig.moral) }}</span>
+
+    <!-- ================= VUE: VENDRE ================= -->
+    <div id="view-vendre" class="hidden">
+        {% if user and not market_access %}
+        <div class="card p-5 mb-8 text-center border-yellow-900/20">
+            <p class="text-yellow-300 font-bold text-sm">🔐 Marché verrouillé pour les nouveaux éleveurs</p>
+            <p class="text-white/45 text-sm mt-2 font-semibold">{{ market_lock_reason }}</p>
+        </div>
+        {% endif %}
+
+        {% if user and pigs and market_open and market_access %}
+        <div class="card p-6 mb-8 border-yellow-900/30">
+            <h2 class="font-title text-xl text-white mb-4">🏷️ Vendre un cochon</h2>
+            
+            <div class="space-y-4">
+                {% for pig in pigs %}
+                {% set sale_locked = pig.is_injured %}
+                <div class="p-4 rounded-2xl bg-white/5 border border-white/10 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div class="flex items-center gap-4">
+                        <span class="text-4xl">{{ pig.emoji }}</span>
+                        <div>
+                            <p class="text-white font-bold text-lg">{{ pig.name }}</p>
+                            <p class="text-white/40 text-xs font-semibold">
+                                {{ pig.origin_flag }} {{ pig.origin_country }} — Niv. {{ pig.level }} — Puissance: {{ "%.0f"|format((pig.vitesse + pig.endurance + pig.agilite + pig.force + pig.intelligence + pig.moral) / 6) }}
+                            </p>
+                            <div class="flex gap-1 mt-1 flex-wrap text-[10px]">
+                                <span class="stat-mini px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-300">VIT {{ "%.0f"|format(pig.vitesse) }}</span>
+                                <span class="stat-mini px-1.5 py-0.5 rounded bg-green-500/20 text-green-300">END {{ "%.0f"|format(pig.endurance) }}</span>
+                                <span class="stat-mini px-1.5 py-0.5 rounded bg-yellow-500/20 text-yellow-300">AGI {{ "%.0f"|format(pig.agilite) }}</span>
+                                <span class="stat-mini px-1.5 py-0.5 rounded bg-red-500/20 text-red-300">FOR {{ "%.0f"|format(pig.force) }}</span>
+                                <span class="stat-mini px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-300">INT {{ "%.0f"|format(pig.intelligence) }}</span>
+                                <span class="stat-mini px-1.5 py-0.5 rounded bg-pink-500/20 text-pink-300">MOR {{ "%.0f"|format(pig.moral) }}</span>
+                            </div>
+                            {% if sale_locked %}
+                            <p class="text-red-300 text-[11px] font-bold mt-2">🏥 Blessé: passage chez le vétérinaire obligatoire avant la mise en vente.</p>
+                            {% endif %}
                         </div>
-                        {% if sale_locked %}
-                        <p class="text-red-300 text-[11px] font-bold mt-2">🏥 Blessé: passage chez le vétérinaire obligatoire avant la mise en vente.</p>
-                        {% endif %}
                     </div>
+                    <form method="POST" action="/sell-pig" class="flex gap-3 justify-end items-end w-full md:w-auto">
+                        <input type="hidden" name="pig_id" value="{{ pig.id }}">
+                        <div class="w-24">
+                            <label class="text-white/60 text-[10px] font-bold block mb-1">Prix départ</label>
+                            <input type="number" name="price" min="5" step="1" placeholder="Ex: 30"
+                                   class="w-full bg-black/30 border border-yellow-900/30 rounded-xl px-2 py-2 text-white font-bold text-sm text-center focus:outline-none focus:border-yellow-400">
+                        </div>
+                        <button type="submit" class="btn-sell px-4 py-2 bg-yellow-600 hover:bg-yellow-500 text-white font-bold rounded-xl transition-all h-full"
+                                {% if sale_locked %}disabled{% endif %}
+                                onclick="return confirm('⚠️ {{ pig.name }} sera mis en vente !\nSi quelqu\'un l\'achète, tu recevras les BitGroins.\nS\'il ne part pas, il reviendra chez toi à la fin du marché.\n\nContinuer ?');">
+                            Vendre
+                        </button>
+                    </form>
                 </div>
-                <form method="POST" action="/sell-pig" class="flex gap-3 items-end">
-                    <input type="hidden" name="pig_id" value="{{ pig.id }}">
-                    <div class="flex-1">
-                        <label class="text-white/60 text-xs font-bold block mb-1">Prix de départ (min 5 🪙)</label>
-                        <input type="number" name="price" min="5" step="1" placeholder="Ex: 30"
-                               class="w-full bg-black/30 border border-yellow-900/30 rounded-xl px-4 py-2 text-white font-bold text-sm focus:outline-none focus:border-yellow-400">
-                    </div>
-                    <button type="submit" class="btn-sell px-6 py-2 bg-yellow-600 hover:bg-yellow-500 text-white font-bold rounded-xl transition-all"
-                            {% if sale_locked %}disabled{% endif %}
-                            onclick="return confirm('⚠️ {{ pig.name }} sera mis en vente !\nSi quelqu\'un l\'achète, tu recevras les BitGroins.\nS\'il ne part pas, il reviendra chez toi à la fin du marché.\n\nContinuer ?');">
-                        Mettre en vente
-                    </button>
-                </form>
+                {% endfor %}
+            </div>
+        </div>
+        {% elif user and pigs and market_open and not market_access %}
+        <div class="card p-5 mb-8 text-center border-yellow-900/20">
+            <p class="text-white/40 text-sm font-bold">🔒 La vente de cochons se débloque après quelques courses ou 24h d'ancienneté.</p>
+        </div>
+        {% elif user and pigs and not market_open %}
+        <div class="card p-5 mb-8 text-center border-yellow-900/20">
+            <p class="text-white/40 text-sm font-bold">🔒 La vente de cochons n'est possible que quand le marché est ouvert.</p>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- ================= VUE: ACHETER ================= -->
+    <div id="view-acheter">
+        <!-- FLASH MESSAGES -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+        <div class="mb-6 space-y-2">
+            {% for category, message in messages %}
+            <div class="p-4 rounded-xl text-sm font-bold text-center
+                {% if category == 'error' %}bg-red-500/15 border border-red-500/30 text-red-400
+                {% elif category == 'warning' %}bg-yellow-500/15 border border-yellow-500/30 text-yellow-400
+                {% else %}bg-green-500/15 border border-green-500/30 text-green-400{% endif %}">
+                {{ message }}
             </div>
             {% endfor %}
         </div>
-    </div>
-    {% elif user and pigs and market_open and not market_access %}
-    <div class="card p-5 mb-8 text-center border-yellow-900/20">
-        <p class="text-white/40 text-sm font-bold">🔒 La vente de cochons se débloque après quelques courses ou 24h d'ancienneté.</p>
-    </div>
-    {% elif user and pigs and not market_open %}
-    <div class="card p-5 mb-8 text-center border-yellow-900/20">
-        <p class="text-white/40 text-sm font-bold">🔒 La vente de cochons n'est possible que quand le marché est ouvert.</p>
-    </div>
-    {% endif %}
+        {% endif %}
+        {% endwith %}
 
-    <!-- FLASH MESSAGES -->
-    {% with messages = get_flashed_messages(with_categories=true) %}
-    {% if messages %}
-    <div class="mb-6 space-y-2">
-        {% for category, message in messages %}
-        <div class="p-4 rounded-xl text-sm font-bold text-center
-            {% if category == 'error' %}bg-red-500/15 border border-red-500/30 text-red-400
-            {% elif category == 'warning' %}bg-yellow-500/15 border border-yellow-500/30 text-yellow-400
-            {% else %}bg-green-500/15 border border-green-500/30 text-green-400{% endif %}">
-            {{ message }}
-        </div>
-        {% endfor %}
-    </div>
-    {% endif %}
-    {% endwith %}
-
-    <!-- ENCHÈRES ACTIVES -->
-    {% if auctions %}
-    <h2 class="font-title text-2xl text-white mb-4">🐷 Cochons aux enchères</h2>
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
-        {% for auction in auctions %}
-        {% set rarity = rarities.get(auction.pig_rarity, rarities['commun']) %}
-        <div class="auction-card rarity-{{ auction.pig_rarity }}">
-            <!-- Bannière rareté -->
-            <div class="rarity-banner px-5 py-2 flex items-center justify-between">
-                <span class="text-xs font-bold" style="color: {{ rarity.color }};">
-                    {{ rarity.emoji }} {{ rarity.name }}
-                </span>
-                <span class="text-white/30 text-xs font-bold">
-                    🏁 {{ auction.pig_max_races }} courses max
-                </span>
-            </div>
-
-            <div class="p-5">
-                <!-- Cochon -->
-                <div class="text-center mb-3">
-                    <span class="pig-preview">{{ auction.pig_emoji }}</span>
-                    <h3 class="text-white font-bold text-lg mt-1">{{ auction.pig_name }}</h3>
-                    <!-- Origine -->
-                    <span class="origin-badge text-white/60">
-                        {{ auction.pig_origin_flag }} {{ auction.pig_origin }}
-                    </span>
-                    {% if auction.seller_id %}
-                    <p class="text-yellow-400/40 text-xs font-semibold mt-1">
-                        🏷️ Vendu par {{ auction.seller.username if auction.seller else '???' }}
-                    </p>
-                    {% endif %}
-                </div>
-
-                <!-- Stats -->
-                <div class="flex gap-1 justify-center flex-wrap mb-4">
-                    <span class="stat-mini bg-blue-500/20 text-blue-300">VIT {{ "%.0f"|format(auction.pig_vitesse) }}</span>
-                    <span class="stat-mini bg-green-500/20 text-green-300">END {{ "%.0f"|format(auction.pig_endurance) }}</span>
-                    <span class="stat-mini bg-yellow-500/20 text-yellow-300">AGI {{ "%.0f"|format(auction.pig_agilite) }}</span>
-                    <span class="stat-mini bg-red-500/20 text-red-300">FOR {{ "%.0f"|format(auction.pig_force) }}</span>
-                    <span class="stat-mini bg-purple-500/20 text-purple-300">INT {{ "%.0f"|format(auction.pig_intelligence) }}</span>
-                    <span class="stat-mini bg-pink-500/20 text-pink-300">MOR {{ "%.0f"|format(auction.pig_moral) }}</span>
-                </div>
-
-                <!-- Puissance moyenne -->
-                {% set avg_power = (auction.pig_vitesse + auction.pig_endurance + auction.pig_agilite + auction.pig_force + auction.pig_intelligence + auction.pig_moral) / 6 %}
-                <p class="text-center text-white/40 text-xs font-bold mb-4">
-                    Puissance moyenne : <span class="text-yellow-400">{{ "%.1f"|format(avg_power) }}</span>
-                </p>
-
-                <!-- Enchère actuelle -->
-                <div class="bg-black/20 rounded-xl p-3 mb-3 text-center">
-                    {% if auction.current_bid > 0 %}
-                    <p class="text-white/50 text-xs font-bold">Meilleure enchère</p>
-                    <p class="text-yellow-400 font-bold text-2xl font-title">{{ "%.0f"|format(auction.current_bid) }} 🪙</p>
-                    <p class="text-white/30 text-xs font-semibold">
-                        par {{ auction.bidder.username if auction.bidder else '???' }}
-                    </p>
-                    {% else %}
-                    <p class="text-white/50 text-xs font-bold">Prix de départ</p>
-                    <p class="text-yellow-400 font-bold text-2xl font-title">{{ "%.0f"|format(auction.starting_price) }} 🪙</p>
-                    <p class="text-white/30 text-xs font-semibold">Aucune enchère</p>
-                    {% endif %}
-                </div>
-
-                <!-- Countdown -->
-                <div class="text-center mb-3">
-                    <p class="text-white/40 text-xs font-bold">Fin dans</p>
-                    <p class="countdown-auction text-xl" data-ends="{{ auction.ends_at.strftime('%Y-%m-%dT%H:%M:%S') }}">
-                        --:--:--
-                    </p>
-                </div>
-
-                <!-- Formulaire d'enchère -->
-                {% if user and market_access %}
-                <form method="POST" action="/bid" class="flex gap-2">
-                    <input type="hidden" name="auction_id" value="{{ auction.id }}">
-                    <input type="number" name="bid_amount"
-                           min="{{ (auction.current_bid + 5) if auction.current_bid > 0 else auction.starting_price }}"
-                           max="{{ user.balance }}" step="1"
-                           placeholder="Min {{ ((auction.current_bid + 5) if auction.current_bid > 0 else auction.starting_price) | int }} 🪙"
-                           class="flex-1 bg-white/5 border border-yellow-900/30 rounded-xl px-3 py-2 text-white font-bold text-sm focus:outline-none focus:border-yellow-400">
-                    <button type="submit" class="btn-bid"
-                            {% if user.balance < ((auction.current_bid + 5) if auction.current_bid > 0 else auction.starting_price) %}disabled{% endif %}
-                            {% if auction.bidder_id == user.id %}disabled{% endif %}>
-                        {% if auction.bidder_id == user.id %}
-                            ✅ Ton enchère
-                        {% else %}
-                            Enchérir
-                        {% endif %}
-                    </button>
-                </form>
-                {% if user and pig %}
-                <p class="text-red-400/40 text-xs text-center mt-2 font-semibold">
-                    ⚠️ Si tu gagnes, {{ pig.name }} ira à l'abattoir
-                </p>
-                {% endif %}
-                {% elif user and not market_access %}
-                <div class="text-center">
-                    <p class="text-white/35 text-xs font-bold">{{ market_lock_reason }}</p>
-                </div>
-                {% else %}
-                <div class="text-center">
-                    <a href="/login" class="text-yellow-400/70 hover:text-yellow-400 text-sm font-bold transition-colors">
-                        Connecte-toi pour enchérir
-                    </a>
-                </div>
-                {% endif %}
+        {% if auctions %}
+        <div class="flex flex-col md:flex-row md:items-center justify-between mb-4 gap-4">
+            <h2 class="font-title text-2xl text-white">💰 Enchères actives</h2>
+            
+            <!-- Filters -->
+            <div class="flex gap-2">
+                <select id="filter-rarity" class="bg-black/30 border border-yellow-900/30 rounded-xl px-3 py-2 text-white text-sm font-bold focus:outline-none focus:border-yellow-400" onchange="filterAuctions()">
+                    <option value="all">Toutes raretés</option>
+                    <option value="commun">Commun</option>
+                    <option value="rare">Rare</option>
+                    <option value="epique">Épique</option>
+                    <option value="legendaire">Légendaire</option>
+                </select>
+                <select id="filter-seller" class="bg-black/30 border border-yellow-900/30 rounded-xl px-3 py-2 text-white text-sm font-bold focus:outline-none focus:border-yellow-400" onchange="filterAuctions()">
+                    <option value="all">Tous vendeurs</option>
+                    <option value="system">Système uniquement</option>
+                    <option value="player">Joueurs uniquement</option>
+                </select>
             </div>
         </div>
-        {% endfor %}
-    </div>
-    {% else %}
-    <div class="card p-12 text-center mb-12">
-        <span class="text-5xl block mb-4">🏪</span>
-        {% if market_open %}
-        <p class="text-white/50 font-bold text-lg">Le marché est ouvert mais l'étal est vide...</p>
-        <p class="text-white/30 text-sm mt-2">De nouveaux cochons vont arriver sous peu !</p>
+
+        <div class="overflow-x-auto mb-12 rounded-xl border border-yellow-900/30 bg-black/20">
+            <table class="w-full text-left text-white whitespace-nowrap min-w-[800px]">
+                <thead class="bg-white/5 border-b border-yellow-900/30 font-title text-yellow-400">
+                    <tr>
+                        <th class="p-3">Cochon</th>
+                        <th class="p-3 text-center">Stats / Puiss.</th>
+                        <th class="p-3 text-center">Rareté & Origine</th>
+                        <th class="p-3 text-center">Vendeur</th>
+                        <th class="p-3 text-center">Course Max</th>
+                        <th class="p-3 text-center">Prix Actuel</th>
+                        <th class="p-3 text-center">Fin dans</th>
+                        <th class="p-3 text-center">Action</th>
+                    </tr>
+                </thead>
+                <tbody id="auctions-tbody" class="divide-y divide-white/10 text-sm">
+                    {% for auction in auctions %}
+                    {% set rarity = rarities.get(auction.pig_rarity, rarities['commun']) %}
+                    {% set avg_power = (auction.pig_vitesse + auction.pig_endurance + auction.pig_agilite + auction.pig_force + auction.pig_intelligence + auction.pig_moral) / 6 %}
+                    <tr class="auction-row hover:bg-white/5 transition-colors" 
+                        data-rarity="{{ auction.pig_rarity }}" 
+                        data-seller="{% if auction.seller_id %}player{% else %}system{% endif %}">
+                        
+                        <!-- Cochon -->
+                        <td class="p-3">
+                            <div class="flex items-center gap-3">
+                                <span class="text-3xl">{{ auction.pig_emoji }}</span>
+                                <div>
+                                    <p class="font-bold text-base">{{ auction.pig_name }}</p>
+                                    <p class="text-white/40 text-[10px]">Origine : {{ auction.pig_origin_flag }} {{ auction.pig_origin }}</p>
+                                </div>
+                            </div>
+                        </td>
+                        
+                        <!-- Stats & Puiss -->
+                        <td class="p-3">
+                            <div class="grid grid-cols-3 gap-1 text-[9px] mb-1">
+                                <span class="stat-mini px-1 text-center bg-blue-500/20 text-blue-300">V {{"%.0f"|format(auction.pig_vitesse)}}</span>
+                                <span class="stat-mini px-1 text-center bg-green-500/20 text-green-300">E {{"%.0f"|format(auction.pig_endurance)}}</span>
+                                <span class="stat-mini px-1 text-center bg-yellow-500/20 text-yellow-300">A {{"%.0f"|format(auction.pig_agilite)}}</span>
+                                <span class="stat-mini px-1 text-center bg-red-500/20 text-red-300">F {{"%.0f"|format(auction.pig_force)}}</span>
+                                <span class="stat-mini px-1 text-center bg-purple-500/20 text-purple-300">I {{"%.0f"|format(auction.pig_intelligence)}}</span>
+                                <span class="stat-mini px-1 text-center bg-pink-500/20 text-pink-300">M {{"%.0f"|format(auction.pig_moral)}}</span>
+                            </div>
+                            <p class="text-center font-bold text-yellow-400 text-xs">Moy: {{ "%.1f"|format(avg_power) }}</p>
+                        </td>
+
+                        <!-- Rareté -->
+                        <td class="p-3 text-center">
+                            <span class="px-2 py-1 rounded text-xs font-bold whitespace-nowrap" style="background: {{ rarity.color }}20; color: {{ rarity.color }}; border: 1px solid {{ rarity.color }}50;">
+                                {{ rarity.emoji }} {{ rarity.name }}
+                            </span>
+                        </td>
+                        
+                        <!-- Vendeur -->
+                        <td class="p-3 text-center font-semibold">
+                            {% if auction.seller_id %}
+                                <span class="text-white bg-white/10 px-2 py-1 rounded">{{ auction.seller.username }}</span>
+                            {% else %}
+                                <span class="text-yellow-400/60 bg-yellow-400/10 px-2 py-1 rounded border border-yellow-400/20">Système</span>
+                            {% endif %}
+                        </td>
+                        
+                        <!-- Course Max -->
+                        <td class="p-3 text-center font-bold text-white/50">
+                            {{ auction.pig_max_races }}
+                        </td>
+
+                        <!-- Prix -->
+                        <td class="p-3 text-center">
+                            {% if auction.current_bid > 0 %}
+                                <p class="text-yellow-400 font-bold text-lg font-title">{{ "%.0f"|format(auction.current_bid) }} 🪙</p>
+                                <p class="text-white/40 text-[10px] font-semibold">par {{ auction.bidder.username if auction.bidder else '?' }}</p>
+                            {% else %}
+                                <p class="text-yellow-400 font-bold text-lg font-title">{{ "%.0f"|format(auction.starting_price) }} 🪙</p>
+                                <p class="text-white/30 text-[10px] font-semibold">Prix de départ</p>
+                            {% endif %}
+                        </td>
+
+                        <!-- Fin -->
+                        <td class="p-3 text-center">
+                            <p class="countdown-auction text-lg text-yellow-400" data-ends="{{ auction.ends_at.strftime('%Y-%m-%dT%H:%M:%S') }}">
+                                --:--:--
+                            </p>
+                        </td>
+
+                        <!-- Action -->
+                        <td class="p-3 text-center w-32">
+                            {% if user and market_access %}
+                                <form method="POST" action="/bid" class="flex flex-col gap-1 items-stretch">
+                                    <input type="hidden" name="auction_id" value="{{ auction.id }}">
+                                    <input type="number" name="bid_amount"
+                                        min="{{ (auction.current_bid + 5) if auction.current_bid > 0 else auction.starting_price }}"
+                                        max="{{ user.balance }}" step="1"
+                                        placeholder="Min {{ ((auction.current_bid + 5) if auction.current_bid > 0 else auction.starting_price) | int }}"
+                                        class="w-full bg-black/40 border border-yellow-900/30 rounded py-1 px-1 text-white font-bold text-xs text-center focus:outline-none focus:border-yellow-400">
+                                    <button type="submit" class="btn-bid px-2 py-1 text-xs whitespace-nowrap"
+                                            {% if user.balance < ((auction.current_bid + 5) if auction.current_bid > 0 else auction.starting_price) %}disabled{% endif %}
+                                            {% if auction.bidder_id == user.id %}disabled{% endif %}>
+                                        {% if auction.bidder_id == user.id %}✅ Ton enchère{% else %}Enchérir{% endif %}
+                                    </button>
+                                </form>
+                            {% else %}
+                                <span class="text-[10px] text-white/30">Action bloquée</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            <!-- Empty state after filter -->
+            <div id="no-auction-msg" class="hidden text-center p-8 text-white/40 font-bold border-t border-white/5">
+                Aucun cochon ne correspond aux filtres.
+            </div>
+        </div>
         {% else %}
-        <p class="text-white/50 font-bold text-lg">Le marché est fermé.</p>
-        <p class="text-white/30 text-sm mt-2">
-            Rendez-vous <strong class="text-yellow-400">{{ market_day_name }} à {{ market_time }}</strong> pour le prochain marché !
-        </p>
+        <div class="card p-12 text-center mb-12">
+            <span class="text-5xl block mb-4">🏪</span>
+            {% if market_open %}
+            <p class="text-white/50 font-bold text-lg">Le marché est ouvert mais l'étal est vide...</p>
+            <p class="text-white/30 text-sm mt-2">De nouveaux cochons vont arriver sous peu !</p>
+            {% else %}
+            <p class="text-white/50 font-bold text-lg">Le marché est fermé.</p>
+            <p class="text-white/30 text-sm mt-2">
+                Rendez-vous <strong class="text-yellow-400">{{ market_day_name }} à {{ market_time }}</strong> pour le prochain marché !
+            </p>
+            {% endif %}
+        </div>
         {% endif %}
     </div>
-    {% endif %}
+
 
     <!-- VENTES RÉCENTES -->
     {% if recent_sold %}
@@ -495,6 +536,57 @@ async function updatePrixGroin() {
     } catch(e) {}
 }
 setInterval(updatePrixGroin, 30000);
+
+// ─── TABS & FILTRES ────────────────────────────────────────────────
+function switchTab(tab) {
+    const vAcheter = document.getElementById('view-acheter');
+    const vVendre = document.getElementById('view-vendre');
+    const tAcheter = document.getElementById('tab-acheter');
+    const tVendre = document.getElementById('tab-vendre');
+
+    if (tab === 'acheter') {
+        vAcheter.classList.remove('hidden');
+        vVendre.classList.add('hidden');
+        tAcheter.classList.add('text-yellow-400', 'border-yellow-400');
+        tAcheter.classList.remove('text-white/40', 'border-transparent');
+        tVendre.classList.remove('text-yellow-400', 'border-yellow-400');
+        tVendre.classList.add('text-white/40', 'border-transparent');
+    } else {
+        vAcheter.classList.add('hidden');
+        vVendre.classList.remove('hidden');
+        tVendre.classList.add('text-yellow-400', 'border-yellow-400');
+        tVendre.classList.remove('text-white/40', 'border-transparent');
+        tAcheter.classList.remove('text-yellow-400', 'border-yellow-400');
+        tAcheter.classList.add('text-white/40', 'border-transparent');
+    }
+}
+
+function filterAuctions() {
+    const rarity = document.getElementById('filter-rarity').value;
+    const seller = document.getElementById('filter-seller').value;
+    const rows = document.querySelectorAll('.auction-row');
+    let visibleCount = 0;
+
+    rows.forEach(row => {
+        const rowRarity = row.dataset.rarity;
+        const rowSeller = row.dataset.seller;
+        
+        let show = true;
+        if (rarity !== 'all' && rowRarity !== rarity) show = false;
+        if (seller !== 'all' && rowSeller !== seller) show = false;
+        
+        row.style.display = show ? '' : 'none';
+        if (show) visibleCount++;
+    });
+
+    const msg = document.getElementById('no-auction-msg');
+    if (visibleCount === 0 && rows.length > 0) {
+        msg.classList.remove('hidden');
+    } else {
+        msg.classList.add('hidden');
+    }
+}
+
 </script>
 
 </body>

@@ -37,7 +37,9 @@ def get_next_market_time():
     return now.replace(hour=settings.market_hour, minute=settings.market_minute, second=0, microsecond=0) + timedelta(days=days_ahead)
 
 
-def is_market_open():
+def is_market_open(user=None):
+    if user and user.is_admin:
+        return True
     settings = get_game_settings()
     now = datetime.now()
     if now.weekday() != settings.market_day:
@@ -151,6 +153,9 @@ def get_all_grain_surcharges(market):
 
 
 def get_bourse_movement_points(user_id):
+    user = User.query.get(user_id)
+    if user and user.is_admin:
+        return 99
     total_purchases = db.session.query(func.count(BalanceTransaction.id)).filter(BalanceTransaction.user_id == user_id, BalanceTransaction.reason_code == 'feed_purchase').scalar() or 0
     return max(BOURSE_MIN_MOVEMENT, total_purchases // BOURSE_MOVEMENT_DIVISOR)
 

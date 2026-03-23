@@ -227,6 +227,9 @@
                             {% if slot.theme.reward_multiplier > 1 %}
                             <span class="pill bg-yellow-400/15 text-yellow-100 border border-yellow-400/20">💰 gains x{{ slot.theme.reward_multiplier }}</span>
                             {% endif %}
+                            {% if slot.race and slot.race.status == 'open' %}
+                            <a href="/#betting-board" class="pill bg-pink-500/20 text-pink-200 border border-pink-400/30 hover:bg-pink-500/30 transition-colors">💰 Placer un pari !</a>
+                            {% endif %}
                         </div>
                         <p class="text-pink-100/75 text-sm font-semibold mt-3 max-w-2xl">{{ slot.theme.planning_hint }}</p>
                     </div>

@@ -357,11 +357,30 @@ function calculateOrderedProbability(selectionIds) {
 }
 function calculateSelectionOdds() {
     if (selectedOrder.length !== getRequiredSelectionCount()) return 0;
-    if (activeBetType === 'win') return participantMap[selectedOrder[0]] ? participantMap[selectedOrder[0]].odds : 0;
+    const betConfig = betTypes[activeBetType];
     const probability = calculateOrderedProbability(selectedOrder);
     if (probability <= 0) return 0;
-    const edge = betTypes[activeBetType].house_edge;
-    return Math.max(1.1, Math.floor(((1 / probability) / edge) * 10) / 10);
+    
+    let multiplier = 1.0;
+    if (betConfig.order_matters === false) {
+        let f = 1; for(let i=1; i<=selectedOrder.length; i++) f *= i;
+        multiplier *= f;
+        
+        let topN = betConfig.top_n || selectedOrder.length;
+        let selCount = betConfig.selection_count || selectedOrder.length;
+        if (topN > selCount) {
+            let fTop = 1; for(let i=1; i<=topN; i++) fTop *= i;
+            let fSel = 1; for(let i=1; i<=selCount; i++) fSel *= i;
+            let fDiff = 1; for(let i=1; i<=(topN - selCount); i++) fDiff *= i;
+            multiplier *= (fTop / (fSel * fDiff));
+        }
+    }
+    
+    let finalProb = Math.min(probability * multiplier, 0.99);
+    if (finalProb <= 0) return 0;
+    
+    const edge = betConfig.house_edge || 1.18;
+    return Math.max(1.1, Math.floor(((1 / finalProb) / edge) * 10) / 10);
 }
 function renderSelectionSummary() {
     const display = document.getElementById('selected-pig-display');
