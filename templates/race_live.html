@@ -91,6 +91,9 @@
     .stat-btn { width: 18px; height: 18px; border-radius: 4px; font-size: 11px; font-weight: 900; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; border: 1px solid rgba(255,255,255,0.15); background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.6); transition: all 0.15s; }
     .stat-btn:hover { background: rgba(255,255,255,0.15); color: white; }
     .stat-btn:disabled { opacity: 0.2; cursor: default; }
+    .stat-gauge { height: 4px; border-radius: 2px; background: rgba(255,255,255,0.08); position: relative; overflow: hidden; }
+    .stat-gauge-fill { height: 100%; border-radius: 2px; transition: width 0.2s; }
+    .stat-row-editor { display: grid; grid-template-columns: 28px 18px 32px 18px 50px; align-items: center; gap: 2px; }
     .terrain-indicator { animation: terrain-pulse 1.5s ease-in-out infinite; }
     @keyframes terrain-pulse { 0%, 100% { opacity: 0.7; } 50% { opacity: 1; } }
   </style>
@@ -637,40 +640,55 @@
 
         /* Stat point editor */
         const statsRow = document.createElement('div');
-        statsRow.className = 'mt-1 flex flex-wrap gap-x-3 gap-y-1';
+        statsRow.className = 'mt-2 space-y-1';
         const stats = pigStats[pig.id];
         const totalUsed = () => Object.values(stats).reduce((s, v) => s + v, 0);
-        const remainingEl = document.createElement('span');
-        remainingEl.className = 'text-[9px] text-white/25';
+        const remainingEl = document.createElement('div');
+        remainingEl.className = 'text-[10px] font-bold text-right mt-1';
 
-        function refreshRemaining() { remainingEl.textContent = `${totalUsed()}/${STAT_POOL}`; }
+        const STAT_COLORS = { vitesse: '#facc15', endurance: '#60a5fa', grimpe: '#34d399', agilite: '#c084fc', force: '#fb923c' };
+        const allUpdaters = [];
+
+        function refreshRemaining() {
+          const used = totalUsed();
+          const left = STAT_POOL - used;
+          remainingEl.innerHTML = `<span class="${left > 0 ? 'text-emerald-300' : 'text-white/30'}">${used}/${STAT_POOL} pts</span>${left > 0 ? ` <span class="text-emerald-400/80 ml-1">+${left} dispo</span>` : ''}`;
+        }
 
         Object.keys(STAT_NAMES).forEach(key => {
-          const statEl = document.createElement('div');
-          statEl.className = 'flex items-center gap-0.5';
+          const row = document.createElement('div');
+          row.className = 'stat-row-editor';
           const lbl = document.createElement('span');
-          lbl.className = 'text-[9px] text-white/40 w-5';
+          lbl.className = 'text-[9px] text-white/50 truncate';
           lbl.textContent = STAT_NAMES[key].slice(2);
           lbl.title = STAT_NAMES[key];
           const minus = document.createElement('button');
           minus.className = 'stat-btn'; minus.textContent = '−';
           const valSpan = document.createElement('span');
-          valSpan.className = 'text-[10px] font-bold text-white/70 w-3 text-center';
-          valSpan.textContent = stats[key];
+          valSpan.className = 'text-[10px] font-bold text-center';
           const plus = document.createElement('button');
           plus.className = 'stat-btn'; plus.textContent = '+';
+          const gauge = document.createElement('div');
+          gauge.className = 'stat-gauge';
+          const gaugeFill = document.createElement('div');
+          gaugeFill.className = 'stat-gauge-fill';
+          gaugeFill.style.background = STAT_COLORS[key] || '#fff';
+          gauge.appendChild(gaugeFill);
 
           function upd() {
             minus.disabled = stats[key] <= 1;
             plus.disabled = totalUsed() >= STAT_POOL || stats[key] >= 10;
-            valSpan.textContent = stats[key];
+            valSpan.textContent = `${stats[key]}/10`;
+            valSpan.style.color = stats[key] >= 8 ? STAT_COLORS[key] : (stats[key] <= 3 ? '#f87171' : 'rgba(255,255,255,0.7)');
+            gaugeFill.style.width = `${stats[key] * 10}%`;
             refreshRemaining();
           }
-          minus.onclick = () => { if (stats[key] > 1) { stats[key]--; upd(); } };
-          plus.onclick = () => { if (totalUsed() < STAT_POOL && stats[key] < 10) { stats[key]++; upd(); } };
+          minus.onclick = () => { if (stats[key] > 1) { stats[key]--; allUpdaters.forEach(u => u()); } };
+          plus.onclick = () => { if (totalUsed() < STAT_POOL && stats[key] < 10) { stats[key]++; allUpdaters.forEach(u => u()); } };
+          allUpdaters.push(upd);
           upd();
-          statEl.append(lbl, minus, valSpan, plus);
-          statsRow.appendChild(statEl);
+          row.append(lbl, minus, valSpan, plus, gauge);
+          statsRow.appendChild(row);
         });
         statsRow.appendChild(remainingEl);
         wrapper.appendChild(statsRow);
