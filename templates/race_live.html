@@ -1,0 +1,272 @@
+{% include '_site_header.html' %}
+
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Derby des Groins — Replay live</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="min-h-screen bg-[radial-gradient(circle_at_top,rgba(22,57,96,0.96),rgba(8,13,26,1)_58%)] text-white">
+  <main class="mx-auto max-w-7xl px-4 py-8 space-y-6">
+    <section class="grid gap-6 xl:grid-cols-[1.4fr_0.6fr]">
+      <div class="rounded-3xl border border-cyan-200/10 bg-white/5 p-6 shadow-2xl shadow-cyan-950/20">
+        <div class="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <p class="text-sm uppercase tracking-[0.35em] text-cyan-200/45">Replay</p>
+            <h1 class="mt-2 text-4xl font-black text-cyan-100">🏁 Course en direct</h1>
+            <p class="mt-3 max-w-2xl text-sm text-white/70">Visualise la dernière course terminée tour par tour, avec les accélérations, les glissades et les fins de course.</p>
+          </div>
+          <div class="rounded-2xl border border-cyan-300/20 bg-cyan-300/10 px-5 py-4 text-right">
+            <div class="text-xs uppercase tracking-[0.25em] text-cyan-100/55">Course</div>
+            <div id="race-label" class="mt-1 text-3xl font-black text-cyan-200">—</div>
+          </div>
+        </div>
+
+        <div class="mt-6 rounded-3xl border border-white/10 bg-slate-950/50 p-4">
+          <div class="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p class="text-xs uppercase tracking-[0.25em] text-white/40">Piste</p>
+              <div id="track-profile" class="mt-1 text-lg font-black text-white">Chargement…</div>
+            </div>
+            <div class="flex flex-wrap gap-2 text-xs font-bold">
+              <button id="play-pause" class="rounded-xl border border-cyan-300/20 bg-cyan-300/10 px-4 py-2 text-cyan-100">Pause</button>
+              <button id="restart" class="rounded-xl border border-white/10 bg-white/10 px-4 py-2 text-white">Recommencer</button>
+            </div>
+          </div>
+
+          <div class="mt-4 overflow-hidden rounded-3xl border border-white/10 bg-[linear-gradient(180deg,rgba(25,50,26,1),rgba(13,30,15,1))] p-6">
+            <div class="mb-4 flex items-center justify-between gap-3 text-xs font-bold uppercase tracking-[0.24em] text-white/45">
+              <span id="turn-label">Tour 0</span>
+              <span id="finished-at">—</span>
+            </div>
+            <div class="relative h-[28rem] overflow-hidden rounded-2xl border border-white/10 bg-[linear-gradient(180deg,rgba(115,59,34,0.85),rgba(82,41,24,0.95))] p-4">
+              <div class="pointer-events-none absolute inset-0 opacity-20" style="background-image: repeating-linear-gradient(to bottom, transparent 0, transparent 48px, rgba(255,255,255,0.15) 48px, rgba(255,255,255,0.15) 50px);"></div>
+              <div id="finish-line" class="absolute bottom-0 right-8 top-0 border-l-4 border-dashed border-yellow-300/80"></div>
+              <div id="lanes" class="relative h-full"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <aside class="space-y-6">
+        <section class="rounded-3xl border border-white/10 bg-white/5 p-6">
+          <p class="text-xs uppercase tracking-[0.25em] text-white/40">Etat</p>
+          <div id="headline" class="mt-2 text-2xl font-black text-cyan-100">Préparation du replay…</div>
+          <p id="subhead" class="mt-2 text-sm text-white/65">Les cochons rejoignent leur ligne de départ.</p>
+          <div class="mt-4 h-2 overflow-hidden rounded-full bg-white/10">
+            <div id="progress" class="h-full w-0 rounded-full bg-gradient-to-r from-cyan-400 via-sky-300 to-yellow-300 transition-all duration-300"></div>
+          </div>
+        </section>
+
+        <section class="rounded-3xl border border-white/10 bg-white/5 p-6">
+          <div class="flex items-center justify-between gap-3">
+            <h2 class="text-lg font-black">Classement live</h2>
+            <span id="winner-pill" class="rounded-full border border-yellow-300/20 bg-yellow-300/10 px-3 py-1 text-xs font-black text-yellow-100">En course</span>
+          </div>
+          <div id="scoreboard" class="mt-4 space-y-3"></div>
+        </section>
+
+        <section class="rounded-3xl border border-white/10 bg-white/5 p-6 text-sm text-white/70">
+          <h2 class="text-lg font-black text-white">Légende</h2>
+          <ul class="mt-4 space-y-2 list-disc pl-5">
+            <li><strong>Sprint</strong> : le cochon accélère franchement.</li>
+            <li><strong>Drafting</strong> : il profite de l’aspiration.</li>
+            <li><strong>Tired</strong> : la fatigue ralentit son allure.</li>
+            <li><strong>Stumble</strong> : petit accroc dans la foulée.</li>
+          </ul>
+        </section>
+      </aside>
+    </section>
+  </main>
+
+  <script>
+    const lanesNode = document.getElementById('lanes');
+    const scoreboardNode = document.getElementById('scoreboard');
+    const trackProfileNode = document.getElementById('track-profile');
+    const raceLabelNode = document.getElementById('race-label');
+    const turnLabelNode = document.getElementById('turn-label');
+    const finishedAtNode = document.getElementById('finished-at');
+    const headlineNode = document.getElementById('headline');
+    const subheadNode = document.getElementById('subhead');
+    const progressNode = document.getElementById('progress');
+    const winnerPillNode = document.getElementById('winner-pill');
+    const playPauseButton = document.getElementById('play-pause');
+    const restartButton = document.getElementById('restart');
+
+    const EVENT_LABELS = {
+      sprint: '⚡ Sprint',
+      drafting: '💨 Aspiration',
+      tired: '🥵 Fatigue',
+      stumble: '🫨 Faux pas',
+      finished: '🏁 Arrivée',
+    };
+
+    const EVENT_CLASSES = {
+      sprint: 'border-yellow-300/25 bg-yellow-300/10 text-yellow-100',
+      drafting: 'border-cyan-300/25 bg-cyan-300/10 text-cyan-100',
+      tired: 'border-red-300/25 bg-red-300/10 text-red-100',
+      stumble: 'border-orange-300/25 bg-orange-300/10 text-orange-100',
+      finished: 'border-emerald-300/25 bg-emerald-300/10 text-emerald-100',
+      none: 'border-white/10 bg-white/5 text-white/45',
+    };
+
+    let replay = null;
+    let timer = null;
+    let turnIndex = 0;
+    let isPlaying = true;
+    let totalDistance = 0;
+    let laneEls = new Map();
+
+    function profileLabel(value) {
+      return {
+        MONTEE: '⛰️ Parcours vallonné',
+        DESCENTE: '🛷 Parcours descendant',
+        VIRAGE: '🌀 Tracé technique',
+        BOUE: '🟤 Piste boueuse',
+        PLAT: '🛣️ Piste rapide',
+      }[value] || value;
+    }
+
+    function eventClass(eventName) {
+      return EVENT_CLASSES[eventName || 'none'] || EVENT_CLASSES.none;
+    }
+
+    function createLane(pig, index, count) {
+      const lane = document.createElement('div');
+      lane.className = 'absolute left-0 right-0';
+      const laneHeight = 100 / Math.max(count, 1);
+      lane.style.top = `${index * laneHeight}%`;
+      lane.style.height = `${laneHeight}%`;
+      lane.innerHTML = `
+        <div class="absolute inset-x-0 top-1/2 -translate-y-1/2 border-t border-dashed border-white/10"></div>
+        <div class="runner absolute top-1/2 -translate-y-1/2 transition-all duration-500 ease-out">
+          <div class="rounded-2xl border border-white/10 bg-slate-950/80 px-3 py-2 shadow-lg">
+            <div class="text-2xl">${pig.emoji || '🐷'}</div>
+          </div>
+        </div>
+        <div class="runner-label absolute top-1/2 -translate-y-1/2 transition-all duration-500 ease-out min-w-0 rounded-2xl border border-white/10 bg-slate-950/80 px-3 py-2 shadow-lg">
+          <div class="truncate text-sm font-black text-white">${pig.name}</div>
+          <div class="text-xs text-white/50">${pig.owner || 'Invité'}</div>
+        </div>
+      `;
+      lanesNode.appendChild(lane);
+      laneEls.set(pig.id, lane);
+    }
+
+    function renderTurn() {
+      const turns = replay?.turns || [];
+      if (!turns.length) return;
+      const turn = turns[Math.min(turnIndex, turns.length - 1)];
+      const pigs = [...turn.pigs].sort((a, b) => b.distance - a.distance);
+      const leader = pigs[0];
+      const completed = ((turnIndex + 1) / turns.length) * 100;
+
+      turnLabelNode.textContent = `Tour ${turn.turn}`;
+      progressNode.style.width = `${completed}%`;
+      headlineNode.textContent = leader ? `${leader.name} mène la danse` : 'Replay en cours';
+      subheadNode.textContent = leader ? `${leader.emoji || '🐷'} ${leader.name} parcourt ${leader.distance.toFixed(1)} m.` : 'Aucun participant.';
+
+      lanesNode.innerHTML = '';
+      laneEls = new Map();
+      pigs.forEach((pig, index) => createLane({ ...pig, owner: replay.participant_meta?.[pig.id]?.owner }, index, pigs.length));
+      pigs.forEach((pig) => {
+        const lane = laneEls.get(pig.id);
+        const runner = lane.querySelector('.runner');
+        const card = lane.querySelector('.runner-label');
+        const offset = totalDistance > 0 ? Math.min(92, Math.max(0, (pig.distance / totalDistance) * 92)) : 0;
+        runner.style.left = `${offset}%`;
+        card.style.left = `calc(${offset}% + 4.5rem)`;
+      });
+
+      scoreboardNode.innerHTML = pigs.map((pig, index) => {
+        const meta = replay.participant_meta?.[pig.id] || {};
+        const eventName = pig.visual_event || (pig.is_finished ? 'finished' : 'none');
+        return `
+          <div class="rounded-2xl border border-white/10 bg-black/15 p-4">
+            <div class="flex items-start justify-between gap-3">
+              <div class="min-w-0">
+                <div class="flex items-center gap-2 text-sm font-black text-white">
+                  <span class="text-white/45">#${index + 1}</span>
+                  <span>${meta.emoji || '🐷'}</span>
+                  <span class="truncate">${pig.name}</span>
+                </div>
+                <p class="mt-1 text-xs text-white/45">${meta.owner || 'Invité'} · ${pig.distance.toFixed(1)} m · fatigue ${pig.fatigue.toFixed(1)}</p>
+              </div>
+              <span class="rounded-full border px-3 py-1 text-[11px] font-black ${eventClass(eventName)}">${EVENT_LABELS[eventName] || '—'}</span>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      if (turnIndex >= turns.length - 1) {
+        winnerPillNode.textContent = replay.winner_name ? `🏆 ${replay.winner_name}` : 'Terminée';
+        headlineNode.textContent = replay.winner_name ? `${replay.winner_name} remporte la course` : 'Replay terminé';
+        subheadNode.textContent = replay.finished_at ? `Course terminée à ${replay.finished_at}.` : 'La ligne d’arrivée a été franchie.';
+        stopPlayback();
+      }
+    }
+
+    function tick() {
+      renderTurn();
+      if (turnIndex < (replay?.turns?.length || 0) - 1) {
+        turnIndex += 1;
+      }
+    }
+
+    function stopPlayback() {
+      isPlaying = false;
+      playPauseButton.textContent = 'Lecture';
+      if (timer) window.clearInterval(timer);
+      timer = null;
+    }
+
+    function startPlayback() {
+      if (!replay?.turns?.length || timer) return;
+      isPlaying = true;
+      playPauseButton.textContent = 'Pause';
+      timer = window.setInterval(tick, 550);
+    }
+
+    function restartPlayback() {
+      turnIndex = 0;
+      stopPlayback();
+      renderTurn();
+      startPlayback();
+    }
+
+    async function loadReplay() {
+      try {
+        const response = await fetch('/api/race/latest/replay');
+        const payload = await response.json();
+        if (!response.ok) throw new Error(payload.error || 'Impossible de charger le replay.');
+
+        replay = payload;
+        totalDistance = (payload.segments || []).reduce((sum, segment) => sum + Number(segment.length || 0), 0);
+        trackProfileNode.textContent = profileLabel(payload.track_profile);
+        raceLabelNode.textContent = payload.race_id ? `#${payload.race_id}` : '—';
+        finishedAtNode.textContent = payload.finished_at ? `Arrivée ${payload.finished_at}` : 'Dernière course';
+        winnerPillNode.textContent = payload.winner_name ? `🏆 ${payload.winner_name}` : 'En course';
+        restartPlayback();
+      } catch (error) {
+        headlineNode.textContent = 'Aucun replay disponible';
+        subheadNode.textContent = error.message;
+        trackProfileNode.textContent = 'Indisponible';
+        playPauseButton.disabled = true;
+        restartButton.disabled = true;
+      }
+    }
+
+    playPauseButton.addEventListener('click', () => {
+      if (!replay?.turns?.length) return;
+      if (isPlaying) stopPlayback();
+      else startPlayback();
+    });
+
+    restartButton.addEventListener('click', restartPlayback);
+
+    loadReplay();
+  </script>
+</body>
+</html>
