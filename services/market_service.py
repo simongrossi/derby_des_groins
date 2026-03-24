@@ -12,7 +12,7 @@ from data import (
 from extensions import db
 from models import Auction, BalanceTransaction, GrainMarket, MarketHistory, Pig, User
 
-from helpers import apply_row_lock
+from helpers.db import apply_row_lock
 from services.game_settings_service import get_game_settings
 from services.finance_service import credit_user_balance
 from services.pig_service import build_unique_pig_name, generate_weight_kg_for_profile
@@ -215,7 +215,7 @@ def resolve_market_history():
 
 
 def get_bourse_cereals(market, feeding_multiplier=1.0):
-    from helpers import get_cereals_dict
+    from helpers.game_data import get_cereals_dict
     surcharges = get_all_grain_surcharges(market)
     cereals = get_cereals_dict()
     result = {}
@@ -241,7 +241,7 @@ def get_bourse_cereals(market, feeding_multiplier=1.0):
 
 
 def get_bourse_grid_data(market):
-    from helpers import get_cereals_dict
+    from helpers.game_data import get_cereals_dict
     bx = market.cursor_x if market.cursor_x is not None else BOURSE_DEFAULT_POS
     by = market.cursor_y if market.cursor_y is not None else BOURSE_DEFAULT_POS
     block_grains = {(bx + dx, by + dy): ck for (dx, dy), ck in BOURSE_GRAIN_LAYOUT.items()}

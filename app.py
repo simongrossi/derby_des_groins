@@ -1,7 +1,10 @@
-from flask import Flask, session
+from flask import Flask, session, request
 from werkzeug.security import generate_password_hash
 from datetime import datetime, timedelta
 import os
+import logging
+
+logger = logging.getLogger(__name__)
 
 from extensions import db
 from models import (
@@ -20,8 +23,22 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 def create_app():
     app = Flask(__name__, template_folder=os.path.join(BASE_DIR, 'templates'))
-    app.config['SECRET_KEY'] = 'derby-des-groins-secret-2024'
-    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///derby.db'
+
+    # ── Securite ────────────────────────────────────────────────────────
+    app.config['SECRET_KEY'] = os.environ.get(
+        'SECRET_KEY', 'dev-only-secret-change-me-in-production'
+    )
+    if not app.debug and app.config['SECRET_KEY'].startswith('dev-only'):
+        logger.warning("SECRET_KEY non definie ! Utilisez une cle secrete en production.")
+
+    app.config['SESSION_COOKIE_SECURE'] = os.environ.get('FLASK_ENV') == 'production'
+    app.config['SESSION_COOKIE_HTTPONLY'] = True
+    app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+
+    # ── Base de donnees ─────────────────────────────────────────────────
+    app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get(
+        'DATABASE_URL', 'sqlite:///derby.db'
+    )
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
     app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
         'pool_pre_ping': True,
@@ -41,12 +58,35 @@ def create_app():
     for bp in all_blueprints:
         app.register_blueprint(bp)
 
+    # ── Logging structure ───────────────────────────────────────────────
+    @app.after_request
+    def log_request(response):
+        if request.path.startswith('/static') or request.path == '/health':
+            return response
+        logger.info(
+            "%s %s %s — user=%s",
+            request.method, request.path, response.status_code,
+            session.get('user_id', '-'),
+        )
+        return response
+
     @app.context_processor
     def inject_injured_pig_nav():
         injured_pig_nav_id = None
         if 'user_id' in session:
-            injured_pig = get_first_injured_pig(session.get('user_id'))
-            injured_pig_nav_id = injured_pig.id if injured_pig else None
+            # Cache en session pour eviter une requete DB a chaque page.
+            # Invalide via session.pop('_injured_cache') quand une blessure change.
+            cached = session.get('_injured_pig_id')
+            cache_ts = session.get('_injured_cache_ts', 0)
+            import time
+            now = time.time()
+            if cached is not None and (now - cache_ts) < 30:
+                injured_pig_nav_id = cached if cached != 0 else None
+            else:
+                injured_pig = get_first_injured_pig(session.get('user_id'))
+                injured_pig_nav_id = injured_pig.id if injured_pig else None
+                session['_injured_pig_id'] = injured_pig_nav_id or 0
+                session['_injured_cache_ts'] = now
         return {'injured_pig_nav_id': injured_pig_nav_id}
 
     with app.app_context():
@@ -139,14 +179,21 @@ def migrate_db():
         'CREATE INDEX IF NOT EXISTS ix_auction_status_ends_at ON auction(status, ends_at)',
         'CREATE INDEX IF NOT EXISTS ix_race_status_scheduled_at ON race(status, scheduled_at)',
         'CREATE INDEX IF NOT EXISTS ix_pig_vet_deadline ON pig(is_injured, is_alive, vet_deadline)',
+        # Index supplementaires pour la performance
+        'CREATE INDEX IF NOT EXISTS ix_pig_user_alive ON pig(user_id, is_alive)',
+        'CREATE INDEX IF NOT EXISTS ix_bet_user_status ON bet(user_id, status)',
+        'CREATE INDEX IF NOT EXISTS ix_user_username ON user(username)',
+        'CREATE INDEX IF NOT EXISTS ix_participant_race_pig ON participant(race_id, pig_id)',
+        'CREATE INDEX IF NOT EXISTS ix_balance_tx_user ON balance_transaction(user_id)',
+        'CREATE INDEX IF NOT EXISTS ix_course_plan_user_sched ON course_plan(user_id, scheduled_at)',
     ]
     with db.engine.connect() as conn:
         for statement in table_migrations:
             try:
                 conn.execute(db.text(statement))
                 conn.commit()
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning("Migration table echouee: %s — %s", statement[:80], e)
         for table, col, col_type in migrations:
             try:
                 conn.execute(db.text(f"SELECT {col} FROM {table} LIMIT 1"))
@@ -154,14 +201,14 @@ def migrate_db():
                 try:
                     conn.execute(db.text(f"ALTER TABLE {table} ADD COLUMN {col} {col_type}"))
                     conn.commit()
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.warning("Migration colonne echouee: %s.%s — %s", table, col, e)
         for statement in index_migrations:
             try:
                 conn.execute(db.text(statement))
                 conn.commit()
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning("Migration index echouee: %s — %s", statement[:80], e)
         try:
             conn.execute(db.text("""
                 UPDATE course_plan
@@ -178,11 +225,12 @@ def migrate_db():
                     date_earned = COALESCE(date_earned, earned_at)
             """))
             conn.commit()
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning("Migration donnees echouee: %s", e)
 
 
 def seed_users():
+    is_dev = os.environ.get('FLASK_ENV') != 'production'
     default_users = [
         {'username': 'Emerson',    'pig_name': 'Groin de Tonnerre',  'emoji': '🐗', 'origin': 'Brésil'},
         {'username': 'Pascal',     'pig_name': 'Le Baron du Lard',   'emoji': '🐷', 'origin': 'France'},
@@ -190,8 +238,12 @@ def seed_users():
         {'username': 'Edwin',      'pig_name': 'Porcinator',         'emoji': '🐽', 'origin': 'Angleterre'},
         {'username': 'Julien',     'pig_name': 'Flash McGroin',      'emoji': '🐖', 'origin': 'Japon'},
         {'username': 'Christophe', 'pig_name': 'Père Cochon',        'emoji': '🏆', 'origin': 'France', 'admin': True},
-        {'username': 'admin',       'pig_name': 'Grand Admin',        'emoji': '👑', 'origin': 'France', 'admin': True, 'password': 'admin'},
     ]
+    # Compte admin avec mdp par defaut uniquement en dev
+    if is_dev:
+        default_users.append(
+            {'username': 'admin', 'pig_name': 'Grand Admin', 'emoji': '👑', 'origin': 'France', 'admin': True, 'password': 'admin'},
+        )
     for u in default_users:
         existing = User.query.filter_by(username=u['username']).first()
         if existing:
@@ -348,4 +400,8 @@ app = create_app()
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5001))
-    app.run(debug=True, host='0.0.0.0', port=port)
+    app.run(
+        debug=os.environ.get('FLASK_DEBUG', 'false').lower() == 'true',
+        host=os.environ.get('FLASK_HOST', '0.0.0.0'),
+        port=port,
+    )

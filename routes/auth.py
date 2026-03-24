@@ -1,6 +1,7 @@
 from flask import Blueprint, render_template, request, redirect, url_for, session, flash
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
+from urllib.parse import urlparse
 import json
 import random
 import math
@@ -62,8 +63,10 @@ def login():
             return render_template('auth.html', error="Identifiants incorrects !", mode='login')
         session['user_id'] = user.id
         next_url = request.args.get('next') or request.form.get('next')
-        if next_url and next_url.startswith('/'):
-            return redirect(next_url)
+        if next_url:
+            parsed = urlparse(next_url)
+            if not parsed.scheme and not parsed.netloc and next_url.startswith('/'):
+                return redirect(next_url)
         return redirect(url_for('main.index'))
     return render_template('auth.html', mode='login')
 

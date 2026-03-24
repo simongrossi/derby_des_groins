@@ -10,6 +10,7 @@ from routes.bourse import bourse_bp
 from routes.blackjack import blackjack_bp
 from routes.truffes import truffes_bp
 from routes.galerie import galerie_bp
+from routes.health import health_bp
 
 all_blueprints = [
     auth_bp,
@@ -24,4 +25,5 @@ all_blueprints = [
     blackjack_bp,
     truffes_bp,
     galerie_bp,
+    health_bp,
 ]

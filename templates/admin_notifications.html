@@ -38,8 +38,11 @@
                 </div>
                 <div>
                     <label class="text-white/60 text-xs font-bold block mb-1">Mot de passe</label>
-                    <input type="password" name="smtp_password" value="{{ smtp.password }}"
-                           class="input-admin w-full" placeholder="••••••••">
+                    <input type="password" name="smtp_password" value=""
+                           class="input-admin w-full" placeholder="{{ '••••••••' if smtp.password else 'Mot de passe SMTP' }}">
+                    {% if smtp.password %}
+                    <p class="text-white/30 text-[10px] mt-1">Un mot de passe est deja configure. Laissez vide pour le conserver.</p>
+                    {% endif %}
                 </div>
                 <div>
                     <label class="text-white/60 text-xs font-bold block mb-1">Adresse expediteur (From)</label>

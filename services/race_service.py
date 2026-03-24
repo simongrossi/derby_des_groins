@@ -14,7 +14,7 @@ from extensions import db
 from models import Bet, CoursePlan, Participant, Pig, Race, User
 from race_engine import CourseManager
 
-from helpers import apply_row_lock
+from helpers.db import apply_row_lock
 from services.finance_service import credit_user_balance
 from services.game_settings_service import get_game_settings
 from services.pig_service import calculate_pig_power, get_weight_profile, update_pig_state

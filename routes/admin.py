@@ -2,6 +2,9 @@ from flask import Blueprint, render_template, request, redirect, url_for, sessio
 from werkzeug.security import generate_password_hash
 from datetime import datetime, timedelta
 import json
+import logging
+import os
+import re
 import secrets
 
 from extensions import db
@@ -81,7 +84,8 @@ def _send_email(to_addr, subject, body_html):
         server.quit()
         return True, None
     except Exception as e:
-        return False, str(e)
+        logging.getLogger(__name__).exception("Echec envoi email a %s", to_addr)
+        return False, "Erreur lors de l'envoi de l'email. Verifiez la configuration SMTP."
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -167,7 +171,7 @@ def admin_save():
     for i in range(7):
         day_times_raw = request.form.get(f'schedule_{i}', '').strip()
         times = [t.strip() for t in day_times_raw.split(',') if t.strip()]
-        valid_times = [t for t in times if ':' in t]
+        valid_times = [t for t in times if re.match(r'^\d{1,2}:\d{2}$', t) and int(t.split(':')[0]) < 24 and int(t.split(':')[1]) < 60]
         schedule[str(i)] = sorted(valid_times)
 
     set_config('race_schedule', json.dumps(schedule))
@@ -386,9 +390,12 @@ def admin_magic_link(user_id):
         'user_id': target.id,
     }))
 
-    # Build the magic link URL
-    base_url = request.host_url.rstrip('/')
-    magic_url = f"{base_url}/auth/magic/{token}"
+    # Build the magic link URL (safe: url_for evite le Host header injection)
+    base_url = os.environ.get('BASE_URL', '').rstrip('/')
+    if base_url:
+        magic_url = f"{base_url}/auth/magic/{token}"
+    else:
+        magic_url = url_for('auth.magic_login', token=token, _external=True)
 
     # Store in session for display
     links = session.get('_admin_magic_links', {})
@@ -472,11 +479,15 @@ def admin_save_smtp():
         'smtp_port': request.form.get('smtp_port', '587').strip(),
         'smtp_security': request.form.get('smtp_security', 'tls').strip(),
         'smtp_user': request.form.get('smtp_user', '').strip(),
-        'smtp_password': request.form.get('smtp_password', '').strip(),
         'smtp_from': request.form.get('smtp_from', '').strip(),
         'smtp_from_name': request.form.get('smtp_from_name', 'Derby des Groins').strip(),
         'smtp_enabled': '1' if 'smtp_enabled' in request.form else '0',
     }
+
+    # Ne pas ecraser le mot de passe SMTP si le champ est laisse vide
+    new_password = request.form.get('smtp_password', '').strip()
+    if new_password:
+        smtp_keys['smtp_password'] = new_password
 
     for key, val in smtp_keys.items():
         set_config(key, val)

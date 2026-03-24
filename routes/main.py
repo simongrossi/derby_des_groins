@@ -214,16 +214,103 @@ def classement():
         user = User.query.get(session['user_id'])
 
     all_users = User.query.all()
-    rankings = []
+    user_ids = [u.id for u in all_users]
 
+    # ── Batch: stats courses par user (1 query) ────────────────────────
+    pig_stats_rows = (
+        db.session.query(
+            Pig.user_id,
+            func.coalesce(func.sum(Pig.races_won), 0),
+            func.coalesce(func.sum(Pig.races_entered), 0),
+        )
+        .filter(Pig.user_id.in_(user_ids))
+        .group_by(Pig.user_id)
+        .all()
+    )
+    pig_stats = {uid: (int(w), int(r)) for uid, w, r in pig_stats_rows}
+
+    # ── Batch: tous les cochons (1 query) ──────────────────────────────
+    all_pigs_list = Pig.query.filter(Pig.user_id.in_(user_ids)).all()
+    pigs_by_user = {}
+    for p in all_pigs_list:
+        pigs_by_user.setdefault(p.user_id, []).append(p)
+
+    # ── Batch: stats paris par user (1 query) ──────────────────────────
+    bet_stats_rows = (
+        db.session.query(
+            Bet.user_id,
+            Bet.status,
+            func.count(Bet.id),
+            func.coalesce(func.sum(Bet.amount), 0.0),
+            func.coalesce(func.sum(Bet.winnings), 0.0),
+            func.max(db.case((Bet.status == 'won', Bet.odds_at_bet), else_=0.0)),
+        )
+        .filter(Bet.user_id.in_(user_ids))
+        .group_by(Bet.user_id, Bet.status)
+        .all()
+    )
+    bet_stats = {}
+    for uid, status, count, staked, winnings, best_odds in bet_stats_rows:
+        entry = bet_stats.setdefault(uid, {
+            'total': 0, 'won': 0, 'lost': 0, 'staked': 0.0,
+            'winnings': 0.0, 'won_staked': 0.0, 'lost_staked': 0.0,
+            'best_odds': 0.0,
+        })
+        entry['total'] += count
+        entry['staked'] += float(staked)
+        if status == 'won':
+            entry['won'] = count
+            entry['winnings'] = float(winnings)
+            entry['won_staked'] = float(staked)
+            entry['best_odds'] = max(entry['best_odds'], float(best_odds or 0))
+        elif status == 'lost':
+            entry['lost'] = count
+            entry['lost_staked'] = float(staked)
+
+    # ── Batch: depenses nourriture & gains par user (2 queries) ────────
+    food_rows = (
+        db.session.query(
+            BalanceTransaction.user_id,
+            func.coalesce(func.sum(func.abs(BalanceTransaction.amount)), 0.0),
+        )
+        .filter(
+            BalanceTransaction.user_id.in_(user_ids),
+            BalanceTransaction.reason_code == 'feed_purchase',
+        )
+        .group_by(BalanceTransaction.user_id)
+        .all()
+    )
+    food_spent = {uid: round(float(v), 2) for uid, v in food_rows}
+
+    earned_rows = (
+        db.session.query(
+            BalanceTransaction.user_id,
+            func.coalesce(func.sum(BalanceTransaction.amount), 0.0),
+        )
+        .filter(
+            BalanceTransaction.user_id.in_(user_ids),
+            BalanceTransaction.amount > 0,
+            BalanceTransaction.reason_code != 'snapshot',
+        )
+        .group_by(BalanceTransaction.user_id)
+        .all()
+    )
+    total_earned_map = {uid: round(float(v), 2) for uid, v in earned_rows}
+
+    # ── Batch: trophees memorial par user (1 query) ────────────────────
+    all_trophies = Trophy.query.filter(Trophy.user_id.in_(user_ids)).order_by(Trophy.earned_at.asc()).all()
+    trophies_by_user = {}
+    for t in all_trophies:
+        trophies_by_user.setdefault(t.user_id, []).append(t)
+
+    # ── Construction du classement ─────────────────────────────────────
+    rankings = []
     for u in all_users:
-        # --- Stats courses ---
-        total_wins = db.session.query(db.func.sum(Pig.races_won)).filter(Pig.user_id == u.id).scalar() or 0
-        total_races = db.session.query(db.func.sum(Pig.races_entered)).filter(Pig.user_id == u.id).scalar() or 0
+        total_wins, total_races = pig_stats.get(u.id, (0, 0))
         win_rate = (total_wins / total_races * 100) if total_races > 0 else 0
 
-        # --- Stats morts par cause ---
-        dead_pigs = Pig.query.filter_by(user_id=u.id, is_alive=False).all()
+        user_pigs = pigs_by_user.get(u.id, [])
+        dead_pigs = [p for p in user_pigs if not p.is_alive]
         dead_pigs_count = len([p for p in dead_pigs if p.death_cause != 'vendu'])
         deaths_by_cause = {}
         for p in dead_pigs:
@@ -235,41 +322,31 @@ def classement():
         deaths_vieillesse = deaths_by_cause.get('vieillesse', 0)
         legendary_dead = sum(1 for p in dead_pigs if p.death_cause != 'vendu' and (p.races_won or 0) >= 3)
 
-        # --- Stats paris ---
-        user_bets = Bet.query.filter_by(user_id=u.id).all()
-        total_bets = len(user_bets)
-        won_bets = [b for b in user_bets if b.status == 'won']
-        lost_bets = [b for b in user_bets if b.status == 'lost']
-        settled_bets = won_bets + lost_bets
-        total_staked = round(sum(b.amount or 0 for b in user_bets), 2)
-        total_winnings = round(sum(b.winnings or 0 for b in won_bets), 2)
-        bet_profit = round(total_winnings - sum(b.amount or 0 for b in settled_bets), 2)
-        bet_win_rate = round((len(won_bets) / len(settled_bets)) * 100, 1) if settled_bets else 0.0
-        best_odds_hit = max((b.odds_at_bet for b in won_bets), default=0.0)
+        bs = bet_stats.get(u.id, {
+            'total': 0, 'won': 0, 'lost': 0, 'staked': 0.0,
+            'winnings': 0.0, 'won_staked': 0.0, 'lost_staked': 0.0,
+            'best_odds': 0.0,
+        })
+        total_bets = bs['total']
+        won_bets_count = bs['won']
+        lost_bets_count = bs['lost']
+        total_staked = round(bs['staked'], 2)
+        total_winnings = round(bs['winnings'], 2)
+        settled_staked = bs['won_staked'] + bs['lost_staked']
+        bet_profit = round(total_winnings - settled_staked, 2)
+        settled_count = won_bets_count + lost_bets_count
+        bet_win_rate = round((won_bets_count / settled_count) * 100, 1) if settled_count else 0.0
+        best_odds_hit = bs['best_odds']
 
-        # --- Stats elevage ---
-        all_pigs = Pig.query.filter_by(user_id=u.id).all()
-        active_pigs = [p for p in all_pigs if p.is_alive]
-        best_pig = max(all_pigs, key=lambda p: (p.races_won or 0, p.level or 0), default=None)
-        max_level = max((p.level or 1 for p in all_pigs), default=1)
-        total_school = sum(p.school_sessions_completed or 0 for p in all_pigs)
-        total_xp = sum(p.xp or 0 for p in all_pigs)
-        legendary_count = sum(1 for p in all_pigs if p.rarity == 'legendaire')
+        active_pigs = [p for p in user_pigs if p.is_alive]
+        best_pig = max(user_pigs, key=lambda p: (p.races_won or 0, p.level or 0), default=None)
+        max_level = max((p.level or 1 for p in user_pigs), default=1)
+        total_school = sum(p.school_sessions_completed or 0 for p in user_pigs)
+        total_xp = sum(p.xp or 0 for p in user_pigs)
+        legendary_count = sum(1 for p in user_pigs if p.rarity == 'legendaire')
 
-        # --- Stats depenses (BalanceTransaction) ---
-        total_spent_on_food = db.session.query(
-            func.coalesce(func.sum(func.abs(BalanceTransaction.amount)), 0.0)
-        ).filter(
-            BalanceTransaction.user_id == u.id,
-            BalanceTransaction.reason_code == 'feed_purchase'
-        ).scalar() or 0.0
-        total_earned = db.session.query(
-            func.coalesce(func.sum(BalanceTransaction.amount), 0.0)
-        ).filter(
-            BalanceTransaction.user_id == u.id,
-            BalanceTransaction.amount > 0,
-            BalanceTransaction.reason_code != 'snapshot'
-        ).scalar() or 0.0
+        total_spent_on_food = food_spent.get(u.id, 0.0)
+        total_earned = total_earned_map.get(u.id, 0.0)
 
         # --- Trophees ---
         trophies = []
@@ -286,51 +363,45 @@ def classement():
         if deaths_vieillesse >= 2: trophies.append({'n': 'Eleveur Sage', 'e': '🧓', 'd': '2 cochons morts de vieillesse'})
         if total_school >= 20: trophies.append({'n': 'Pedagogue', 'e': '📚', 'd': '20 sessions ecole'})
         if total_school >= 50: trophies.append({'n': 'Doyen', 'e': '🎓', 'd': '50 sessions ecole'})
-        if len(won_bets) >= 10: trophies.append({'n': 'Parieur', 'e': '🎟️', 'd': '10 paris gagnes'})
+        if won_bets_count >= 10: trophies.append({'n': 'Parieur', 'e': '🎟️', 'd': '10 paris gagnes'})
         if best_odds_hit >= 5.0: trophies.append({'n': 'Sniper', 'e': '🎯', 'd': 'Pari gagne a x5+'})
         if best_odds_hit >= 10.0: trophies.append({'n': 'Fou Furieux', 'e': '🔥', 'd': 'Pari gagne a x10+'})
         if bet_profit <= -100: trophies.append({'n': 'Ruine', 'e': '📉', 'd': 'Perdu plus de 100 🪙 en paris'})
         if legendary_count >= 1: trophies.append({'n': 'Collectionneur', 'e': '🟡', 'd': 'Posseder un cochon legendaire'})
         if deaths_sacrifice >= 3: trophies.append({'n': 'Sans Pitie', 'e': '🗡️', 'd': '3 cochons sacrifies'})
         if legendary_dead >= 1: trophies.append({'n': 'Sacrilege', 'e': '⚱️', 'd': 'Avoir perdu un cochon legendaire'})
-        if total_bets > 0 and len(won_bets) == 0: trophies.append({'n': 'La Poisse', 'e': '🐌', 'd': 'Aucun pari gagne'})
+        if total_bets > 0 and won_bets_count == 0: trophies.append({'n': 'La Poisse', 'e': '🐌', 'd': 'Aucun pari gagne'})
         if win_rate >= 40 and total_races >= 10: trophies.append({'n': 'Stratege', 'e': '🧠', 'd': '40%+ win rate (10+ courses)'})
-        memorial_trophies = Trophy.query.filter_by(user_id=u.id).order_by(Trophy.earned_at.asc()).all()
-        for trophy in memorial_trophies:
+        for trophy in trophies_by_user.get(u.id, []):
             trophies.append({'n': trophy.label, 'e': trophy.emoji, 'd': trophy.description})
 
         rankings.append({
             'user': u,
-            # Courses
             'total_wins': total_wins,
             'total_races': total_races,
             'win_rate': round(win_rate, 1),
-            # Morts
             'dead_count': dead_pigs_count,
             'deaths_challenge': deaths_challenge,
             'deaths_blessure': deaths_blessure,
             'deaths_sacrifice': deaths_sacrifice,
             'deaths_vieillesse': deaths_vieillesse,
             'legendary_dead': legendary_dead,
-            # Paris
             'total_bets': total_bets,
-            'won_bets': len(won_bets),
-            'lost_bets': len(lost_bets),
+            'won_bets': won_bets_count,
+            'lost_bets': lost_bets_count,
             'total_staked': total_staked,
             'total_winnings': total_winnings,
             'bet_profit': bet_profit,
             'bet_win_rate': bet_win_rate,
             'best_odds_hit': round(best_odds_hit, 1),
-            # Elevage
             'best_pig': best_pig,
             'max_level': max_level,
             'total_school': total_school,
             'total_xp': total_xp,
             'legendary_count': legendary_count,
             'active_pigs_count': len(active_pigs),
-            'total_spent_on_food': round(float(total_spent_on_food), 2),
-            'total_earned': round(float(total_earned), 2),
-            # Meta
+            'total_spent_on_food': total_spent_on_food,
+            'total_earned': total_earned,
             'trophies': trophies,
             'score': round(u.balance + (total_wins * 50), 2),
         })

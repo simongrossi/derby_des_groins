@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 import json
 
-from helpers import get_config
+from helpers.config import get_config
 
 
 @dataclass(frozen=True)
