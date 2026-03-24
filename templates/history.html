@@ -87,11 +87,11 @@
                     {% endif %}
                 </p>
             </div>
-            <div class="flex flex-wrap gap-2">
-                <a href="#courses" class="pill bg-yellow-400/15 text-yellow-300 border border-yellow-400/20">🏁 Courses</a>
-                <a href="#bitgroins" class="pill bg-cyan-400/12 text-cyan-200 border border-cyan-400/20">💰 BitGroins</a>
-                <a href="#paris" class="pill bg-pink-400/12 text-pink-200 border border-pink-400/20">🎯 Paris</a>
-            </div>
+            <nav class="flex flex-wrap gap-2" id="history-tabs">
+                <button data-tab="courses" class="hist-tab pill bg-yellow-400/15 text-yellow-300 border border-yellow-400/20 ring-2 ring-yellow-400/40">🏁 Courses</button>
+                <button data-tab="bitgroins" class="hist-tab pill bg-cyan-400/12 text-cyan-200 border border-cyan-400/20">💰 Journal BitGroins</button>
+                <button data-tab="paris" class="hist-tab pill bg-pink-400/12 text-pink-200 border border-pink-400/20">🎯 Mes Paris</button>
+            </nav>
         </div>
     </section>
 
@@ -419,5 +419,50 @@
         {% endif %}
     </section>
 </main>
+<script>
+(function() {
+  const tabs = document.querySelectorAll('.hist-tab');
+  const sections = {
+    courses: document.getElementById('courses'),
+    bitgroins: document.getElementById('bitgroins'),
+    paris: document.getElementById('paris'),
+  };
+  // Also hide the stats overview when not on "courses"
+  const statsGrid = document.querySelector('main > section.grid');
+
+  const colors = {
+    courses: 'ring-yellow-400/40',
+    bitgroins: 'ring-cyan-400/40',
+    paris: 'ring-pink-400/40',
+  };
+
+  function activate(tabName) {
+    // Show/hide sections
+    Object.entries(sections).forEach(([name, el]) => {
+      if (el) el.style.display = name === tabName ? '' : 'none';
+    });
+    // Stats grid only visible on courses tab
+    if (statsGrid) statsGrid.style.display = tabName === 'courses' ? '' : 'none';
+    // Update tab styles
+    tabs.forEach(btn => {
+      const t = btn.dataset.tab;
+      btn.classList.remove('ring-2', colors.courses, colors.bitgroins, colors.paris);
+      if (t === tabName) {
+        btn.classList.add('ring-2', colors[t]);
+      }
+    });
+    // Update URL hash without scroll
+    history.replaceState(null, '', '#' + tabName);
+  }
+
+  tabs.forEach(btn => {
+    btn.addEventListener('click', () => activate(btn.dataset.tab));
+  });
+
+  // Activate from URL hash or default to courses
+  const hash = window.location.hash.replace('#', '');
+  activate(sections[hash] ? hash : 'courses');
+})();
+</script>
 </body>
 </html>

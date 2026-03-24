@@ -99,6 +99,21 @@
   - Ajout `date_key` + `date_label` dans la route pour groupby Jinja2
   - Chaque jour affiche : numero, nom jour + mois, theme, nombre de creneaux
   - Creneaux : heure, cochons inscrits (emojis), badges statut (Prochaine/Planifiable/N partants)
+- [x] **7.2** Circuit Live : ecran idle au lieu d'ecran noir
+  - Nouveau overlay `#idle-overlay` avec message "Aucune course en cours"
+  - Affiche le temps restant avant la prochaine course si disponible
+  - Boutons "Retour au Live" et "Fermer"
+  - Se masque automatiquement quand une course passe en pre_race/countdown/racing
+- [x] **7.3** Historique : onglets interactifs (Courses / Journal BitGroins / Mes Paris)
+  - Les 3 sections etaient affichees simultanement sur une longue page
+  - Transformees en vrais onglets avec show/hide JS
+  - Navigation par URL hash (#courses, #bitgroins, #paris)
+  - Styles ring actif par onglet (yellow/cyan/pink)
+
+### Bugfix ✅
+- [x] **BUG** Prime de pointage journaliere creditee en boucle (+15 a chaque page load)
+  - Cause : `db.session.refresh(self)` ecrasait `last_daily_reward_at` avant le commit
+  - Fix : flush le timestamp AVANT earn() pour le persister dans la transaction
 
 ### Code optionnel (ameliorations futures)
 

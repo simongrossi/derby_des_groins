@@ -159,6 +159,22 @@
   </div>
 
   <!-- ════════════════════════════════════════════════════════ -->
+  <!-- IDLE OVERLAY (no active race)                          -->
+  <!-- ════════════════════════════════════════════════════════ -->
+  <div id="idle-overlay" style="position:fixed;inset:0;z-index:35;display:flex;flex-direction:column;align-items:center;justify-content:center;background:radial-gradient(ellipse at center,rgba(15,10,30,0.97),rgba(8,6,18,0.99));">
+    <div class="text-center space-y-6 max-w-lg px-4">
+      <div style="font-size:5rem;line-height:1;">🐷</div>
+      <h1 class="text-4xl font-black text-white/80">Aucune course en cours</h1>
+      <p class="text-sm text-white/40 max-w-md mx-auto">Le circuit s'activera automatiquement quand la prochaine course approche. Restez sur cette page — l'overlay apparaitra a T-50 secondes.</p>
+      <div id="idle-next-info" class="mt-4 text-sm text-white/30"></div>
+      <div class="flex flex-wrap gap-3 justify-center mt-6">
+        <a href="/live" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl border border-cyan-400/20 bg-cyan-400/10 text-cyan-200 text-sm font-bold hover:bg-cyan-400/20 transition">🏁 Retour au Live</a>
+        <button onclick="window.parent.postMessage('close-circuit','*')" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl border border-white/10 bg-white/5 text-white/60 text-sm font-bold hover:bg-white/10 transition">✕ Fermer</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════════════════════ -->
   <!-- CIRCUIT (SVG + Stats panel)                            -->
   <!-- ════════════════════════════════════════════════════════ -->
   <div id="circuit-wrap" style="display:none;">
@@ -806,11 +822,22 @@ async function pollLiveState() {
 
     switch (state.phase) {
       case 'idle':
-        // Nothing to show — hide overlays if visible
+        // Show idle overlay with info
+        document.getElementById('idle-overlay').style.display = 'flex';
         if (prevPhase === 'pre_race') hideLobby();
+        // Show next race info if available
+        if (state.seconds_to_start && state.seconds_to_start > 0) {
+          const m = Math.floor(state.seconds_to_start / 60);
+          const s = Math.floor(state.seconds_to_start % 60);
+          document.getElementById('idle-next-info').textContent =
+            `⏱️ Prochaine course dans ${m > 0 ? m + ' min ' : ''}${s}s`;
+        } else {
+          document.getElementById('idle-next-info').textContent = '📅 Aucune course programmee pour le moment';
+        }
         break;
 
       case 'pre_race':
+        document.getElementById('idle-overlay').style.display = 'none';
         if (prevPhase !== 'pre_race') {
           showLobby(state.race_id, state.seconds_to_start);
         } else {
@@ -819,12 +846,14 @@ async function pollLiveState() {
         break;
 
       case 'countdown':
+        document.getElementById('idle-overlay').style.display = 'none';
         if (prevPhase !== 'countdown') {
           showDramaticCountdown(state.seconds_to_start, null);
         }
         break;
 
       case 'racing':
+        document.getElementById('idle-overlay').style.display = 'none';
         // Race is executing server-side — wait for finished
         if (prevPhase === 'countdown' || prevPhase === 'pre_race') {
           hideLobby();
