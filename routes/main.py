@@ -4,7 +4,7 @@ from datetime import datetime
 
 from extensions import db
 from models import User, Pig, Race, Participant, Bet, BalanceTransaction, CoursePlan, Trophy
-from data import BET_TYPES, WEEKLY_BACON_TICKETS, DAILY_LOGIN_REWARD
+from data import BET_TYPES, WEEKLY_BACON_TICKETS, DAILY_LOGIN_REWARD, MIN_BET_RACE, MAX_BET_RACE
 from helpers import ensure_next_race, get_user_active_pigs, get_race_history_entries
 from services.market_service import get_prix_moyen_groin, is_market_open, get_next_market_time
 from services.pig_service import calculate_pig_power, get_weight_profile
@@ -15,8 +15,10 @@ main_bp = Blueprint('main', __name__)
 
 @main_bp.route('/')
 def index():
-    ensure_next_race()
     next_race = Race.query.filter(Race.status == 'open').order_by(Race.scheduled_at).first()
+    if not next_race:
+        ensure_next_race()
+        next_race = Race.query.filter(Race.status == 'open').order_by(Race.scheduled_at).first()
     recent_races = Race.query.filter_by(status='finished').order_by(Race.finished_at.desc()).limit(5).all()
 
     user = None
@@ -153,6 +155,8 @@ def index():
         latest_race=latest_race,
         latest_race_participants=latest_race_participants,
         news_items=news_items[:3],
+        min_bet_race=MIN_BET_RACE,
+        max_bet_race=MAX_BET_RACE,
     )
 
 

@@ -23,9 +23,20 @@ def create_app():
     app.config['SECRET_KEY'] = 'derby-des-groins-secret-2024'
     app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///derby.db'
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+    app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
+        'pool_pre_ping': True,
+        'pool_size': 10,
+        'max_overflow': 20,
+        'pool_timeout': 60,
+        'pool_recycle': 300,
+    }
     app.config['SCHEDULER_ENABLED'] = os.environ.get('DERBY_DISABLE_SCHEDULER', '0') != '1'
 
     db.init_app(app)
+
+    @app.teardown_appcontext
+    def shutdown_session(exception=None):
+        db.session.remove()
 
     for bp in all_blueprints:
         app.register_blueprint(bp)

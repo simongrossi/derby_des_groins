@@ -294,6 +294,9 @@ MAX_PIG_WEIGHT_KG = 190.0
 WEEKLY_RACE_QUOTA = 3
 WEEKLY_BACON_TICKETS = 3
 DAILY_LOGIN_REWARD = 15.0
+MIN_BET_RACE = 5
+MAX_BET_RACE = 500
+COMPLEX_BET_MIN_SELECTIONS = 3  # Paris avec 3+ selections necessitent un cochon participant
 
 BET_TYPES = {
     'win': {
@@ -356,7 +359,7 @@ BET_TYPES = {
         'selection_count': 4,
         'top_n': 4,
         'order_matters': False,
-        'house_edge': 1.30,
+        'house_edge': 1.18,
         'description': "Trouve les 4 premiers cochons. Ça pousse, ça grogne, ça part dans tous les sens.",
     },
     'quinte': {
@@ -365,7 +368,7 @@ BET_TYPES = {
         'selection_count': 5,
         'top_n': 5,
         'order_matters': False,
-        'house_edge': 1.35,
+        'house_edge': 1.15,
         'description': "Trouve les 5 premiers cochons. Le jackpot ultime du jambon.",
     },
     'two_of_four': {
@@ -374,7 +377,7 @@ BET_TYPES = {
         'selection_count': 2,
         'top_n': 4,
         'order_matters': False,
-        'house_edge': 1.15,
+        'house_edge': 1.10,
         'description': "Trouve 2 cochons parmi les 4 premiers. Même les plus patauds ont leur chance.",
     },
     'quarte_order': {
@@ -391,9 +394,9 @@ BET_TYPES = {
         'icon': '🥓',
         'selection_count': 5,
         'top_n': 5,
-        'order_matters': False,
-        'house_edge': 1.35,
-        'description': "Trouve les 5 premiers cochons sans ordre. C’est la ruée vers le lard.",
+        'order_matters': True,
+        'house_edge': 1.45,
+        'description': "Trouve les 5 premiers cochons dans l'ordre exact. Le pari ultime des vrais éleveurs.",
     }
 }
 

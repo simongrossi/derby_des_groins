@@ -96,7 +96,7 @@
     {% endif %}
     {% endwith %}
 
-    <section class="grid grid-cols-1 xl:grid-cols-[1.3fr_0.9fr] gap-6">
+    <section class="grid grid-cols-1 xl:grid-cols-[1.2fr_1fr] gap-6 items-start">
         <article class="card p-6 lg:p-8">
             <div class="flex flex-wrap items-center gap-2">
                 <span class="pill bg-pink-400/14 text-pink-100 border border-pink-300/22">🚨 A la une</span>
@@ -133,7 +133,7 @@
             {% endif %}
         </article>
 
-        <article class="card p-6 lg:p-7">
+        <article class="card p-6 lg:p-7 flex flex-col">
             <p class="text-white/40 text-xs uppercase tracking-[0.22em] font-extrabold">🎟️ Le guichet des paris</p>
             <div class="flex items-center justify-between gap-3 mt-2">
                 <h2 class="font-title text-3xl text-white">Tickets Bacon</h2>
@@ -142,59 +142,40 @@
                 </span>
             </div>
             {% if user %}
-            <p class="text-white/70 font-semibold mt-4">Les <strong class="text-pink-200">Tickets Bacon</strong> limitent le nombre de paris. Les <strong class="text-yellow-300">BitGroins</strong> servent a payer la mise et a recevoir les gains.</p>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4">
-                <div class="info-tile">
-                    <p class="text-white/45 text-[11px] uppercase tracking-[0.18em] font-black">Quota hebdo</p>
-                    <p class="font-title text-3xl text-pink-200 mt-2">{{ bacon_tickets_remaining }} / {{ weekly_bacon_tickets }}</p>
-                    <p class="text-white/55 text-sm font-semibold mt-2">Tu as encore {{ bacon_tickets_remaining }} Ticket{% if bacon_tickets_remaining > 1 %}s{% endif %} Bacon a depenser cette semaine.</p>
-                </div>
-                <div class="info-tile">
-                    <p class="text-white/45 text-[11px] uppercase tracking-[0.18em] font-black">Solde de mise</p>
-                    <p class="font-title text-3xl text-yellow-300 mt-2">{{ "%.0f"|format(user.balance) }} 🪙</p>
-                    <p class="text-white/55 text-sm font-semibold mt-2">Chaque ticket pose consomme des BitGroins selon la mise choisie.</p>
-                </div>
-            </div>
-            <div class="mt-4 rounded-2xl border border-cyan-400/20 bg-cyan-500/10 px-4 py-4">
-                <p class="text-cyan-100 font-extrabold">Comment ca marche ?</p>
-                <ul class="mt-3 space-y-2 text-sm font-semibold text-cyan-50/85">
-                    <li>• 1 Ticket Bacon = le droit de poser 1 pari sur 1 course.</li>
-                    <li>• Au moment de valider le ticket, tu choisis combien de BitGroins tu mises.</li>
-                    <li>• Les gains et pertes sont visibles ensuite dans <a href="/history#bitgroins" class="text-yellow-200 underline decoration-dotted underline-offset-4">l'historique BitGroins</a>.</li>
-                </ul>
+            <div class="info-tile flex items-center gap-3 mt-4">
+                <span class="text-pink-200 font-extrabold text-xl">🎟️ {{ bacon_tickets_remaining }}</span>
+                <span class="text-white/30 text-sm font-bold">/ {{ weekly_bacon_tickets }} tickets cette semaine</span>
             </div>
             {% if user_bets %}
             <div class="soft p-4 mt-4">
-                <p class="text-white font-extrabold">Ticket deja pose sur la prochaine course</p>
+                <p class="text-white font-extrabold text-sm">Ticket deja pose sur la prochaine course</p>
                 {% for bet in user_bets %}
                 {% set bet_type_key = bet.bet_type if bet.bet_type in bet_types else 'win' %}
                 <p class="text-white/55 text-sm font-semibold mt-2">{{ bet_types[bet_type_key].icon }} {{ bet.pig_name }} • {{ bet.amount }} 🪙 @ x{{ bet.odds_at_bet }}</p>
                 {% endfor %}
             </div>
             {% endif %}
-            <div class="mt-5 space-y-2.5">
+            <div class="mt-4 space-y-2">
                 {% for slot in week_race_cards %}
-                <div class="soft px-4 py-3">
-                    <div class="flex items-start justify-between gap-3">
-                        <div>
-                            <p class="text-white font-extrabold">{{ slot.theme.emoji }} {{ slot.theme.name }}</p>
-                            <p class="text-white/40 text-xs font-semibold mt-1">{{ slot.day_name }} • {{ slot.slot.strftime('%d/%m %H:%M') }}</p>
-                            {% if slot.user_plan_names %}<p class="text-cyan-200 text-xs font-bold mt-2">Tes inscrits: {{ slot.user_plan_names | join(', ') }}</p>{% endif %}
-                        </div>
-                        {% if slot.race and not slot.is_locked %}
-                        <span class="pill bg-emerald-500/12 text-emerald-200 border border-emerald-400/20">Paris ouverts</span>
-                        {% elif slot.is_locked %}
-                        <span class="pill bg-white/8 text-white/60 border border-white/10">Verrouillee</span>
-                        {% else %}
-                        <span class="pill bg-cyan-500/12 text-cyan-200 border border-cyan-400/20">A venir</span>
-                        {% endif %}
+                <div class="flex items-center justify-between gap-3 soft px-3 py-2.5">
+                    <div class="min-w-0">
+                        <p class="text-white font-bold text-sm truncate">{{ slot.theme.emoji }} {{ slot.theme.name }}</p>
+                        <p class="text-white/35 text-xs font-semibold">{{ slot.day_name }} • {{ slot.slot.strftime('%d/%m %H:%M') }}{% if slot.user_plan_names %} · <span class="text-cyan-300">{{ slot.user_plan_names | join(', ') }}</span>{% endif %}</p>
                     </div>
+                    {% if slot.race and not slot.is_locked %}
+                    <span class="pill bg-emerald-500/12 text-emerald-200 border border-emerald-400/20 shrink-0 text-[10px]">Ouverts</span>
+                    {% elif slot.is_locked %}
+                    <span class="pill bg-white/8 text-white/50 border border-white/10 shrink-0 text-[10px]">Lock</span>
+                    {% else %}
+                    <span class="pill bg-cyan-500/12 text-cyan-200 border border-cyan-400/20 shrink-0 text-[10px]">A venir</span>
+                    {% endif %}
                 </div>
                 {% endfor %}
             </div>
-            <div class="mt-5 flex flex-wrap gap-3">
-                <a href="/courses" class="btn-secondary">📅 Ouvrir le calendrier</a>
-                <a href="#betting-board" class="btn-secondary">💰 Parier maintenant</a>
+            <div class="mt-auto pt-4 flex flex-wrap gap-3">
+                <a href="/courses" class="btn-secondary text-sm">📅 Calendrier</a>
+                <a href="#betting-board" class="btn-secondary text-sm">💰 Parier</a>
+                <a href="/history#bitgroins" class="btn-secondary text-sm">📊 Historique</a>
             </div>
             {% else %}
             <p class="text-white/55 font-semibold mt-4">Connecte-toi pour suivre tes tickets Bacon et tes paris de la semaine.</p>
@@ -356,7 +337,8 @@
                         <p class="text-white/60 text-sm font-bold mb-2">Format du ticket</p>
                         <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-2 gap-3 max-h-[22rem] overflow-y-auto pr-2" id="bet-type-switcher" style="scrollbar-width: thin; scrollbar-color: rgba(244,114,182,0.4) transparent;">
                             {% for bet_key, bet_meta in bet_types.items() %}
-                            {% set disabled = participants|length < bet_meta.selection_count %}
+                            {% set needs_pig = bet_meta.selection_count >= 3 and not headline_status.participates %}
+                            {% set disabled = participants|length < bet_meta.selection_count or needs_pig %}
                             <button type="button" class="bet-type-btn flex flex-col justify-between text-left {% if bet_key == 'win' %}active{% endif %}" data-bet-type-btn data-bet-type="{{ bet_key }}" data-selection-count="{{ bet_meta.selection_count }}" {% if disabled %}disabled{% endif %}>
                                 <div>
                                     <div class="flex items-start justify-between gap-1 mb-1">
@@ -367,7 +349,9 @@
                                     </div>
                                     <p class="text-white/45 text-[11px] font-semibold mt-1">{{ bet_meta.description }}</p>
                                 </div>
-                                {% if bet_meta.order_matters %}
+                                {% if needs_pig %}
+                                <div class="mt-2 text-[9px] font-bold text-red-400/70 uppercase tracking-wider text-right">🔒 Ton cochon doit participer</div>
+                                {% elif bet_meta.order_matters %}
                                 <div class="mt-2 text-[9px] font-bold text-rose-300/60 uppercase tracking-wider text-right">⚠️ Ordre exact</div>
                                 {% else %}
                                 <div class="mt-2 text-[9px] font-bold text-amber-300/60 uppercase tracking-wider text-right">Désordre accepté</div>
@@ -392,7 +376,7 @@
                     <div class="flex gap-3 items-end">
                         <div class="flex-1">
                             <label class="text-white/60 text-sm font-bold block mb-1">Mise (max: {{ "%.0f"|format(user.balance) }} 🪙)</label>
-                            <input type="number" name="amount" id="bet-amount" min="1" max="{{ user.balance }}" step="1" class="w-full bg-white/5 border border-white/20 rounded-xl px-4 py-3 text-white font-bold focus:outline-none focus:border-yellow-400" placeholder="Ex: 20">
+                            <input type="number" name="amount" id="bet-amount" min="{{ min_bet_race }}" max="{{ [user.balance, max_bet_race]|min }}" step="1" class="w-full bg-white/5 border border-white/20 rounded-xl px-4 py-3 text-white font-bold focus:outline-none focus:border-yellow-400" placeholder="Entre {{ min_bet_race }} et {{ max_bet_race }}">
                         </div>
                         <button type="submit" id="bet-submit" class="btn-primary" disabled>Parier</button>
                     </div>

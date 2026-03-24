@@ -4,7 +4,7 @@ from datetime import datetime
 
 from extensions import db
 from models import User, Race, Participant, Bet
-from data import BET_TYPES, WEEKLY_RACE_QUOTA, WEEKLY_BACON_TICKETS
+from data import BET_TYPES, WEEKLY_RACE_QUOTA, WEEKLY_BACON_TICKETS, MIN_BET_RACE, MAX_BET_RACE, COMPLEX_BET_MIN_SELECTIONS
 from helpers import ensure_next_race, get_user_active_pigs, apply_row_lock
 from services.pig_service import calculate_pig_power, get_weight_profile
 from services.race_service import (
@@ -135,9 +135,15 @@ def place_bet():
         flash("Sélection invalide pour cette course.", "error")
         return redirect(url_for('main.index'))
 
-    if amount <= 0:
-        flash("Mise invalide pour ton solde actuel.", "error")
+    if not amount or amount < MIN_BET_RACE or amount > MAX_BET_RACE:
+        flash(f"La mise doit etre entre {MIN_BET_RACE} et {MAX_BET_RACE} BitGroins.", "error")
         return redirect(url_for('main.index'))
+
+    if expected_count >= COMPLEX_BET_MIN_SELECTIONS:
+        user_has_pig_in_race = any(p.pig_id and p.pig_id in [pig.id for pig in Pig.query.filter_by(user_id=user.id, is_alive=True).all()] for p in participants)
+        if not user_has_pig_in_race:
+            flash("Les paris complexes (3+ cochons) necessitent que ton cochon participe a la course.", "warning")
+            return redirect(url_for('main.index'))
 
     existing = apply_row_lock(Bet.query.filter_by(user_id=user.id, race_id=race_id)).first()
     if existing:

@@ -627,33 +627,7 @@ def parse_selection_ids(raw_selection):
 def format_bet_label(participants):
     return " -> ".join(participant.name for participant in participants)
 
-def calculate_ordered_finish_probability(participants_by_id, ordered_ids):
-    remaining_probabilities = {
-        participant_id: max(participant.win_probability or 0.0, 0.0)
-        for participant_id, participant in participants_by_id.items()
-    }
-    remaining_total = sum(remaining_probabilities.values())
-    if remaining_total <= 0:
-        return 0.0
-
-    combined_probability = 1.0
-    for participant_id in ordered_ids:
-        current_probability = remaining_probabilities.get(participant_id)
-        if current_probability is None or current_probability <= 0 or remaining_total <= 0:
-            return 0.0
-        combined_probability *= current_probability / remaining_total
-        remaining_total -= current_probability
-        del remaining_probabilities[participant_id]
-
-    return combined_probability
-
-def calculate_bet_odds(participants_by_id, ordered_ids, bet_type):
-    bet_config = BET_TYPES[normalize_bet_type(bet_type)]
-    probability = calculate_ordered_finish_probability(participants_by_id, ordered_ids)
-    if probability <= 0:
-        return 0.0
-    raw_odds = (1 / probability) / bet_config['house_edge']
-    return max(1.1, math.floor(raw_odds * 10) / 10)
+from services.race_service import calculate_ordered_finish_probability, calculate_bet_odds
 
 def build_weighted_finish_order(participants):
     remaining = list(participants)
@@ -1324,7 +1298,8 @@ def ensure_next_race():
 
 def run_race_if_needed():
     now = datetime.now()
-    due_races = Race.query.filter(Race.status == 'open', Race.scheduled_at <= now).all()
+    MAX_RACES_PER_TICK = 3
+    due_races = Race.query.filter(Race.status == 'open', Race.scheduled_at <= now).order_by(Race.scheduled_at).limit(MAX_RACES_PER_TICK).all()
 
     for race in due_races:
         participants = Participant.query.filter_by(race_id=race.id).all()
