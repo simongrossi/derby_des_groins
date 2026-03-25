@@ -1,16 +1,6 @@
 {% include '_site_header.html' %}
 
-{% with messages = get_flashed_messages(with_categories=true) %}
-  {% if messages %}
-    <div class="max-w-5xl mx-auto px-4 pt-4 space-y-3">
-      {% for category, message in messages %}
-        <div class="rounded-2xl border px-4 py-3 text-sm font-semibold {% if category == 'success' %}border-emerald-400/30 bg-emerald-400/10 text-emerald-100{% elif category == 'warning' %}border-amber-400/30 bg-amber-400/10 text-amber-100{% else %}border-red-400/30 bg-red-400/10 text-red-100{% endif %}">
-          {{ message }}
-        </div>
-      {% endfor %}
-    </div>
-  {% endif %}
-{% endwith %}
+{% include '_flash.html' %}
 
 {% macro render_card(card, hidden=false) -%}
   <div class="relative flex h-32 w-24 items-center justify-center rounded-2xl border text-center shadow-lg {% if hidden %}border-white/10 bg-white/5 text-white/30{% elif card.is_joker %}border-fuchsia-400/40 bg-fuchsia-400/20 text-fuchsia-100{% elif card.suit in ['♥', '♦'] %}border-rose-300/40 bg-white text-rose-600{% else %}border-slate-300/40 bg-white text-slate-900{% endif %}">

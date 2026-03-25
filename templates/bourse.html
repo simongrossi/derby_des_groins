@@ -133,21 +133,7 @@
         </div>
     </div>
 
-    <!-- FLASH MESSAGES -->
-    {% with messages = get_flashed_messages(with_categories=true) %}
-    {% if messages %}
-    <div class="max-w-3xl mx-auto mb-6 space-y-2">
-        {% for cat, msg in messages %}
-        <div class="px-4 py-3 rounded-xl border text-sm font-bold
-            {% if cat == 'success' %}bg-green-500/10 border-green-500/30 text-green-300
-            {% elif cat == 'error' %}bg-red-500/10 border-red-500/30 text-red-300
-            {% else %}bg-yellow-500/10 border-yellow-500/30 text-yellow-300{% endif %}">
-            {{ msg }}
-        </div>
-        {% endfor %}
-    </div>
-    {% endif %}
-    {% endwith %}
+    {% include '_flash.html' %}
 
     <div id="view-market" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
         <!-- ===== COLONNE GAUCHE : GRILLE 7x7 ===== -->
