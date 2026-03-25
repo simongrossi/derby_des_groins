@@ -81,7 +81,7 @@
 {% set active_page = 'index' %}
 {% include "_site_header.html" %}
 
-<main class="max-w-7xl mx-auto px-4 py-8 space-y-8">
+<main class="max-w-6xl mx-auto px-4 py-8 space-y-8">
     {% with messages = get_flashed_messages(with_categories=true) %}
     {% if messages %}
     <div class="space-y-2">
@@ -97,7 +97,7 @@
     {% endif %}
     {% endwith %}
 
-    <section class="grid grid-cols-1 xl:grid-cols-[1.2fr_1fr] gap-6 items-start">
+    <section class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-[1.2fr_1fr] gap-6 items-start">
         <article class="card p-6 lg:p-8">
             <div class="flex flex-wrap items-center gap-2">
                 <span class="pill bg-pink-400/14 text-pink-100 border border-pink-300/22">🚨 A la une</span>
@@ -106,7 +106,7 @@
                 {% endif %}
             </div>
             {% if next_race %}
-            <h1 class="font-title text-4xl lg:text-5xl text-white mt-5">{{ next_race_theme.name if next_race_theme else 'Prochaine course' }}</h1>
+            <h1 class="font-title text-3xl md:text-4xl lg:text-5xl text-white mt-5">{{ next_race_theme.name if next_race_theme else 'Prochaine course' }}</h1>
             <p class="text-white/55 text-lg font-semibold mt-2">Aujourd'hui, {{ next_race.scheduled_at.strftime('%H:%M') }} • Course #{{ next_race.id }}</p>
             {% if next_race_theme %}<p class="text-white/55 text-sm font-semibold mt-4 max-w-2xl">{{ next_race_theme.description }}</p>{% endif %}
             <div class="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-5 items-end mt-6">
@@ -129,7 +129,7 @@
                 </div>
             </div>
             {% else %}
-            <h1 class="font-title text-4xl text-white mt-5">Pas de course programmee</h1>
+            <h1 class="font-title text-3xl md:text-4xl text-white mt-5">Pas de course programmee</h1>
             <p class="text-white/55 font-semibold mt-3">Le prochain creneau sera genere automatiquement.</p>
             {% endif %}
         </article>
@@ -543,5 +543,6 @@ const _tickTimer = setInterval(tickCountdown, 1000);
 const _fetchTimer = setInterval(fetchCountdown, 30000);
 window.addEventListener('beforeunload', () => { clearInterval(_tickTimer); clearInterval(_fetchTimer); });
 </script>
+{% include '_footer.html' %}
 </body>
 </html>

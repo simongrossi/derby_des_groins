@@ -106,7 +106,7 @@
 
 {% include "_site_header.html" %}
 
-<main class="max-w-6xl mx-auto px-4 py-8 pb-12">
+<main class="max-w-6xl mx-auto px-4 py-8">
     {% with messages = get_flashed_messages(with_categories=true) %}
     {% if messages %}
     <div class="mb-8 space-y-2">
@@ -126,7 +126,7 @@
         <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
             <div>
                 <p class="text-cyan-300/80 font-bold uppercase tracking-widest text-xs mb-2">Compte éleveur</p>
-                <h1 class="font-title text-4xl text-white mb-2">👤 {{ user.username }}</h1>
+                <h1 class="font-title text-3xl md:text-4xl text-white mb-2">👤 {{ user.username }}</h1>
                 <p class="text-white/55 font-semibold text-sm">
                     Membre depuis le {{ user.created_at.strftime('%d/%m/%Y à %H:%M') if user.created_at else 'inconnu' }}
                     {% if user.is_admin %}• accès admin{% endif %}
@@ -145,7 +145,7 @@
         </div>
     </section>
 
-    <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
+    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
         <section class="xl:col-span-1 space-y-6">
             <div class="card p-6">
                 <h2 class="font-title text-2xl text-white mb-4">Mon compte</h2>
@@ -267,7 +267,7 @@
                 </div>
             </div>
 
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div class="card p-6">
                     <h2 class="font-title text-2xl text-white mb-4">Élevage</h2>
                     <div class="grid grid-cols-2 gap-4 mb-5">
@@ -371,5 +371,6 @@
     </div>
 </main>
 
+{% include '_footer.html' %}
 </body>
 </html>

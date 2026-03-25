@@ -31,18 +31,18 @@
         }
     </style>
 </head>
-<body style="background: linear-gradient(135deg, #1c1917 0%, #292524 100%);" class="pb-20">
+<body style="background: linear-gradient(135deg, #1c1917 0%, #292524 100%);" class="">
 
     {% include '_site_header.html' %}
 
-    <main class="max-w-6xl mx-auto px-4 pt-10 pb-24">
+    <main class="max-w-6xl mx-auto px-4 pt-10">
         <!-- Back Link -->
         <a href="/galerie-lard-chande" class="inline-flex items-center gap-2 text-white/60 hover:text-white transition-colors mb-8 font-bold text-sm bg-black/20 px-4 py-2 border border-white/5 rounded-xl">
             ← Retour à la Galerie
         </a>
 
         <header class="text-center mb-16 relative">
-            <h1 class="font-title text-6xl text-transparent bg-clip-text bg-gradient-to-r from-yellow-200 to-yellow-500 mb-4 drop-shadow-[0_0_20px_rgba(250,204,21,0.5)]">
+            <h1 class="font-title text-3xl md:text-4xl lg:text-6xl text-transparent bg-clip-text bg-gradient-to-r from-yellow-200 to-yellow-500 mb-4 drop-shadow-[0_0_20px_rgba(250,204,21,0.5)]">
                 Le Bon Groin
             </h1>
             <p class="text-2xl text-yellow-500/90 font-bold mb-4 italic">"Petites annonces entre gorets"</p>
@@ -62,7 +62,7 @@
         {% endif %}
         {% endwith %}
 
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             
             <!-- LISTINGS SECTION -->
             <div class="col-span-1 lg:col-span-2 space-y-4">
@@ -142,5 +142,6 @@
 
         </div>
     </main>
+{% include '_footer.html' %}
 </body>
 </html>

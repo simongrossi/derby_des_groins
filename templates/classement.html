@@ -71,16 +71,16 @@
         }
     </style>
 </head>
-<body class="pb-12">
+<body>
 
 {% include '_site_header.html' %}
 
-<main class="max-w-7xl mx-auto px-4 py-10">
+<main class="max-w-6xl mx-auto px-4 py-10">
 
     <!-- TITRE -->
     <div class="text-center mb-10">
-        <h1 class="font-title text-5xl mb-3 bg-gradient-to-r from-yellow-400 via-orange-400 to-red-500 bg-clip-text text-transparent">Hall of Fame</h1>
-        <p class="text-white/50 text-xl font-medium">L'elite des eleveurs de porcins -- stats, records & humiliations</p>
+        <h1 class="font-title text-3xl md:text-4xl lg:text-5xl mb-3 bg-gradient-to-r from-yellow-400 via-orange-400 to-red-500 bg-clip-text text-transparent">Hall of Fame</h1>
+        <p class="text-white/50 text-base md:text-xl font-medium">L'elite des eleveurs de porcins -- stats, records & humiliations</p>
     </div>
 
     <!-- ===== PALMARES / AWARDS ===== -->
@@ -109,18 +109,18 @@
 
     <!-- ===== ONGLETS ===== -->
     <div class="flex flex-wrap gap-2 mb-6">
-        <button class="tab-btn active card px-4 py-2.5 text-sm font-bold border border-white/10 cursor-pointer" data-tab="general">🏆 General</button>
-        <button class="tab-btn card px-4 py-2.5 text-sm font-bold border border-white/10 cursor-pointer text-white/50" data-tab="abattoir">🔪 Abattoir & Cimetiere</button>
-        <button class="tab-btn card px-4 py-2.5 text-sm font-bold border border-white/10 cursor-pointer text-white/50" data-tab="paris">🎟️ Paris & Fortune</button>
-        <button class="tab-btn card px-4 py-2.5 text-sm font-bold border border-white/10 cursor-pointer text-white/50" data-tab="elevage">🐷 Elevage & Ecole</button>
-        <button class="tab-btn card px-4 py-2.5 text-sm font-bold border border-white/10 cursor-pointer text-white/50" data-tab="honte">💩 Mur de la Honte</button>
+        <button class="tab-btn active card px-4 py-3 text-sm font-bold border border-white/10 cursor-pointer" data-tab="general">🏆 General</button>
+        <button class="tab-btn card px-4 py-3 text-sm font-bold border border-white/10 cursor-pointer text-white/50" data-tab="abattoir">🔪 Abattoir & Cimetiere</button>
+        <button class="tab-btn card px-4 py-3 text-sm font-bold border border-white/10 cursor-pointer text-white/50" data-tab="paris">🎟️ Paris & Fortune</button>
+        <button class="tab-btn card px-4 py-3 text-sm font-bold border border-white/10 cursor-pointer text-white/50" data-tab="elevage">🐷 Elevage & Ecole</button>
+        <button class="tab-btn card px-4 py-3 text-sm font-bold border border-white/10 cursor-pointer text-white/50" data-tab="honte">💩 Mur de la Honte</button>
     </div>
 
     <!-- ==================== TAB: GENERAL ==================== -->
     <div id="tab-general" class="tab-panel active">
 
         <!-- Charts -->
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
             <div class="card p-6">
                 <h3 class="font-title text-lg text-yellow-500 mb-4">💰 Top Fortunes (🪙 BitGroins)</h3>
                 <canvas id="balanceChart" height="180"></canvas>
@@ -764,5 +764,6 @@
     });
 </script>
 
+{% include '_footer.html' %}
 </body>
 </html>

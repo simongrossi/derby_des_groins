@@ -21,9 +21,9 @@
         }
 
         .card {
-            background: rgba(255, 255, 255, 0.04);
+            background: linear-gradient(180deg, rgba(255,255,255,0.055) 0%, rgba(255,240,246,0.03) 100%);
             backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 205, 226, 0.12);
             border-radius: 1.5rem;
         }
 
@@ -133,7 +133,7 @@
 
     <!-- HERO -->
     <section class="text-center mb-8">
-        <h1 class="font-title text-5xl text-yellow-400 mb-3" style="text-shadow: 0 0 30px rgba(245, 158, 11, 0.3);">
+        <h1 class="font-title text-3xl md:text-4xl lg:text-5xl text-yellow-400 mb-3" style="text-shadow: 0 0 30px rgba(245, 158, 11, 0.3);">
             🏪 Le Marché aux Groins
         </h1>
         <p class="text-yellow-300/50 font-bold text-lg">Achète et vends tes cochons aux enchères !</p>
@@ -457,7 +457,7 @@
     {% endif %}
 
     <!-- INFOS : ORIGINES & RARETÉS -->
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
         <!-- Guide raretés -->
         <div class="card p-6">
             <h2 class="font-title text-xl text-white mb-4">💎 Raretés</h2>
@@ -597,5 +597,6 @@ function filterAuctions() {
 
 </script>
 
+{% include '_footer.html' %}
 </body>
 </html>

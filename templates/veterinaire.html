@@ -23,9 +23,9 @@
         }
 
         .card {
-            background: rgba(255, 255, 255, 0.05);
+            background: linear-gradient(180deg, rgba(255,255,255,0.055) 0%, rgba(255,240,246,0.03) 100%);
             backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 205, 226, 0.12);
             border-radius: 1.5rem;
         }
 
@@ -198,7 +198,7 @@
         }
     </style>
 </head>
-<body class="pb-12">
+<body>
 {% set active_page = 'veterinaire' %}
 {% include "_site_header.html" %}
 
@@ -504,5 +504,6 @@ initTray();
 startTimer();
 </script>
 
+{% include '_footer.html' %}
 </body>
 </html>

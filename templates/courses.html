@@ -99,13 +99,18 @@
         .pig-live-preview[data-is-drafting="true"] {
             filter: drop-shadow(0 0 0.55rem rgba(34, 211, 238, 0.65));
         }
+        .hero-card {
+            background: linear-gradient(135deg, rgba(244, 114, 182, 0.16), rgba(251, 146, 60, 0.08));
+            border: 1px solid rgba(244, 114, 182, 0.22);
+            border-radius: 1.5rem;
+        }
     </style>
 </head>
 <body>
 {% set active_page = 'courses' %}
 {% include "_site_header.html" %}
 
-<main class="max-w-7xl mx-auto px-4 py-8 space-y-8">
+<main class="max-w-6xl mx-auto px-4 py-8 space-y-8">
     {% with messages = get_flashed_messages(with_categories=true) %}
     {% if messages %}
     <div class="space-y-2">
@@ -121,11 +126,11 @@
     {% endif %}
     {% endwith %}
 
-    <section class="card p-6 lg:p-8">
+    <section class="hero-card p-6 lg:p-8">
         <div class="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
             <div>
                 <p class="text-xs uppercase tracking-[0.35em] text-pink-200/70 font-extrabold">Planifier la semaine</p>
-                <h1 class="font-title text-4xl text-white mt-3">📅 Courses</h1>
+                <h1 class="font-title text-3xl md:text-4xl text-white mt-3">📅 Courses</h1>
                 <p class="text-white/55 font-semibold mt-3 max-w-3xl">
                     Programme tes cochons sur les courses a venir, suis le quota hebdomadaire et choisis les bons rendez-vous.
                     Tant qu'aucun pari n'a verrouille la prochaine course, cette page peut aussi reshaper les partants.
@@ -160,7 +165,7 @@
         </div>
 
         {# ── Calendrier groupé par jour ── #}
-        <div class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
+        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
             {% set current_date = {'val': ''} %}
             {% for slot in month_slots %}
             {% set is_new_day = (slot.date_key != current_date.val) %}
@@ -286,7 +291,7 @@
             <p class="text-white/45 font-semibold mt-1">Le coeur de la planification: themes de course, partants visibles et boutons d'inscription.</p>
         </div>
 
-        <div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             {% for slot in next_week_slots %}
             {% set accent = slot.theme.accent %}
             <article class="card p-5 lg:p-6">
@@ -515,5 +520,6 @@
         </div>
     </section>
 </main>
+{% include '_footer.html' %}
 </body>
 </html>

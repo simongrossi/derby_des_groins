@@ -25,27 +25,30 @@
             border: 1px solid rgba(255, 255, 255, 0.12);
             border-radius: 1.5rem;
         }
-        .input-field {
+        .form-input {
             width: 100%;
-            background: rgba(255,255,255,0.07);
-            border: 1px solid rgba(255,255,255,0.15);
-            border-radius: 0.75rem;
-            padding: 0.75rem 1rem;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 0.9rem;
+            padding: 0.8rem 1rem;
             color: white;
-            font-weight: 600;
-            font-size: 1rem;
+            font-weight: 700;
+            font-size: 0.9rem;
             outline: none;
-            transition: border-color 0.2s;
+            transition: border-color 0.2s, box-shadow 0.2s;
         }
-        .input-field:focus { border-color: #f59e0b; }
-        .input-field::placeholder { color: rgba(255,255,255,0.25); }
+        .form-input:focus {
+            border-color: rgba(244, 114, 182, 0.7);
+            box-shadow: 0 0 0 3px rgba(244, 114, 182, 0.12);
+        }
+        .form-input::placeholder { color: rgba(255,255,255,0.25); }
         .btn-primary {
             width: 100%;
-            background: linear-gradient(135deg, #f59e0b, #ef4444);
+            background: linear-gradient(135deg, #ec4899, #fb7185 55%, #fb923c);
             border: none;
             color: white;
             font-weight: 800;
-            font-size: 1.1rem;
+            font-size: 1rem;
             border-radius: 0.75rem;
             padding: 0.85rem;
             cursor: pointer;
@@ -54,7 +57,7 @@
             text-transform: uppercase;
         }
         .btn-primary:hover {
-            box-shadow: 0 8px 25px rgba(245, 158, 11, 0.4);
+            box-shadow: 0 8px 25px rgba(244, 114, 182, 0.4);
             transform: translateY(-1px);
         }
         .pigs-row { font-size: 2rem; letter-spacing: 0.5rem; }
@@ -84,11 +87,11 @@
                 {% if request.values.get('next') %}<input type="hidden" name="next" value="{{ request.values.get('next') }}">{% endif %}
                 <div class="mb-4">
                     <label class="text-white/60 text-sm font-bold block mb-2">Pseudo</label>
-                    <input type="text" name="username" class="input-field" placeholder="Ex: GroinMaster" required autocomplete="username">
+                    <input type="text" name="username" class="form-input" placeholder="Ex: GroinMaster" required autocomplete="username">
                 </div>
                 <div class="mb-6">
                     <label class="text-white/60 text-sm font-bold block mb-2">Mot de passe</label>
-                    <input type="password" name="password" class="input-field" placeholder="••••••••" required autocomplete="{{ 'new-password' if mode == 'register' else 'current-password' }}">
+                    <input type="password" name="password" class="form-input" placeholder="••••••••" required autocomplete="{{ 'new-password' if mode == 'register' else 'current-password' }}">
                 </div>
 
                 {% if mode == 'register' %}
