@@ -96,7 +96,7 @@ def adopt_second_pig():
     if 'user_id' not in session:
         return redirect(url_for('auth.login'))
     user = User.query.get(session['user_id'])
-    active_pigs = Pig.query.filter_by(user_id=user.id, is_alive=True).all()
+    active_pigs = get_user_active_pigs(user)
     max_slots = get_max_pig_slots(user)
     if get_pig_slot_count(user) >= max_slots:
         flash(f"Tu as déjà le maximum de cochons ({max_slots}) !", "warning")

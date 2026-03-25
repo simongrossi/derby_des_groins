@@ -169,6 +169,10 @@ class Pig(db.Model):
 
     owner = db.relationship('User', backref=db.backref('pigs', lazy=True))
 
+    __table_args__ = (
+        db.Index('ix_pig_user_alive', 'user_id', 'is_alive'),
+    )
+
     # ── Propriétés calculées ────────────────────────────────────────────
 
     @property
@@ -548,6 +552,10 @@ class Race(db.Model):
     participants = db.relationship('Participant', backref='race', lazy=True)
     bets = db.relationship('Bet', backref='race', lazy=True)
 
+    __table_args__ = (
+        db.Index('ix_race_status_finished', 'status', 'finished_at'),
+    )
+
 class Participant(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     race_id = db.Column(db.Integer, db.ForeignKey('race.id'), nullable=False)
@@ -559,6 +567,10 @@ class Participant(db.Model):
     pig_id = db.Column(db.Integer, db.ForeignKey('pig.id'), nullable=True)
     strategy = db.Column(db.Integer, default=50)  # 0 (Economy) to 100 (Full Attack)
     owner_name = db.Column(db.String(80), nullable=True)
+
+    __table_args__ = (
+        db.Index('ix_participant_race', 'race_id'),
+    )
 
 class Bet(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -572,6 +584,10 @@ class Bet(db.Model):
     status = db.Column(db.String(20), default='pending')
     winnings = db.Column(db.Float, default=0.0)
     placed_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    __table_args__ = (
+        db.Index('ix_bet_user_race', 'user_id', 'race_id'),
+    )
 
 class BalanceTransaction(db.Model):
     id = db.Column(db.Integer, primary_key=True)

@@ -636,18 +636,22 @@
         }
     });
 
+    // Cache chartOpts() — évite les appels répétés dans chaque options spread
+    const _opts = chartOpts();
+    const _optsLegend = chartOpts(true);
+
     // Balance chart
     new Chart(document.getElementById('balanceChart').getContext('2d'), {
         type: 'bar',
         data: { labels: chartLabels, datasets: [{ label: 'Fortune (BitGroins)', data: balanceData, backgroundColor: 'rgba(251, 191, 36, 0.4)', borderColor: '#fbbf24', borderWidth: 2, borderRadius: 8 }] },
-        options: chartOpts()
+        options: _opts
     });
 
     // Wins chart
     new Chart(document.getElementById('winsChart').getContext('2d'), {
         type: 'bar',
         data: { labels: chartLabels, datasets: [{ label: 'Victoires', data: winsData, backgroundColor: 'rgba(59, 130, 246, 0.4)', borderColor: '#3b82f6', borderWidth: 2, borderRadius: 8 }] },
-        options: { ...chartOpts(), scales: { ...chartOpts().scales, y: { ...chartOpts().scales.y, ticks: { ...chartOpts().scales.y.ticks, stepSize: 1 } } } }
+        options: { ..._opts, scales: { ..._opts.scales, y: { ..._opts.scales.y, ticks: { ..._opts.scales.y.ticks, stepSize: 1 } } } }
     });
 
     // Deaths stacked bar chart
@@ -662,7 +666,7 @@
                 { label: 'Vieillesse', data: allVieillesse, backgroundColor: 'rgba(56, 189, 248, 0.6)', borderRadius: 4 },
             ]
         },
-        options: { ...chartOpts(true), scales: { ...chartOpts().scales, x: { ...chartOpts().scales.x, stacked: true }, y: { ...chartOpts().scales.y, stacked: true, ticks: { ...chartOpts().scales.y.ticks, stepSize: 1 } } } }
+        options: { ..._optsLegend, scales: { ..._opts.scales, x: { ..._opts.scales.x, stacked: true }, y: { ..._opts.scales.y, stacked: true, ticks: { ..._opts.scales.y.ticks, stepSize: 1 } } } }
     });
 
     // Death causes doughnut
@@ -701,7 +705,7 @@
                 borderRadius: 6
             }]
         },
-        options: chartOpts()
+        options: _opts
     });
 
     // Bet win rate chart
@@ -722,7 +726,7 @@
                 borderRadius: 6
             }]
         },
-        options: { ...chartOpts(), scales: { ...chartOpts().scales, y: { ...chartOpts().scales.y, max: 100 } } }
+        options: { ..._opts, scales: { ..._opts.scales, y: { ..._opts.scales.y, max: 100 } } }
     });
 
     // Races chart
@@ -739,7 +743,7 @@
                 borderRadius: 6
             }]
         },
-        options: { ...chartOpts(), scales: { ...chartOpts().scales, y: { ...chartOpts().scales.y, ticks: { ...chartOpts().scales.y.ticks, stepSize: 1 } } } }
+        options: { ..._opts, scales: { ..._opts.scales, y: { ..._opts.scales.y, ticks: { ..._opts.scales.y.ticks, stepSize: 1 } } } }
     });
 
     // Win rate chart
@@ -756,7 +760,7 @@
                 borderRadius: 6
             }]
         },
-        options: { ...chartOpts(), scales: { ...chartOpts().scales, y: { ...chartOpts().scales.y, max: 100 } } }
+        options: { ..._opts, scales: { ..._opts.scales, y: { ..._opts.scales.y, max: 100 } } }
     });
 </script>
 

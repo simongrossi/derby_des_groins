@@ -206,8 +206,6 @@ def api_race_replay(race_id):
     if not race.replay_json:
         return jsonify({'error': "Pas de replay disponible, le greffier a oublie de filmer"}), 404
 
-    import json as _json
-
     raw = _json.loads(race.replay_json)
     # replay_json may be a bare list of turns (old format) or a dict
     if isinstance(raw, list):

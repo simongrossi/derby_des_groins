@@ -47,7 +47,7 @@ def index():
                 db.session.commit()
                 flash(f"🎁 Prime de pointage : Vous avez reçu {reward:.0f} 🪙 BitGroins pour votre première connexion de la journée !", "success")
 
-            pigs = Pig.query.filter_by(user_id=user.id, is_alive=True).all()
+            pigs = get_user_active_pigs(user)
             for pig in pigs:
                 pig.update_vitals()
             pigs_data = [{

@@ -8,7 +8,7 @@ from data import RARITIES, PIG_ORIGINS, JOURS_FR, DEFAULT_PIG_WEIGHT_KG
 from helpers import (
     get_market_unlock_progress, get_market_lock_reason,
     is_market_open, get_next_market_time, get_market_close_time,
-    get_prix_moyen_groin, apply_row_lock,
+    get_prix_moyen_groin, apply_row_lock, get_user_active_pigs,
 )
 from services.game_settings_service import get_game_settings
 
@@ -27,7 +27,7 @@ def marche():
     if 'user_id' in session:
         user = User.query.get(session['user_id'])
         if user:
-            pigs = Pig.query.filter_by(user_id=user.id, is_alive=True).all()
+            pigs = get_user_active_pigs(user)
             market_access = get_market_unlock_progress(user)[0]
             market_lock_reason = get_market_lock_reason(user)
 
