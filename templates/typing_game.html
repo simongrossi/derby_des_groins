@@ -4,8 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>🚀 Turbo-Groin — Vitesse de Frappe</title>
-    <!-- Bootstrap 5 -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Nunito:wght@400;700;800&display=swap" rel="stylesheet">
     <style>
         body {
@@ -16,6 +15,7 @@
             display: flex;
             align-items: center;
             justify-content: center;
+            padding: 1rem;
         }
         .font-title { font-family: 'Lilita One', cursive; }
         .game-card {
@@ -23,13 +23,16 @@
             backdrop-filter: blur(10px);
             border: 1px solid rgba(255, 255, 255, 0.1);
             border-radius: 2rem;
-            padding: 3rem;
+            padding: 2rem 1.5rem;
             max-width: 600px;
             width: 100%;
             text-align: center;
         }
+        @media (min-width: 640px) {
+            .game-card { padding: 3rem; }
+        }
         .word-display {
-            font-size: 3.5rem;
+            font-size: clamp(2rem, 8vw, 3.5rem);
             margin-bottom: 2rem;
             min-height: 5rem;
             color: #fb7185;
@@ -40,7 +43,7 @@
             border: 2px solid rgba(255, 255, 255, 0.2);
             border-radius: 1rem;
             color: white;
-            font-size: 1.5rem;
+            font-size: clamp(1rem, 4vw, 1.5rem);
             padding: 1rem;
             text-align: center;
             width: 100%;
@@ -72,9 +75,9 @@
 </head>
 <body>
 
-    <div class="game-card shadow-lg">
+    <div class="game-card shadow-2xl">
         <h1 class="font-title mb-2 text-white">TURBO-GROIN 🚀</h1>
-        <p class="text-white/50 mb-4 small fw-bold">TAPE LES MOTS LE PLUS VITE POSSIBLE POUR BOOSTER {{ pig.name|upper }} !</p>
+        <p class="text-white/50 mb-4 text-sm font-bold">TAPE LES MOTS LE PLUS VITE POSSIBLE POUR BOOSTER {{ pig.name|upper }} !</p>
 
         <div class="progress-indicator">
             MOT <span id="current-idx">1</span> SUR {{ words|length }}

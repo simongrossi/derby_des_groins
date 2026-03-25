@@ -95,27 +95,39 @@
             display: flex; align-items: center; justify-content: center;
             font-size: 0.55rem; font-weight: 800;
         }
+
+        @media (max-width: 640px) {
+            .grid-cell { width: 36px; height: 36px; font-size: 0.5rem; }
+            .axis-label { width: 36px; height: 16px; font-size: 0.45rem; }
+            .axis-label-y { width: 16px; height: 36px; font-size: 0.45rem; }
+            .move-btn { width: 32px; height: 32px; font-size: 1rem; }
+        }
+        @media (max-width: 400px) {
+            .grid-cell { width: 28px; height: 28px; font-size: 0.4rem; }
+            .axis-label { width: 28px; height: 14px; font-size: 0.4rem; }
+            .axis-label-y { width: 14px; height: 28px; font-size: 0.4rem; }
+        }
     </style>
 </head>
 <body class="pb-12">
 
 {% include '_site_header.html' %}
 
-<main class="max-w-7xl mx-auto px-4 py-8">
+<main class="max-w-6xl mx-auto px-4 py-8">
 
     <!-- TITRE -->
     <div class="text-center mb-8">
-        <h1 class="font-title text-4xl mb-2 bg-gradient-to-r from-yellow-400 via-green-400 to-emerald-500 bg-clip-text text-transparent">Bourse aux Grains</h1>
+        <h1 class="font-title text-3xl md:text-4xl mb-2 bg-gradient-to-r from-yellow-400 via-green-400 to-emerald-500 bg-clip-text text-transparent">Bourse aux Grains</h1>
         <p class="text-white/40 text-sm font-semibold">Deplacez le bloc pour ajuster les prix. Chaque grain a son propre surcout !</p>
     </div>
 
     <!-- SOUS-MENU -->
     <div class="max-w-xl mx-auto mb-8">
         <div class="flex p-1.5 rounded-2xl bg-white/5 border border-white/10">
-            <button onclick="switchTab('market')" id="tab-market" class="flex-1 py-2.5 rounded-xl text-sm font-bold transition-all bg-yellow-400/20 text-yellow-100 border border-yellow-400/30">
+            <button onclick="switchTab('market')" id="tab-market" class="flex-1 py-3 rounded-xl text-sm font-bold transition-all bg-yellow-400/20 text-yellow-100 border border-yellow-400/30">
                 🏪 Marché Temps Réel
             </button>
-            <button onclick="switchTab('charts')" id="tab-charts" class="flex-1 py-2.5 rounded-xl text-sm font-bold transition-all text-white/50 hover:text-white hover:bg-white/5">
+            <button onclick="switchTab('charts')" id="tab-charts" class="flex-1 py-3 rounded-xl text-sm font-bold transition-all text-white/50 hover:text-white hover:bg-white/5">
                 📉 Graphiques d'Évolution
             </button>
         </div>
@@ -137,7 +149,7 @@
     {% endif %}
     {% endwith %}
 
-    <div id="view-market" class="grid grid-cols-1 xl:grid-cols-3 gap-6">
+    <div id="view-market" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
         <!-- ===== COLONNE GAUCHE : GRILLE 7x7 ===== -->
 
         <!-- ===== COLONNE GAUCHE : GRILLE 7x7 ===== -->
@@ -152,6 +164,7 @@
                     </div>
                 </div>
 
+                <div class="overflow-x-auto">
                 <div class="flex items-start gap-2">
                     <!-- Axe Y labels -->
                     <div class="flex flex-col gap-0.5 mt-6">
@@ -251,6 +264,7 @@
                             <p class="text-[10px] text-white/20">&rarr; {{ movement_points }} pt(s)</p>
                         </div>
                     </div>
+                </div>
                 </div>
 
                 <!-- LEGENDE -->
@@ -509,15 +523,15 @@
             viewMarket.classList.add('hidden');
             buySection.classList.add('hidden');
             viewCharts.classList.remove('hidden');
-            tabCharts.className = "flex-1 py-2.5 rounded-xl text-sm font-bold transition-all bg-yellow-400/20 text-yellow-100 border border-yellow-400/30";
-            tabMarket.className = "flex-1 py-2.5 rounded-xl text-sm font-bold transition-all text-white/50 hover:text-white hover:bg-white/5";
+            tabCharts.className = "flex-1 py-3 rounded-xl text-sm font-bold transition-all bg-yellow-400/20 text-yellow-100 border border-yellow-400/30";
+            tabMarket.className = "flex-1 py-3 rounded-xl text-sm font-bold transition-all text-white/50 hover:text-white hover:bg-white/5";
             loadCharts();
         } else {
             viewMarket.classList.remove('hidden');
             buySection.classList.remove('hidden');
             viewCharts.classList.add('hidden');
-            tabMarket.className = "flex-1 py-2.5 rounded-xl text-sm font-bold transition-all bg-yellow-400/20 text-yellow-100 border border-yellow-400/30";
-            tabCharts.className = "flex-1 py-2.5 rounded-xl text-sm font-bold transition-all text-white/50 hover:text-white hover:bg-white/5";
+            tabMarket.className = "flex-1 py-3 rounded-xl text-sm font-bold transition-all bg-yellow-400/20 text-yellow-100 border border-yellow-400/30";
+            tabCharts.className = "flex-1 py-3 rounded-xl text-sm font-bold transition-all text-white/50 hover:text-white hover:bg-white/5";
         }
     }
 
