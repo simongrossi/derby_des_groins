@@ -121,38 +121,46 @@
     </div>
 </header>
 
+<!-- Backdrop mobile nav -->
+<div id="nav-backdrop" class="fixed inset-0 z-[99] bg-black/60 backdrop-blur-sm hidden" aria-hidden="true"></div>
+
 <script>
 (function () {
     var btn = document.getElementById('nav-hamburger');
     var nav = document.getElementById('main-nav');
+    var backdrop = document.getElementById('nav-backdrop');
     var iconOpen = document.getElementById('icon-open');
     var iconClose = document.getElementById('icon-close');
     if (!btn || !nav) return;
+
+    function openNav() {
+        nav.classList.remove('hidden');
+        nav.classList.add('flex');
+        backdrop.classList.remove('hidden');
+        iconOpen.classList.add('hidden');
+        iconClose.classList.remove('hidden');
+        btn.setAttribute('aria-expanded', 'true');
+    }
+
+    function closeNav() {
+        nav.classList.add('hidden');
+        nav.classList.remove('flex');
+        backdrop.classList.add('hidden');
+        iconOpen.classList.remove('hidden');
+        iconClose.classList.add('hidden');
+        btn.setAttribute('aria-expanded', 'false');
+    }
+
     btn.addEventListener('click', function () {
-        var isOpen = !nav.classList.contains('hidden');
-        if (isOpen) {
-            nav.classList.add('hidden');
-            nav.classList.remove('flex');
-            iconOpen.classList.remove('hidden');
-            iconClose.classList.add('hidden');
-            btn.setAttribute('aria-expanded', 'false');
-        } else {
-            nav.classList.remove('hidden');
-            nav.classList.add('flex');
-            iconOpen.classList.add('hidden');
-            iconClose.classList.remove('hidden');
-            btn.setAttribute('aria-expanded', 'true');
-        }
+        nav.classList.contains('hidden') ? openNav() : closeNav();
     });
+
+    // Clic sur le backdrop ferme le menu
+    backdrop.addEventListener('click', closeNav);
+
     // Ferme le menu si on passe en desktop
     window.addEventListener('resize', function () {
-        if (window.innerWidth >= 1024) {
-            nav.classList.remove('flex');
-            nav.classList.add('hidden');
-            iconOpen.classList.remove('hidden');
-            iconClose.classList.add('hidden');
-            btn.setAttribute('aria-expanded', 'false');
-        }
+        if (window.innerWidth >= 1024) closeNav();
     });
 }());
 </script>

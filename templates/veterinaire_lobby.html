@@ -22,9 +22,9 @@
         }
 
         .card {
-            background: rgba(255, 255, 255, 0.05);
+            background: linear-gradient(180deg, rgba(255,255,255,0.055) 0%, rgba(255,240,246,0.03) 100%);
             backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 205, 226, 0.12);
             border-radius: 1.5rem;
         }
 
@@ -55,7 +55,7 @@
         <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
             <div>
                 <p class="text-red-200/80 font-bold uppercase tracking-widest text-xs mb-2">Clinique porcine</p>
-                <h1 class="font-title text-4xl text-white mb-2">🏥 Clinique des Groins Cassés</h1>
+                <h1 class="font-title text-3xl md:text-4xl text-white mb-2">🏥 Clinique des Groins Cassés</h1>
                 <p class="text-white/60 font-semibold text-sm max-w-2xl">
                     Aucun patient critique pour l'instant. Profite de cette accalmie pour surveiller la fatigue, la satiété et le risque de blessure de ton élevage.
                 </p>
@@ -81,7 +81,7 @@
         </div>
     </section>
 
-    <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
+    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
         <section class="xl:col-span-2">
             <div class="card p-6">
                 <div class="flex items-center justify-between gap-4 mb-5">
@@ -89,7 +89,7 @@
                         <h2 class="font-title text-2xl text-white">Salle d'attente</h2>
                         <p class="text-white/45 text-sm font-semibold mt-1">Les cochons les plus à risque apparaissent en haut.</p>
                     </div>
-                    <a href="/mon-cochon" class="inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold text-white bg-white/10 border border-white/10 hover:bg-white/15 transition-colors">
+                    <a href="/mon-cochon" class="inline-flex items-center gap-2 rounded-xl px-4 py-3 text-sm font-bold text-white bg-white/10 border border-white/10 hover:bg-white/15 transition-colors">
                         🐷 Retour à l'écurie
                     </a>
                 </div>

@@ -111,20 +111,7 @@
 {% include "_site_header.html" %}
 
 <main class="max-w-6xl mx-auto px-4 py-8 space-y-8">
-    {% with messages = get_flashed_messages(with_categories=true) %}
-    {% if messages %}
-    <div class="space-y-2">
-        {% for category, message in messages %}
-        <div class="rounded-2xl px-4 py-3 font-bold text-sm border
-            {% if category == 'error' %}bg-red-500/12 border-red-500/30 text-red-200
-            {% elif category == 'warning' %}bg-yellow-500/12 border-yellow-500/30 text-yellow-100
-            {% else %}bg-emerald-500/12 border-emerald-500/30 text-emerald-200{% endif %}">
-            {{ message }}
-        </div>
-        {% endfor %}
-    </div>
-    {% endif %}
-    {% endwith %}
+    {% include '_flash.html' %}
 
     <section class="hero-card p-6 lg:p-8">
         <div class="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
