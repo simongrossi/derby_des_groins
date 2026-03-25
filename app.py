@@ -185,6 +185,8 @@ def migrate_db():
         ('auction', 'pig_weight', 'FLOAT DEFAULT 112.0'),
         ('auction', 'pig_origin', 'VARCHAR(30)'),
         ('auction', 'pig_origin_flag', 'VARCHAR(10)'),
+        ('auction', 'pig_avatar_url', 'VARCHAR(500)'),
+        ('participant', 'avatar_url', 'VARCHAR(500)'),
         ('bet', 'bet_type', "VARCHAR(20) DEFAULT 'win'"),
         ('bet', 'selection_order', 'VARCHAR(240)'),
         ('user', 'last_daily_reward_at', 'DATETIME'),

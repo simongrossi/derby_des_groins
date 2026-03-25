@@ -149,7 +149,7 @@ def sell_pig():
         return redirect(url_for('market.marche'))
 
     auction = Auction(
-        pig_name=pig.name, pig_emoji=pig.emoji,
+        pig_name=pig.name, pig_emoji=pig.emoji, pig_avatar_url=pig.avatar_url,
         pig_vitesse=pig.vitesse, pig_endurance=pig.endurance,
         pig_agilite=pig.agilite, pig_force=pig.force,
         pig_intelligence=pig.intelligence, pig_moral=pig.moral,

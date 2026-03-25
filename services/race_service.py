@@ -408,6 +408,7 @@ def populate_race_participants(race, respect_course_plans=True, allow_rebuild_if
             race_id=race.id,
             name=pig.name,
             emoji=pig.emoji,
+            avatar_url=pig.avatar_url,
             pig_id=pig.id,
             owner_name=owner.username if owner else None,
             strategy=plan_profile['phase_1'],
@@ -425,7 +426,7 @@ def populate_race_participants(race, respect_course_plans=True, allow_rebuild_if
         npc_max_power = max(npc_min_power + 2.0, avg_player_power * 1.1)
         for npc in random.sample(available_npcs, npc_count):
             all_powers.append(random.uniform(npc_min_power, npc_max_power))
-            participant = Participant(race_id=race.id, name=npc['name'], emoji=npc['emoji'], pig_id=None, owner_name=None, odds=0, win_probability=0)
+            participant = Participant(race_id=race.id, name=npc['name'], emoji=npc['emoji'], avatar_url=None, pig_id=None, owner_name=None, odds=0, win_probability=0)
             db.session.add(participant)
             participants_list.append(participant)
     total_power = sum(all_powers) if all_powers else 1

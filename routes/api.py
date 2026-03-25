@@ -145,8 +145,8 @@ def api_latest_result():
             'winner': race.winner_name, 'odds': race.winner_odds,
             'finished_at': race.finished_at.strftime('%H:%M') if race.finished_at else None,
             'positions': [
-                {'name': p.name, 'emoji': p.emoji, 'pos': p.finish_position,
-                 'is_player': p.pig_id is not None, 'owner': p.owner_name}
+                {'name': p.name, 'emoji': p.emoji, 'avatar_url': p.avatar_url,
+                 'pos': p.finish_position, 'is_player': p.pig_id is not None, 'owner': p.owner_name}
                 for p in participants
             ]
         }

@@ -354,7 +354,10 @@
                                 {% for participant in slot.participants[:6] %}
                                 <div class="rounded-xl border border-white/8 bg-white/[0.03] px-3 py-2.5 flex items-center justify-between gap-3">
                                     <div class="min-w-0">
-                                        <p class="text-white font-bold">{{ participant.emoji }} {{ participant.name }}</p>
+                                        <p class="text-white font-bold flex items-center gap-1.5">
+                                            {% if participant.avatar_url %}<img src="{{ participant.avatar_url }}" width="20" height="20" style="image-rendering:pixelated;image-rendering:crisp-edges;">{% else %}{{ participant.emoji }}{% endif %}
+                                            {{ participant.name }}
+                                        </p>
                                         <p class="text-white/35 text-xs font-semibold">
                                             {{ participant.owner_name if participant.owner_name else 'Ordinateur' }}
                                         </p>
@@ -417,7 +420,7 @@
                                     {% if not option.can_toggle and not option.is_planned %}disabled{% endif %}>
                                     <div class="flex items-start justify-between gap-3">
                                         <div class="min-w-0">
-                                            <p>{{ pig.emoji }} {{ pig.name }}</p>
+                                            <p class="flex items-center gap-1.5">{{ pig_display(pig, 'text-base', 20) }} {{ pig.name }}</p>
                                             <p class="text-xs font-semibold {% if option.is_actual_participant %}text-emerald-100/70{% elif option.is_planned %}text-yellow-100/70{% else %}text-white/45{% endif %} mt-1">
                                                 {% if option.is_actual_participant %}
                                                 Deja dans les partants

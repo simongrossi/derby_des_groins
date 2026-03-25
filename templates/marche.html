@@ -304,7 +304,11 @@
                         <!-- Cochon -->
                         <td class="p-3">
                             <div class="flex items-center gap-3">
+                                {% if auction.pig_avatar_url %}
+                                <img src="{{ auction.pig_avatar_url }}" width="40" height="40" class="rounded-lg" style="image-rendering:pixelated;image-rendering:crisp-edges;">
+                                {% else %}
                                 <span class="text-3xl">{{ auction.pig_emoji }}</span>
+                                {% endif %}
                                 <div>
                                     <p class="font-bold text-base">{{ auction.pig_name }}</p>
                                     <p class="text-white/40 text-[10px]">Origine : {{ auction.pig_origin_flag }} {{ auction.pig_origin }}</p>
@@ -418,7 +422,11 @@
         {% set rarity = rarities.get(sale.pig_rarity, rarities['commun']) %}
         <div class="sold-overlay p-4 flex items-center justify-between">
             <div class="flex items-center gap-3">
+                {% if sale.pig_avatar_url %}
+                <img src="{{ sale.pig_avatar_url }}" width="32" height="32" class="rounded-md" style="image-rendering:pixelated;image-rendering:crisp-edges;">
+                {% else %}
                 <span class="text-2xl">{{ sale.pig_emoji }}</span>
+                {% endif %}
                 <div>
                     <p class="text-white font-bold text-sm">
                         {{ sale.pig_name }}
