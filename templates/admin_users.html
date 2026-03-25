@@ -1,4 +1,5 @@
 {% extends "admin_base.html" %}
+{% from '_pig_avatar.html' import pig_display %}
 {% block title %}👥 Joueurs — Admin{% endblock %}
 
 {% block content %}
@@ -22,7 +23,7 @@
             <!-- INFO -->
             <div class="flex items-center gap-4">
                 {% set u_pig = u.pigs | selectattr('is_alive') | first %}
-                <span class="text-2xl">{{ u_pig.emoji if u_pig else '💀' }}</span>
+                {% if u_pig %}{{ pig_display(u_pig, 'text-2xl', 32) }}{% else %}<span class="text-2xl">💀</span>{% endif %}
                 <div>
                     <div class="flex items-center gap-2">
                         <p class="text-white font-bold text-base">{{ u.username }}</p>
