@@ -158,6 +158,9 @@
                 <a href="{{ url_for('admin.admin_races') }}" class="sidebar-link {{ 'active' if admin_tab == 'races' }}">
                     <span class="text-base w-6 text-center">🏁</span> Courses & March&eacute;
                 </a>
+                <a href="{{ url_for('admin.admin_races') }}#npcs" class="sidebar-link">
+                    <span class="text-base w-6 text-center">🐽</span> PNJ de course
+                </a>
                 <a href="{{ url_for('admin.admin_pigs') }}" class="sidebar-link {{ 'active' if admin_tab == 'pigs' }}">
                     <span class="text-base w-6 text-center">🐷</span> Cochons
                 </a>
@@ -195,7 +198,10 @@
                 <span class="text-lg">📊</span>Board
             </a>
             <a href="{{ url_for('admin.admin_races') }}" class="flex flex-col items-center gap-0.5 px-2 py-1 rounded-lg text-[10px] font-bold {{ 'text-indigo-400' if admin_tab == 'races' else 'text-white/40' }}">
-                <span class="text-lg">🏁</span>Courses & March&eacute;
+                <span class="text-lg">🏁</span>Courses
+            </a>
+            <a href="{{ url_for('admin.admin_races') }}#npcs" class="flex flex-col items-center gap-0.5 px-2 py-1 rounded-lg text-[10px] font-bold text-white/40">
+                <span class="text-lg">🐽</span>PNJ
             </a>
             <a href="{{ url_for('admin.admin_pigs') }}" class="flex flex-col items-center gap-0.5 px-2 py-1 rounded-lg text-[10px] font-bold {{ 'text-indigo-400' if admin_tab == 'pigs' else 'text-white/40' }}">
                 <span class="text-lg">🐷</span>Cochons
