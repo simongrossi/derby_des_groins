@@ -124,11 +124,11 @@
     <section class="hero-card p-6 lg:p-8">
         <div class="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
             <div>
-                <p class="text-xs uppercase tracking-[0.35em] text-pink-200/70 font-extrabold">Planifier la semaine</p>
-                <h1 class="font-title text-3xl md:text-4xl text-white mt-3">📅 Courses</h1>
+                <p class="text-xs uppercase tracking-[0.35em] text-pink-200/70 font-extrabold">Inscription aux courses</p>
+                <h1 class="font-title text-3xl md:text-4xl text-white mt-3">📅 Courses — Inscrire mon cochon</h1>
                 <p class="text-white/55 font-semibold mt-3 max-w-3xl">
-                    Programme tes cochons sur les courses a venir, suis le quota hebdomadaire et choisis les bons rendez-vous.
-                    Tant qu'aucun pari n'a verrouille la prochaine course, cette page peut aussi reshaper les partants.
+                    Choisis les courses de la semaine et clique sur <strong class="text-pink-300">➕ Inscrire</strong> pour engager ton cochon.
+                    Tu as un quota de {{ weekly_quota }} courses max par cochon par semaine. Les courses ou ton cochon est inscrit sont encadrees en <strong class="text-emerald-300">vert</strong>.
                 </p>
             </div>
             <div class="grid grid-cols-2 gap-3 min-w-full sm:min-w-[24rem] xl:min-w-[28rem]">
@@ -147,7 +147,7 @@
     </section>
 
     <div class="flex flex-wrap gap-2 mb-6">
-        <button class="tab-btn active card px-4 py-3 text-sm font-bold border border-white/10 cursor-pointer" data-tab="planifier">🎯 Planifier</button>
+        <button class="tab-btn active card px-4 py-3 text-sm font-bold border border-white/10 cursor-pointer" data-tab="planifier">🎯 Inscrire mon cochon</button>
         <button class="tab-btn card px-4 py-3 text-sm font-bold border border-white/10 cursor-pointer text-white/50" data-tab="calendrier">🐽 Calendrier</button>
         <button class="tab-btn card px-4 py-3 text-sm font-bold border border-white/10 cursor-pointer text-white/50" data-tab="mois">🧾 Vue 30 jours</button>
     </div>
@@ -159,8 +159,8 @@
 
     <section class="space-y-4">
         <div>
-            <h2 class="font-title text-3xl text-white">🐷 Mes cochons a planifier</h2>
-            <p class="text-white/45 font-semibold mt-1">Vue rapide de leur forme actuelle avant de remplir le calendrier.</p>
+            <h2 class="font-title text-3xl text-white">🐷 Etat de mes cochons</h2>
+            <p class="text-white/45 font-semibold mt-1">Verifie leur forme avant de les inscrire aux courses ci-dessous.</p>
         </div>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             {% for pd in pigs_data %}
@@ -206,17 +206,21 @@
 
     <section class="space-y-4">
         <div>
-            <h2 class="font-title text-3xl text-white">🗓️ La semaine a venir</h2>
-            <p class="text-white/45 font-semibold mt-1">Le coeur de la planification: themes de course, partants visibles et boutons d'inscription.</p>
+            <h2 class="font-title text-3xl text-white">🗓️ Inscrire mes cochons aux courses</h2>
+            <p class="text-white/45 font-semibold mt-1">Clique sur <strong class="text-pink-300">Inscrire</strong> pour engager ton cochon sur un creneau. Les courses ou il est deja inscrit sont encadrees en <strong class="text-emerald-300">vert</strong>.</p>
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             {% for slot in next_week_slots %}
             {% set accent = slot.theme.accent %}
-            <article class="card p-5 lg:p-6">
+            {% set has_my_pig = slot.user_plans | length > 0 %}
+            <article class="card p-5 lg:p-6 {% if has_my_pig %}ring-2 ring-emerald-400/40{% endif %}" style="{% if has_my_pig %}border-color: rgba(52,211,153,0.3);{% endif %}">
                 <div class="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
                     <div>
                         <div class="flex flex-wrap items-center gap-2">
+                            {% if has_my_pig %}
+                            <span class="pill bg-emerald-500/15 text-emerald-200 border border-emerald-400/30 font-extrabold">✅ Mon cochon est inscrit</span>
+                            {% endif %}
                             <span class="pill bg-white/8 text-white/70 border border-white/10">{{ slot.day_name }}</span>
                             <span class="pill {% if accent == 'red' %}bg-red-500/12 text-red-200 border border-red-400/20{% elif accent == 'cyan' %}bg-cyan-500/12 text-cyan-200 border border-cyan-400/20{% elif accent == 'amber' %}bg-amber-500/12 text-amber-100 border border-amber-400/20{% elif accent == 'emerald' %}bg-emerald-500/12 text-emerald-200 border border-emerald-400/20{% else %}bg-pink-500/12 text-pink-200 border border-pink-400/20{% endif %}">
                                 {{ slot.theme.emoji }} {{ slot.theme.tag }}
@@ -313,36 +317,40 @@
                     </div>
 
                     <div class="soft-card p-4">
-                        <p class="text-white font-extrabold">Mes inscriptions</p>
+                        <p class="text-white font-extrabold">📝 Inscrire mon cochon</p>
                         <div class="mt-3 space-y-2.5">
                             {% for option in slot.pig_options %}
                             {% set pig = option.pig %}
                             <form method="POST" action="/courses/plan">
                                 <input type="hidden" name="pig_id" value="{{ pig.id }}">
                                 <input type="hidden" name="scheduled_at" value="{{ slot.slot_key }}">
-                                <div class="mb-3 px-1 space-y-3">
-                                    <div class="flex items-center justify-between">
-                                        <div>
-                                            <p class="text-[10px] font-bold text-white/40 uppercase">Plan Flamme Rouge</p>
-                                            <p class="text-xs text-white/60 font-semibold">{{ option.current_strategy_summary }}</p>
+                                <div class="mb-3 px-1 space-y-2">
+                                    <button type="button" class="strategy-toggle w-full flex items-center justify-between text-left" onclick="this.nextElementSibling.classList.toggle('hidden')">
+                                        <div class="flex items-center gap-2">
+                                            <span class="pig-live-preview text-xl">{{ pig_display(pig, 'text-xl', 24) }}</span>
+                                            <div>
+                                                <p class="text-[10px] font-bold text-white/40 uppercase">Strategie de course</p>
+                                                <p class="text-xs text-white/60 font-semibold">{{ option.current_strategy_summary }}</p>
+                                            </div>
                                         </div>
-                                        <span class="pig-live-preview text-2xl" data-live-event="sprint" data-is-drafting="true">{{ pig_display(pig, 'text-2xl', 32) }}</span>
+                                        <span class="text-white/30 text-xs">▼ details</span>
+                                    </button>
+                                    <div class="hidden space-y-2 pt-1">
+                                        <div class="grid grid-cols-3 gap-2 text-xs">
+                                            {% set profile = option.current_strategy_profile %}
+                                            {% set labels = [('strategy_phase_1', 'Départ', profile.phase_1), ('strategy_phase_2', 'Milieu', profile.phase_2), ('strategy_phase_3', 'Final', profile.phase_3)] %}
+                                            {% for field_name, phase_label, current_value in labels %}
+                                            <label class="soft-card p-2 block">
+                                                <span class="text-white/55 font-bold uppercase tracking-wide text-[10px]">{{ phase_label }}</span>
+                                                <select name="{{ field_name }}" class="mt-2 w-full rounded-lg bg-white/10 border border-white/10 text-white text-sm font-bold px-2 py-2">
+                                                    <option value="35" {% if current_value == 35 %}selected{% endif %}>Économie</option>
+                                                    <option value="50" {% if current_value == 50 %}selected{% endif %}>Neutre</option>
+                                                    <option value="85" {% if current_value == 85 %}selected{% endif %}>Attaque</option>
+                                                </select>
+                                            </label>
+                                            {% endfor %}
+                                        </div>
                                     </div>
-                                    <div class="grid grid-cols-3 gap-2 text-xs">
-                                        {% set profile = option.current_strategy_profile %}
-                                        {% set labels = [('strategy_phase_1', 'Départ', profile.phase_1), ('strategy_phase_2', 'Milieu', profile.phase_2), ('strategy_phase_3', 'Final', profile.phase_3)] %}
-                                        {% for field_name, phase_label, current_value in labels %}
-                                        <label class="soft-card p-2 block">
-                                            <span class="text-white/55 font-bold uppercase tracking-wide text-[10px]">{{ phase_label }}</span>
-                                            <select name="{{ field_name }}" class="mt-2 w-full rounded-lg bg-white/10 border border-white/10 text-white text-sm font-bold px-2 py-2">
-                                                <option value="35" {% if current_value == 35 %}selected{% endif %}>Économie</option>
-                                                <option value="50" {% if current_value == 50 %}selected{% endif %}>Neutre</option>
-                                                <option value="85" {% if current_value == 85 %}selected{% endif %}>Attaque</option>
-                                            </select>
-                                        </label>
-                                        {% endfor %}
-                                    </div>
-                                    <p class="text-[11px] text-white/40 font-semibold">Prévu pour le live replay : halo sprint, opacité fatigue, et aspiration visible via les flags JSON.</p>
                                 </div>
 
                                 <button type="submit" class="btn-plan
@@ -355,23 +363,23 @@
                                             <p class="flex items-center gap-1.5">{{ pig_display(pig, 'text-base', 20) }} {{ pig.name }}</p>
                                             <p class="text-xs font-semibold {% if option.is_actual_participant %}text-emerald-100/70{% elif option.is_planned %}text-yellow-100/70{% else %}text-white/45{% endif %} mt-1">
                                                 {% if option.is_actual_participant %}
-                                                Deja dans les partants
+                                                ✅ Inscrit et confirme dans les partants
                                                 {% elif option.is_planned %}
-                                                Clique pour retirer du planning
+                                                ✅ Inscrit — clique pour desinscrire
                                                 {% elif option.disabled_reason %}
                                                 {{ option.disabled_reason }}
                                                 {% else %}
-                                                {{ option.weekly_commitments }}/{{ weekly_quota }} engages si valide • {{ option.projected_remaining }} restant{% if option.projected_remaining > 1 %}s{% endif %}
+                                                Quota : {{ option.weekly_commitments }}/{{ weekly_quota }} cette semaine • {{ option.projected_remaining }} restant{% if option.projected_remaining > 1 %}s{% endif %}
                                                 {% endif %}
                                             </p>
                                         </div>
-                                        <span class="text-sm font-extrabold whitespace-nowrap">
+                                        <span class="text-sm font-extrabold whitespace-nowrap {% if option.is_actual_participant %}text-emerald-300{% elif option.is_planned %}text-yellow-300{% else %}text-pink-300{% endif %}">
                                             {% if option.is_actual_participant %}
-                                            Partant
+                                            ✅ Partant
                                             {% elif option.is_planned %}
-                                            Retirer
+                                            ❌ Desinscrire
                                             {% else %}
-                                            Planifier
+                                            ➕ Inscrire
                                             {% endif %}
                                         </span>
                                     </div>
