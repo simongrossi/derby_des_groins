@@ -77,6 +77,21 @@
                 </div>
             </div>
 
+            <h2 class="font-title text-xl text-white mb-3 mt-6">🐷 PNJ de remplissage</h2>
+            <p class="text-white/40 text-xs font-semibold mb-2">Une ligne par PNJ au format <code>Nom|Emoji</code>. Si l'emoji est omis, 🐷 est utilise.</p>
+            <div class="flex flex-wrap gap-2 mb-2">
+                <a href="{{ url_for('admin.admin_export_race_npcs_csv') }}" class="btn-admin text-xs !py-1.5 !px-3">⬇️ Export CSV</a>
+                <label class="btn-admin text-xs !py-1.5 !px-3 cursor-pointer">
+                    ⬆️ Import CSV
+                    <input type="file" name="race_npcs_csv" form="race-npcs-import-form" accept=".csv,text/csv" class="hidden" onchange="document.getElementById('race-npcs-import-form').submit()">
+                </label>
+            </div>
+            <textarea
+                name="race_npcs_text"
+                rows="8"
+                class="input-admin w-full text-xs mb-6"
+                placeholder="Rillette|🐷&#10;Bacon Express|🚂">{{ config.race_npcs_text }}</textarea>
+
             <h2 class="font-title text-xl text-white mb-3 mt-6">🎨 Themes par Jour</h2>
             <p class="text-white/40 text-xs font-semibold mb-4">Personnalise le theme, le multiplicateur de recompenses et la stat favorisee pour chaque jour.</p>
 
@@ -213,4 +228,8 @@
         {% endif %}
     </div>
 </div>
+
+<form id="race-npcs-import-form" method="POST" action="{{ url_for('admin.admin_import_race_npcs_csv') }}" enctype="multipart/form-data" class="hidden">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+</form>
 {% endblock %}

@@ -1,6 +1,8 @@
-from flask import Blueprint, render_template, request, redirect, url_for, session, flash
+from flask import Blueprint, render_template, request, redirect, url_for, session, flash, make_response
 from werkzeug.security import generate_password_hash
 from datetime import datetime, timedelta
+import csv
+import io
 import json
 import logging
 import os
@@ -18,6 +20,7 @@ from helpers import (
 from helpers.config import DEFAULT_RACE_THEMES
 from helpers.auth import admin_required
 from services.game_settings_service import get_game_settings
+from services.race_service import get_configured_npcs
 
 admin_bp = Blueprint('admin', __name__)
 
@@ -92,6 +95,26 @@ def _send_email(to_addr, subject, body_html):
         logging.getLogger(__name__).exception("Echec envoi email a %s", to_addr)
         return False, "Erreur lors de l'envoi de l'email. Verifiez la configuration SMTP."
 
+def _parse_race_npcs_from_lines(lines):
+    """Normalise une liste de lignes 'Nom|Emoji' en liste de dicts."""
+    npcs = []
+    seen = set()
+    for raw_line in lines:
+        line = (raw_line or '').strip()
+        if not line:
+            continue
+        if '|' in line:
+            name_part, emoji_part = line.split('|', 1)
+            name = name_part.strip()
+            emoji = emoji_part.strip() or '🐷'
+        else:
+            name = line
+            emoji = '🐷'
+        if not name or name in seen:
+            continue
+        seen.add(name)
+        npcs.append({'name': name, 'emoji': emoji})
+    return npcs
 
 # ══════════════════════════════════════════════════════════════════════════════
 # Dashboard
@@ -145,6 +168,9 @@ def admin_races(user):
         key = str(d)
         merged_themes[key] = {**DEFAULT_RACE_THEMES.get(key, {}), **current_themes.get(key, {})}
 
+    configured_npcs = get_configured_npcs()
+    race_npcs_text = '\n'.join(f"{npc['name']}|{npc.get('emoji', '🐷')}" for npc in configured_npcs)
+
     return render_template('admin_races.html',
         user=user, admin_tab='races',
         upcoming_races=upcoming_races, recent_races=recent_races,
@@ -160,6 +186,7 @@ def admin_races(user):
             'race_schedule': settings.race_schedule,
             'schedule_dict': settings.schedule_dict,
             'race_themes': merged_themes,
+            'race_npcs_text': race_npcs_text,
         },
         jours=JOURS_FR)
 
@@ -209,9 +236,72 @@ def admin_save(user):
             'event_label': request.form.get(f'theme_{i}_event_label', '').strip(),
             'planning_hint': request.form.get(f'theme_{i}_planning_hint', '').strip(),
         }
-    set_config('race_themes', json.dumps(themes, ensure_ascii=False))
+    # PNJ de remplissage des courses : une ligne par PNJ, format "Nom|🐷"
+    raw_npcs = request.form.get('race_npcs_text', '')
+    npcs = _parse_race_npcs_from_lines(raw_npcs.splitlines())
+    if npcs:
+        set_config('race_npcs', json.dumps(npcs, ensure_ascii=False))
+    else:
+        set_config('race_npcs', '')
 
     flash("Configuration sauvegardee !", "success")
+    return redirect(url_for('admin.admin_races'))
+
+
+@admin_bp.route('/admin/races/npcs/export')
+@admin_required
+def admin_export_race_npcs_csv(user):
+    """Exporte les PNJ de remplissage en CSV (name,emoji)."""
+    npcs = get_configured_npcs()
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(['name', 'emoji'])
+    for npc in npcs:
+        writer.writerow([npc.get('name', ''), npc.get('emoji', '🐷')])
+
+    response = make_response(output.getvalue())
+    response.headers['Content-Type'] = 'text/csv; charset=utf-8'
+    response.headers['Content-Disposition'] = 'attachment; filename=race_npcs.csv'
+    return response
+
+
+@admin_bp.route('/admin/races/npcs/import', methods=['POST'])
+@admin_required
+def admin_import_race_npcs_csv(user):
+    """Importe les PNJ de remplissage depuis un CSV (name,emoji)."""
+    upload = request.files.get('race_npcs_csv')
+    if not upload or not upload.filename:
+        flash("Aucun fichier CSV selectionne.", "warning")
+        return redirect(url_for('admin.admin_races'))
+
+    try:
+        content = upload.stream.read().decode('utf-8-sig')
+    except Exception:
+        flash("Impossible de lire le fichier CSV.", "error")
+        return redirect(url_for('admin.admin_races'))
+
+    reader = csv.DictReader(io.StringIO(content))
+    if not reader.fieldnames or 'name' not in reader.fieldnames:
+        flash("CSV invalide: colonne obligatoire 'name' manquante.", "error")
+        return redirect(url_for('admin.admin_races'))
+
+    lines = []
+    for row in reader:
+        if not row:
+            continue
+        name = (row.get('name') or '').strip()
+        emoji = (row.get('emoji') or '').strip()
+        if not name:
+            continue
+        lines.append(f"{name}|{emoji}" if emoji else name)
+
+    npcs = _parse_race_npcs_from_lines(lines)
+    if not npcs:
+        flash("Import vide: aucun PNJ valide detecte.", "warning")
+        return redirect(url_for('admin.admin_races'))
+
+    set_config('race_npcs', json.dumps(npcs, ensure_ascii=False))
+    flash(f"Import CSV reussi: {len(npcs)} PNJ enregistres.", "success")
     return redirect(url_for('admin.admin_races'))
 
 

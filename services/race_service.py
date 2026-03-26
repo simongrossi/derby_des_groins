@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from datetime import datetime, timedelta
+import json
 import math
 import random
 
@@ -69,6 +70,37 @@ class PlannedRaceAction:
     action: str
     pig_name: str
     scheduled_at: datetime
+
+
+def get_configured_npcs():
+    """Renvoie la liste des PNJ de course configurable depuis l'admin."""
+    from helpers.config import get_config
+
+    raw_npcs = get_config('race_npcs', '')
+    if not raw_npcs:
+        return list(PIGS)
+
+    try:
+        parsed = json.loads(raw_npcs)
+    except (TypeError, ValueError):
+        return list(PIGS)
+
+    if not isinstance(parsed, list):
+        return list(PIGS)
+
+    normalized = []
+    seen_names = set()
+    for npc in parsed:
+        if not isinstance(npc, dict):
+            continue
+        name = str(npc.get('name', '')).strip()
+        emoji = str(npc.get('emoji', '🐷')).strip() or '🐷'
+        if not name or name in seen_names:
+            continue
+        seen_names.add(name)
+        normalized.append({'name': name, 'emoji': emoji})
+
+    return normalized if normalized else list(PIGS)
 
 
 def normalize_bet_type(bet_type):
@@ -427,7 +459,7 @@ def populate_race_participants(race, respect_course_plans=True, allow_rebuild_if
         db.session.add(participant)
         participants_list.append(participant)
     player_names = {pig.name for pig in fit_pigs}
-    available_npcs = [npc for npc in PIGS if npc['name'] not in player_names]
+    available_npcs = [npc for npc in get_configured_npcs() if npc['name'] not in player_names]
     npc_count = min(max_participants - len(fit_pigs), len(available_npcs))
     if npc_count > 0:
         avg_player_power = sum(player_powers) / len(player_powers) if player_powers else 34.0
