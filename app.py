@@ -123,14 +123,18 @@ def create_app():
         return {'injured_pig_nav_id': injured_pig_nav_id}
 
     with app.app_context():
-        db.create_all()
-        migrate_db()
-        init_default_config()
-        seed_users()
-        ensure_balance_transaction_snapshots()
-        ensure_next_race()
-        _init_grain_market()
-        seed_game_data()
+        try:
+            db.create_all()
+            migrate_db()
+            init_default_config()
+            seed_users()
+            ensure_balance_transaction_snapshots()
+            ensure_next_race()
+            _init_grain_market()
+            seed_game_data()
+        except Exception as e:
+            logger.exception("Erreur critique lors de l'initialisation de la base de donnees: %s", e)
+            raise
 
     if should_autostart_scheduler(app):
         start_scheduler(app)
@@ -276,7 +280,6 @@ def migrate_db():
 
 
 def seed_users():
-    is_dev = os.environ.get('FLASK_ENV') != 'production'
     default_users = [
         {'username': 'Emerson',    'pig_name': 'Groin de Tonnerre',  'emoji': '🐗', 'origin': 'Brésil'},
         {'username': 'Pascal',     'pig_name': 'Le Baron du Lard',   'emoji': '🐷', 'origin': 'France'},
@@ -284,64 +287,76 @@ def seed_users():
         {'username': 'Edwin',      'pig_name': 'Porcinator',         'emoji': '🐽', 'origin': 'Angleterre'},
         {'username': 'Julien',     'pig_name': 'Flash McGroin',      'emoji': '🐖', 'origin': 'Japon'},
         {'username': 'Christophe', 'pig_name': 'Père Cochon',        'emoji': '🏆', 'origin': 'France', 'admin': True},
-    ]
-    # Compte admin avec mdp par defaut (changer le mot de passe apres deploiement)
-    default_users.append(
+        # Compte admin avec mdp par defaut (changer le mot de passe apres deploiement)
         {'username': 'admin', 'pig_name': 'Grand Admin', 'emoji': '👑', 'origin': 'France', 'admin': True, 'password': 'admin'},
-    )
+    ]
     for u in default_users:
-        existing = User.query.filter_by(username=u['username']).first()
-        if existing:
-            existing.password_hash = generate_password_hash(u.get('password', 'mdp1234'))
-            if u.get('admin'):
-                existing.is_admin = True
-        else:
-            origin_data = next((o for o in PIG_ORIGINS if o['country'] == u.get('origin', 'France')), PIG_ORIGINS[0])
-            user = User(
-                username=u['username'],
-                password_hash=generate_password_hash(u.get('password', 'mdp1234')),
-                balance=100.0,
-                is_admin=u.get('admin', False)
-            )
-            db.session.add(user)
-            db.session.flush()
-            pig = Pig(
-                user_id=user.id, name=build_unique_pig_name(u['pig_name'], fallback_prefix='Cochon'), emoji=u['emoji'],
-                origin_country=origin_data['country'], origin_flag=origin_data['flag'],
-                lineage_name=f"Maison {u['username']}",
-            )
-            apply_origin_bonus(pig, origin_data)
-            pig.weight_kg = generate_weight_kg_for_profile(pig)
-            db.session.add(pig)
+        try:
+            existing = User.query.filter_by(username=u['username']).first()
+            if existing:
+                existing.password_hash = generate_password_hash(u.get('password', 'mdp1234'))
+                if u.get('admin'):
+                    existing.is_admin = True
+                db.session.flush()
+            else:
+                origin_data = next((o for o in PIG_ORIGINS if o['country'] == u.get('origin', 'France')), PIG_ORIGINS[0])
+                user = User(
+                    username=u['username'],
+                    password_hash=generate_password_hash(u.get('password', 'mdp1234')),
+                    balance=100.0,
+                    is_admin=u.get('admin', False)
+                )
+                db.session.add(user)
+                db.session.flush()
+                pig = Pig(
+                    user_id=user.id, name=build_unique_pig_name(u['pig_name'], fallback_prefix='Cochon'), emoji=u['emoji'],
+                    origin_country=origin_data['country'], origin_flag=origin_data['flag'],
+                    lineage_name=f"Maison {u['username']}",
+                )
+                apply_origin_bonus(pig, origin_data)
+                pig.weight_kg = generate_weight_kg_for_profile(pig)
+                db.session.add(pig)
+                db.session.flush()
+                logger.info("Utilisateur seed cree : %s (admin=%s)", u['username'], u.get('admin', False))
+        except Exception as e:
+            db.session.rollback()
+            logger.warning("Seed user '%s' echoue (non bloquant): %s", u['username'], e)
 
-    demo_owner = User.query.filter_by(username='Christophe').first()
-    admin_user = User.query.filter_by(username='admin').first()
-    if admin_user:
-        create_preloaded_admin_pigs(admin_user)
- 
-    if demo_owner:
-        demo_pig = Pig.query.filter_by(user_id=demo_owner.id, name='Patient Zero').first()
-        owner_pig_count = Pig.query.filter_by(user_id=demo_owner.id).count()
-        if not demo_pig and owner_pig_count < 2:
-            origin_data = next((o for o in PIG_ORIGINS if o['country'] == 'Belgique'), PIG_ORIGINS[0])
-            demo_pig = Pig(
-                user_id=demo_owner.id,
-                name='Patient Zero',
-                emoji='🩹',
-                origin_country=origin_data['country'],
-                origin_flag=origin_data['flag'],
-                energy=62,
-                hunger=58,
-                happiness=54,
-                is_injured=True,
-                injury_risk=28.0,
-                vet_deadline=datetime.utcnow() + timedelta(minutes=30),
-                lineage_name=f"Maison {demo_owner.username}",
-            )
-            apply_origin_bonus(demo_pig, origin_data)
-            demo_pig.weight_kg = clamp_pig_weight(118.0)
-            db.session.add(demo_pig)
-    db.session.commit()
+    try:
+        demo_owner = User.query.filter_by(username='Christophe').first()
+        admin_user = User.query.filter_by(username='admin').first()
+        if admin_user:
+            create_preloaded_admin_pigs(admin_user)
+            logger.info("Cochons admin pré-chargés pour '%s'", admin_user.username)
+
+        if demo_owner:
+            demo_pig = Pig.query.filter_by(user_id=demo_owner.id, name='Patient Zero').first()
+            owner_pig_count = Pig.query.filter_by(user_id=demo_owner.id).count()
+            if not demo_pig and owner_pig_count < 2:
+                origin_data = next((o for o in PIG_ORIGINS if o['country'] == 'Belgique'), PIG_ORIGINS[0])
+                demo_pig = Pig(
+                    user_id=demo_owner.id,
+                    name='Patient Zero',
+                    emoji='🩹',
+                    origin_country=origin_data['country'],
+                    origin_flag=origin_data['flag'],
+                    energy=62,
+                    hunger=58,
+                    happiness=54,
+                    is_injured=True,
+                    injury_risk=28.0,
+                    vet_deadline=datetime.utcnow() + timedelta(minutes=30),
+                    lineage_name=f"Maison {demo_owner.username}",
+                )
+                apply_origin_bonus(demo_pig, origin_data)
+                demo_pig.weight_kg = clamp_pig_weight(118.0)
+                db.session.add(demo_pig)
+
+        db.session.commit()
+        logger.info("seed_users() terminé avec succès")
+    except Exception as e:
+        db.session.rollback()
+        logger.error("Erreur lors du seed des données demo: %s", e)
 
 
 def ensure_balance_transaction_snapshots():
