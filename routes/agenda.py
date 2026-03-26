@@ -15,14 +15,18 @@ MAX_PLAYS_PER_DAY = 2
 
 
 def _plays_remaining(user):
-    """Return the number of plays left today (resets daily)."""
+    """Return the number of plays left today (resets daily). Admins: unlimited."""
+    if getattr(user, 'is_admin', False):
+        return MAX_PLAYS_PER_DAY  # always show full for admins
     if not user.last_agenda_at or user.last_agenda_at.date() < date.today():
         return MAX_PLAYS_PER_DAY
     return max(0, MAX_PLAYS_PER_DAY - (user.agenda_plays_today or 0))
 
 
 def _already_played_today(user):
-    """Return True if the user has exhausted today's plays."""
+    """Return True if the user has exhausted today's plays. Admins: never blocked."""
+    if getattr(user, 'is_admin', False):
+        return False
     return _plays_remaining(user) <= 0
 
 

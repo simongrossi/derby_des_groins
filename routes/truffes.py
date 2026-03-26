@@ -14,7 +14,9 @@ GRID_SIZE = 20
 
 
 def _already_played_today(user):
-    """Return True if the user already played the truffle hunt today."""
+    """Return True if the user already played the truffle hunt today. Admins: never blocked."""
+    if getattr(user, 'is_admin', False):
+        return False
     if not user.last_truffe_at:
         return False
     return user.last_truffe_at.date() >= date.today()
