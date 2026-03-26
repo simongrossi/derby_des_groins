@@ -278,6 +278,12 @@
           <div class="text-2xl font-title"><span id="score-display">0</span> / {{ required_catches }}</div>
         </section>
 
+        <!-- Parties restantes -->
+        <section class="rounded-xl p-4 text-center" style="background: rgba(88,28,135,0.1); border: 1px solid rgba(139,92,246,0.1);">
+          <div class="text-xs text-purple-300/40 uppercase tracking-wide font-bold mb-1">Parties du jour</div>
+          <div class="text-2xl font-title"><span id="remaining-display">{{ plays_remaining }}</span> / {{ max_plays }}</div>
+        </section>
+
         <!-- Solde -->
         <section class="rounded-xl p-4 text-center" style="background: rgba(88,28,135,0.1); border: 1px solid rgba(139,92,246,0.1);">
           <div class="text-xs text-purple-300/40 uppercase tracking-wide font-bold mb-1">Solde</div>
@@ -306,7 +312,8 @@
   const GAME_DURATION    = {{ game_duration }};
   const REQUIRED_CATCHES = {{ required_catches }};
   const REWARD           = {{ reward }};
-  const ALREADY_PLAYED   = {{ 'true' if already_played else 'false' }};
+  let   ALREADY_PLAYED   = {{ 'true' if already_played else 'false' }};
+  let   remainingPlays   = {{ plays_remaining }};
   const FLEE_DISTANCE    = 60;
 
   const DAYS  = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi'];
@@ -625,6 +632,8 @@
         showOverlay('<p class="text-red-400 text-lg font-bold">' + (data.error || 'Erreur') + '</p>', false);
         return;
       }
+      remainingPlays = data.remaining ?? (remainingPlays - 1);
+      document.getElementById('remaining-display').textContent = remainingPlays;
     } catch (err) {
       showOverlay('<p class="text-red-400 text-lg font-bold">Erreur de connexion</p>', false);
       return;
@@ -693,9 +702,9 @@
               <p class="text-purple-300 text-sm">Titre d&eacute;bloqu&eacute; :</p>
               <p class="text-orange-400 font-bold">&#x1F947; Ceinture Noire de Porc-Look</p>
             </div>
-            <p class="text-purple-300/30 text-xs mt-3">Reviens demain pour une nouvelle illusion manag&eacute;riale.</p>
+            <p class="text-purple-300/30 text-xs mt-3">${remainingPlays > 0 ? 'Il te reste ' + remainingPlays + ' partie(s) aujourd\'hui !' : 'Reviens demain pour une nouvelle illusion manag&eacute;riale.'}</p>
           </div>
-        `, false);
+        `, remainingPlays > 0);
       }, 1800);
 
     } catch (err) {
@@ -721,8 +730,8 @@
       <p class="text-2xl font-title text-red-400 mb-2">Temps &eacute;coul&eacute; !</p>
       <p class="text-purple-200 mb-1">${score} / ${REQUIRED_CATCHES} COMOPs attrap&eacute;s</p>
       <p class="text-purple-300/50 text-sm italic">"${pick(BOSS_LOSE_PHRASES)}"</p>
-      <p class="text-purple-300/30 text-xs mt-3">Reviens demain pour r&eacute;essayer d'attraper le COMOP fant&ocirc;me.</p>
-    `, false);
+      <p class="text-purple-300/30 text-xs mt-3">${remainingPlays > 0 ? 'Il te reste ' + remainingPlays + ' partie(s) ! Retente ta chance.' : 'Reviens demain pour r&eacute;essayer d\'attraper le COMOP fant&ocirc;me.'}</p>
+    `, remainingPlays > 0);
   }
 
   /* ── Overlay ── */
@@ -755,7 +764,7 @@
       showOverlay(`
         <div class="text-5xl mb-3">&#x1F4C5;</div>
         <p class="text-xl font-title text-purple-300 mb-2">D&eacute;j&agrave; jou&eacute; aujourd'hui !</p>
-        <p class="text-purple-300/40 text-sm">Le Chef de Porc-jet a &eacute;puis&eacute; son quota de COMOPs annul&eacute;s.<br>Reviens demain !</p>
+        <p class="text-purple-300/40 text-sm">Tu as utilis&eacute; tes 2 parties du jour.<br>Le Chef de Porc-jet a &eacute;puis&eacute; son quota de COMOPs annul&eacute;s.<br>Reviens demain !</p>
       `, false);
     } else {
       showOverlay(`

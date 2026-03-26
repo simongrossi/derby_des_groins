@@ -11,13 +11,19 @@ agenda_bp = Blueprint('agenda', __name__)
 AGENDA_REWARD = 50
 REQUIRED_CATCHES = 5
 GAME_DURATION = 30
+MAX_PLAYS_PER_DAY = 2
+
+
+def _plays_remaining(user):
+    """Return the number of plays left today (resets daily)."""
+    if not user.last_agenda_at or user.last_agenda_at.date() < date.today():
+        return MAX_PLAYS_PER_DAY
+    return max(0, MAX_PLAYS_PER_DAY - (user.agenda_plays_today or 0))
 
 
 def _already_played_today(user):
-    """Return True if the user already played the agenda game today."""
-    if not user.last_agenda_at:
-        return False
-    return user.last_agenda_at.date() >= date.today()
+    """Return True if the user has exhausted today's plays."""
+    return _plays_remaining(user) <= 0
 
 
 @agenda_bp.route('/agenda')
@@ -28,6 +34,7 @@ def agenda():
 
     user = User.query.get(user_id)
     already_played = _already_played_today(user)
+    remaining = _plays_remaining(user)
     return render_template(
         'agenda.html',
         user=user,
@@ -36,6 +43,8 @@ def agenda():
         required_catches=REQUIRED_CATCHES,
         game_duration=GAME_DURATION,
         already_played=already_played,
+        plays_remaining=remaining,
+        max_plays=MAX_PLAYS_PER_DAY,
     )
 
 
@@ -52,11 +61,18 @@ def agenda_play():
         return jsonify({'ok': False, 'error': 'Utilisateur introuvable'}), 404
 
     if _already_played_today(user):
-        return jsonify({'ok': False, 'error': 'Déjà joué aujourd\'hui'}), 429
+        return jsonify({'ok': False, 'error': 'Tu as déjà utilisé tes 2 parties du jour !'}), 429
+
+    # Reset counter if new day
+    if not user.last_agenda_at or user.last_agenda_at.date() < date.today():
+        user.agenda_plays_today = 1
+    else:
+        user.agenda_plays_today = (user.agenda_plays_today or 0) + 1
 
     user.last_agenda_at = datetime.utcnow()
     db.session.commit()
-    return jsonify({'ok': True})
+    remaining = _plays_remaining(user)
+    return jsonify({'ok': True, 'remaining': remaining})
 
 
 @agenda_bp.route('/agenda/win', methods=['POST'])

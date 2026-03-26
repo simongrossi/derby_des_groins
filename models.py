@@ -25,6 +25,7 @@ class User(db.Model):
     last_daily_reward_at = db.Column(db.DateTime, nullable=True)
     last_truffe_at = db.Column(db.DateTime, nullable=True)
     last_agenda_at = db.Column(db.DateTime, nullable=True)
+    agenda_plays_today = db.Column(db.Integer, default=0, nullable=False, server_default='0')
     bets = db.relationship('Bet', backref='user', lazy=True)
     balance_transactions = db.relationship('BalanceTransaction', backref='user', lazy=True)
     course_plans = db.relationship('CoursePlan', backref='user', lazy=True)
