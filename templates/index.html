@@ -41,29 +41,6 @@
         .btn-secondary:hover { background:rgba(255, 232, 240, .085); border-color:rgba(255, 205, 226, .22); }
         .gauge { height:.62rem; width:100%; overflow:hidden; border-radius:999px; background:rgba(255,255,255,.08); }
         .fill { height:100%; border-radius:999px; }
-        .pig-card {
-            background: rgba(255,244,247,.06); border:2px solid transparent; border-radius:1rem; cursor:pointer;
-            transition:all .2s ease;
-        }
-        .pig-card:hover { background:rgba(244,114,182,.14); border-color:rgba(244,114,182,.4); transform:translateY(-2px); }
-        .pig-card.selected { background:rgba(244,114,182,.2); border-color:#f472b6; box-shadow:0 0 20px rgba(244,114,182,.24); }
-        .selection-badge {
-            position:absolute; top:.6rem; right:.6rem; width:1.7rem; height:1.7rem; border-radius:999px;
-            background:linear-gradient(135deg,#ec4899,#fb7185); color:#fff; font-size:.85rem; font-weight:800;
-            display:none; align-items:center; justify-content:center;
-        }
-        .selection-badge.visible { display:inline-flex; }
-        .bet-type-btn {
-            width:100%; text-align:left; background:rgba(255,244,247,.05); border:1px solid rgba(255, 205, 226, .12);
-            border-radius:1rem; padding:1rem; transition:all .2s ease;
-        }
-        .bet-type-btn:hover:not(:disabled) { background:rgba(255,232,240,.09); border-color:rgba(255, 205, 226, .22); transform:translateY(-1px); }
-        .bet-type-btn.active { background:linear-gradient(135deg,rgba(244,114,182,.18),rgba(251,113,133,.15)); border-color:rgba(244,114,182,.38); }
-        .bet-type-btn:disabled { opacity:.45; cursor:not-allowed; }
-        .odds-badge { border-radius:.5rem; padding:.25rem .75rem; font-weight:800; font-size:1rem; }
-        .odds-low { border:1px solid #16a34a; color:#86efac; background:linear-gradient(135deg,#052e16,#14532d); }
-        .odds-mid { border:1px solid #d97706; color:#fcd34d; background:linear-gradient(135deg,#1c1007,#451a03); }
-        .odds-high { border:1px solid #dc2626; color:#fca5a5; background:linear-gradient(135deg,#1c0707,#450a0a); }
         .info-tile {
             background: rgba(255,255,255,.045);
             border: 1px solid rgba(255,255,255,.09);
@@ -125,7 +102,7 @@
                         <p class="text-sm font-semibold mt-1 opacity-80">{{ headline_status.subtext }}</p>
                     </div>
                     {% endif %}
-                    <a href="#betting-board" class="btn-primary">Voir les cotes & Parier</a>
+                    <a href="/paris" class="btn-primary">Voir les cotes & Parier</a>
                 </div>
             </div>
             {% else %}
@@ -175,7 +152,7 @@
             </div>
             <div class="mt-auto pt-4 flex flex-wrap gap-3">
                 <a href="/courses" class="btn-secondary text-sm">📅 Calendrier</a>
-                <a href="#betting-board" class="btn-secondary text-sm">💰 Parier</a>
+                <a href="/paris" class="btn-secondary text-sm">💰 Parier</a>
                 <a href="/history#bitgroins" class="btn-secondary text-sm">📊 Historique</a>
             </div>
             {% else %}
@@ -258,272 +235,48 @@
         </article>
     </section>
 
-    <section id="betting-board" class="grid grid-cols-1 xl:grid-cols-[1.2fr_0.8fr] gap-6">
-        <article class="card p-6 lg:p-7">
-            <p class="text-white/40 text-xs uppercase tracking-[0.22em] font-extrabold">📈 Voir les cotes</p>
-            <h2 class="font-title text-3xl text-white mt-2">Partants de la prochaine course</h2>
-            {% if participants %}
-            <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-5" id="pig-grid">
-                {% for pig in participants %}
-                {% set odds_class = 'odds-low' if pig.odds <= 2.5 else ('odds-mid' if pig.odds <= 4.0 else 'odds-high') %}
-                <div class="pig-card relative p-4 text-center {% if pig.pig_id %}ring-1 ring-pink-500/30{% endif %}" data-participant-id="{{ pig.id }}" data-pig-name="{{ pig.name }}" data-odds="{{ pig.odds }}" data-win-probability="{{ pig.win_probability }}">
-                    <span class="selection-badge" data-selection-badge></span>
-                    <div class="text-4xl">{{ pig.emoji }}</div>
-                    <p class="text-white font-bold mt-2 text-sm leading-tight">{{ pig.name }}</p>
-                    <p class="text-xs font-bold {% if pig.owner_name %}text-pink-400/70{% else %}text-white/20{% endif %}">{% if pig.owner_name %}👤 {{ pig.owner_name }}{% else %}💻 Ordinateur{% endif %}</p>
-                    <div class="odds-badge {{ odds_class }} mt-2 inline-block">x{{ pig.odds }}</div>
-                    <p class="text-white/30 text-xs mt-1">{{ "%.0f"|format(pig.win_probability * 100) }}% de chance</p>
-                </div>
-                {% endfor %}
-            </div>
-            {% else %}
-            <div class="soft p-8 mt-5 text-center"><p class="text-white/45 font-semibold">Aucun partant disponible pour le moment.</p></div>
-            {% endif %}
-        </article>
-
-        <article class="card p-6 lg:p-7 bg-gradient-to-br from-[#2d0f39] to-[#1a0a24]" id="bet-form-section">
-            <div class="flex items-center justify-between gap-3 mb-2">
-                <p class="text-white/40 text-[10px] uppercase tracking-[0.25em] font-black">💰 Action rapide</p>
-                <div class="flex items-center gap-2 bg-pink-500/10 border border-pink-500/20 px-3 py-1 rounded-full">
-                    <span class="text-[10px] font-black text-pink-300 uppercase">Tickets Bacon : {{ user.bacon_tickets if user else '?' }}</span>
-                    <span class="text-xs">🎟️</span>
-                </div>
-            </div>
-            <h2 class="font-title text-3xl text-white">Prise de ticket</h2>
-            <p class="text-white/40 text-xs font-semibold mt-2">Choisis ton format et valide ton ticket.</p>
-            {% if user and next_race %}
-                {% if user_bets %}
-                <div class="soft p-4 mt-5">
-                    <p class="text-white font-extrabold">Tu as deja mise sur cette course</p>
-                    {% for bet in user_bets %}
-                    {% set bet_type_key = bet.bet_type if bet.bet_type in bet_types else 'win' %}
-                    <p class="text-white/55 text-sm font-semibold mt-2">{{ bet_types[bet_type_key].icon }} {{ bet.pig_name }} • {{ bet.amount }} 🪙 @ x{{ bet.odds_at_bet }}</p>
+    <!-- ═══ ENCART PARIS RAPIDE ═══ -->
+    <section class="card p-6 lg:p-7">
+        <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div>
+                <p class="text-white/40 text-xs uppercase tracking-[0.22em] font-extrabold">💰 Paris</p>
+                <h2 class="font-title text-2xl text-white mt-1">Guichet des paris</h2>
+                {% if next_race and participants %}
+                <p class="text-white/50 text-sm font-semibold mt-2">{{ participants|length }} partants · Course #{{ next_race.id }} · {{ next_race.scheduled_at.strftime('%H:%M') }}</p>
+                <div class="flex flex-wrap gap-2 mt-3">
+                    {% for pig in participants[:6] %}
+                    {% set odds_class = 'odds-low' if pig.odds <= 2.5 else ('odds-mid' if pig.odds <= 4.0 else 'odds-high') %}
+                    <span class="inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-2.5 py-1.5">
+                        <span class="text-lg">{{ pig.emoji }}</span>
+                        <span class="text-white/70 text-xs font-bold">{{ pig.name }}</span>
+                        <span class="text-xs font-black {% if pig.odds <= 2.5 %}text-green-400{% elif pig.odds <= 4.0 %}text-yellow-400{% else %}text-red-400{% endif %}">x{{ pig.odds }}</span>
+                    </span>
                     {% endfor %}
+                    {% if participants|length > 6 %}
+                    <span class="inline-flex items-center text-white/30 text-xs font-bold px-2">+{{ participants|length - 6 }} autres</span>
+                    {% endif %}
                 </div>
                 {% else %}
-                <form method="POST" action="/bet" id="bet-form" class="mt-5">
-                    <input type="hidden" name="race_id" value="{{ next_race.id }}">
-                    <input type="hidden" name="bet_type" id="bet-type-input" value="win">
-                    <input type="hidden" name="selection_order" id="selection-order-input" value="">
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-5">
-                        <div class="rounded-2xl border border-pink-400/20 bg-pink-500/10 px-4 py-4">
-                            <p class="text-pink-100 font-extrabold">🎟️ Ticket Bacon</p>
-                            <p class="text-white/70 text-sm font-semibold mt-2">Il t'en faut 1 pour valider ce pari.</p>
-                            <p class="font-title text-3xl text-pink-200 mt-2">{{ bacon_tickets_remaining }}</p>
-                        </div>
-                        <div class="rounded-2xl border border-yellow-400/20 bg-yellow-500/10 px-4 py-4">
-                            <p class="text-yellow-100 font-extrabold">🪙 BitGroins</p>
-                            <p class="text-white/70 text-sm font-semibold mt-2">Ta mise sera debitee de ton solde.</p>
-                            <p class="font-title text-3xl text-yellow-300 mt-2">{{ "%.0f"|format(user.balance) }}</p>
-                        </div>
-                    </div>
-                    <div class="rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-4 mb-5">
-                        <p class="text-white font-extrabold">Avant de valider</p>
-                        <div class="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm font-semibold">
-                            <div class="soft p-3">
-                                <p class="text-white/45 uppercase text-[11px] tracking-[0.18em] font-black">1. Ticket</p>
-                                <p class="text-white/80 mt-2">Selectionne le format du pari.</p>
-                            </div>
-                            <div class="soft p-3">
-                                <p class="text-white/45 uppercase text-[11px] tracking-[0.18em] font-black">2. Cochons</p>
-                                <p class="text-white/80 mt-2">Clique les partants dans l'ordre attendu.</p>
-                            </div>
-                            <div class="soft p-3">
-                                <p class="text-white/45 uppercase text-[11px] tracking-[0.18em] font-black">3. Mise</p>
-                                <p class="text-white/80 mt-2">Renseigne tes BitGroins puis valide.</p>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="mb-5">
-                        <p class="text-white/60 text-sm font-bold mb-2">Format du ticket</p>
-                        <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-2 gap-3 max-h-[22rem] overflow-y-auto pr-2" id="bet-type-switcher" style="scrollbar-width: thin; scrollbar-color: rgba(244,114,182,0.4) transparent;">
-                            {% for bet_key, bet_meta in bet_types.items() %}
-                            {% set needs_pig = bet_meta.selection_count >= 3 and not headline_status.participates %}
-                            {% set disabled = participants|length < bet_meta.selection_count or needs_pig %}
-                            <button type="button" class="bet-type-btn flex flex-col justify-between text-left {% if bet_key == 'win' %}active{% endif %}" data-bet-type-btn data-bet-type="{{ bet_key }}" data-selection-count="{{ bet_meta.selection_count }}" {% if disabled %}disabled{% endif %}>
-                                <div>
-                                    <div class="flex items-start justify-between gap-1 mb-1">
-                                        <p class="text-white font-extrabold text-sm">{{ bet_meta.icon }} {{ bet_meta.label }}</p>
-                                        <span class="text-[9px] font-black uppercase bg-white/10 px-1.5 py-0.5 rounded-full text-white/50 shrink-0">
-                                            {{ bet_meta.selection_count }} 🐷
-                                        </span>
-                                    </div>
-                                    <p class="text-white/45 text-[11px] font-semibold mt-1">{{ bet_meta.description }}</p>
-                                </div>
-                                {% if needs_pig %}
-                                <div class="mt-2 text-[9px] font-bold text-red-400/70 uppercase tracking-wider text-right">🔒 Ton cochon doit participer</div>
-                                {% elif bet_meta.order_matters %}
-                                <div class="mt-2 text-[9px] font-bold text-rose-300/60 uppercase tracking-wider text-right">⚠️ Ordre exact</div>
-                                {% else %}
-                                <div class="mt-2 text-[9px] font-bold text-amber-300/60 uppercase tracking-wider text-right">Désordre accepté</div>
-                                {% endif %}
-                            </button>
-                            {% endfor %}
-                        </div>
-                        <p id="bet-type-help" class="text-white/40 text-xs font-bold mt-3">Choisis le type de ticket, puis clique sur les cochons dans l'ordre d'arrivee.</p>
-                    </div>
-                    <div class="mb-4 p-4 rounded-xl border border-white/10 bg-white/5" id="selected-pig-display">
-                        <p class="text-white/40 text-sm font-semibold">Choisis un ticket, puis clique sur les partants dans l'ordre d'arrivee attendu.</p>
-                    </div>
-                    <div class="mb-5 soft p-4 border-l-4 border-yellow-400/50">
-                        <div class="flex items-start gap-3">
-                            <span class="text-2xl shrink-0">🎫</span>
-                            <div>
-                                <p class="text-white font-bold text-sm">Quota Hebdo : {{ user.bacon_tickets }} / {{ weekly_bacon_tickets }} tickets restants</p>
-                                <p class="text-white/40 text-[11px] font-semibold mt-1">Chaque pari validé consomme 1 Ticket Bacon. Ton quota se réinitialise chaque lundi matin.</p>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="flex gap-3 items-end">
-                        <div class="flex-1">
-                            <label class="text-white/60 text-sm font-bold block mb-1">Mise (max: {{ "%.0f"|format(user.balance) }} 🪙)</label>
-                            <input type="number" name="amount" id="bet-amount" min="{{ min_bet_race }}" max="{{ [user.balance, max_bet_race]|min }}" step="1" class="w-full bg-white/5 border border-white/20 rounded-xl px-4 py-3 text-white font-bold focus:outline-none focus:border-yellow-400" placeholder="Entre {{ min_bet_race }} et {{ max_bet_race }}">
-                        </div>
-                        <button type="submit" id="bet-submit" class="btn-primary" disabled>Parier</button>
-                    </div>
-                    <div id="potential-win" class="mt-4 p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 hidden">
-                        <div class="flex items-center justify-between text-sm font-bold">
-                            <span class="text-white/60">Cote totale du ticket</span>
-                            <span id="ticket-odds" class="text-yellow-400 text-lg font-black">--</span>
-                        </div>
-                        <div class="flex items-center justify-between mt-2 text-lg font-black">
-                            <span class="text-white">Gain potentiel</span>
-                            <span class="text-emerald-400"><span id="potential-amount">0.00</span> 🪙</span>
-                        </div>
-                    </div>
-                </form>
-                <p class="text-white/30 text-xs font-bold mt-3">Un seul ticket par course et {{ weekly_bacon_tickets }} tickets maximum par semaine.</p>
+                <p class="text-white/50 text-sm font-semibold mt-2">Aucune course ouverte aux paris pour le moment.</p>
                 {% endif %}
-            {% elif not user %}
-            <div class="mt-5 space-y-3">
-                <p class="text-white/55 font-semibold">Connecte-toi pour miser et gerer tes Tickets Bacon.</p>
-                <div class="flex gap-3"><a href="/login" class="btn-primary">Connexion</a><a href="/register" class="btn-secondary">Inscription</a></div>
             </div>
-            {% else %}
-            <div class="soft p-8 mt-5 text-center"><p class="text-white/45 font-semibold">Aucune course ouverte aux paris pour le moment.</p></div>
-            {% endif %}
-        </article>
+            <div class="flex flex-col gap-2 shrink-0">
+                {% if user %}
+                <div class="flex items-center gap-3 text-sm">
+                    <span class="text-pink-400 font-extrabold">🎟️ {{ bacon_tickets_remaining }}/{{ weekly_bacon_tickets }}</span>
+                    <span class="text-white/20">·</span>
+                    <span class="text-yellow-400 font-extrabold">{{ "%.0f"|format(user.balance) }} 🪙</span>
+                </div>
+                {% endif %}
+                <a href="/paris" class="btn-primary text-center">💰 Voir les cotes & Parier</a>
+            </div>
+        </div>
     </section>
 </main>
 
 <footer class="text-center py-8 text-white/20 text-sm font-semibold">🐷 Derby des Groins — Tous droits de groin reserves</footer>
 
 <script>
-const betTypes = {{ bet_types|tojson }};
-const participantCards = Array.from(document.querySelectorAll('.pig-card'));
-const participantMap = Object.fromEntries(participantCards.map((card) => {
-    const participantId = Number(card.dataset.participantId);
-    return [participantId, { id: participantId, name: card.dataset.pigName, odds: Number(card.dataset.odds), winProbability: Number(card.dataset.winProbability), card }];
-}));
-let activeBetType = 'win';
-let selectedOrder = [];
-function getRequiredSelectionCount() { return betTypes[activeBetType]?.selection_count || 1; }
-function calculateOrderedProbability(selectionIds) {
-    const remainingProbabilities = {}; let remainingTotal = 0;
-    Object.values(participantMap).forEach((participant) => { remainingProbabilities[participant.id] = participant.winProbability; remainingTotal += participant.winProbability; });
-    let combinedProbability = 1;
-    for (const participantId of selectionIds) {
-        const currentProbability = remainingProbabilities[participantId];
-        if (!currentProbability || remainingTotal <= 0) return 0;
-        combinedProbability *= currentProbability / remainingTotal;
-        remainingTotal -= currentProbability;
-        delete remainingProbabilities[participantId];
-    }
-    return combinedProbability;
-}
-function calculateSelectionOdds() {
-    if (selectedOrder.length !== getRequiredSelectionCount()) return 0;
-    const betConfig = betTypes[activeBetType];
-    const probability = calculateOrderedProbability(selectedOrder);
-    if (probability <= 0) return 0;
-    
-    let multiplier = 1.0;
-    if (betConfig.order_matters === false) {
-        let f = 1; for(let i=1; i<=selectedOrder.length; i++) f *= i;
-        multiplier *= f;
-        
-        let topN = betConfig.top_n || selectedOrder.length;
-        let selCount = betConfig.selection_count || selectedOrder.length;
-        if (topN > selCount) {
-            let fTop = 1; for(let i=1; i<=topN; i++) fTop *= i;
-            let fSel = 1; for(let i=1; i<=selCount; i++) fSel *= i;
-            let fDiff = 1; for(let i=1; i<=(topN - selCount); i++) fDiff *= i;
-            multiplier *= (fTop / (fSel * fDiff));
-        }
-    }
-    
-    let finalProb = Math.min(probability * multiplier, 0.99);
-    if (finalProb <= 0) return 0;
-    
-    const edge = betConfig.house_edge || 1.18;
-    return Math.max(1.1, Math.floor(((1 / finalProb) / edge) * 10) / 10);
-}
-function renderSelectionSummary() {
-    const display = document.getElementById('selected-pig-display');
-    const selectionInput = document.getElementById('selection-order-input');
-    const betTypeInput = document.getElementById('bet-type-input');
-    const submitButton = document.getElementById('bet-submit');
-    if (!display || !selectionInput || !betTypeInput || !submitButton) return;
-    betTypeInput.value = activeBetType;
-    selectionInput.value = selectedOrder.join(',');
-    participantCards.forEach((card) => {
-        const participantId = Number(card.dataset.participantId);
-        const badge = card.querySelector('[data-selection-badge]');
-        const selectionIndex = selectedOrder.indexOf(participantId);
-        card.classList.remove('selected');
-        if (badge) { badge.textContent = ''; badge.classList.remove('visible'); }
-        if (selectionIndex !== -1) {
-            card.classList.add('selected');
-            if (badge) { badge.textContent = String(selectionIndex + 1); badge.classList.add('visible'); }
-        }
-    });
-    const requiredCount = getRequiredSelectionCount();
-    if (selectedOrder.length === 0) {
-        display.textContent = `Choisis ${requiredCount} cochon(s) dans l'ordre attendu pour un ticket ${betTypes[activeBetType].label.toLowerCase()}.`;
-    } else {
-        display.textContent = selectedOrder.map((participantId, index) => `${index + 1}. ${participantMap[participantId].name}`).join('  ->  ');
-    }
-    submitButton.disabled = selectedOrder.length !== requiredCount;
-    updatePotentialWin();
-}
-function setBetType(nextBetType) {
-    if (!betTypes[nextBetType]) return;
-    activeBetType = nextBetType;
-    selectedOrder = [];
-    document.querySelectorAll('[data-bet-type-btn]').forEach((button) => button.classList.toggle('active', button.dataset.betType === nextBetType));
-    const help = document.getElementById('bet-type-help');
-    if (help) help.textContent = `${betTypes[nextBetType].description} Clique sur les cochons dans l'ordre d'arrivee prevu.`;
-    renderSelectionSummary();
-}
-function toggleParticipantSelection(participantId) {
-    if (!participantMap[participantId]) return;
-    const existingIndex = selectedOrder.indexOf(participantId);
-    if (existingIndex !== -1) { selectedOrder.splice(existingIndex, 1); renderSelectionSummary(); return; }
-    if (selectedOrder.length >= getRequiredSelectionCount()) return;
-    selectedOrder.push(participantId);
-    renderSelectionSummary();
-}
-function updatePotentialWin() {
-    const amountInput = document.getElementById('bet-amount');
-    const potentialDiv = document.getElementById('potential-win');
-    const potentialAmount = document.getElementById('potential-amount');
-    const oddsSpan = document.getElementById('ticket-odds');
-    if (!amountInput || !potentialDiv || !potentialAmount || !oddsSpan) return;
-    const amount = parseFloat(amountInput.value);
-    const selectionOdds = calculateSelectionOdds();
-    if (amount > 0 && selectionOdds > 0) {
-        oddsSpan.textContent = `x${selectionOdds.toFixed(1)}`;
-        potentialAmount.textContent = (amount * selectionOdds).toFixed(2);
-        potentialDiv.classList.remove('hidden');
-    } else {
-        potentialDiv.classList.add('hidden');
-    }
-}
-const amountInput = document.getElementById('bet-amount');
-if (amountInput) amountInput.addEventListener('input', updatePotentialWin);
-participantCards.forEach((card) => card.addEventListener('click', () => toggleParticipantSelection(Number(card.dataset.participantId))));
-document.querySelectorAll('[data-bet-type-btn]').forEach((button) => button.addEventListener('click', () => { if (!button.disabled) setBetType(button.dataset.betType); }));
-renderSelectionSummary();
 function formatTime(seconds) {
     if (seconds <= 0) return '00:00:00';
     const h = Math.floor(seconds / 3600), m = Math.floor((seconds % 3600) / 60), s = seconds % 60;

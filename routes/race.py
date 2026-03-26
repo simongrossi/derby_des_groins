@@ -10,8 +10,8 @@ from services.pig_service import calculate_pig_power, get_weight_profile
 from services.race_service import (
     RacePlanningError, build_course_schedule, calculate_bet_odds,
     count_pig_weekly_course_commitments, format_bet_label,
-    get_user_weekly_bet_count, normalize_bet_type, parse_selection_ids,
-    plan_pig_for_race, serialize_selection_ids,
+    get_course_theme, get_user_weekly_bet_count, normalize_bet_type,
+    parse_selection_ids, plan_pig_for_race, serialize_selection_ids,
 )
 
 race_bp = Blueprint('race', __name__)
@@ -83,6 +83,76 @@ def courses():
     )
 
 
+@race_bp.route('/paris')
+def paris():
+    """Page dédiée aux paris — cotes, formulaire de pari, historique."""
+    next_race = Race.query.filter(Race.status == 'open').order_by(Race.scheduled_at).first()
+    if not next_race:
+        ensure_next_race()
+        next_race = Race.query.filter(Race.status == 'open').order_by(Race.scheduled_at).first()
+
+    user = None
+    user_bets = []
+    pigs = []
+    bacon_tickets_remaining = WEEKLY_BACON_TICKETS
+    headline_status = {'participates': False}
+    participants = []
+    next_race_theme = None
+    recent_bets = []
+
+    if 'user_id' in session:
+        user = User.query.get(session['user_id'])
+        if user:
+            pigs = get_user_active_pigs(user)
+            weekly_bet_count = get_user_weekly_bet_count(user, datetime.now())
+            bacon_tickets_remaining = max(0, WEEKLY_BACON_TICKETS - weekly_bet_count)
+            if next_race:
+                user_bets = Bet.query.filter_by(user_id=user.id, race_id=next_race.id).all()
+            # Derniers paris de l'utilisateur
+            recent_bets = (
+                Bet.query.filter_by(user_id=user.id)
+                .order_by(Bet.id.desc())
+                .limit(10)
+                .all()
+            )
+
+    if next_race:
+        participants = Participant.query.filter_by(race_id=next_race.id).order_by(Participant.odds).all()
+        next_race_theme = get_course_theme(next_race.scheduled_at)
+        # Vérifier si un cochon du joueur participe
+        if user and pigs:
+            user_pig_ids = {pig.id for pig in pigs}
+            user_has_pig = any(p.pig_id and p.pig_id in user_pig_ids for p in participants)
+            headline_status = {'participates': user_has_pig}
+
+    # Prochaines courses (pas encore ouvertes aux paris)
+    upcoming_races = (
+        Race.query
+        .filter(Race.status.in_(['upcoming', 'open']), Race.id != (next_race.id if next_race else -1))
+        .order_by(Race.scheduled_at)
+        .limit(8)
+        .all()
+    )
+
+    return render_template(
+        'paris.html',
+        user=user,
+        next_race=next_race,
+        next_race_theme=next_race_theme,
+        participants=participants,
+        user_bets=user_bets,
+        recent_bets=recent_bets,
+        upcoming_races=upcoming_races,
+        bacon_tickets_remaining=bacon_tickets_remaining,
+        weekly_bacon_tickets=WEEKLY_BACON_TICKETS,
+        headline_status=headline_status,
+        bet_types=BET_TYPES,
+        min_bet_race=MIN_BET_RACE,
+        max_bet_race=MAX_BET_RACE,
+        now=datetime.now(),
+    )
+
+
 @race_bp.route('/courses/plan', methods=['POST'])
 @limiter.limit("10 per minute")
 def plan_course():
@@ -128,7 +198,7 @@ def place_bet():
     weekly_bet_count = get_user_weekly_bet_count(user, datetime.now())
     if weekly_bet_count >= WEEKLY_BACON_TICKETS:
         flash(f"Tu as deja utilise tes {WEEKLY_BACON_TICKETS} Tickets Bacon de la semaine.", "warning")
-        return redirect(url_for('main.index'))
+        return redirect(url_for('race.paris'))
 
     race_id = request.form.get('race_id', type=int)
     bet_type = normalize_bet_type(request.form.get('bet_type', 'win'))
@@ -136,54 +206,54 @@ def place_bet():
     amount = request.form.get('amount', type=float)
     if not all([race_id, amount]):
         flash("Ticket incomplet. Choisis ton pari et ta mise.", "warning")
-        return redirect(url_for('main.index'))
+        return redirect(url_for('race.paris'))
 
     race = apply_row_lock(Race.query.filter_by(id=race_id)).first()
     if not race or race.status != 'open':
         flash("Cette course n'accepte plus de paris.", "warning")
-        return redirect(url_for('main.index'))
+        return redirect(url_for('race.paris'))
 
     now = datetime.now()
     if (race.scheduled_at - now).total_seconds() < 30:
         flash("Les paris ferment 30 secondes avant le départ.", "warning")
-        return redirect(url_for('main.index'))
+        return redirect(url_for('race.paris'))
 
     participants = Participant.query.filter_by(race_id=race_id).all()
     participants_by_id = {participant.id: participant for participant in participants}
     expected_count = BET_TYPES[bet_type]['selection_count']
     if len(participants) < expected_count:
         flash("Pas assez de partants pour ce type de ticket.", "warning")
-        return redirect(url_for('main.index'))
+        return redirect(url_for('race.paris'))
 
     if len(selection_ids) != expected_count or len(set(selection_ids)) != expected_count:
         flash(f"Ce ticket demande {expected_count} cochon(s) distinct(s) dans l'ordre.", "warning")
-        return redirect(url_for('main.index'))
+        return redirect(url_for('race.paris'))
 
     selected_participants = [participants_by_id.get(selection_id) for selection_id in selection_ids]
     if any(participant is None for participant in selected_participants):
         flash("Sélection invalide pour cette course.", "error")
-        return redirect(url_for('main.index'))
+        return redirect(url_for('race.paris'))
 
     if not amount or amount < MIN_BET_RACE or amount > MAX_BET_RACE:
         flash(f"La mise doit etre entre {MIN_BET_RACE} et {MAX_BET_RACE} BitGroins.", "error")
-        return redirect(url_for('main.index'))
+        return redirect(url_for('race.paris'))
 
     if expected_count >= COMPLEX_BET_MIN_SELECTIONS:
         user_pig_ids = {pig.id for pig in get_user_active_pigs(user)}
         user_has_pig_in_race = any(p.pig_id and p.pig_id in user_pig_ids for p in participants)
         if not user_has_pig_in_race:
             flash("Les paris complexes (3+ cochons) necessitent que ton cochon participe a la course.", "warning")
-            return redirect(url_for('main.index'))
+            return redirect(url_for('race.paris'))
 
     existing = apply_row_lock(Bet.query.filter_by(user_id=user.id, race_id=race_id)).first()
     if existing:
         flash("Tu as déjà un ticket sur cette course.", "warning")
-        return redirect(url_for('main.index'))
+        return redirect(url_for('race.paris'))
 
     odds_at_bet = calculate_bet_odds(participants_by_id, selection_ids, bet_type)
     if odds_at_bet <= 0:
         flash("Impossible de calculer la cote de ce ticket.", "error")
-        return redirect(url_for('main.index'))
+        return redirect(url_for('race.paris'))
 
     bet_label = format_bet_label(selected_participants)
     bet = Bet(
@@ -206,13 +276,13 @@ def place_bet():
             reference_id=race_id,
         ):
             flash("Pas assez de BitGroins pour valider ce ticket.", "error")
-            return redirect(url_for('main.index'))
+            return redirect(url_for('race.paris'))
         db.session.add(bet)
         db.session.commit()
     except IntegrityError:
         db.session.rollback()
         flash("Tu as déjà un ticket sur cette course.", "warning")
-        return redirect(url_for('main.index'))
+        return redirect(url_for('race.paris'))
 
     flash(f"{BET_TYPES[bet_type]['icon']} Ticket {BET_TYPES[bet_type]['label'].lower()} validé sur {bet_label}.", "success")
-    return redirect(url_for('main.index'))
+    return redirect(url_for('race.paris'))

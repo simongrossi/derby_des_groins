@@ -160,8 +160,6 @@ def index():
         latest_race=latest_race,
         latest_race_participants=latest_race_participants,
         news_items=news_items[:3],
-        min_bet_race=MIN_BET_RACE,
-        max_bet_race=MAX_BET_RACE,
     )
 
 

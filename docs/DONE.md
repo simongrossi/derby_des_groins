@@ -109,3 +109,8 @@ Liste des fonctionnalités et idées déjà implémentées dans le projet.
 - **Double Monnaie** : Les objets peuvent s'acheter soit en BitGroins réguliers (Glands), soit avec des Truffes.
 - **Système de Fiabilité** : Chaque objet a un niveau de fiabilité permettant l'ajout d'objets surpuissants mais très risqués (ex: chez AliGoret).
 - **Le Bon Groin** (`/le-bon-groin`) : Une plateforme de petites annonces Player-to-Player (P2P) pour vendre ses objets d'inventaire dont on ne se sert plus.
+
+## UX et Navigation
+- **Page dédiée aux Paris** (`/paris`) : Séparation claire entre l'inscription de ses cochons (`/courses`) et la prise de tickets (paris), facilitant la vie des parieurs.
+- **Homepage allégée** : Le tableau géant de prise de paris a été remplacé par une mini-carte qui indique le statut de la prochaine course et redirige vers `/paris`.
+- **Navigation Menu** : Ajout du lien direct "💰 Paris" dans la barre principale, regroupement sémantique clair (Courses -> Paris -> Mon Cochon).

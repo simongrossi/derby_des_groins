@@ -218,16 +218,25 @@ def batch_pig_weekly_commitments(pig_ids, anchor_dt):
 
 
 def get_course_theme(slot_time):
-    weekday = slot_time.weekday()
-    if weekday == 0:
-        return {'emoji': '🌧️', 'name': 'Lundi de la Pataugeoire', 'tag': 'Boue + Force', 'description': "Boue lourde, appuis glissants et contacts rugueux : les cochons puissants y gagnent un vrai avantage.", 'accent': 'amber', 'focus_stat': 'force', 'focus_label': 'Force favorisee', 'reward_multiplier': 1, 'event_label': 'Theme quotidien', 'planning_hint': 'Ideal pour tes profils costauds qui aiment pousser dans la gadoue.'}
-    if weekday == 2:
-        return {'emoji': '🏃', 'name': 'Mercredi Marathon', 'tag': 'Longue distance', 'description': "Le rail s'etire, le tempo use les reserves et seuls les cochons endurants gardent leur allure jusqu'au bout.", 'accent': 'cyan', 'focus_stat': 'endurance', 'focus_label': 'Endurance favorisee', 'reward_multiplier': 1, 'event_label': 'Theme quotidien', 'planning_hint': 'A reserver a tes moteurs les plus constants pour securiser la semaine.'}
-    if weekday == 4:
-        return {'emoji': '🏆', 'name': 'Grand Prix du Vendredi', 'tag': 'Recompenses x3', 'description': "Le grand rendez-vous asynchrone de la semaine : plus de prestige, plus de pression et des primes d'elevage triplees.", 'accent': 'red', 'focus_stat': 'moral', 'focus_label': 'Prestige maximal', 'reward_multiplier': 3, 'event_label': 'Evenement majeur', 'planning_hint': 'Garde au moins un top cochon disponible pour ce pic de rentabilite.'}
-    if weekday in (1, 3):
-        return {'emoji': '🥓', 'name': 'Trot du Jambon', 'tag': 'Classique equilibre', 'description': "Le format le plus fiable pour remplir ton quota sans surprise majeure.", 'accent': 'pink', 'focus_stat': 'polyvalence', 'focus_label': 'Stats equilibrees', 'reward_multiplier': 1, 'event_label': 'Routine rentable', 'planning_hint': 'Parfait pour caser un cochon regulier entre deux gros rendez-vous.'}
-    return {'emoji': '🌿', 'name': 'Derby des Bauges Calmes', 'tag': 'Repos ou event', 'description': "Un creneau souple pour finir ton quota, tester des doublures ou garder du jus pour vendredi.", 'accent': 'emerald', 'focus_stat': 'rotation', 'focus_label': "Gestion d'effectif", 'reward_multiplier': 1, 'event_label': 'Souplesse', 'planning_hint': 'Utilise-le pour lisser la fatigue et terminer ta semaine en 5 minutes.'}
+    """Retourne le thème de course pour un créneau donné.
+
+    Charge depuis GameConfig clé 'race_themes' (JSON), avec fallback
+    sur les defaults hardcodés dans helpers/config.py.
+    """
+    import json
+    from helpers.config import get_config, DEFAULT_RACE_THEMES
+
+    weekday = str(slot_time.weekday())
+    raw = get_config('race_themes', '')
+    if raw:
+        try:
+            themes = json.loads(raw)
+            if weekday in themes:
+                # Fusionner avec le default pour garantir toutes les clés
+                return {**DEFAULT_RACE_THEMES.get(weekday, {}), **themes[weekday]}
+        except (json.JSONDecodeError, TypeError):
+            pass
+    return dict(DEFAULT_RACE_THEMES.get(weekday, DEFAULT_RACE_THEMES["5"]))
 
 
 def get_next_race_time():

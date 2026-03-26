@@ -15,6 +15,7 @@ from helpers import (
     get_all_cereals_dict, get_all_trainings_dict, get_all_school_lessons_dict,
     invalidate_game_data_cache,
 )
+from helpers.config import DEFAULT_RACE_THEMES
 from services.game_settings_service import get_game_settings
 
 admin_bp = Blueprint('admin', __name__)
@@ -145,6 +146,17 @@ def admin_races():
     upcoming_races = Race.query.filter(Race.status.in_(['upcoming', 'open'])).order_by(Race.scheduled_at).limit(20).all()
     recent_races = Race.query.filter_by(status='finished').order_by(Race.finished_at.desc()).limit(10).all()
 
+    # Thèmes : fusionner config DB avec defaults
+    raw_themes = get_config('race_themes', '')
+    try:
+        current_themes = json.loads(raw_themes) if raw_themes else {}
+    except (json.JSONDecodeError, TypeError):
+        current_themes = {}
+    merged_themes = {}
+    for d in range(7):
+        key = str(d)
+        merged_themes[key] = {**DEFAULT_RACE_THEMES.get(key, {}), **current_themes.get(key, {})}
+
     return render_template('admin_races.html',
         user=user, admin_tab='races',
         upcoming_races=upcoming_races, recent_races=recent_races,
@@ -159,6 +171,7 @@ def admin_races():
             'empty_race_mode': settings.empty_race_mode,
             'race_schedule': settings.race_schedule,
             'schedule_dict': settings.schedule_dict,
+            'race_themes': merged_themes,
         },
         jours=JOURS_FR)
 
@@ -191,6 +204,28 @@ def admin_save():
         schedule[str(i)] = sorted(valid_times)
 
     set_config('race_schedule', json.dumps(schedule))
+
+    # Thèmes de course par jour
+    themes = {}
+    for i in range(7):
+        try:
+            multiplier = max(1, int(request.form.get(f'theme_{i}_multiplier', '1') or '1'))
+        except (ValueError, TypeError):
+            multiplier = 1
+        themes[str(i)] = {
+            'emoji': request.form.get(f'theme_{i}_emoji', '🥓').strip(),
+            'name': request.form.get(f'theme_{i}_name', '').strip(),
+            'tag': request.form.get(f'theme_{i}_tag', '').strip(),
+            'description': request.form.get(f'theme_{i}_description', '').strip(),
+            'accent': request.form.get(f'theme_{i}_accent', 'pink').strip(),
+            'focus_stat': request.form.get(f'theme_{i}_focus_stat', '').strip(),
+            'focus_label': request.form.get(f'theme_{i}_focus_label', '').strip(),
+            'reward_multiplier': multiplier,
+            'event_label': request.form.get(f'theme_{i}_event_label', '').strip(),
+            'planning_hint': request.form.get(f'theme_{i}_planning_hint', '').strip(),
+        }
+    set_config('race_themes', json.dumps(themes, ensure_ascii=False))
+
     flash("Configuration sauvegardee !", "success")
     return redirect(url_for('admin.admin_races'))
 

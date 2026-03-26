@@ -76,6 +76,69 @@
                 </div>
             </div>
 
+            <h2 class="font-title text-xl text-white mb-3 mt-6">🎨 Themes par Jour</h2>
+            <p class="text-white/40 text-xs font-semibold mb-4">Personnalise le theme, le multiplicateur de recompenses et la stat favorisee pour chaque jour.</p>
+
+            <div class="space-y-2 mb-6">
+                {% for i in range(7) %}
+                {% set t = config.race_themes[i|string] %}
+                <details class="bg-white/5 border border-white/10 rounded-xl overflow-hidden">
+                    <summary class="px-4 py-3 cursor-pointer flex items-center gap-3 text-white hover:bg-white/5 transition-colors">
+                        <span class="text-lg">{{ t.emoji }}</span>
+                        <span class="font-bold text-sm">{{ jours[i] }}</span>
+                        <span class="text-white/40 text-xs">— {{ t.name }}</span>
+                        <span class="ml-auto text-xs font-bold {% if t.reward_multiplier > 1 %}text-yellow-400{% else %}text-white/30{% endif %}">x{{ t.reward_multiplier }}</span>
+                    </summary>
+                    <div class="px-4 pb-4 pt-2 grid grid-cols-2 sm:grid-cols-3 gap-3">
+                        <div>
+                            <label class="text-white/60 text-[10px] font-bold block mb-1">Emoji</label>
+                            <input type="text" name="theme_{{ i }}_emoji" value="{{ t.emoji }}" class="input-admin w-full text-xs">
+                        </div>
+                        <div class="col-span-2">
+                            <label class="text-white/60 text-[10px] font-bold block mb-1">Nom du theme</label>
+                            <input type="text" name="theme_{{ i }}_name" value="{{ t.name }}" class="input-admin w-full text-xs">
+                        </div>
+                        <div>
+                            <label class="text-white/60 text-[10px] font-bold block mb-1">Tag court</label>
+                            <input type="text" name="theme_{{ i }}_tag" value="{{ t.tag }}" class="input-admin w-full text-xs">
+                        </div>
+                        <div>
+                            <label class="text-white/60 text-[10px] font-bold block mb-1">Multiplicateur</label>
+                            <input type="number" name="theme_{{ i }}_multiplier" value="{{ t.reward_multiplier }}" min="1" max="10" class="input-admin w-full text-xs">
+                        </div>
+                        <div>
+                            <label class="text-white/60 text-[10px] font-bold block mb-1">Couleur accent</label>
+                            <select name="theme_{{ i }}_accent" class="input-admin w-full text-xs">
+                                {% for c in ['amber','cyan','red','pink','emerald','indigo','yellow','purple'] %}
+                                <option value="{{ c }}" {% if t.accent == c %}selected{% endif %}>{{ c }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div>
+                            <label class="text-white/60 text-[10px] font-bold block mb-1">Stat favorisee</label>
+                            <input type="text" name="theme_{{ i }}_focus_stat" value="{{ t.focus_stat }}" class="input-admin w-full text-xs">
+                        </div>
+                        <div>
+                            <label class="text-white/60 text-[10px] font-bold block mb-1">Label stat</label>
+                            <input type="text" name="theme_{{ i }}_focus_label" value="{{ t.focus_label }}" class="input-admin w-full text-xs">
+                        </div>
+                        <div>
+                            <label class="text-white/60 text-[10px] font-bold block mb-1">Label evenement</label>
+                            <input type="text" name="theme_{{ i }}_event_label" value="{{ t.event_label }}" class="input-admin w-full text-xs">
+                        </div>
+                        <div class="col-span-2 sm:col-span-3">
+                            <label class="text-white/60 text-[10px] font-bold block mb-1">Description</label>
+                            <textarea name="theme_{{ i }}_description" rows="2" class="input-admin w-full text-xs">{{ t.description }}</textarea>
+                        </div>
+                        <div class="col-span-2 sm:col-span-3">
+                            <label class="text-white/60 text-[10px] font-bold block mb-1">Conseil planning</label>
+                            <input type="text" name="theme_{{ i }}_planning_hint" value="{{ t.planning_hint }}" class="input-admin w-full text-xs">
+                        </div>
+                    </div>
+                </details>
+                {% endfor %}
+            </div>
+
             <button type="submit" class="btn-admin w-full mt-4">💾 Sauvegarder</button>
         </form>
     </div>
