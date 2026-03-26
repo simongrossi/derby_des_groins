@@ -91,6 +91,7 @@
         <div class="accuracy" id="error-display">Erreurs: 0</div>
 
         <form id="complete-form" action="{{ url_for('pig.typing_complete') }}" method="POST" style="display: none;">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <input type="hidden" name="pig_id" value="{{ pig.id }}">
             <input type="hidden" name="time_taken" id="form-time">
             <input type="hidden" name="errors" id="form-errors">

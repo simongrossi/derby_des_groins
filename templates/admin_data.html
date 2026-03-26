@@ -79,12 +79,14 @@
             </div>
             <div class="flex items-center gap-2 shrink-0">
                 <form method="POST" action="{{ url_for('admin.admin_cereal_toggle', item_id=c.id) }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <button type="submit" class="btn-sm {{ 'btn-toggle-on' if c.is_active else 'btn-toggle-off' }}" style="border:none;color:white;font-weight:800;cursor:pointer;">
                         {{ '✅ Actif' if c.is_active else '⏸️ Inactif' }}
                     </button>
                 </form>
                 <a href="{{ url_for('admin.admin_cereal_edit', item_id=c.id) }}" class="btn-admin btn-sm">Modifier</a>
                 <form method="POST" action="{{ url_for('admin.admin_cereal_delete', item_id=c.id) }}" onsubmit="return confirm('Supprimer {{ c.name }} ?');">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <button type="submit" class="btn-danger btn-sm">🗑️</button>
                 </form>
             </div>
@@ -129,12 +131,14 @@
             </div>
             <div class="flex items-center gap-2 shrink-0">
                 <form method="POST" action="{{ url_for('admin.admin_training_toggle', item_id=t.id) }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <button type="submit" class="btn-sm {{ 'btn-toggle-on' if t.is_active else 'btn-toggle-off' }}" style="border:none;color:white;font-weight:800;cursor:pointer;">
                         {{ '✅ Actif' if t.is_active else '⏸️ Inactif' }}
                     </button>
                 </form>
                 <a href="{{ url_for('admin.admin_training_edit', item_id=t.id) }}" class="btn-admin btn-sm">Modifier</a>
                 <form method="POST" action="{{ url_for('admin.admin_training_delete', item_id=t.id) }}" onsubmit="return confirm('Supprimer {{ t.name }} ?');">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <button type="submit" class="btn-danger btn-sm">🗑️</button>
                 </form>
             </div>
@@ -179,12 +183,14 @@
             </div>
             <div class="flex items-center gap-2 shrink-0">
                 <form method="POST" action="{{ url_for('admin.admin_lesson_toggle', item_id=l.id) }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <button type="submit" class="btn-sm {{ 'btn-toggle-on' if l.is_active else 'btn-toggle-off' }}" style="border:none;color:white;font-weight:800;cursor:pointer;">
                         {{ '✅ Actif' if l.is_active else '⏸️ Inactif' }}
                     </button>
                 </form>
                 <a href="{{ url_for('admin.admin_lesson_edit', item_id=l.id) }}" class="btn-admin btn-sm">Modifier</a>
                 <form method="POST" action="{{ url_for('admin.admin_lesson_delete', item_id=l.id) }}" onsubmit="return confirm('Supprimer {{ l.name }} ?');">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <button type="submit" class="btn-danger btn-sm">🗑️</button>
                 </form>
             </div>

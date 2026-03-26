@@ -7,3 +7,4 @@ Flask-Session==0.8.0
 Flask-Limiter==4.1.1
 gunicorn==22.0.0
 psycopg2-binary==2.9.9
+Flask-WTF==1.2.1

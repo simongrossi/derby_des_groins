@@ -48,6 +48,7 @@
     <!-- Formulaire d'edition -->
     <div class="upload-zone p-5 flex-1">
         <form method="POST" action="{{ url_for('admin.admin_avatar_edit', avatar_id=avatar.id) }}" enctype="multipart/form-data">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div class="mb-4">
                 <label class="text-[10px] text-white/40 font-bold block mb-1">Nom</label>
                 <input type="text" name="name" value="{{ avatar.name }}" class="input-admin w-full max-w-xs">

@@ -30,6 +30,7 @@
     </div>
 
     <form method="POST" action="{{ url_for('admin.admin_cereal_save') if item_type == 'cereal' else url_for('admin.admin_training_save') if item_type == 'training' else url_for('admin.admin_lesson_save') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         {% if mode == 'edit' and item %}
         <input type="hidden" name="item_id" value="{{ item.id }}">
         {% endif %}

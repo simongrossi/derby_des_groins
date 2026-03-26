@@ -111,6 +111,7 @@
             </div>
             <p class="mt-2 text-sm text-white/70">Mise : {{ '%.0f'|format(game.bet) }} 🪙 · {% if game.winnings %}Retour : {{ '%.0f'|format(game.winnings) }} 🪙{% else %}Aucun gain{% endif %}</p>
             <form method="post" action="{{ url_for('blackjack.blackjack_new') }}" class="mt-4">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
               <button class="rounded-2xl bg-gradient-to-r from-pink-500 to-orange-400 px-5 py-3 text-sm font-black text-white shadow-lg shadow-pink-950/30 transition hover:-translate-y-0.5">Nouvelle donne</button>
             </form>
           </section>
@@ -123,6 +124,7 @@
             <h3 class="text-lg font-black">Nouvelle donne</h3>
             <p class="mt-2 text-sm text-white/65">Mise minimum {{ min_bet }} 🪙 · maximum {{ max_bet }} 🪙.</p>
             <form method="post" action="{{ url_for('blackjack.blackjack_deal') }}" class="mt-5 space-y-4">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
               <label class="block">
                 <span class="mb-2 block text-sm font-semibold text-white/80">Mise</span>
                 <input name="bet" type="number" min="{{ min_bet }}" max="{{ max_bet }}" step="1" value="{{ min_bet }}" class="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-white outline-none ring-0">
@@ -145,10 +147,19 @@
             <h3 class="text-lg font-black">Décision</h3>
             <p class="mt-2 text-sm text-white/65">Mise en cours : {{ '%.0f'|format(game.bet) }} 🪙 · Sabot : {{ game.deck|length }} cartes restantes.</p>
             <div class="mt-5 grid gap-3">
-              <form method="post" action="{{ url_for('blackjack.blackjack_hit') }}"><button class="w-full rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-sm font-black text-white transition hover:bg-white/15">Tirer</button></form>
-              <form method="post" action="{{ url_for('blackjack.blackjack_stand') }}"><button class="w-full rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-sm font-black text-white transition hover:bg-white/15">Rester</button></form>
+              <form method="post" action="{{ url_for('blackjack.blackjack_hit') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button class="w-full rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-sm font-black text-white transition hover:bg-white/15">Tirer</button>
+              </form>
+              <form method="post" action="{{ url_for('blackjack.blackjack_stand') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button class="w-full rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-sm font-black text-white transition hover:bg-white/15">Rester</button>
+              </form>
               {% if game.player_hand|length == 2 and user.balance >= game.bet %}
-                <form method="post" action="{{ url_for('blackjack.blackjack_double') }}"><button class="w-full rounded-2xl border border-yellow-300/20 bg-yellow-300/10 px-4 py-3 text-sm font-black text-yellow-100 transition hover:bg-yellow-300/15">Doubler ({{ '%.0f'|format(game.bet) }} 🪙)</button></form>
+                <form method="post" action="{{ url_for('blackjack.blackjack_double') }}">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                  <button class="w-full rounded-2xl border border-yellow-300/20 bg-yellow-300/10 px-4 py-3 text-sm font-black text-yellow-100 transition hover:bg-yellow-300/15">Doubler ({{ '%.0f'|format(game.bet) }} 🪙)</button>
+                </form>
               {% endif %}
             </div>
           </section>

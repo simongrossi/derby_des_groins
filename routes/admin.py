@@ -16,6 +16,7 @@ from helpers import (
     invalidate_game_data_cache,
 )
 from helpers.config import DEFAULT_RACE_THEMES
+from helpers.auth import admin_required
 from services.game_settings_service import get_game_settings
 
 admin_bp = Blueprint('admin', __name__)
@@ -37,15 +38,7 @@ def _invalidate_game_data_on_write(response):
 # Helpers
 # ══════════════════════════════════════════════════════════════════════════════
 
-def _require_admin():
-    """Verifie que l'utilisateur est admin. Retourne (user, redirect)."""
-    if 'user_id' not in session:
-        return None, redirect(url_for('auth.login', next=request.path))
-    user = User.query.get(session['user_id'])
-    if not user or not user.is_admin:
-        flash("Acces reserve aux administrateurs.", "error")
-        return None, redirect(url_for('main.index'))
-    return user, None
+
 
 
 def _get_smtp_config():
@@ -105,17 +98,15 @@ def _send_email(to_addr, subject, body_html):
 # ══════════════════════════════════════════════════════════════════════════════
 
 @admin_bp.route('/admin')
-def admin():
+@admin_required
+def admin(user):
     """Redirige vers le dashboard."""
     return redirect(url_for('admin.admin_dashboard'))
 
 
 @admin_bp.route('/admin/dashboard')
-def admin_dashboard():
-    user, redir = _require_admin()
-    if redir:
-        return redir
-
+@admin_required
+def admin_dashboard(user):
     stats = {
         'total_users': User.query.count(),
         'alive_pigs': Pig.query.filter_by(is_alive=True).count(),
@@ -137,11 +128,8 @@ def admin_dashboard():
 # ══════════════════════════════════════════════════════════════════════════════
 
 @admin_bp.route('/admin/races')
-def admin_races():
-    user, redir = _require_admin()
-    if redir:
-        return redir
-
+@admin_required
+def admin_races(user):
     settings = get_game_settings()
     upcoming_races = Race.query.filter(Race.status.in_(['upcoming', 'open'])).order_by(Race.scheduled_at).limit(20).all()
     recent_races = Race.query.filter_by(status='finished').order_by(Race.finished_at.desc()).limit(10).all()
@@ -177,11 +165,8 @@ def admin_races():
 
 
 @admin_bp.route('/admin/save', methods=['POST'])
-def admin_save():
-    user, redir = _require_admin()
-    if redir:
-        return redir
-
+@admin_required
+def admin_save(user):
     keys = [
         'race_hour', 'race_minute', 'market_hour',
         'market_minute', 'market_duration', 'min_real_participants', 'empty_race_mode'
@@ -231,11 +216,8 @@ def admin_save():
 
 
 @admin_bp.route('/admin/force-race', methods=['POST'])
-def admin_force_race():
-    user, redir = _require_admin()
-    if redir:
-        return redir
-
+@admin_required
+def admin_force_race(user):
     race = Race(scheduled_at=datetime.now(), status='open')
     db.session.add(race)
     db.session.flush()
@@ -246,11 +228,8 @@ def admin_force_race():
 
 
 @admin_bp.route('/admin/races/<int:race_id>/cancel', methods=['POST'])
-def admin_cancel_race(race_id):
-    user, redir = _require_admin()
-    if redir:
-        return redir
-
+@admin_required
+def admin_cancel_race(user, race_id):
     race = Race.query.get_or_404(race_id)
     if race.status == 'finished':
         flash("Impossible d'annuler une course terminee.", "error")
@@ -276,21 +255,15 @@ def admin_cancel_race(race_id):
 # ══════════════════════════════════════════════════════════════════════════════
 
 @admin_bp.route('/admin/pigs')
-def admin_pigs():
-    user, redir = _require_admin()
-    if redir:
-        return redir
-
+@admin_required
+def admin_pigs(user):
     pigs = Pig.query.order_by(Pig.is_alive.desc(), Pig.name.asc()).all()
     return render_template('admin_pigs.html', user=user, admin_tab='pigs', pigs=pigs)
 
 
 @admin_bp.route('/admin/pigs/<int:pig_id>/toggle-life', methods=['POST'])
-def admin_toggle_pig_life(pig_id):
-    user, redir = _require_admin()
-    if redir:
-        return redir
-
+@admin_required
+def admin_toggle_pig_life(user, pig_id):
     pig = Pig.query.get_or_404(pig_id)
     pig.is_alive = not pig.is_alive
     if pig.is_alive:
@@ -308,11 +281,8 @@ def admin_toggle_pig_life(pig_id):
 
 
 @admin_bp.route('/admin/pigs/<int:pig_id>/heal', methods=['POST'])
-def admin_heal_pig(pig_id):
-    user, redir = _require_admin()
-    if redir:
-        return redir
-
+@admin_required
+def admin_heal_pig(user, pig_id):
     pig = Pig.query.get_or_404(pig_id)
     if pig.is_injured:
         pig.heal()
@@ -328,19 +298,14 @@ def admin_heal_pig(pig_id):
 # ══════════════════════════════════════════════════════════════════════════════
 
 @admin_bp.route('/admin/events')
-def admin_events():
-    user, redir = _require_admin()
-    if redir:
-        return redir
+@admin_required
+def admin_events(user):
     return render_template('admin_events.html', user=user, admin_tab='events')
 
 
 @admin_bp.route('/admin/events/trigger', methods=['POST'])
-def admin_trigger_event():
-    user, redir = _require_admin()
-    if redir:
-        return redir
-
+@admin_required
+def admin_trigger_event(user):
     event_type = request.form.get('event_type')
     if event_type == 'food_drop':
         all_pigs = Pig.query.filter_by(is_alive=True).all()
@@ -373,11 +338,8 @@ def admin_trigger_event():
 # ══════════════════════════════════════════════════════════════════════════════
 
 @admin_bp.route('/admin/users')
-def admin_users():
-    user, redir = _require_admin()
-    if redir:
-        return redir
-
+@admin_required
+def admin_users(user):
     users = User.query.order_by(User.username.asc()).all()
     magic_links = session.pop('_admin_magic_links', None)
     return render_template('admin_users.html',
@@ -385,11 +347,8 @@ def admin_users():
 
 
 @admin_bp.route('/admin/users/<int:user_id>/toggle-admin', methods=['POST'])
-def admin_toggle_user_admin(user_id):
-    user, redir = _require_admin()
-    if redir:
-        return redir
-
+@admin_required
+def admin_toggle_user_admin(user, user_id):
     target = User.query.get_or_404(user_id)
     if target.id == user.id:
         flash("Tu ne peux pas modifier tes propres droits admin.", "error")
@@ -403,11 +362,8 @@ def admin_toggle_user_admin(user_id):
 
 
 @admin_bp.route('/admin/users/reset-password', methods=['POST'])
-def admin_reset_password():
-    user, redir = _require_admin()
-    if redir:
-        return redir
-
+@admin_required
+def admin_reset_password(user):
     user_id = request.form.get('user_id', type=int)
     new_password = request.form.get('new_password', '').strip()
 
@@ -423,11 +379,8 @@ def admin_reset_password():
 
 
 @admin_bp.route('/admin/users/<int:user_id>/magic-link', methods=['POST'])
-def admin_magic_link(user_id):
-    user, redir = _require_admin()
-    if redir:
-        return redir
-
+@admin_required
+def admin_magic_link(user, user_id):
     target = User.query.get_or_404(user_id)
 
     # Generate a secure token
@@ -476,11 +429,8 @@ def admin_magic_link(user_id):
 
 
 @admin_bp.route('/admin/users/adjust-balance', methods=['POST'])
-def admin_adjust_balance():
-    user, redir = _require_admin()
-    if redir:
-        return redir
-
+@admin_required
+def admin_adjust_balance(user):
     user_id = request.form.get('user_id', type=int)
     amount = request.form.get('amount', type=float)
     reason = request.form.get('reason', 'Ajustement admin').strip()
@@ -509,22 +459,16 @@ def admin_adjust_balance():
 # ══════════════════════════════════════════════════════════════════════════════
 
 @admin_bp.route('/admin/notifications')
-def admin_notifications():
-    user, redir = _require_admin()
-    if redir:
-        return redir
-
+@admin_required
+def admin_notifications(user):
     smtp = _get_smtp_config()
     return render_template('admin_notifications.html',
         user=user, admin_tab='notifications', smtp=smtp)
 
 
 @admin_bp.route('/admin/notifications/save', methods=['POST'])
-def admin_save_smtp():
-    user, redir = _require_admin()
-    if redir:
-        return redir
-
+@admin_required
+def admin_save_smtp(user):
     smtp_keys = {
         'smtp_host': request.form.get('smtp_host', '').strip(),
         'smtp_port': request.form.get('smtp_port', '587').strip(),
@@ -548,11 +492,8 @@ def admin_save_smtp():
 
 
 @admin_bp.route('/admin/notifications/test', methods=['POST'])
-def admin_test_smtp():
-    user, redir = _require_admin()
-    if redir:
-        return redir
-
+@admin_required
+def admin_test_smtp(user):
     to_addr = request.form.get('test_email', '').strip()
     if not to_addr:
         flash("Adresse email requise.", "error")
@@ -577,10 +518,8 @@ def admin_test_smtp():
 # ══════════════════════════════════════════════════════════════════════════════
 
 @admin_bp.route('/admin/data')
-def admin_data():
-    user, redir = _require_admin()
-    if redir:
-        return redir
+@admin_required
+def admin_data(user):
     cereals = CerealItem.query.order_by(CerealItem.sort_order, CerealItem.id).all()
     trainings = TrainingItem.query.order_by(TrainingItem.sort_order, TrainingItem.id).all()
     lessons = SchoolLessonItem.query.order_by(SchoolLessonItem.sort_order, SchoolLessonItem.id).all()
@@ -592,29 +531,23 @@ def admin_data():
 # ── Cereales ──────────────────────────────────────────────────────────────────
 
 @admin_bp.route('/admin/data/cereal/<int:item_id>', methods=['GET'])
-def admin_cereal_edit(item_id):
-    user, redir = _require_admin()
-    if redir:
-        return redir
+@admin_required
+def admin_cereal_edit(user, item_id):
     item = CerealItem.query.get_or_404(item_id)
     return render_template('admin_data_form.html',
         user=user, admin_tab='data', mode='edit', item_type='cereal', item=item, stat_names=STAT_NAMES)
 
 
 @admin_bp.route('/admin/data/cereal/new', methods=['GET'])
-def admin_cereal_new():
-    user, redir = _require_admin()
-    if redir:
-        return redir
+@admin_required
+def admin_cereal_new(user):
     return render_template('admin_data_form.html',
         user=user, admin_tab='data', mode='new', item_type='cereal', item=None, stat_names=STAT_NAMES)
 
 
 @admin_bp.route('/admin/data/cereal/save', methods=['POST'])
-def admin_cereal_save():
-    user, redir = _require_admin()
-    if redir:
-        return redir
+@admin_required
+def admin_cereal_save(user):
     item_id = request.form.get('item_id', type=int)
     if item_id:
         item = CerealItem.query.get_or_404(item_id)
@@ -646,10 +579,8 @@ def admin_cereal_save():
 
 
 @admin_bp.route('/admin/data/cereal/<int:item_id>/delete', methods=['POST'])
-def admin_cereal_delete(item_id):
-    user, redir = _require_admin()
-    if redir:
-        return redir
+@admin_required
+def admin_cereal_delete(user, item_id):
     item = CerealItem.query.get_or_404(item_id)
     name = item.name
     db.session.delete(item)
@@ -659,10 +590,8 @@ def admin_cereal_delete(item_id):
 
 
 @admin_bp.route('/admin/data/cereal/<int:item_id>/toggle', methods=['POST'])
-def admin_cereal_toggle(item_id):
-    user, redir = _require_admin()
-    if redir:
-        return redir
+@admin_required
+def admin_cereal_toggle(user, item_id):
     item = CerealItem.query.get_or_404(item_id)
     item.is_active = not item.is_active
     db.session.commit()
@@ -674,29 +603,23 @@ def admin_cereal_toggle(item_id):
 # ── Entrainements ─────────────────────────────────────────────────────────────
 
 @admin_bp.route('/admin/data/training/<int:item_id>', methods=['GET'])
-def admin_training_edit(item_id):
-    user, redir = _require_admin()
-    if redir:
-        return redir
+@admin_required
+def admin_training_edit(user, item_id):
     item = TrainingItem.query.get_or_404(item_id)
     return render_template('admin_data_form.html',
         user=user, admin_tab='data', mode='edit', item_type='training', item=item, stat_names=STAT_NAMES)
 
 
 @admin_bp.route('/admin/data/training/new', methods=['GET'])
-def admin_training_new():
-    user, redir = _require_admin()
-    if redir:
-        return redir
+@admin_required
+def admin_training_new(user):
     return render_template('admin_data_form.html',
         user=user, admin_tab='data', mode='new', item_type='training', item=None, stat_names=STAT_NAMES)
 
 
 @admin_bp.route('/admin/data/training/save', methods=['POST'])
-def admin_training_save():
-    user, redir = _require_admin()
-    if redir:
-        return redir
+@admin_required
+def admin_training_save(user):
     item_id = request.form.get('item_id', type=int)
     if item_id:
         item = TrainingItem.query.get_or_404(item_id)
@@ -728,10 +651,8 @@ def admin_training_save():
 
 
 @admin_bp.route('/admin/data/training/<int:item_id>/delete', methods=['POST'])
-def admin_training_delete(item_id):
-    user, redir = _require_admin()
-    if redir:
-        return redir
+@admin_required
+def admin_training_delete(user, item_id):
     item = TrainingItem.query.get_or_404(item_id)
     name = item.name
     db.session.delete(item)
@@ -741,10 +662,8 @@ def admin_training_delete(item_id):
 
 
 @admin_bp.route('/admin/data/training/<int:item_id>/toggle', methods=['POST'])
-def admin_training_toggle(item_id):
-    user, redir = _require_admin()
-    if redir:
-        return redir
+@admin_required
+def admin_training_toggle(user, item_id):
     item = TrainingItem.query.get_or_404(item_id)
     item.is_active = not item.is_active
     db.session.commit()
@@ -756,29 +675,23 @@ def admin_training_toggle(item_id):
 # ── Lecons d'ecole ────────────────────────────────────────────────────────────
 
 @admin_bp.route('/admin/data/lesson/<int:item_id>', methods=['GET'])
-def admin_lesson_edit(item_id):
-    user, redir = _require_admin()
-    if redir:
-        return redir
+@admin_required
+def admin_lesson_edit(user, item_id):
     item = SchoolLessonItem.query.get_or_404(item_id)
     return render_template('admin_data_form.html',
         user=user, admin_tab='data', mode='edit', item_type='lesson', item=item, stat_names=STAT_NAMES)
 
 
 @admin_bp.route('/admin/data/lesson/new', methods=['GET'])
-def admin_lesson_new():
-    user, redir = _require_admin()
-    if redir:
-        return redir
+@admin_required
+def admin_lesson_new(user):
     return render_template('admin_data_form.html',
         user=user, admin_tab='data', mode='new', item_type='lesson', item=None, stat_names=STAT_NAMES)
 
 
 @admin_bp.route('/admin/data/lesson/save', methods=['POST'])
-def admin_lesson_save():
-    user, redir = _require_admin()
-    if redir:
-        return redir
+@admin_required
+def admin_lesson_save(user):
     item_id = request.form.get('item_id', type=int)
     if item_id:
         item = SchoolLessonItem.query.get_or_404(item_id)
@@ -860,20 +773,15 @@ MAX_AVATAR_SIZE = 256 * 1024  # 256 Ko
 
 
 @admin_bp.route('/admin/avatars')
-def admin_avatars():
-    user, redir = _require_admin()
-    if redir:
-        return redir
+@admin_required
+def admin_avatars(user):
     avatars = PigAvatar.query.order_by(PigAvatar.name).all()
-    return render_template('admin_avatars.html', admin_tab='avatars', avatars=avatars)
+    return render_template('admin_avatars.html', user=user, admin_tab='avatars', avatars=avatars)
 
 
 @admin_bp.route('/admin/avatars/upload', methods=['POST'])
-def admin_avatar_upload():
-    user, redir = _require_admin()
-    if redir:
-        return redir
-
+@admin_required
+def admin_avatar_upload(user):
     name = request.form.get('name', '').strip()
     if not name:
         flash("Nom d'avatar requis.", "error")
@@ -925,10 +833,8 @@ def admin_avatar_upload():
 
 
 @admin_bp.route('/admin/avatars/<int:avatar_id>/edit', methods=['GET', 'POST'])
-def admin_avatar_edit(avatar_id):
-    user, redir = _require_admin()
-    if redir:
-        return redir
+@admin_required
+def admin_avatar_edit(user, avatar_id):
     avatar = PigAvatar.query.get_or_404(avatar_id)
 
     if request.method == 'GET':
@@ -985,10 +891,8 @@ def admin_avatar_edit(avatar_id):
 
 
 @admin_bp.route('/admin/avatars/<int:avatar_id>/delete', methods=['POST'])
-def admin_avatar_delete(avatar_id):
-    user, redir = _require_admin()
-    if redir:
-        return redir
+@admin_required
+def admin_avatar_delete(user, avatar_id):
     avatar = PigAvatar.query.get_or_404(avatar_id)
     Pig.query.filter_by(avatar_id=avatar.id).update({'avatar_id': None})
     filepath = os.path.join(AVATAR_DIR, avatar.filename)

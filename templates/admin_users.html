@@ -47,6 +47,7 @@
             <div class="flex flex-wrap gap-2">
                 <!-- Toggle Admin -->
                 <form method="POST" action="{{ url_for('admin.admin_toggle_user_admin', user_id=u.id) }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     {% if u.id != user.id %}
                     <button type="submit" class="{{ 'btn-warning' if u.is_admin else 'btn-admin' }} text-xs px-3 py-2"
                             onclick="return confirm('{{ 'Retirer les droits admin ?' if u.is_admin else 'Donner les droits admin ?' }}');">
@@ -64,6 +65,7 @@
 
                 <!-- Magic Link -->
                 <form method="POST" action="{{ url_for('admin.admin_magic_link', user_id=u.id) }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <button type="submit" class="btn-success text-xs px-3 py-2">
                         🔗 Lien magique
                     </button>
@@ -99,6 +101,7 @@
         <h3 class="font-title text-xl text-white mb-4">🔑 Changer le mot de passe</h3>
         <p class="text-white/50 text-sm font-semibold mb-4">Joueur : <span id="pw-username" class="text-white"></span></p>
         <form method="POST" action="{{ url_for('admin.admin_reset_password') }}" id="pw-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <input type="hidden" name="user_id" id="pw-user-id">
             <div class="mb-4">
                 <label class="text-white/60 text-xs font-bold block mb-1">Nouveau mot de passe</label>
@@ -120,6 +123,7 @@
         <p class="text-white/50 text-sm font-semibold mb-2">Joueur : <span id="bal-username" class="text-white"></span></p>
         <p class="text-yellow-400 text-sm font-bold mb-4">Solde actuel : <span id="bal-current"></span> 🪙</p>
         <form method="POST" action="{{ url_for('admin.admin_adjust_balance') }}" id="bal-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <input type="hidden" name="user_id" id="bal-user-id">
             <div class="mb-3">
                 <label class="text-white/60 text-xs font-bold block mb-1">Montant (positif = crediter, negatif = debiter)</label>

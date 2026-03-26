@@ -463,7 +463,10 @@ async function winGame() {
     spawnConfetti();
     const response = await fetch('/api/vet/solve', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+            'Content-Type': 'application/json',
+            'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+        },
         body: JSON.stringify({ pig_id: PIG_ID })
     });
     const data = await response.json();
@@ -477,7 +480,10 @@ async function loseGame() {
     clearInterval(timerInterval);
     await fetch('/api/vet/timeout', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+            'Content-Type': 'application/json',
+            'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+        },
         body: JSON.stringify({ pig_id: PIG_ID })
     });
     document.getElementById('dead-msg').textContent = "{{ pig.name }} n'a pas survécu à l'opération.";

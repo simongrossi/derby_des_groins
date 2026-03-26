@@ -227,6 +227,7 @@
                         </div>
                     </div>
                     <form method="POST" action="/sell-pig" class="flex gap-3 justify-end items-end w-full md:w-auto">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <input type="hidden" name="pig_id" value="{{ pig.id }}">
                         <div class="w-24">
                             <label class="text-white/60 text-[10px] font-bold block mb-1">Prix départ</label>
@@ -372,6 +373,7 @@
                         <td class="p-3 text-center w-32">
                             {% if user and market_access %}
                                 <form method="POST" action="/bid" class="flex flex-col gap-1 items-stretch">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                     <input type="hidden" name="auction_id" value="{{ auction.id }}">
                                     <input type="number" name="bid_amount"
                                         min="{{ (auction.current_bid + 5) if auction.current_bid > 0 else auction.starting_price }}"

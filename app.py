@@ -72,6 +72,9 @@ def create_app():
 
     db.init_app(app)
     limiter.init_app(app)
+    from flask_wtf.csrf import CSRFProtect
+    csrf = CSRFProtect(app)
+
     global _session_interface
     if _session_interface is None:
         _server_session.init_app(app)
@@ -93,6 +96,15 @@ def create_app():
         if request.path.startswith('/api/'):
             return _jsonify({'error': 'Trop de requetes, ralentis un peu !'}), 429
         return _rt('429.html'), 429
+
+    @app.errorhandler(404)
+    def not_found_error(e):
+        return _rt('404.html'), 404
+
+    @app.errorhandler(500)
+    def internal_error(e):
+        db.session.rollback()
+        return _rt('500.html'), 500
 
     # ── Logging structure ───────────────────────────────────────────────
     @app.after_request
@@ -297,7 +309,7 @@ def ensure_admin_user():
         if admin is None:
             admin = User(
                 username='admin',
-                password_hash=generate_password_hash('admin'),
+                password_hash=generate_password_hash(os.environ.get('ADMIN_PASSWORD', 'admin')),
                 balance=100.0,
                 is_admin=True,
             )
@@ -322,7 +334,7 @@ def seed_users():
         {'username': 'Julien',     'pig_name': 'Flash McGroin',      'emoji': '🐖', 'origin': 'Japon'},
         {'username': 'Christophe', 'pig_name': 'Père Cochon',        'emoji': '🏆', 'origin': 'France', 'admin': True},
         # admin est géré séparément par ensure_admin_user()
-        {'username': 'admin', 'pig_name': 'Grand Admin', 'emoji': '👑', 'origin': 'France', 'admin': True, 'password': 'admin'},
+        {'username': 'admin', 'pig_name': 'Grand Admin', 'emoji': '👑', 'origin': 'France', 'admin': True, 'password': os.environ.get('ADMIN_PASSWORD', 'admin')},
     ]
     for u in default_users:
         existing = User.query.filter_by(username=u['username']).first()

@@ -78,6 +78,7 @@
     <h2 class="font-title text-xl text-white mb-4">⚡ Actions rapides</h2>
     <div class="flex flex-wrap gap-3">
         <form method="POST" action="{{ url_for('admin.admin_force_race') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <button type="submit" class="btn-danger" onclick="return confirm('Lancer une course immediatement ?');">
                 🏁 Forcer une course
             </button>

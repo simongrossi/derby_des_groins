@@ -43,6 +43,7 @@
 
     <!-- Upload fichier -->
     <form method="POST" action="{{ url_for('admin.admin_avatar_upload') }}" enctype="multipart/form-data" id="form-file">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <div class="flex flex-wrap gap-3 items-end">
             <div class="flex-1 min-w-[150px]">
                 <label class="text-[10px] text-white/40 font-bold block mb-1">Nom</label>
@@ -59,6 +60,7 @@
 
     <!-- Code SVG -->
     <form method="POST" action="{{ url_for('admin.admin_avatar_upload') }}" id="form-code" class="hidden">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <div class="flex flex-col gap-3">
             <div>
                 <label class="text-[10px] text-white/40 font-bold block mb-1">Nom</label>
@@ -101,6 +103,7 @@
             <a href="{{ url_for('admin.admin_avatar_edit', avatar_id=av.id) }}"
                class="text-violet-400/50 hover:text-violet-400 text-[10px] font-bold transition-colors">Editer</a>
             <form method="POST" action="{{ url_for('admin.admin_avatar_delete', avatar_id=av.id) }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <button type="submit" class="text-red-400/40 hover:text-red-400 text-[10px] font-bold transition-colors"
                         onclick="return confirm('Supprimer cet avatar ?')">
                     Supprimer

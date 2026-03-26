@@ -10,6 +10,7 @@
     <div class="card p-6">
         <h2 class="font-title text-xl text-white mb-4">🔧 Parametres SMTP</h2>
         <form method="POST" action="{{ url_for('admin.admin_save_smtp') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div class="space-y-4">
                 <div>
                     <label class="text-white/60 text-xs font-bold block mb-1">Serveur SMTP</label>
@@ -101,6 +102,7 @@
         <div class="card p-6">
             <h2 class="font-title text-xl text-white mb-4">🧪 Envoyer un email de test</h2>
             <form method="POST" action="{{ url_for('admin.admin_test_smtp') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div class="mb-4">
                     <label class="text-white/60 text-xs font-bold block mb-1">Adresse destinataire</label>
                     <input type="email" name="test_email" required

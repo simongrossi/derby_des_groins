@@ -182,6 +182,7 @@
                 </div>
                 {% else %}
                 <form method="POST" action="/bet" id="bet-form" class="mt-5">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <input type="hidden" name="race_id" value="{{ next_race.id }}">
                     <input type="hidden" name="bet_type" id="bet-type-input" value="win">
                     <input type="hidden" name="selection_order" id="selection-order-input" value="">

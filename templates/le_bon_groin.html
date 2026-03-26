@@ -79,6 +79,7 @@
                         <span class="text-sm font-bold text-white/30 uppercase tracking-widest bg-black/20 px-4 py-2 rounded-xl border border-white/5">Votre annonce</span>
                         {% else %}
                         <form action="{{ url_for('galerie.buy_marketplace', listing_id=listing.id) }}" method="POST" class="w-full md:w-auto">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                             <button type="submit" class="btn-buy w-full md:w-auto px-6 py-3 rounded-xl justify-center font-bold text-white text-sm uppercase tracking-wider flex items-center gap-2">
                                 <span>Acheter</span>
                             </button>
@@ -102,6 +103,7 @@
                     </h2>
 
                     <form action="{{ url_for('galerie.sell_marketplace') }}" method="POST" class="space-y-4">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <div>
                             <label class="block text-sm font-bold text-white/70 mb-2 uppercase tracking-wide">Objet à vendre</label>
                             {% if inventory_items %}

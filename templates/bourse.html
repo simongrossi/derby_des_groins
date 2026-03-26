@@ -204,6 +204,7 @@
 
                         <!-- Haut (dy = -1 car y=0 est en haut) -->
                         <form method="POST" action="/bourse/move">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                             <input type="hidden" name="dx" value="0">
                             <input type="hidden" name="dy" value="-1">
                             <button type="submit" class="move-btn" {% if movement_points < 1 or market.cursor_y <= block_min %}disabled{% endif %} title="Monter">
@@ -214,6 +215,7 @@
                         <div class="flex gap-2">
                             <!-- Gauche -->
                             <form method="POST" action="/bourse/move">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                 <input type="hidden" name="dx" value="-1">
                                 <input type="hidden" name="dy" value="0">
                                 <button type="submit" class="move-btn" {% if movement_points < 1 or market.cursor_x <= block_min %}disabled{% endif %} title="Gauche">
@@ -228,6 +230,7 @@
 
                             <!-- Droite -->
                             <form method="POST" action="/bourse/move">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                 <input type="hidden" name="dx" value="1">
                                 <input type="hidden" name="dy" value="0">
                                 <button type="submit" class="move-btn" {% if movement_points < 1 or market.cursor_x >= block_max %}disabled{% endif %} title="Droite">
@@ -238,6 +241,7 @@
 
                         <!-- Bas (dy = +1) -->
                         <form method="POST" action="/bourse/move">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                             <input type="hidden" name="dx" value="0">
                             <input type="hidden" name="dy" value="1">
                             <button type="submit" class="move-btn" {% if movement_points < 1 or market.cursor_y >= block_max %}disabled{% endif %} title="Descendre">
@@ -429,6 +433,7 @@
 
                     {% if not cer.is_blocked %}
                     <form method="POST" action="/bourse/buy" class="cereal-form">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <input type="hidden" name="cereal" value="{{ key }}">
                         <input type="hidden" name="pig_id" value="{{ active_pigs[0].id }}" class="pig-id-input">
                         <button type="submit"

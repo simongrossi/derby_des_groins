@@ -297,6 +297,7 @@
                                     {% if option.is_actual_participant %}bg-emerald-500/8 border border-emerald-400/15
                                     {% elif option.is_planned %}bg-yellow-500/8 border border-yellow-400/15
                                     {% else %}bg-white/[0.03] border border-white/[0.06]{% endif %}">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                     <input type="hidden" name="pig_id" value="{{ pig.id }}">
                                     <input type="hidden" name="scheduled_at" value="{{ slot.slot_key }}">
                                     <input type="hidden" name="strategy_phase_1" value="{{ option.current_strategy_profile.phase_1 }}">

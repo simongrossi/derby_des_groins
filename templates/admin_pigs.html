@@ -51,10 +51,12 @@
         <div class="flex gap-2">
             {% if pig.is_injured %}
             <form method="POST" action="{{ url_for('admin.admin_heal_pig', pig_id=pig.id) }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <button type="submit" class="btn-success text-xs px-3 py-2">🏥 Soigner</button>
             </form>
             {% endif %}
             <form method="POST" action="{{ url_for('admin.admin_toggle_pig_life', pig_id=pig.id) }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <button type="submit" class="{{ 'btn-danger' if pig.is_alive else 'btn-admin' }} text-xs px-3 py-2">
                     {{ '☠️ Tuer' if pig.is_alive else '✨ Reanimer' }}
                 </button>

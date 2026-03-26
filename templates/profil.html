@@ -217,6 +217,7 @@
                 <h2 class="font-title text-2xl text-white mb-2">Mot de passe</h2>
                 <p class="text-white/45 text-sm font-semibold mb-5">Change ton mot de passe sans quitter la piste.</p>
                 <form method="POST" action="/profil" class="space-y-4">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <div>
                         <label class="text-xs font-bold text-white/45 uppercase tracking-wide block mb-2">Mot de passe actuel</label>
                         <input class="form-input" type="password" name="current_password" autocomplete="current-password" required>

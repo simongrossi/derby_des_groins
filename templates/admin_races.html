@@ -9,6 +9,7 @@
     <!-- GRILLE HORAIRE -->
     <div class="card p-6">
         <form method="POST" action="{{ url_for('admin.admin_save') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <h2 class="font-title text-xl text-white mb-3">📅 Grille Hebdomadaire</h2>
             <p class="text-white/40 text-xs font-semibold mb-4">Heures separees par des virgules (ex: 08:30, 12:00, 17:30).</p>
 
@@ -148,6 +149,7 @@
         <div class="card p-6">
             <h2 class="font-title text-xl text-white mb-3">⚡ Forcer une course</h2>
             <form method="POST" action="{{ url_for('admin.admin_force_race') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <button type="submit" class="btn-danger w-full" onclick="return confirm('Lancer une course immediatement ?');">
                     🏁 Lancer maintenant
                 </button>
@@ -175,6 +177,7 @@
                             </p>
                         </div>
                         <form method="POST" action="{{ url_for('admin.admin_cancel_race', race_id=race.id) }}" onsubmit="return confirm('Annuler et rembourser ?');">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                             <button type="submit" class="text-red-400 hover:text-red-300 text-xs font-bold uppercase">🗑️ Annuler</button>
                         </form>
                     </div>
