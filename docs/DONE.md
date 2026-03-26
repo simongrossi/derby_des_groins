@@ -61,6 +61,17 @@ Liste des fonctionnalités et idées déjà implémentées dans le projet.
 - Récompense en cas de succès : 20 🪙 crédités automatiquement.
 - Sans mise, utilisable comme revenu d'appoint gratuit.
 
+### La Légende du COMOP (`/agenda`)
+- Mini-jeu réflexe sur un calendrier Porc-Look parodiant Outlook.
+- Le Chef de Porc-jet (PDG adjoint) programme des COMOPs fantômes qui fuient le curseur de la souris.
+- Quand la souris s'approche à moins de 60px, le COMOP se téléporte sur un autre créneau et le Chef envoie une notification Teams absurde ("On décale ! Faut qu'on soit plus Agi-Lards", "ASAP = As Swine As Possible", etc.).
+- Toutes les 3-6 secondes, le COMOP se fige 0.5s (passe en doré) : fenêtre pour cliquer dessus.
+- Piège "VRAI TRAVAIL" : des blocs verts apparaissent ; cliquer dessus fait perdre 2 secondes et déclenche une sanction du Chef de Porc-jet.
+- Objectif : attraper 5 COMOPs en 30 secondes.
+- Victoire : Erreur 404 "Illusion de Management" — le COMOP n'a jamais existé. Récompense : 50 🪙 + trophée "Ceinture Noire de Porc-Look".
+- Cooldown : 1 partie par jour.
+- Jeux de mots intégrés : Groin-storming, Point de Syn-Goret, Co-Porc, Stand-up de la Bauge, Bilan Lard-do, Porc-folio Manager, méthode Agi-Lard.
+
 ### Course en Direct (`/race/live`)
 - Replay animé tour par tour de la dernière course terminée.
 - Visualisation des positions, accélérations, drafting, fatigue et accrocs.

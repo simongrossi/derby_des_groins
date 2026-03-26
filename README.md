@@ -83,6 +83,7 @@ Chaque joueur possède un **cochon virtuel** qu'il doit développer comme un Tam
 - **Oser le Challenge de la Mort** — mise x3 si top 3, mais dernier = abattoir 🔪
 - **Jouer au Groin Jack** (`/blackjack`) — blackjack porcin avec mise en BitGroins, Jokers et double
 - **Chercher des Truffes** (`/truffes`) — mini-jeu gratuit sur grille 20×20, 7 clics pour gagner 20 🪙
+- **La Légende du COMOP** (`/agenda`) — mini-jeu réflexe : le Chef de Porc-jet t'invite au COMOP mais l'annule sans cesse. Attrape 5 COMOPs fantômes en 30s sur le calendrier Porc-Look pour gagner 50 🪙 et le titre "Ceinture Noire de Porc-Look"
 - **Regarder la Course en Direct** (`/race/live`) — replay animé tour par tour de la dernière course
 - **Faire du shopping** (`/galerie-lard-chande`) — acheter des équipements et cosmétiques dans les 5 boutiques de La Galerie Lard-chande avec vos Glands et Truffes
 - **Vendre et Acheter d'occasion** (`/le-bon-groin`) — marchander vos objets avec les autres joueurs sur Le Bon Groin
@@ -243,7 +244,7 @@ derby_des_groins/
 ├── README.md
 ├── .gitignore
 │
-├── routes/                 # 14 Blueprints Flask
+├── routes/                 # 15 Blueprints Flask
 │   ├── __init__.py         # Registre des blueprints
 │   ├── auth.py             # register, login, logout, profil, magic-link login
 │   ├── main.py             # index (dashboard), history, classement, légendes pop
@@ -255,6 +256,7 @@ derby_des_groins/
 │   ├── abattoir.py         # abattoir, cimetière
 │   ├── blackjack.py        # Groin Jack — blackjack porcin
 │   ├── truffes.py          # Jeu des Truffes — grille 20x20
+│   ├── agenda.py           # La Légende du COMOP — mini-jeu réflexe calendrier
 │   ├── admin.py            # panneau admin complet (sidebar, 8 sections, SMTP, users, avatars)
 │   ├── api.py              # vétérinaire, countdown, pig API, live-state, avatars
 │   └── health.py           # Health check /health
@@ -312,7 +314,7 @@ derby_des_groins/
 | `helpers/` | Logique métier | 8 modules : config, DB, temps, véto, courses, game data, marché |
 | `services/` | Couche métier | 7 modules : finance, cochon, courses, enchères, boutiques |
 | `scheduler.py` | Tâches de fond | Résolution courses, enchères, deadlines véto, historique marché |
-| `routes/` | 14 Blueprints | Chaque domaine a son fichier avec ses routes |
+| `routes/` | 15 Blueprints | Chaque domaine a son fichier avec ses routes |
 | `app.py` | Point d'entrée | Factory `create_app()`, migrations, seed utilisateurs |
 
 ## ⚙️ Stack technique
@@ -350,6 +352,7 @@ derby_des_groins/
 20. Les courses, les enchères et les deadlines du vétérinaire sont gérées par un **scheduler de fond**, même si personne n'est connecté
 21. Le **Groin Jack** (`/blackjack`) permet de miser des BitGroins dans un blackjack porcin : deck 52 cartes + 2 Jokers, actions Hit/Stand/Double, blackjack naturel payé 3:2
 22. Le **Jeu des Truffes** (`/truffes`) est un mini-jeu gratuit : trouver la truffe cachée en 7 clics sur une grille 20×20 rapporte 20 🪙
+29. **La Légende du COMOP** (`/agenda`) est un mini-jeu réflexe : le Chef de Porc-jet programme des COMOPs sur le calendrier Porc-Look mais les annule dès que ta souris s'approche. Attrape 5 COMOPs gelés en 30 secondes pour gagner 50 🪙. Piège : cliquer sur "VRAI TRAVAIL" fait perdre 2 secondes. Victoire = trophée "Ceinture Noire de Porc-Look"
 23. La **Course en Direct** (`/race/live`) propose un replay animé tour par tour de la dernière course avec positions, événements et classement live
 24. La **Bourse aux Grains** remplace les prix fixes : un curseur sur une grille 5x5 partagée par tous les joueurs determine le prix et la qualite de la nourriture. Chaque joueur peut deplacer le curseur avant d'acheter, et le dernier grain achete est bloque en vitrine
 25. Le **Classement** propose 5 onglets (General, Abattoir, Paris, Elevage, Mur de la Honte) avec 18+ awards automatiques et des charts detailles

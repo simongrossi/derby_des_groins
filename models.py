@@ -24,6 +24,7 @@ class User(db.Model):
     snack_share_reset_at = db.Column(db.DateTime, nullable=True)
     last_daily_reward_at = db.Column(db.DateTime, nullable=True)
     last_truffe_at = db.Column(db.DateTime, nullable=True)
+    last_agenda_at = db.Column(db.DateTime, nullable=True)
     bets = db.relationship('Bet', backref='user', lazy=True)
     balance_transactions = db.relationship('BalanceTransaction', backref='user', lazy=True)
     course_plans = db.relationship('CoursePlan', backref='user', lazy=True)

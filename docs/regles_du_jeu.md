@@ -130,6 +130,16 @@ Mini-jeu de cherche-truffe sur une grille 20×20.
 - Récompense en cas de succès : **20 🪙** crédités automatiquement.
 - Gratuit, sans mise, utilisable comme revenu d'appoint.
 
+### La Légende du COMOP (`/agenda`)
+Mini-jeu réflexe sur un calendrier **Porc-Look** parodiant Outlook.
+- Le **Chef de Porc-jet** programme des COMOPs sur le calendrier, mais les annule dès que ta souris s'approche.
+- Toutes les 3-6 secondes, le COMOP se **fige** brièvement (doré) : c'est ta fenêtre pour cliquer.
+- Piège : des blocs **"VRAI TRAVAIL"** apparaissent. Cliquer dessus fait perdre 2 secondes.
+- Objectif : attraper **5 COMOPs en 30 secondes**.
+- Récompense : **50 🪙** + trophée **"Ceinture Noire de Porc-Look"**.
+- Twist final : le COMOP n'a jamais existé (*Erreur 404 : Illusion de Management*).
+- Jouable **1 fois par jour**.
+
 ### Course en Direct (`/race/live`)
 Replay animé de la dernière course terminée, consultable à tout moment.
 - Visualisation **tour par tour** : positions, accélérations, drafting, fatigue, accrocs.

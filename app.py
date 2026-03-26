@@ -209,6 +209,7 @@ def migrate_db():
         ('trophy', 'date_earned', 'DATETIME'),
         ('race', 'preview_segments_json', 'TEXT'),
         ('pig', 'avatar_id', 'INTEGER'),
+        ('user', 'last_agenda_at', 'TIMESTAMP'),
     ]
     table_migrations = [
         'ALTER TABLE game_config ALTER COLUMN value TYPE TEXT',

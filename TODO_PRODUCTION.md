@@ -121,6 +121,7 @@
   - API GET (countdown, pig, replay...) : 30/min, live-state : 60/min
   - Galerie achats : 10/min, ventes : 5/min
   - Truffes : 10/min
+  - Agenda (COMOP) : 10/min
   - Page 429 personnalisee (HTML + JSON pour les API)
   - Admin non limite (pas besoin)
 
