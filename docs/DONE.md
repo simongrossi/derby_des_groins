@@ -112,5 +112,7 @@ Liste des fonctionnalités et idées déjà implémentées dans le projet.
 
 ## UX et Navigation
 - **Page dédiée aux Paris** (`/paris`) : Séparation claire entre l'inscription de ses cochons (`/courses`) et la prise de tickets (paris), facilitant la vie des parieurs.
+- **Ouverture anticipée des courses par les parieurs** : Depuis `/paris`, un parieur peut cliquer sur un créneau futur de l'agenda défini par l'admin qui n'a pas encore de participants. Cela génère instantanément la course en la remplissant de cochons IA (PNJ), figeant ainsi l'accès pour les vrais joueurs mais permettant les prises de paris 24/7 sur la grille officielle.
+- **Protection des paris (Anti-Annulation)** : Une course avec 0 participant humain (100% IA) ne s'annulera plus (même si le mode `empty_race_mode` de l'admin est sur `cancel`), **à condition qu'au moins un pari ait été placé dessus**. L'ordinateur la courra pour résoudre les gains/pertes des parieurs.
 - **Homepage allégée** : Le tableau géant de prise de paris a été remplacé par une mini-carte qui indique le statut de la prochaine course et redirige vers `/paris`.
 - **Navigation Menu** : Ajout du lien direct "💰 Paris" dans la barre principale, regroupement sémantique clair (Courses -> Paris -> Mon Cochon).
