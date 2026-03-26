@@ -138,6 +138,35 @@
             {% endfor %}
         </div>
         {% endif %}
+
+        {# Prochaines courses de vos cochons #}
+        {% if next_pig_races %}
+        <div class="soft-card p-4 mt-5" style="background: rgba(52,211,153,0.06); border-color: rgba(52,211,153,0.15);">
+            <div class="flex items-center gap-2 mb-3">
+                <span class="text-emerald-400 text-lg">🏁</span>
+                <p class="text-emerald-200 font-extrabold text-sm">Prochaines courses de vos cochons
+                    <span class="pill !px-2 !py-0.5 bg-emerald-500/15 text-emerald-200 border border-emerald-400/25 text-[11px] ml-1">{{ total_inscribed }} inscription{{ 's' if total_inscribed > 1 else '' }}</span>
+                </p>
+            </div>
+            <div class="flex flex-wrap gap-2">
+                {% for race in next_pig_races %}
+                <div class="flex items-center gap-2 pill bg-emerald-500/10 border border-emerald-400/20 !py-1.5 !px-3">
+                    {{ pig_display(race.pig, 'text-sm', 18) }}
+                    <span class="text-white font-bold text-xs">{{ race.pig.name }}</span>
+                    <span class="text-emerald-300/70 text-[11px] font-semibold">{{ race.date_label }} {{ race.slot.strftime('%H:%M') }}</span>
+                    <span class="text-white/30 text-[11px]">{{ race.theme.emoji }}</span>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% elif pigs_data %}
+        <div class="soft-card p-4 mt-5" style="background: rgba(255,255,255,0.02); border-color: rgba(255,255,255,0.06);">
+            <div class="flex items-center gap-2">
+                <span class="text-white/30 text-lg">📭</span>
+                <p class="text-white/40 font-semibold text-sm">Aucun cochon inscrit pour le moment. Clique sur <strong class="text-pink-300">➕ Inscrire</strong> ci-dessous pour engager ton cochon !</p>
+            </div>
+        </div>
+        {% endif %}
     </section>
 
     {# ══════════════════════════════════════════════ #}

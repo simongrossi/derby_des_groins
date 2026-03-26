@@ -54,6 +54,22 @@ def courses():
         s['date_key'] = dt.strftime('%Y-%m-%d')
         s['date_label'] = f"{JOURS_FR_SHORT[dt.weekday()]}. {dt.day} {MOIS_FR[dt.month]}"
 
+    # Stats d'inscription pour le hero card
+    inscribed_slots = [s for s in next_week_slots if s.get('user_plans')]
+    total_inscribed = len(inscribed_slots)
+    # Prochaines courses inscrites (triées par date)
+    next_pig_races = []
+    for s in inscribed_slots:
+        for plan in s['user_plans']:
+            if plan.pig:
+                next_pig_races.append({
+                    'pig': plan.pig,
+                    'slot': s['slot'],
+                    'theme': s['theme'],
+                    'date_label': s.get('date_label', ''),
+                })
+    next_pig_races.sort(key=lambda r: r['slot'])
+
     return render_template(
         'courses.html',
         user=user,
@@ -62,6 +78,8 @@ def courses():
         month_slots=schedule,
         weekly_quota=WEEKLY_RACE_QUOTA,
         now=datetime.now(),
+        total_inscribed=total_inscribed,
+        next_pig_races=next_pig_races[:5],
     )
 
 
