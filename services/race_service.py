@@ -7,15 +7,15 @@ import random
 from sqlalchemy import func
 
 from data import (
-    BET_TYPES, JOURS_FR, MAX_INJURY_RISK, MIN_INJURY_RISK, PIGS,
-    PIG_COURSE_SEGMENT_TYPES, RACE_APPEARANCE_REWARD, RACE_POSITION_REWARDS,
-    VET_RESPONSE_MINUTES, WEEKLY_RACE_QUOTA,
+    JOURS_FR, MAX_INJURY_RISK, MIN_INJURY_RISK, PIGS,
+    PIG_COURSE_SEGMENT_TYPES, VET_RESPONSE_MINUTES,
 )
 from extensions import db
 from models import Bet, CoursePlan, Participant, Pig, Race, User
 from race_engine import CourseManager
 
 from helpers.db import apply_row_lock
+from services.economy_service import get_configured_bet_types, get_weekly_race_quota_value
 from services.finance_service import credit_user_balance
 from services.game_settings_service import get_game_settings
 from services.pig_service import calculate_pig_power, get_weight_profile, update_pig_state
@@ -104,7 +104,8 @@ def get_configured_npcs():
 
 
 def normalize_bet_type(bet_type):
-    return bet_type if bet_type in BET_TYPES else 'win'
+    bet_types = get_configured_bet_types()
+    return bet_type if bet_type in bet_types else 'win'
 
 
 def serialize_selection_ids(selection_ids):
@@ -151,8 +152,8 @@ def calculate_ordered_finish_probability(participants_by_id, ordered_ids):
 
 
 def calculate_bet_odds(participants_by_id, ordered_ids, bet_type):
-    from data import BET_TYPES
-    bet_config = BET_TYPES.get(normalize_bet_type(bet_type), BET_TYPES['win'])
+    bet_types = get_configured_bet_types()
+    bet_config = bet_types.get(normalize_bet_type(bet_type), bet_types['win'])
     
     probability = calculate_ordered_finish_probability(participants_by_id, ordered_ids)
     if probability <= 0:
@@ -360,8 +361,9 @@ def plan_pig_for_race(user_id, pig_id, scheduled_at_raw, strategy_profile):
     if already_participant:
         raise RaceAlreadyJoinedError(f"{pig.name} est deja partant sur cette course ouverte.")
 
-    if count_pig_weekly_course_commitments(pig.id, scheduled_at) >= WEEKLY_RACE_QUOTA:
-        raise WeeklyQuotaReachedError(f"{pig.name} a deja atteint son quota hebdomadaire de {WEEKLY_RACE_QUOTA} courses.")
+    weekly_quota = get_weekly_race_quota_value()
+    if count_pig_weekly_course_commitments(pig.id, scheduled_at) >= weekly_quota:
+        raise WeeklyQuotaReachedError(f"{pig.name} a deja atteint son quota hebdomadaire de {weekly_quota} courses.")
 
     db.session.add(
         CoursePlan(
@@ -484,6 +486,7 @@ def populate_race_participants(race, respect_course_plans=True, allow_rebuild_if
 
 def build_course_schedule(user, pigs, days=30):
     now = datetime.now()
+    weekly_quota = get_weekly_race_quota_value()
     slots = get_upcoming_course_slots(days)
     if not slots:
         return []
@@ -541,7 +544,7 @@ def build_course_schedule(user, pigs, days=30):
             if is_actual_participant or is_planned:
                 weekly_commitments_pig = max(0, weekly_commitments_pig - 1)
             projected_commitments = weekly_commitments_pig + (0 if (is_actual_participant or is_planned) else 1)
-            quota_reached = weekly_commitments_pig >= WEEKLY_RACE_QUOTA and not (is_actual_participant or is_planned)
+            quota_reached = weekly_commitments_pig >= weekly_quota and not (is_actual_participant or is_planned)
             can_toggle, disabled_reason = True, None
             if slot_locked:
                 can_toggle, disabled_reason = False, 'Course verrouillee'
@@ -549,6 +552,6 @@ def build_course_schedule(user, pigs, days=30):
                 can_toggle, disabled_reason = False, 'Trop faible pour la course ouverte'
             elif quota_reached:
                 can_toggle, disabled_reason = False, 'Quota hebdo atteint'
-            pig_options.append({'pig': pig, 'is_planned': is_planned, 'is_actual_participant': is_actual_participant, 'current_strategy_profile': current_strategy, 'current_strategy_summary': f"D {current_strategy['phase_1']} • M {current_strategy['phase_2']} • F {current_strategy['phase_3']}", 'can_toggle': can_toggle, 'disabled_reason': disabled_reason, 'weekly_commitments': projected_commitments, 'quota_remaining': max(0, WEEKLY_RACE_QUOTA - weekly_commitments_pig), 'projected_remaining': max(0, WEEKLY_RACE_QUOTA - projected_commitments)})
-        schedule.append({'slot': slot_time, 'slot_key': slot_time.strftime('%Y-%m-%dT%H:%M:%S'), 'day_name': JOURS_FR[slot_time.weekday()], 'theme': get_course_theme(slot_time), 'race': race, 'participants': slot_participants, 'planned_count': len(slot_plan_rows), 'user_plans': slot_user_plans, 'user_plan_names': [plan.pig.name for plan in slot_user_plans if plan.pig], 'is_next': slot_time == slots[0], 'is_locked': slot_locked, 'pig_options': pig_options, 'user_weekly_plan_count': len(slot_user_plans), 'user_weekly_remaining': {pig.id: max(0, WEEKLY_RACE_QUOTA - week_commitments.get(pig.id, 0)) for pig in pigs}})
+            pig_options.append({'pig': pig, 'is_planned': is_planned, 'is_actual_participant': is_actual_participant, 'current_strategy_profile': current_strategy, 'current_strategy_summary': f"D {current_strategy['phase_1']} • M {current_strategy['phase_2']} • F {current_strategy['phase_3']}", 'can_toggle': can_toggle, 'disabled_reason': disabled_reason, 'weekly_commitments': projected_commitments, 'quota_remaining': max(0, weekly_quota - weekly_commitments_pig), 'projected_remaining': max(0, weekly_quota - projected_commitments)})
+        schedule.append({'slot': slot_time, 'slot_key': slot_time.strftime('%Y-%m-%dT%H:%M:%S'), 'day_name': JOURS_FR[slot_time.weekday()], 'theme': get_course_theme(slot_time), 'race': race, 'participants': slot_participants, 'planned_count': len(slot_plan_rows), 'user_plans': slot_user_plans, 'user_plan_names': [plan.pig.name for plan in slot_user_plans if plan.pig], 'is_next': slot_time == slots[0], 'is_locked': slot_locked, 'pig_options': pig_options, 'user_weekly_plan_count': len(slot_user_plans), 'user_weekly_remaining': {pig.id: max(0, weekly_quota - week_commitments.get(pig.id, 0)) for pig in pigs}})
     return schedule

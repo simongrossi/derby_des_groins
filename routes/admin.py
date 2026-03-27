@@ -19,6 +19,15 @@ from helpers import (
 )
 from helpers.config import DEFAULT_RACE_THEMES
 from helpers.auth import admin_required
+from services.economy_service import (
+    build_admin_economy_context,
+    build_day_reward_multipliers_from_form,
+    build_economy_settings_from_form,
+    build_simulation_inputs_from_form,
+    get_economy_settings,
+    save_day_reward_multipliers,
+    save_economy_settings,
+)
 from services.game_settings_service import get_game_settings
 from services.race_service import get_configured_npcs
 
@@ -144,6 +153,43 @@ def admin_dashboard(user):
 
     return render_template('admin_dashboard.html',
         user=user, admin_tab='dashboard', stats=stats, recent_races=recent_races)
+
+
+@admin_bp.route('/admin/economy', methods=['GET', 'POST'])
+@admin_required
+def admin_economy(user):
+    current_settings = get_economy_settings()
+    if request.method == 'POST':
+        settings = build_economy_settings_from_form(request.form, current_settings=current_settings)
+        reward_multiplier_overrides = build_day_reward_multipliers_from_form(request.form)
+        preview_context = build_admin_economy_context(
+            settings=settings,
+            reward_multiplier_overrides=reward_multiplier_overrides,
+        )
+        simulation_inputs = build_simulation_inputs_from_form(
+            request.form,
+            preview_context['snapshot'],
+            settings=settings,
+        )
+        if request.form.get('action') == 'save':
+            save_economy_settings(settings)
+            save_day_reward_multipliers(reward_multiplier_overrides)
+            flash("Configuration economique sauvegardee.", "success")
+            current_settings = settings
+        context = build_admin_economy_context(
+            settings=(current_settings if request.form.get('action') == 'save' else settings),
+            simulation_inputs=simulation_inputs,
+            reward_multiplier_overrides=(None if request.form.get('action') == 'save' else reward_multiplier_overrides),
+        )
+    else:
+        context = build_admin_economy_context(settings=current_settings)
+
+    return render_template(
+        'admin_economy.html',
+        user=user,
+        admin_tab='economy',
+        **context,
+    )
 
 
 # ══════════════════════════════════════════════════════════════════════════════

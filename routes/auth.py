@@ -8,8 +8,9 @@ import math
 
 from extensions import db, limiter
 from models import User, Pig, Bet, Auction, Trophy
-from data import PIG_ORIGINS, BET_TYPES, RARITIES
+from data import PIG_ORIGINS, RARITIES
 from helpers import get_config, get_market_unlock_progress, get_market_lock_reason
+from services.economy_service import get_configured_bet_types, get_welcome_bonus_value
 from services.finance_service import record_balance_transaction
 from services.pig_service import apply_origin_bonus, generate_weight_kg_for_profile, get_active_listing_count, build_unique_pig_name
 
@@ -28,14 +29,15 @@ def register():
             return render_template('auth.html', error="Pseudo trop court (min 3 caractères)", mode='register')
         if User.query.filter_by(username=username).first():
             return render_template('auth.html', error="Ce pseudo est déjà pris !", mode='register')
-        user = User(username=username, password_hash=generate_password_hash(password), balance=100.0)
+        welcome_bonus = get_welcome_bonus_value()
+        user = User(username=username, password_hash=generate_password_hash(password), balance=welcome_bonus)
         db.session.add(user)
         db.session.flush()
         record_balance_transaction(
             user_id=user.id,
-            amount=100.0,
+            amount=welcome_bonus,
             balance_before=0.0,
-            balance_after=100.0,
+            balance_after=welcome_bonus,
             reason_code='welcome_bonus',
             reason_label="Bonus d'inscription",
             details="Capital de depart offert a la creation du compte.",
@@ -195,7 +197,7 @@ def profil():
         total_winnings=total_winnings,
         total_profit=total_profit,
         bet_win_rate=bet_win_rate,
-        bet_types=BET_TYPES,
+        bet_types=get_configured_bet_types(),
         market_unlocked=market_unlocked,
         market_progress_races=market_progress_races,
         market_hours_left=market_hours_left,

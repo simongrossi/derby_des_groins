@@ -5,8 +5,8 @@ import time
 
 from extensions import db
 from models import User, Pig, Race, Participant, Bet, BalanceTransaction, CoursePlan, Trophy
-from data import BET_TYPES, WEEKLY_BACON_TICKETS, DAILY_LOGIN_REWARD, MIN_BET_RACE, MAX_BET_RACE
 from helpers import ensure_next_race, get_user_active_pigs, get_race_history_entries
+from services.economy_service import get_configured_bet_types, get_weekly_bacon_tickets_value
 from services.market_service import get_prix_moyen_groin, is_market_open, get_next_market_time
 from services.pig_service import calculate_pig_power, get_weight_profile
 from services.race_service import get_pig_dashboard_status, build_course_schedule, get_user_weekly_bet_count, get_course_theme
@@ -34,7 +34,9 @@ def index():
     featured_pig = None
     featured_pig_status = None
     headline_status = None
-    bacon_tickets_remaining = WEEKLY_BACON_TICKETS
+    weekly_bacon_tickets = get_weekly_bacon_tickets_value()
+    bet_types = get_configured_bet_types()
+    bacon_tickets_remaining = weekly_bacon_tickets
     latest_race = recent_races[0] if recent_races else None
     latest_race_participants = []
     news_items = []
@@ -58,7 +60,7 @@ def index():
             } for pig in pigs]
             week_slots = build_course_schedule(user, pigs, days=7)
             weekly_bet_count = get_user_weekly_bet_count(user, datetime.now())
-            bacon_tickets_remaining = max(0, WEEKLY_BACON_TICKETS - weekly_bet_count)
+            bacon_tickets_remaining = max(0, weekly_bacon_tickets - weekly_bet_count)
             if next_race:
                 user_bets = Bet.query.filter_by(user_id=user.id, race_id=next_race.id).all()
 
@@ -146,7 +148,7 @@ def index():
         user=user, pigs=pigs, next_race=next_race,
         participants=participants, recent_races=recent_races,
         user_bets=user_bets, now=datetime.now(),
-        bet_types=BET_TYPES,
+        bet_types=bet_types,
         prix_groin=prix_groin,
         market_open=is_market_open(),
         next_market=get_next_market_time(),
@@ -154,7 +156,7 @@ def index():
         featured_pig_status=featured_pig_status,
         headline_status=headline_status,
         bacon_tickets_remaining=bacon_tickets_remaining,
-        weekly_bacon_tickets=WEEKLY_BACON_TICKETS,
+        weekly_bacon_tickets=weekly_bacon_tickets,
         week_race_cards=week_race_cards,
         next_race_theme=next_race_theme,
         latest_race=latest_race,
@@ -204,7 +206,7 @@ def history():
         transactions=transactions,
         global_transactions=global_transactions,
         race_history=race_history,
-        bet_types=BET_TYPES,
+        bet_types=get_configured_bet_types(),
         credited_amount=credited_amount,
         debited_amount=debited_amount,
     )

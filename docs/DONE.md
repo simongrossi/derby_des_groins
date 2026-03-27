@@ -80,6 +80,12 @@ Liste des fonctionnalités et idées déjà implémentées dans le projet.
 
 ## Interface Admin v3
 - **Tableau de bord complet** : Vue d'ensemble des statistiques vitales (utilisateurs, cochons en vie, courses terminées, masse monétaire totale/moyenne, paris en attente).
+- **Panneau Économie** (`/admin/economy`) :
+  - Réglage centralisé des récompenses, coûts, quotas, tickets, limites de mise, cap de payout et `house_edge` par type de pari.
+  - Multiplicateurs journaliers éditables directement depuis l'admin.
+  - Simulateur branché sur les données live de la base (circulation, paris récents, taille de champ, capacité hebdo, coûts de céréales).
+  - Matrice de profils types, scénarios de distribution, analyse des tickets et résumé des mouvements récents.
+  - Valeurs persistées via `GameConfig` puis réellement réutilisées par le runtime du jeu (inscription, récompenses, quotas, coûts et PMU).
 - **Gestion des Courses** :
     - Interface de planification hebdomadaire avancée.
     - Contrôle granulaire des paramètres (heure des courses, durée de la bourse, seuils de participants).

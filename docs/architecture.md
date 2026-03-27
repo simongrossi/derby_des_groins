@@ -10,7 +10,7 @@
 
 ## Structure des Modèles (Database Schema)
 
-1.  **`GameConfig`** : Stocke les paramètres globaux (horaires de courses, ouverture du marché, seuils d'aide d'urgence).
+1.  **`GameConfig`** : Stocke les paramètres globaux (horaires de courses, ouverture du marché, seuils d'aide d'urgence, réglages d'économie, house edge et multiplicateurs journaliers).
 2.  **`User`** : Profil utilisateur, authentification (bcrypt), solde BitGroins (🪙), statut admin, le bonus cumulé d'héritage (**`barn_heritage_bonus`**) et la date de dernière prime journalière (**`last_daily_reward_at`**).
 3.  **`Pig`** : Cœur du jeu.
     *   **Stats & Tamagotchi** : Faim, énergie, bonheur, poids, rareté, statistiques de course.
@@ -44,6 +44,8 @@
 - **Économie & PMU** : 
     *   Tickets Bacon hebdomadaires pour limiter les risques.
     *   Cotes dynamiques basées sur les probabilités de victoire réelles (Calcul PMU).
+    *   Paramètres d'économie pilotables depuis **`/admin/economy`** avec persistance en base.
+    *   Simulation admin basée sur les chiffres live pour estimer l'inflation et les sinks.
     *   Marché aux enchères ouvert périodiquement avec système de surenchère.
 - **Récupération Vétérinaire** : Mini-jeu (puzzle de soin) pour soigner un cochon blessé avant la deadline, sous peine de séquelles ou de mort.
 
@@ -66,14 +68,18 @@ derby_des_groins/
 │   ├── race.py             # Calendrier, planification, visualisation des courses
 │   ├── market.py           # Enchères et transactions de cochons
 │   ├── abattoir.py         # Hall des cochons morts / cimetière
-│   ├── admin.py            # Panneau admin complet (7 sections, sidebar, SMTP, users)
+│   ├── admin.py            # Panneau admin complet (dashboard, economie, races, users, SMTP...)
 │   ├── blackjack.py        # Mini-jeu Groin Jack (blackjack porcin)
 │   ├── truffes.py          # Mini-jeu Jeu des Truffes (cherche-truffe)
 │   ├── agenda.py           # Mini-jeu La Légende du COMOP (réflexe calendrier)
 │   └── api.py              # Endpoints JSON pour l'UI dynamique + replay course
+├── services/               # Couche métier dédiée
+│   ├── economy_service.py  # Réglages d'équilibrage, snapshots live et simulateur
+│   └── ...
 ├── templates/              # Vues Jinja2 (v3.0 UI Responsive)
 │   ├── admin_base.html     # Layout admin partagé (sidebar + nav mobile)
 │   ├── admin_dashboard.html # Stats globales, économie, actions rapides
+│   ├── admin_economy.html  # Réglages d'économie + simulateur + analyses
 │   ├── admin_races.html    # Planning courses, marché, forcer/annuler
 │   ├── admin_pigs.html     # Filtres cochons, soigner, tuer/réanimer
 │   ├── admin_users.html    # Gestion joueurs, mdp, admin, liens magiques, solde
@@ -101,6 +107,7 @@ derby_des_groins/
 - `/race/live` : Replay animé de la dernière course tour par tour.
 - `/auth/magic/<token>` : Connexion par lien magique (généré par l'admin, expire 24h).
 - `/admin/dashboard` : Vue d'ensemble admin (stats, économie, actions rapides).
+- `/admin/economy` : Réglage des rewards, coûts, quotas, tickets, caps de payout et simulation live.
 - `/admin/races` : Planning des courses, marché, forcer/annuler des courses.
 - `/admin/pigs` : Gestion cochons avec filtres, soins, tuer/réanimer.
 - `/admin/users` : Gestion avancée des joueurs (mdp, admin, solde, liens magiques).
@@ -124,6 +131,7 @@ Les pages exemptées de footer : `429.html` (erreur), `auth.html` (login/registe
 - **Durée de vie réduite** : les `max_races_range` ont été divisées par 2 pour accélérer le turnover.
 - **Prime de pointage** : 15 🪙 automatiques à la première connexion de chaque jour (`DAILY_LOGIN_REWARD`).
 - **Moteur de course** : récupération de fatigue en stratégie Économie nerfée (0.5 → 0.1), bonus d'aspiration réduit (1.5 → 0.8).
+- **Admin Economie** : la plupart des variables monétaires et PMU sont désormais ajustables sans déploiement, avec un simulateur pour projeter la circulation.
 
 ## Roadmap Future
 - **PMU Porcin Evolué** : Statistiques globales sur les cotes les plus rentables et tendances de gains.

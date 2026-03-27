@@ -240,6 +240,9 @@
                         <div class="flex-1">
                             <label class="text-white/60 text-sm font-bold block mb-1">Mise (max: {{ "%.0f"|format(user.balance) }} 🪙)</label>
                             <input type="number" name="amount" id="bet-amount" min="{{ min_bet_race }}" max="{{ [user.balance, max_bet_race]|min }}" step="1" class="w-full bg-white/5 border border-white/20 rounded-xl px-4 py-3 text-white font-bold focus:outline-none focus:border-yellow-400" placeholder="Entre {{ min_bet_race }} et {{ max_bet_race }}">
+                            {% if max_payout_race > 0 %}
+                            <p class="text-white/30 text-[11px] font-semibold mt-1">Gain plafonne a {{ "%.0f"|format(max_payout_race) }} 🪙 par ticket.</p>
+                            {% endif %}
                         </div>
                         <button type="submit" id="bet-submit" class="btn-primary" disabled>Parier</button>
                     </div>
@@ -348,6 +351,7 @@
 
 <script>
 const betTypes = {{ bet_types|tojson }};
+const maxPayoutRace = {{ max_payout_race|tojson }};
 const participantCards = Array.from(document.querySelectorAll('.pig-card'));
 const participantMap = Object.fromEntries(participantCards.map((card) => {
     const participantId = Number(card.dataset.participantId);
@@ -391,6 +395,13 @@ function calculateSelectionOdds() {
     if (finalProb <= 0) return 0;
     const edge = betConfig.house_edge || 1.18;
     return Math.max(1.1, Math.floor(((1 / finalProb) / edge) * 10) / 10);
+}
+function applyPayoutCap(amount, odds) {
+    let payout = amount * odds;
+    if (maxPayoutRace && maxPayoutRace > 0) {
+        payout = Math.min(payout, maxPayoutRace);
+    }
+    return payout;
 }
 function renderSelectionSummary() {
     const display = document.getElementById('selected-pig-display');
@@ -446,8 +457,10 @@ function updatePotentialWin() {
     const amount = parseFloat(amountInput.value);
     const selectionOdds = calculateSelectionOdds();
     if (amount > 0 && selectionOdds > 0) {
-        oddsSpan.textContent = `x${selectionOdds.toFixed(1)}`;
-        potentialAmount.textContent = (amount * selectionOdds).toFixed(2);
+        const cappedPayout = applyPayoutCap(amount, selectionOdds);
+        const effectiveOdds = amount > 0 ? (cappedPayout / amount) : selectionOdds;
+        oddsSpan.textContent = `x${effectiveOdds.toFixed(effectiveOdds >= 10 ? 1 : 2)}`;
+        potentialAmount.textContent = cappedPayout.toFixed(2);
         potentialDiv.classList.remove('hidden');
     } else {
         potentialDiv.classList.add('hidden');

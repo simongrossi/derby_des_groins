@@ -15,13 +15,16 @@ from models import (
     Bet, CoursePlan, Participant, Pig, Race, User, Trophy,
 )
 from data import (
-    BET_TYPES, PIG_ORIGINS,
+    PIG_ORIGINS,
     MAX_INJURY_RISK, MIN_INJURY_RISK, VET_RESPONSE_MINUTES,
-    RACE_APPEARANCE_REWARD, RACE_POSITION_REWARDS,
 )
 from race_engine import CourseManager
 
 from helpers.config import get_config
+from services.economy_service import (
+    get_configured_bet_types,
+    get_race_reward_settings,
+)
 from services.finance_service import credit_user_balance
 from services.pig_service import (
     apply_origin_bonus, build_unique_pig_name, generate_weight_kg_for_profile,
@@ -279,9 +282,10 @@ def run_race_if_needed():
                 if owner:
                     theme = get_course_theme(race.scheduled_at)
                     reward_multiplier = theme.get('reward_multiplier', 1)
+                    reward_settings = get_race_reward_settings()
                     reward = (
-                        RACE_APPEARANCE_REWARD
-                        + RACE_POSITION_REWARDS.get(p.finish_position, 0.0)
+                        reward_settings['appearance_reward']
+                        + reward_settings['position_rewards'].get(p.finish_position, 0.0)
                     ) * reward_multiplier
                     details = f"{pig.name} a termine {p.finish_position}e sur la course #{race.id}."
                     if reward_multiplier > 1:
@@ -375,9 +379,10 @@ def run_race_if_needed():
 
         bets = Bet.query.filter_by(race_id=race.id, status='pending').all()
         finish_order_ids = [participant.id for participant in order]
+        bet_types = get_configured_bet_types()
         for bet in bets:
             bet_type = normalize_bet_type(getattr(bet, 'bet_type', None))
-            bet_config = BET_TYPES.get(bet_type, BET_TYPES['win'])
+            bet_config = bet_types.get(bet_type, bet_types['win'])
             expected_count = bet_config['selection_count']
             top_n = bet_config.get('top_n', expected_count)
             order_matters = bet_config.get('order_matters', True)

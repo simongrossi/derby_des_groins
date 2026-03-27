@@ -8,3 +8,5 @@ instance/
 venv/
 error.txt
 .gemini/
+test-results/
+tmp-*.png

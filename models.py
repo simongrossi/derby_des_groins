@@ -65,21 +65,22 @@ class User(db.Model):
     def claim_daily_reward(self) -> float:
         """Verse la prime de pointage journalière si elle n'a pas encore été
         réclamée aujourd'hui. Renvoie le montant crédité (0 si déjà perçue)."""
-        from data import DAILY_LOGIN_REWARD
+        from services.economy_service import get_daily_login_reward_value
         today = datetime.utcnow().date()
         if self.last_daily_reward_at and self.last_daily_reward_at.date() >= today:
             return 0.0
+        reward_amount = get_daily_login_reward_value()
         # Marquer AVANT earn() pour eviter le double-credit en cas de race condition
         self.last_daily_reward_at = datetime.utcnow()
         db.session.flush()  # Persiste le timestamp dans la transaction
         self.earn(
-            DAILY_LOGIN_REWARD,
+            reward_amount,
             reason_code='daily_reward',
             reason_label='Prime de pointage journalière',
         )
         # Refresh le solde en memoire (earn() fait un SQL UPDATE atomique)
         db.session.refresh(self)
-        return DAILY_LOGIN_REWARD
+        return reward_amount
 
     @property
     def active_pigs(self):
@@ -95,10 +96,10 @@ class User(db.Model):
     def bacon_tickets(self) -> int:
         """Nombre de tickets bacon (quota de paris hebdo) restants."""
         from services.race_service import get_user_weekly_bet_count
-        from data import WEEKLY_BACON_TICKETS
+        from services.economy_service import get_weekly_bacon_tickets_value
         # Utiliser datetime.utcnow() pour correspondre aux dates de paris en DB
         count = get_user_weekly_bet_count(self, datetime.utcnow())
-        return max(0, WEEKLY_BACON_TICKETS - count)
+        return max(0, get_weekly_bacon_tickets_value() - count)
 
 
 class Pig(db.Model):

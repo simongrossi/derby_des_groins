@@ -80,6 +80,7 @@ Chaque joueur possède un **cochon virtuel** qu'il doit développer comme un Tam
 - **Gérer les blessures** via le **Vétérinaire** et son puzzle d'urgence
 - **Suivre ton compte** et changer ton mot de passe dans **Mon Profil**
 - **Auditer l'activite** dans **Historique** : courses terminees, tickets et journal BitGroins
+- **Piloter l'economie** depuis **Admin > Economie** avec un simulateur live branche sur les chiffres actuels de la base
 - **Oser le Challenge de la Mort** — mise x3 si top 3, mais dernier = abattoir 🔪
 - **Jouer au Groin Jack** (`/blackjack`) — blackjack porcin avec mise en BitGroins, Jokers et double
 - **Chercher des Truffes** (`/truffes`) — mini-jeu gratuit sur grille 20×20, 7 clics pour gagner 20 🪙
@@ -223,6 +224,12 @@ La base de donnees est creee automatiquement au premier lancement avec 6 utilisa
 Note de demo:
 - Le compte `Christophe` peut recevoir un second cochon seedé, `Patient Zero`, déjà blessé pour tester immédiatement le menu `Vétérinaire` et le puzzle de soins.
 
+## 📚 Documentation utile
+
+- [Architecture](/D:/Programmation/derby_des_groins/docs/architecture.md)
+- [Règles du jeu](/D:/Programmation/derby_des_groins/docs/regles_du_jeu.md)
+- [Panneau Admin Économie](/D:/Programmation/derby_des_groins/docs/admin_economie.md)
+
 ---
 
 ## 🏗️ Structure du projet
@@ -259,7 +266,7 @@ derby_des_groins/
 │   ├── blackjack.py        # Groin Jack — blackjack porcin
 │   ├── truffes.py          # Jeu des Truffes — grille 20x20
 │   ├── agenda.py           # La Légende du COMOP — mini-jeu réflexe calendrier
-│   ├── admin.py            # panneau admin complet (sidebar, 8 sections, SMTP, users, avatars)
+│   ├── admin.py            # panneau admin complet (dashboard, economie, races, users, etc.)
 │   ├── api.py              # vétérinaire, countdown, pig API, live-state, avatars
 │   └── health.py           # Health check /health
 │
@@ -273,13 +280,14 @@ derby_des_groins/
 │   ├── game_data.py        # Cache céréales/trainings/leçons (TTL 5min)
 │   └── market_helpers.py   # Statut unlock marché
 │
-├── services/               # Couche logique métier (7 modules)
+├── services/               # Couche logique métier (8 modules)
 │   ├── finance_service.py  # Transactions BitGroins atomiques
 │   ├── pig_service.py      # Création cochon, stats, poids
 │   ├── race_service.py     # Résolution courses, XP, récompenses
 │   ├── market_service.py   # Enchères, remboursement auto
 │   ├── galerie_service.py  # Boutiques + marketplace P2P
 │   ├── marketplace_service.py
+│   ├── economy_service.py  # Réglages d'équilibrage + simulateur admin
 │   └── game_settings_service.py
 │
 ├── templates/              # 38 templates Jinja2
@@ -297,7 +305,8 @@ derby_des_groins/
 │   ├── classement.html     # Classement (5 onglets)
 │   ├── history.html        # Historique (3 onglets)
 │   ├── admin_avatars.html   # Gestion avatars pixel art (upload PNG/SVG/code SVG)
-│   ├── admin_*.html        # Admin dashboard + 7 sous-pages
+│   ├── admin_economy.html  # Pilotage économique + simulateur live
+│   ├── admin_*.html        # Admin dashboard + 8 sous-pages
 │   └── ...                 # + 20 autres pages
 │
 ├── static/                 # CSS, JS, images
@@ -314,7 +323,7 @@ derby_des_groins/
 | `models.py` | Schéma de données | 20 modèles SQLAlchemy (dont PigAvatar) |
 | `data.py` | Données statiques | Céréales, entraînements, école, raretés, origines, constantes |
 | `helpers/` | Logique métier | 8 modules : config, DB, temps, véto, courses, game data, marché |
-| `services/` | Couche métier | 7 modules : finance, cochon, courses, enchères, boutiques |
+| `services/` | Couche métier | 8 modules : finance, cochon, courses, enchères, boutiques, economie |
 | `scheduler.py` | Tâches de fond | Résolution courses, enchères, deadlines véto, historique marché |
 | `routes/` | 15 Blueprints | Chaque domaine a son fichier avec ses routes |
 | `app.py` | Point d'entrée | Factory `create_app()`, migrations, seed utilisateurs |
@@ -354,13 +363,14 @@ derby_des_groins/
 20. Les courses, les enchères et les deadlines du vétérinaire sont gérées par un **scheduler de fond**, même si personne n'est connecté
 21. Le **Groin Jack** (`/blackjack`) permet de miser des BitGroins dans un blackjack porcin : deck 52 cartes + 2 Jokers, actions Hit/Stand/Double, blackjack naturel payé 3:2
 22. Le **Jeu des Truffes** (`/truffes`) est un mini-jeu gratuit : trouver la truffe cachée en 7 clics sur une grille 20×20 rapporte 20 🪙
-29. **La Légende du COMOP** (`/agenda`) est un mini-jeu réflexe : le Chef de Porc-jet programme des COMOPs sur le calendrier Porc-Look mais les annule dès que ta souris s'approche. Attrape 5 COMOPs gelés en 30 secondes pour gagner 50 🪙. Piège : cliquer sur "VRAI TRAVAIL" fait perdre 2 secondes. Victoire = trophée "Ceinture Noire de Porc-Look"
 23. La **Course en Direct** (`/race/live`) propose un replay animé tour par tour de la dernière course avec positions, événements et classement live
 24. La **Bourse aux Grains** remplace les prix fixes : un curseur sur une grille 5x5 partagée par tous les joueurs determine le prix et la qualite de la nourriture. Chaque joueur peut deplacer le curseur avant d'acheter, et le dernier grain achete est bloque en vitrine
 25. Le **Classement** propose 5 onglets (General, Abattoir, Paris, Elevage, Mur de la Honte) avec 18+ awards automatiques et des charts detailles
 26. La **Prime de pointage** de 15 🪙 est versee automatiquement a la premiere connexion de chaque journee pour garantir un revenu minimum
 27. L'**equilibrage v2** divise les gains de stats par 5 (anti-snowball), reduit la duree de vie des cochons de moitie et nerf la strategie Economie en course
 28. Les **avatars pixel art** permettent de remplacer l'emoji par un visuel personnalise (PNG 64x64 ou SVG) gere par l'admin dans `/admin/avatars`. Les joueurs choisissent leur avatar dans `/mon-cochon`
+29. Le panneau **`/admin/economy`** permet d'ajuster les rewards, les coûts, les tickets, les caps de payout, le house edge par type de pari et les multiplicateurs journaliers, avec une simulation basee sur les donnees live de la base
+30. **La Légende du COMOP** (`/agenda`) est un mini-jeu réflexe : le Chef de Porc-jet programme des COMOPs sur le calendrier Porc-Look mais les annule dès que ta souris s'approche. Attrape 5 COMOPs gelés en 30 secondes pour gagner 50 🪙. Piège : cliquer sur "VRAI TRAVAIL" fait perdre 2 secondes. Victoire = trophée "Ceinture Noire de Porc-Look"
 
 ---
 

@@ -1,4 +1,4 @@
-{% set nav_base = "inline-flex items-center gap-2 rounded-xl border px-3.5 py-2 text-sm font-bold transition-all whitespace-nowrap" %}
+{% set nav_base = "inline-flex w-full items-center justify-center gap-2 rounded-xl border px-3.5 py-2 text-sm font-bold transition-all whitespace-nowrap sm:w-auto" %}
 {% set nav_active = "border-pink-300/45 bg-pink-400/16 text-pink-100 shadow-[0_10px_26px_rgba(244,114,182,0.16)]" %}
 {% set nav_idle = "border-pink-100/10 bg-pink-200/[0.035] text-white/70 hover:border-pink-200/20 hover:bg-pink-200/[0.08] hover:text-white" %}
 {% set util_base = "inline-flex items-center gap-2 rounded-xl border px-3.5 py-2 text-sm font-bold transition-all whitespace-nowrap" %}
@@ -10,10 +10,10 @@
         <div class="flex flex-col gap-3">
 
             <!-- ── Ligne 1 : Logo + résumé utilisateur + hamburger ── -->
-            <div class="flex items-center justify-between gap-3">
+            <div class="flex flex-wrap items-center justify-between gap-3">
 
                 <!-- Logo -->
-                <a href="/" class="flex items-center gap-3 hover:opacity-90 transition-opacity shrink-0">
+                <a href="/" class="flex max-w-full min-w-0 items-center gap-3 transition-opacity hover:opacity-90 sm:shrink-0">
                     <span class="text-3xl drop-shadow-[0_0_12px_rgba(244,114,182,0.35)]">🐷</span>
                     <div class="min-w-0">
                         <p class="font-title text-xl sm:text-2xl text-pink-200 leading-none drop-shadow-[0_0_18px_rgba(251,113,133,0.18)]">Derby des Groins</p>
@@ -23,7 +23,7 @@
 
                 {% if user %}
                 <!-- Droite : balance (sm+), admin/quitter (lg+), hamburger (< lg) -->
-                <div class="flex items-center gap-2">
+                <div class="flex items-center gap-2 sm:ml-auto">
 
                     <!-- Balance + Tickets : visible dès sm -->
                     <div class="hidden sm:inline-flex items-center gap-2.5 rounded-2xl border border-pink-200/12 bg-[linear-gradient(135deg,rgba(244,114,182,0.08),rgba(255,255,255,0.035))] px-3.5 py-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]">
@@ -73,8 +73,8 @@
 
             {% if user %}
             <!-- ── Ligne 2 (mobile uniquement) : balance compacte ── -->
-            <div class="sm:hidden flex items-center justify-between gap-2 rounded-2xl border border-pink-200/12 bg-[linear-gradient(135deg,rgba(244,114,182,0.08),rgba(255,255,255,0.035))] px-4 py-2.5">
-                <div class="flex items-center gap-3">
+            <div class="sm:hidden flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-pink-200/12 bg-[linear-gradient(135deg,rgba(244,114,182,0.08),rgba(255,255,255,0.035))] px-4 py-2.5">
+                <div class="flex min-w-0 flex-1 flex-wrap items-center gap-3">
                     <div>
                         <p class="text-[10px] uppercase tracking-[0.15em] text-pink-100/35 font-bold">BitGroins</p>
                         <div class="flex items-center gap-1.5">
@@ -91,7 +91,7 @@
                         </div>
                     </div>
                 </div>
-                <div class="flex items-center gap-1.5">
+                <div class="flex w-full items-center justify-end gap-1.5">
                     {% if user.is_admin %}
                     <a href="/admin" class="text-xs font-bold text-fuchsia-300 px-2.5 py-1.5 rounded-lg bg-fuchsia-400/10 border border-fuchsia-400/20">🔧</a>
                     {% endif %}
@@ -100,7 +100,7 @@
             </div>
 
             <!-- ── Nav : collapsible mobile, toujours visible lg+ ── -->
-            <nav id="main-nav" class="hidden lg:flex flex-wrap items-center gap-2">
+            <nav id="main-nav" class="hidden flex-col items-stretch gap-2 rounded-2xl border border-pink-200/10 bg-[linear-gradient(180deg,rgba(39,13,49,0.96),rgba(28,11,41,0.94))] p-3 shadow-2xl max-h-[70vh] overflow-y-auto sm:flex-row sm:flex-wrap sm:items-center lg:flex lg:rounded-none lg:border-0 lg:bg-transparent lg:p-0 lg:shadow-none lg:max-h-none lg:overflow-visible">
                 <a href="/courses" class="{{ nav_base }} {{ nav_active if active_page == 'courses' else nav_idle }}">📅 Courses</a>
                 <a href="/paris" class="{{ nav_base }} {{ nav_active if active_page == 'paris' else nav_idle }}">💰 Paris</a>
                 <a href="/mon-cochon" class="{{ nav_base }} {{ nav_active if active_page == 'mon_cochon' else nav_idle }}">🐷 Mon Cochon</a>

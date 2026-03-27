@@ -2,9 +2,11 @@
 
 Bienvenue dans l'univers impitoyable et délicieux du **Derby des Groins**. Voici comment dominer le circuit !
 
+> **Note admin** : plusieurs chiffres ci-dessous sont maintenant **configurables** depuis **`/admin/economy`**. Les montants indiqués dans cette doc sont donc des valeurs par défaut ou des repères de conception, pas des constantes immuables.
+
 ## 1. Débuter l'Aventure
-- Créez votre compte, vous recevrez **100 BitGroins (🪙)** en cadeau de bienvenue.
-- Chaque jour, votre **première connexion** vous rapporte une **Prime de pointage de 15 🪙** automatiquement créditée.
+- Créez votre compte, vous recevrez un **bonus de bienvenue** administrable depuis l'admin économie (**100 BitGroins** par défaut).
+- Chaque jour, votre **première connexion** vous rapporte une **Prime de pointage** automatiquement créditée (**15 🪙** par défaut).
 - Rendez-vous sur la page **Mon Cochon** pour adopter votre premier poulain gratuitement. Votre cochon recevra un nom, un pays d'origine (avec un bonus de stats), un emoji représentatif, et des statistiques générées aléatoirement.
 - La page d'accueil fait office de **dashboard express** : on y voit la course du jour, le statut de son cochon, ses Tickets Bacon restants, un résumé de la bauge et les derniers résultats.
 
@@ -69,12 +71,12 @@ La nourriture ne s'achete plus a prix fixe. Tous les prix et la qualite des cere
 - La page **Courses** permet de voir la semaine / le mois a venir et de planifier ses cochons sur les prochains creneaux.
 - Chaque cochon inscrit court (y compris les PNJ), sauf s'il est blessé ou dans un état trop faible pour être retenu.
 - Le moteur de course tient compte de la puissance generale, de l'etat du cochon et de son **poids de forme**.
-- Les éleveurs reçoivent une **prime de participation**, et les meilleurs gagnent un **bonus de podium**.
+- Les éleveurs reçoivent une **prime de participation**, et les meilleurs gagnent un **bonus de podium**. Ces valeurs sont désormais pilotables par l'admin.
 
 ## 4. Les Paris
 - Placez vos BitGroins sur les cochons participants (même ceux des autres joueurs !).
-- La mise doit etre entre **5 et 500 BitGroins** par pari.
-- Chaque joueur reçoit **3 Tickets Bacon par semaine** : il faut donc choisir ses tickets avec soin.
+- La mise doit rester entre une **borne min et max** configurables (**5 à 500 BitGroins** par défaut).
+- Chaque joueur reçoit un nombre de **Tickets Bacon par semaine** configurable (**3** par défaut) : il faut donc choisir ses tickets avec soin.
 - **Un seul ticket par course** est autorisé pour éviter les arbitrages faciles.
 - Les **paris complexes** (3+ selections : tierce, quarte, quinte, rafle) ne sont accessibles que si **ton cochon participe a la course**.
 - Formats disponibles :
@@ -83,12 +85,14 @@ La nourriture ne s'achete plus a prix fixe. Tous les prix et la qualite des cere
 - **Tierce ordre** : trouver les 3 premiers dans l'ordre.
 - Et d'autres formats avances (quarte, quinte, rafle...) avec des cotes plus elevees.
 - Selon la difficulté du ticket et la cote calculée au moment de la mise, gagnez le pactole si ton pronostic est exact.
+- L'admin peut aussi ajuster le **house edge** par type de ticket et activer un **cap de payout** pour éviter les jackpots démesurés.
 - La page **Historique** conserve aussi chaque ticket, l'historique des courses et le journal des credits/debits BitGroins pour suivre les flux.
 
 ## 5. Survivre sur le Long Terme
-- La **Prime de pointage** (15 🪙/jour) garantit un revenu minimum pour nourrir ses cochons même en cas de série de défaites.
+- La **Prime de pointage** garantit un revenu minimum pour nourrir ses cochons même en cas de série de défaites. Sa valeur exacte dépend du réglage admin.
 - Un cochon finit par prendre sa retraite ou mourir : il faut donc penser à renouveler son élevage.
 - Deux cochons actifs peuvent maintenant lancer une **portee** : le porcelet hérite d'une partie des stats, de l'origine, de la rareté et du bonus de lignée de ses parents.
+- Le **coût d'une portée**, du **second cochon** et des cochons supplémentaires fait aussi partie des réglages admin d'équilibrage.
 - Un cochon **legendaire** (ou deja tres victorieux) peut prendre une **retraite d'honneur** : il quitte la piste, mais laisse un bonus permanent a sa lignee et a la porcherie du joueur.
 - Plus vous possedez de cochons, plus le nourrissage devient cher : chaque bouche supplementaire augmente le coût des cereales pour toute la porcherie.
 - Si un cochon mis en vente ne trouve pas preneur, il **revient automatiquement** chez son propriétaire.

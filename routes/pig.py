@@ -6,7 +6,7 @@ from extensions import db, limiter
 from models import User, Pig, PigAvatar
 from data import (
     SCHOOL_COOLDOWN_MINUTES,
-    PIG_EMOJIS, PIG_ORIGINS, STAT_LABELS, STAT_DESCRIPTIONS, RARITIES, BREEDING_COST,
+    PIG_EMOJIS, PIG_ORIGINS, STAT_LABELS, STAT_DESCRIPTIONS, RARITIES,
     OFFICE_SNACKS, SNACK_SHARE_DAILY_LIMIT, PIG_TYPING_WORDS,
 )
 from helpers import (
@@ -14,6 +14,7 @@ from helpers import (
     get_cooldown_remaining, format_duration_short, get_seconds_until,
     get_cereals_dict, get_trainings_dict, get_school_lessons_dict,
 )
+from services.economy_service import get_breeding_cost_value
 from utils.time_utils import is_weekend_truce_active
 
 from services.finance_service import (
@@ -48,6 +49,7 @@ def mon_cochon():
     active_listing_count = get_active_listing_count(user)
     feeding_multiplier = get_feeding_cost_multiplier(user)
     max_slots = get_max_pig_slots(user)
+    breeding_cost = get_breeding_cost_value()
 
     pigs_data = []
     for p in pigs:
@@ -86,7 +88,7 @@ def mon_cochon():
         school_lessons=get_school_lessons_dict(), school_cooldown_minutes=SCHOOL_COOLDOWN_MINUTES,
         pig_emojis=PIG_EMOJIS, stat_labels=STAT_LABELS, stat_descriptions=STAT_DESCRIPTIONS,
         adoption_cost=adoption_cost, active_listing_count=active_listing_count,
-        feeding_multiplier=feeding_multiplier, max_slots=max_slots, breeding_cost=BREEDING_COST,
+        feeding_multiplier=feeding_multiplier, max_slots=max_slots, breeding_cost=breeding_cost,
         available_avatars=available_avatars,
     )
 
@@ -456,15 +458,16 @@ def breed_pig():
     if get_pig_slot_count(user) >= get_max_pig_slots(user):
         flash("La porcherie est pleine. Vends, retire ou perds un cochon avant de lancer une nouvelle portée.", "warning")
         return redirect(url_for('pig.mon_cochon'))
+    breeding_cost = get_breeding_cost_value()
     if not user.pay(
-        BREEDING_COST,
+        breeding_cost,
         reason_code='pig_breeding',
         reason_label='Lancement de portee',
         details=f"Portee entre {parent_a.name} et {parent_b.name}.",
         reference_type='user',
         reference_id=user.id,
     ):
-        flash(f"Il faut {BREEDING_COST:.0f} 🪙 pour financer la portée.", "error")
+        flash(f"Il faut {breeding_cost:.0f} 🪙 pour financer la portée.", "error")
         return redirect(url_for('pig.mon_cochon'))
 
     if child_name and is_pig_name_taken(child_name):

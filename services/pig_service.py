@@ -4,15 +4,18 @@ import math
 import random
 
 from data import (
-    DEFAULT_PIG_WEIGHT_KG, FEEDING_PRESSURE_PER_PIG, FRESHNESS_BONUS_HOURS,
+    DEFAULT_PIG_WEIGHT_KG, FRESHNESS_BONUS_HOURS,
     FRESHNESS_MORAL_BONUS, IDEAL_WEIGHT_MALUS_THRESHOLD_RATIO,
     MAX_INJURY_RISK, MAX_PIG_SLOTS, MAX_PIG_WEIGHT_KG, MAX_WEIGHT_PERFORMANCE_MALUS,
     MIN_INJURY_RISK, MIN_PIG_WEIGHT_KG, PIG_EMOJIS, PIG_ORIGINS,
-    PRELOADED_PIG_NAMES, REPLACEMENT_PIG_COST, RETIREMENT_HERITAGE_MIN_WINS,
-    SECOND_PIG_COST,
+    PRELOADED_PIG_NAMES, RETIREMENT_HERITAGE_MIN_WINS,
 )
 from extensions import db
 from models import Auction, Pig
+from services.economy_service import (
+    calculate_adoption_cost_for_counts,
+    get_feeding_multiplier_for_count,
+)
 
 from utils.time_utils import calculate_weekend_truce_hours
 
@@ -219,16 +222,12 @@ def get_adoption_cost(user):
     if slot_count >= get_max_pig_slots(user):
         return None
     active_count = Pig.query.filter_by(user_id=user.id, is_alive=True).count()
-    if active_count == 0:
-        return REPLACEMENT_PIG_COST
-    return SECOND_PIG_COST + max(0, active_count - 1) * 15.0
+    return calculate_adoption_cost_for_counts(active_count, slot_count, get_max_pig_slots(user))
 
 
 def get_feeding_cost_multiplier(user):
     active_count = Pig.query.filter_by(user_id=user.id, is_alive=True).count()
-    if active_count <= 1:
-        return 1.0
-    return round(1.0 + ((active_count - 1) * FEEDING_PRESSURE_PER_PIG), 2)
+    return get_feeding_multiplier_for_count(active_count)
 
 
 def get_lineage_label(pig):

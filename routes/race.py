@@ -4,8 +4,15 @@ from datetime import datetime
 
 from extensions import db, limiter
 from models import User, Race, Participant, Bet
-from data import BET_TYPES, WEEKLY_RACE_QUOTA, WEEKLY_BACON_TICKETS, MIN_BET_RACE, MAX_BET_RACE, COMPLEX_BET_MIN_SELECTIONS
+from data import COMPLEX_BET_MIN_SELECTIONS
 from helpers import ensure_next_race, get_user_active_pigs, apply_row_lock, ensure_race_for_slot
+from services.economy_service import (
+    get_bet_limits,
+    get_configured_bet_types,
+    get_effective_bet_odds,
+    get_weekly_bacon_tickets_value,
+    get_weekly_race_quota_value,
+)
 from services.pig_service import calculate_pig_power, get_weight_profile
 from services.race_service import (
     RacePlanningError, build_course_schedule, calculate_bet_odds,
@@ -30,6 +37,7 @@ def courses():
 
     ensure_next_race()
     pigs = get_user_active_pigs(user)
+    weekly_quota = get_weekly_race_quota_value()
 
     pigs_data = []
     for pig in pigs:
@@ -39,7 +47,7 @@ def courses():
             'pig': pig,
             'power': round(calculate_pig_power(pig), 1),
             'weekly_commitments': weekly_commitments,
-            'weekly_remaining': max(0, WEEKLY_RACE_QUOTA - weekly_commitments),
+            'weekly_remaining': max(0, weekly_quota - weekly_commitments),
             'weight_profile': get_weight_profile(pig),
         })
 
@@ -77,7 +85,7 @@ def courses():
         pigs_data=pigs_data,
         next_week_slots=next_week_slots,
         month_slots=schedule,
-        weekly_quota=WEEKLY_RACE_QUOTA,
+        weekly_quota=weekly_quota,
         now=datetime.now(),
         total_inscribed=total_inscribed,
         next_pig_races=next_pig_races[:5],
@@ -87,6 +95,9 @@ def courses():
 @race_bp.route('/paris')
 def paris():
     """Page dédiée aux paris — cotes, formulaire de pari, historique."""
+    bet_types = get_configured_bet_types()
+    weekly_bacon_tickets = get_weekly_bacon_tickets_value()
+    bet_limits = get_bet_limits()
     slot_str = request.args.get('slot')
     race_id = request.args.get('race_id', type=int)
     next_race = None
@@ -130,7 +141,7 @@ def paris():
     user = None
     user_bets = []
     pigs = []
-    bacon_tickets_remaining = WEEKLY_BACON_TICKETS
+    bacon_tickets_remaining = weekly_bacon_tickets
     headline_status = {'participates': False}
     participants = []
     next_race_theme = None
@@ -141,7 +152,7 @@ def paris():
         if user:
             pigs = get_user_active_pigs(user)
             weekly_bet_count = get_user_weekly_bet_count(user, datetime.now())
-            bacon_tickets_remaining = max(0, WEEKLY_BACON_TICKETS - weekly_bet_count)
+            bacon_tickets_remaining = max(0, weekly_bacon_tickets - weekly_bet_count)
             if next_race:
                 user_bets = Bet.query.filter_by(user_id=user.id, race_id=next_race.id).all()
             # Derniers paris de l'utilisateur
@@ -171,11 +182,12 @@ def paris():
         recent_bets=recent_bets,
         upcoming_elements=upcoming_elements,
         bacon_tickets_remaining=bacon_tickets_remaining,
-        weekly_bacon_tickets=WEEKLY_BACON_TICKETS,
+        weekly_bacon_tickets=weekly_bacon_tickets,
         headline_status=headline_status,
-        bet_types=BET_TYPES,
-        min_bet_race=MIN_BET_RACE,
-        max_bet_race=MAX_BET_RACE,
+        bet_types=bet_types,
+        min_bet_race=bet_limits['min_bet_race'],
+        max_bet_race=bet_limits['max_bet_race'],
+        max_payout_race=bet_limits['max_payout_race'],
         now=datetime.now(),
     )
 
@@ -222,9 +234,12 @@ def place_bet():
     if not user:
         session.pop('user_id', None)
         return redirect(url_for('auth.login'))
+    bet_types = get_configured_bet_types()
+    weekly_bacon_tickets = get_weekly_bacon_tickets_value()
+    bet_limits = get_bet_limits()
     weekly_bet_count = get_user_weekly_bet_count(user, datetime.now())
-    if weekly_bet_count >= WEEKLY_BACON_TICKETS:
-        flash(f"Tu as deja utilise tes {WEEKLY_BACON_TICKETS} Tickets Bacon de la semaine.", "warning")
+    if weekly_bet_count >= weekly_bacon_tickets:
+        flash(f"Tu as deja utilise tes {weekly_bacon_tickets} Tickets Bacon de la semaine.", "warning")
         return redirect(url_for('race.paris'))
 
     race_id = request.form.get('race_id', type=int)
@@ -247,7 +262,7 @@ def place_bet():
 
     participants = Participant.query.filter_by(race_id=race_id).all()
     participants_by_id = {participant.id: participant for participant in participants}
-    expected_count = BET_TYPES[bet_type]['selection_count']
+    expected_count = bet_types[bet_type]['selection_count']
     if len(participants) < expected_count:
         flash("Pas assez de partants pour ce type de ticket.", "warning")
         return redirect(url_for('race.paris'))
@@ -261,8 +276,8 @@ def place_bet():
         flash("Sélection invalide pour cette course.", "error")
         return redirect(url_for('race.paris'))
 
-    if not amount or amount < MIN_BET_RACE or amount > MAX_BET_RACE:
-        flash(f"La mise doit etre entre {MIN_BET_RACE} et {MAX_BET_RACE} BitGroins.", "error")
+    if not amount or amount < bet_limits['min_bet_race'] or amount > bet_limits['max_bet_race']:
+        flash(f"La mise doit etre entre {bet_limits['min_bet_race']:.0f} et {bet_limits['max_bet_race']:.0f} BitGroins.", "error")
         return redirect(url_for('race.paris'))
 
     if expected_count >= COMPLEX_BET_MIN_SELECTIONS:
@@ -277,9 +292,13 @@ def place_bet():
         flash("Tu as déjà un ticket sur cette course.", "warning")
         return redirect(url_for('race.paris'))
 
-    odds_at_bet = calculate_bet_odds(participants_by_id, selection_ids, bet_type)
-    if odds_at_bet <= 0:
+    raw_odds = calculate_bet_odds(participants_by_id, selection_ids, bet_type)
+    if raw_odds <= 0:
         flash("Impossible de calculer la cote de ce ticket.", "error")
+        return redirect(url_for('race.paris'))
+    odds_at_bet = get_effective_bet_odds(raw_odds, amount)
+    if odds_at_bet <= 0:
+        flash("Le plafond de gain actuel rend cette mise impossible pour ce ticket.", "error")
         return redirect(url_for('race.paris'))
 
     bet_label = format_bet_label(selected_participants)
@@ -298,7 +317,7 @@ def place_bet():
             amount,
             reason_code='bet_stake',
             reason_label='Mise de pari',
-            details=f"Ticket {BET_TYPES[bet_type]['label'].lower()} sur la course #{race_id}: {bet_label}.",
+            details=f"Ticket {bet_types[bet_type]['label'].lower()} sur la course #{race_id}: {bet_label}.",
             reference_type='race',
             reference_id=race_id,
         ):
@@ -311,5 +330,5 @@ def place_bet():
         flash("Tu as déjà un ticket sur cette course.", "warning")
         return redirect(url_for('race.paris'))
 
-    flash(f"{BET_TYPES[bet_type]['icon']} Ticket {BET_TYPES[bet_type]['label'].lower()} validé sur {bet_label}.", "success")
+    flash(f"{bet_types[bet_type]['icon']} Ticket {bet_types[bet_type]['label'].lower()} validé sur {bet_label}.", "success")
     return redirect(url_for('race.paris'))
