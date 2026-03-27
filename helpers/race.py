@@ -371,12 +371,20 @@ def run_race_if_needed():
                 pig.last_updated = datetime.utcnow()
                 pig.check_level_up()
 
-                base_risk = (pig.injury_risk or MIN_INJURY_RISK) / 100.0
+                # Rookie protection: the first races should teach the loop, not wipe the stable.
+                career_races = max(0, int(pig.races_entered or 0))
+                career_ramp = min(1.0, career_races / 8.0)
+                rookie_protection_multiplier = 0.3 + (career_ramp * 0.7)
+                base_risk_points = min(
+                    MAX_INJURY_RISK,
+                    max(MIN_INJURY_RISK, float(pig.injury_risk or MIN_INJURY_RISK)),
+                )
+                base_risk = (base_risk_points / 100.0) * rookie_protection_multiplier
                 fatigue_factor = 1.0 + max(0, (50 - pig.energy) / 100)
                 hunger_factor = 1.0 + max(0, (30 - pig.hunger) / 100)
                 weight_profile = get_weight_profile(pig)
                 effective_risk = min(
-                    0.70,
+                    0.25,
                     base_risk * fatigue_factor * hunger_factor * weight_profile['injury_factor'],
                 )
                 if random.random() < effective_risk and not pig.is_injured:
@@ -386,7 +394,7 @@ def run_race_if_needed():
                 else:
                     pig.injury_risk = min(
                         MAX_INJURY_RISK,
-                        (pig.injury_risk or MIN_INJURY_RISK) + random.uniform(0.3, 0.8),
+                        max(MIN_INJURY_RISK, float(pig.injury_risk or MIN_INJURY_RISK)) + random.uniform(0.1, 0.3),
                     )
 
                 if pig.max_races and pig.races_entered >= pig.max_races:

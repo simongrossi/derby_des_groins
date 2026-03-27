@@ -97,7 +97,10 @@ def vet_solve():
 
     progression = get_progression_settings()
     pig.heal()
-    pig.injury_risk = min(35.0, max(MIN_INJURY_RISK, (pig.injury_risk or MIN_INJURY_RISK) + 2.0))
+    pig.injury_risk = max(
+        MIN_INJURY_RISK,
+        round(max(MIN_INJURY_RISK, float(pig.injury_risk or MIN_INJURY_RISK)) - 2.0, 1),
+    )
     pig.energy = max(0, pig.energy - progression.vet_energy_cost)
     pig.happiness = max(0, pig.happiness - progression.vet_happiness_cost)
     db.session.commit()

@@ -250,7 +250,7 @@
         <div id="piece-tray"></div>
 
         <p class="text-center text-white/25 text-xs mt-4">
-            Le chrono tourne. Chaque os mal placé vous coûte 10 secondes.
+            Le chrono tourne. Chaque os mal placé vous coûte 5 secondes.
         </p>
     </section>
 </main>
@@ -282,7 +282,7 @@
 const PIG_ID = {{ pig.id }};
 const TOTAL_SECONDS = {{ seconds_left }};
 const TOTAL_PIECES = 12;
-const PENALTY_SECONDS = 10;
+const PENALTY_SECONDS = 5;
 const BONE_EMOJIS = ['🦴', '🦷', '💉', '🩺', '🩻', '🧬', '🫀', '🫁', '🧪', '💊', '🩹', '🩼'];
 const SHUFFLED = [...BONE_EMOJIS].map((emoji, index) => ({ emoji, correctSlot: index }));
 for (let i = SHUFFLED.length - 1; i > 0; i--) {

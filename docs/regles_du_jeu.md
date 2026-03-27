@@ -1,159 +1,372 @@
-# 📜 Derby des Groins - Règles du Jeu
+# Regles du Jeu - Derby des Groins
 
-Bienvenue dans l'univers impitoyable et délicieux du **Derby des Groins**. Voici comment dominer le circuit !
+Document de reference des regles joueur actuellement en place dans le depot.
 
-> **Note admin** : plusieurs chiffres ci-dessous sont maintenant **configurables** depuis **`/admin/economy`**. Les montants indiqués dans cette doc sont donc des valeurs par défaut ou des repères de conception, pas des constantes immuables.
+Important:
+- la source de verite fonctionnelle reste le code;
+- les valeurs numeriques ci-dessous correspondent aux reglages actifs au 27 mars 2026 dans le depot;
+- une partie de ces valeurs est administrable depuis `/admin/economy` et `/admin/progression`;
+- la page publique `/regles` est la synthese joueur exposee dans l'interface.
 
-## 1. Débuter l'Aventure
-- Créez votre compte, vous recevrez un **bonus de bienvenue** administrable depuis l'admin économie (**100 BitGroins** par défaut).
-- Chaque jour, votre **première connexion** vous rapporte une **Prime de pointage** automatiquement créditée (**15 🪙** par défaut).
-- Rendez-vous sur la page **Mon Cochon** pour adopter votre premier poulain gratuitement. Votre cochon recevra un nom, un pays d'origine (avec un bonus de stats), un emoji représentatif, et des statistiques générées aléatoirement.
-- La page d'accueil fait office de **dashboard express** : on y voit la course du jour, le statut de son cochon, ses Tickets Bacon restants, un résumé de la bauge et les derniers résultats.
+## 1. Demarrage
 
-## 2. Les Statistiques de votre Cochon
-- **Vitesse (VIT)** : Détermine sa foulée.
-- **Endurance (END)** : Capacité à tenir la distance.
-- **Agilité (AGI)** : Éviter les bousculades.
-- **Force (FOR)** : S'imposer devant les autres.
-- **Intelligence (INT)** : Choisir la meilleure trajectoire.
-- **Moral (MOR)** : Détermination à gagner.
-- **Poids de forme** : un cochon trop lourd ou trop leger exploite moins bien ses stats pendant la course.
+- A l'inscription, un joueur recoit un bonus de bienvenue administrable, actuellement `100` BitGroins.
+- L'inscription cree aussi un premier cochon gratuitement.
+- La premiere connexion de chaque journee verse une prime quotidienne administrable, actuellement `15` BitGroins.
+- Si un joueur tombe trop bas en caisse, le jeu peut declencher une prime d'urgence pour eviter un blocage total.
 
-Entraînez-le régulièrement, envoyez-le à l'école porcine et nourrissez-le pour le maintenir en forme avant les courses ! Le choix des cereales et des seances influe aussi sur son poids. (Mais attention, un cochon ne peut courir qu'un nombre défini de fois avant de succomber...).
+## 2. Les 6 stats permanentes
 
-> **Équilibrage v2** : les gains de stats par entraînement et par école ont été divisés par 5 pour ralentir la progression et éviter l'effet boule de neige. Un sprint donne désormais +0.6 en vitesse (au lieu de +3.0), un cours de stratégie donne +0.5 en intelligence (au lieu de +2.5). L'objectif est de garder les courses compétitives même entre joueurs assidus et joueurs occasionnels.
+Chaque cochon possede 6 stats de base:
 
-## 2.b L'École Porcine
-- Depuis la page **Mon Cochon**, chaque cochon peut suivre des **cours tactiques** sous forme de quiz.
-- Une bonne réponse apporte des **bonus de statistiques** et de l'**XP**.
-- Une mauvaise réponse ne bloque pas la progression, mais coûte du moral général.
-- Chaque cochon doit ensuite respecter un **temps de récupération** avant de retourner en classe.
+| Stat | Code UI | Role |
+|---|---|---|
+| Vitesse | `VIT` | Acceleration et pointe |
+| Endurance | `END` | Tenue sur la duree |
+| Agilite | `AGI` | Virages, esquives, fluidite |
+| Force | `FOR` | Impact, tenue au contact |
+| Intelligence | `INT` | Choix de trajectoire, lecture de course |
+| Moral | `MOR` | Regularite, resistance au stress |
 
-## 2.c Blessures et Vétérinaire
-- Certaines courses peuvent laisser un cochon **blessé** : il est alors retiré des activités risquées tant qu'il n'est pas soigné.
-- Un cochon blessé ne peut plus s'entraîner, retourner à l'école, entrer dans le Challenge de la Mort ni être retenu pour une course classique.
-- Le menu **Vétérinaire** ouvre une salle d'attente si tout va bien, ou une **urgence** avec mini-jeu chronométré si un patient doit être opéré.
-- Si le puzzle est résolu à temps, le cochon survit et repart avec une convalescence légère. Si le temps expire, il peut mourir sur la table.
+Ces stats montent lentement via:
+- la nourriture;
+- les entrainements;
+- l'ecole porcine;
+- le Typing Derby;
+- certains gains de course.
 
-## 2.d Bourse aux Grains
+Le niveau n'ajoute pas automatiquement `+1 partout`. Il depend d'une courbe d'XP et donne surtout de la progression de carriere et un bonus d'humeur au level-up.
 
-La nourriture ne s'achete plus a prix fixe. Tous les prix et la qualite des cereales sont determines par la **Bourse aux Grains**, un marche dynamique partage entre tous les joueurs.
+## 3. Niveau et XP
 
-### La Grille de Cotation (5x5)
-- Un **curseur** unique, visible par tous, se deplace sur une grille.
-- **Axe horizontal (Prix)** : plus le curseur est a droite, plus la nourriture est chere (x0.55 a x1.60).
-- **Axe vertical (Qualite)** : plus le curseur est haut, plus la nourriture apporte de bonus (faim, energie, stats) eleves.
-- Le centre de la grille (3, 3) correspond au tarif et a la qualite de reference (x1.00).
+Regles actuelles:
+- formule de seuil: `XP totale = 100 * niveau^1.5`;
+- bonus au level-up: `+10` humeur;
+- l'XP est cumulative: on ne "consomme" pas l'XP quand on change de niveau.
 
-### Points de Mouvement
-- Avant d'acheter, chaque joueur peut **deplacer le curseur** d'une ou plusieurs cases.
-- Le nombre de cases autorisees depend du nombre total d'achats de nourriture du joueur : **1 point de mouvement par tranche de 10 achats** (minimum 1).
-- Chaque deplacement vaut 1 point (horizontal ou vertical, 1 case a la fois).
-- **Le deplacement affecte tous les joueurs** : baisser le prix pour soi peut aussi profiter aux concurrents, et inversement.
+Seuils utiles:
 
-### La Vitrine (anti-spam)
-- Chaque achat place le grain achete **en vitrine**.
-- Le grain en vitrine est **bloque** : personne ne peut l'acheter tant qu'un autre joueur n'a pas achete un grain different.
-- Cela force la variete et empeche de spammer la meme cereale a l'infini.
+| Niveau cible | XP totale requise |
+|---|---:|
+| 2 | 283 |
+| 3 | 520 |
+| 4 | 800 |
+| 5 | 1118 |
+| 6 | 1470 |
 
-### Strategies
-- **Le Prudent** : deplace le curseur vers la gauche pour payer moins cher, au risque de reduire la qualite.
-- **Le Speculateur** : monte le curseur vers le haut pour booster la qualite de son achat, meme si le prix augmente.
-- **Le Saboteur** : pousse le curseur a droite pour faire monter les prix et bloquer les joueurs suivants.
+XP de course actuelle:
 
-### Acces
-- La Bourse est accessible depuis le menu principal (**Bourse**).
-- Le prix final affiche tient compte du modificateur Bourse, de la pression de porcherie (nombre de cochons) et du cout de base de la cereale.
+| Position | XP |
+|---|---:|
+| 1 | 100 |
+| 2 | 60 |
+| 3 | 40 |
+| 4 | 25 |
+| 5 | 15 |
+| 6 | 10 |
+| 7 | 5 |
+| 8 | 3 |
 
-## 3. Les Courses
-- Il y a des courses régulières prévues à heure fixe ou forçables manuellement par l'admin.
-- Le calendrier continue de vivre meme sans visiteur connecte : les courses partent via une tache de fond.
-- La page **Courses** permet de voir la semaine / le mois a venir et de planifier ses cochons sur les prochains creneaux.
-- Chaque cochon inscrit court (y compris les PNJ), sauf s'il est blessé ou dans un état trop faible pour être retenu.
-- Le moteur de course tient compte de la puissance generale, de l'etat du cochon et de son **poids de forme**.
-- Les éleveurs reçoivent une **prime de participation**, et les meilleurs gagnent un **bonus de podium**. Ces valeurs sont désormais pilotables par l'admin.
+## 4. Les jauges de forme
 
-## 4. Les Paris
-- Placez vos BitGroins sur les cochons participants (même ceux des autres joueurs !).
-- La mise doit rester entre une **borne min et max** configurables (**5 à 500 BitGroins** par défaut).
-- Chaque joueur reçoit un nombre de **Tickets Bacon par semaine** configurable (**3** par défaut) : il faut donc choisir ses tickets avec soin.
-- **Un seul ticket par course** est autorisé pour éviter les arbitrages faciles.
-- Les **paris complexes** (3+ selections : tierce, quarte, quinte, rafle) ne sont accessibles que si **ton cochon participe a la course**.
-- Formats disponibles :
-- **Simple gagnant** : trouver le 1er.
-- **Couple ordre** : trouver les 2 premiers dans l'ordre.
-- **Tierce ordre** : trouver les 3 premiers dans l'ordre.
-- Et d'autres formats avances (quarte, quinte, rafle...) avec des cotes plus elevees.
-- Selon la difficulté du ticket et la cote calculée au moment de la mise, gagnez le pactole si ton pronostic est exact.
-- L'admin peut aussi ajuster le **house edge** par type de ticket et activer un **cap de payout** pour éviter les jackpots démesurés.
-- La page **Historique** conserve aussi chaque ticket, l'historique des courses et le journal des credits/debits BitGroins pour suivre les flux.
+Les stats permanentes ne suffisent pas. La performance reelle depend aussi de l'etat courant du cochon.
 
-## 5. Survivre sur le Long Terme
-- La **Prime de pointage** garantit un revenu minimum pour nourrir ses cochons même en cas de série de défaites. Sa valeur exacte dépend du réglage admin.
-- Un cochon finit par prendre sa retraite ou mourir : il faut donc penser à renouveler son élevage.
-- Deux cochons actifs peuvent maintenant lancer une **portee** : le porcelet hérite d'une partie des stats, de l'origine, de la rareté et du bonus de lignée de ses parents.
-- Le **coût d'une portée**, du **second cochon** et des cochons supplémentaires fait aussi partie des réglages admin d'équilibrage.
-- Un cochon **legendaire** (ou deja tres victorieux) peut prendre une **retraite d'honneur** : il quitte la piste, mais laisse un bonus permanent a sa lignee et a la porcherie du joueur.
-- Plus vous possedez de cochons, plus le nourrissage devient cher : chaque bouche supplementaire augmente le coût des cereales pour toute la porcherie.
-- Si un cochon mis en vente ne trouve pas preneur, il **revient automatiquement** chez son propriétaire.
-- La durée de vie des cochons a été **réduite de moitié** pour accélérer le turnover (Commun : 20-30 courses, Légendaire : 50-75 courses). Cela force les joueurs à utiliser l'élevage, l'abattoir et le marché plus activement.
-- Si vous êtes ruiné, le jeu peut verser une **prime d'urgence** pour éviter de rester bloqué sans solution.
-- Les nouveaux comptes doivent d'abord faire quelques courses, ou attendre un peu, avant de pouvoir utiliser pleinement le **marché**.
-- En mode démo, certains comptes peuvent disposer d'un cochon déjà blessé pour tester immédiatement la clinique vétérinaire.
+### Energie
 
-## 6. Le Marché
-- Vous pouvez mettre votre cochon en vente aux enchères ou acheter de nouveaux champions.
-- Le marché n'est ouvert que sur certains créneaux définis par l'admin.
-- Les encheres expirent et se resolvent automatiquement, meme si personne n'ouvre la page au bon moment.
+- un cochon ne peut plus courir si `energie <= 20`;
+- l'energie remonte de `5/h` si la satiete reste au-dessus de `30`;
+- sinon elle redescend de `1/h`;
+- une course coute actuellement `15` energie;
+- le veterinaire coute actuellement `10` energie;
+- certains entrainements consomment beaucoup d'energie, le repos en rend.
 
-## 6.b Boutiques & Équipements
-- **La Galerie Lard-chande** : Un centre commercial regroupant plusieurs boutiques spécialisées (Décac'Lard, Amagroin...). Achetez-y des équipements, des bonus et des options cosmétiques pour améliorer votre cochon en pleine course.
-- **Double Monnaie** : Payer vos équipements avec vos BitGroins classiques (les Glands) ou avec votre solde rare de Truffes (🍄).
-- **Le Bon Groin** : Vos placards débordent ? Vous avez acheté trop de "Casques en Briques Contrefaits" sur AliGoret ? Pas de panique ! La marketplace P2P *Le Bon Groin* permet de poster une petite annonce. Fixez votre prix en Glands, un autre joueur viendra peut-être racheter votre objet !
+### Satiete
 
-## 7. L'Abattoir et le Cimetière
-- Les cochons meurent s'ils courent trop ou de vieillesse (sauf certains chanceux).
-- Lorsqu'ils meurent, ils rejoignent **L'Abattoir** et sont transformés en charcuterie (avec description personnalisée).
-- Les **Légendes** (ceux qui ont plus de 3 victoires) ont droit à une place d'honneur au **Cimetière**.
+- un cochon ne peut plus courir si `satiete <= 20`;
+- la satiete baisse naturellement de `2/h`;
+- une course coute actuellement `10` satiete;
+- nourrir remonte la satiete immediatement.
 
-Bonne chance à tous les éleveurs ! 🐽
+### Humeur
 
-## 8. Les Mini-Jeux
+- elle influence la forme generale et certains pre-requis d'entrainement;
+- sous zone de confort, elle baisse avec la faim:
+  - `-1/h` sous le seuil moyen;
+  - `-3/h` en zone critique;
+- au repos passif, elle peut remonter de `0.3/h` jusqu'a `60`;
+- monter de niveau rend `+10` humeur;
+- une mauvaise reponse a l'ecole en retire.
 
-### Groin Jack (`/blackjack`)
-Un blackjack porcin jouable à tout moment avec ses BitGroins.
-- Mise entre **5 et 500 🪙** par partie.
-- Deck standard 52 cartes + **2 Jokers** porcins (effet aléatoire : carte bonus ou perturbation du croupier).
-- Actions disponibles : **Tirer** (Hit), **Rester** (Stand), **Doubler** (Double — mise doublée, une seule carte).
-- Blackjack naturel payé **3:2** (x2.5 la mise). Victoire classique = x2. Égalité = remboursement.
-- La mise est débitée à l'ouverture de la partie et créditée automatiquement en cas de gain ou d'égalité.
+### Fraicheur
 
-### Jeu des Truffes (`/truffes`)
-Mini-jeu de cherche-truffe sur une grille 20×20.
-- Le joueur dispose de **7 clics maximum** pour localiser la truffe cachée.
-- Récompense en cas de succès : **20 🪙** crédités automatiquement.
-- Gratuit, sans mise, utilisable comme revenu d'appoint.
+- la fraicheur reste a `100` pendant `48h` sans interaction positive;
+- ensuite elle perd `5` points par jour ouvre;
+- le week-end est neutralise par la treve bureau;
+- toute interaction positive utile remet la fraicheur a `100`;
+- apres plus de 3 jours sans interaction positive, un bonus "comeback" est prepare pour la prochaine course.
 
-### La Légende du COMOP (`/agenda`)
-Mini-jeu réflexe sur un calendrier **Porc-Look** parodiant Outlook.
-- Le **Chef de Porc-jet** programme des COMOPs sur le calendrier, mais les annule dès que ta souris s'approche.
-- Toutes les 3-6 secondes, le COMOP se **fige** brièvement (doré) : c'est ta fenêtre pour cliquer.
-- Piège : des blocs **"VRAI TRAVAIL"** apparaissent. Cliquer dessus fait perdre 2 secondes.
-- Objectif : attraper **5 COMOPs en 30 secondes**.
-- Récompense : **50 🪙** + trophée **"Ceinture Noire de Porc-Look"**.
-- Twist final : le COMOP n'a jamais existé (*Erreur 404 : Illusion de Management*).
-- Jouable **1 fois par jour**.
+### Poids
 
-### Course en Direct (`/race/live`)
-Replay animé de la dernière course terminée, consultable à tout moment.
-- Visualisation **tour par tour** : positions, accélérations, drafting, fatigue, accrocs.
-- Classement live mis à jour à chaque tour avec indicateur de progression.
-- Légende des événements : Sprint, Drafting, Tired, Stumble.
+- le poids ideal depend des stats et du niveau du cochon;
+- un cochon trop eloigne de sa zone ideale perd de la performance;
+- ce meme ecart augmente aussi son risque de blessure;
+- nourrir, courir et s'entrainer peuvent faire bouger le poids.
 
-## 9. Evolutions cibles du meta-jeu
-- Le long terme doit reposer sur des **saisons**, des **ligues** et un **Hall of Fame** plutot que sur un classement unique eternel.
-- Les cochons doivent pouvoir beneficier de **repos**, de buffs de fraicheur, voire d'un futur systeme de **lignee / heritage** pour prolonger l'attachement au compte.
-- Les courses ont vocation a proposer des **themes** et **conditions de piste** pour rendre chaque statistique utile selon le contexte.
-- Les absences courtes doivent etre protegees par des mecanismes de **conges porcins** ou d'hibernation afin de rester compatibles avec un jeu de bureau.
-- Le coeur de l'experience doit converger vers un **calendrier interactif**, des **statistiques globales** de type PMU porcin et, a terme, des **ecuries** ou integrations Slack / Teams.
+## 5. Comment augmenter les stats
 
+### 5.1 Nourriture
+
+Les cereales donnent satiete, energie, poids et parfois des boosts de stats.
+
+| Cereale | Cout de base | Effets directs |
+|---|---:|---|
+| Mais | 5 | +20 satiete, +5 energie, +0.5 kg, gains equilibres |
+| Orge | 8 | +18 satiete, +8 energie, +0.9 kg, plutot endurance/force |
+| Ble | 10 | +15 satiete, +12 energie, +0.8 kg, plutot force/vitesse |
+| Seigle | 7 | +17 satiete, +6 energie, +0.3 kg, plutot agilite/intelligence |
+| Triticale | 9 | +16 satiete, +10 energie, +0.4 kg, plutot vitesse/endurance |
+| Avoine | 6 | +14 satiete, +15 energie, +0.2 kg, plutot moral/agilite |
+
+Attention:
+- ces couts sont des couts de base;
+- le cout reel passe ensuite par la Bourse aux Grains et par la pression de nourrissage de la porcherie.
+
+### 5.2 Entrainements
+
+Actions principales actuelles:
+
+| Entrainement | Cout | Effet principal |
+|---|---|---|
+| Sprint | -25 energie, -10 satiete | vitesse, un peu endurance |
+| Cross-country | -22 energie, -12 satiete | endurance, un peu force |
+| Obstacles | -20 energie, -8 satiete | agilite, un peu vitesse |
+| Sparring | -18 energie, -9 satiete | force, un peu moral |
+| Puzzles | -12 energie, -5 satiete | intelligence, un peu moral |
+| Repos & Detente | rend de l'energie | recuperation, humeur |
+
+Regles:
+- un cochon blesse ne peut pas s'entrainer;
+- si l'entrainement consomme de l'energie, il faut avoir l'energie necessaire;
+- il faut aussi assez de satiete;
+- certains entrainements exigent une humeur minimale.
+
+### 5.3 Ecole porcine
+
+Regles:
+- cooldown partage avec le Typing Derby: `30 minutes`;
+- une bonne reponse donne les gains complets du cours et l'XP associee;
+- une mauvaise reponse donne un petit peu d'XP, mais retire de l'humeur;
+- un cochon blesse ne peut pas aller a l'ecole.
+
+Cours de base:
+
+| Cours | Gains principaux |
+|---|---|
+| Strategie de Virage | intelligence, agilite |
+| Nutrition de Course | endurance, moral |
+| Gestion du Stress | moral, intelligence |
+| Analyse Video | vitesse, agilite, intelligence |
+
+### 5.4 Typing Derby
+
+Regles:
+- partage le cooldown de l'ecole;
+- donne `20 XP` de base;
+- donne surtout vitesse et agilite selon la performance au clavier;
+- remet aussi la fraicheur a fond.
+
+## 6. Courses
+
+### Quota et acces
+
+- quota hebdomadaire actuel: `3` courses par cochon vivant;
+- un cochon blesse ne peut pas courir;
+- un cochon avec `energie <= 20` ou `satiete <= 20` ne peut pas courir.
+
+### Cout d'une course
+
+Par course:
+- `-15` energie;
+- `-10` satiete;
+- `-0.3 kg` environ.
+
+### Penalites de rythme
+
+Pour eviter le spam:
+- moins de `24h` depuis la course precedente: multiplicateur de perf `0.90`;
+- entre `24h` et `48h`: multiplicateur `0.95`.
+
+### Recompenses BitGroins
+
+Recompenses economiques actuelles:
+- participation: `6` BitGroins;
+- podium:
+  - 1er: `25`
+  - 2e: `12`
+  - 3e: `6`
+
+### Retraite automatique
+
+Chaque cochon a un plafond `max_races`:
+- si `races_entered >= max_races`, il prend sa retraite automatiquement;
+- les cochons adoptes directement utilisent le plafond par defaut du modele, `80`;
+- les cochons generes via le marche utilisent des plages de rarete:
+  - commun: `20-30`
+  - rare: `30-40`
+  - epique: `40-50`
+  - legendaire: `50-75`
+
+## 7. Blessures, veterinaire et mort
+
+La mortalite rapide ne vient pas d'un systeme de vieillesse "cache". Elle vient surtout des blessures.
+
+Regles actuelles:
+- risque de blessure borne entre `2%` et `18%` avant modificateurs;
+- les 8 premieres courses ont une vraie protection de debut de carriere: le risque reelle monte progressivement;
+- la fatigue, la faim et le mauvais poids aggravent le risque;
+- si blessure:
+  - le cochon est retire des courses;
+  - il ne peut plus s'entrainer;
+  - il ne peut plus aller a l'ecole;
+  - il ne peut plus entrer dans le Challenge de la Mort.
+
+Veterinaire:
+- fenetre de sauvetage actuelle: `20 minutes`;
+- le mini-jeu penalise maintenant une erreur de seulement `5 secondes`;
+- une operation reussie:
+  - sauve le cochon;
+  - baisse son risque de blessure de `2 points`;
+  - coute `10` energie et `5` humeur;
+- si la deadline expire, le cochon peut mourir de blessure.
+
+## 8. Paris
+
+Regles structurelles:
+- `3` Tickets Bacon maximum par semaine;
+- `1` seul ticket par course et par joueur;
+- fermeture des paris `30 secondes` avant le depart;
+- mise mini `5`, maxi `500` BitGroins;
+- si un cap payout admin est active, il plafonne le gain total du ticket.
+
+Regle speciale:
+- les paris a `3+ selections` exigent que le joueur ait son propre cochon dans la course.
+
+Formats actuellement disponibles:
+
+| Type | Selections | Regle |
+|---|---:|---|
+| win | 1 | trouver le gagnant |
+| place | 1 | finir dans le top 3 |
+| exacta | 2 | top 2 dans l'ordre |
+| quinela_place | 2 | 2 cochons dans le top 3 |
+| tierce_any | 3 | top 3 dans n'importe quel ordre |
+| tierce | 3 | top 3 dans l'ordre |
+| quarte | 4 | top 4 dans n'importe quel ordre |
+| quarte_order | 4 | top 4 dans l'ordre |
+| quinte | 5 | top 5 dans n'importe quel ordre |
+| rafle | 5 | top 5 dans l'ordre |
+
+## 9. Economie d'elevage
+
+### Cochon et porcherie
+
+- nombre maximum de cochons: `4`;
+- cout actuel de la reproduction: `45` BitGroins;
+- couts d'adoption progressifs:
+  - passer a 1 cochon: `15`
+  - passer a 2 cochons: `30`
+  - passer a 3 cochons: `45`
+  - passer a 4 cochons: `60`
+
+### Pression de nourrissage
+
+Chaque cochon supplementaire augmente le cout des cereales de `+20%`.
+
+Multiplicateurs actuels:
+
+| Cochons actifs | Multiplicateur |
+|---|---:|
+| 1 | x1.00 |
+| 2 | x1.20 |
+| 3 | x1.40 |
+| 4 | x1.60 |
+
+### Reproduction et heritage
+
+- deux cochons actifs peuvent lancer une portee;
+- le porcelet herite partiellement des stats, de l'origine, de la rarete et de la lignee;
+- un cochon peut partir en retraite d'honneur s'il est legendaire ou s'il a au moins `3` victoires.
+
+## 10. Bourse aux Grains
+
+Regles actuelles:
+- grille `7x7`;
+- bloc `3x3` de cereales partage par tous les joueurs;
+- surcharge par point de grille: `+5%`;
+- centre = reference la moins punitive;
+- points de mouvement:
+  - minimum garanti: `1`;
+  - puis `1` point par tranche de `10` achats de nourriture;
+- vitrine:
+  - le dernier grain achete est bloque pour tous;
+  - il faut qu'un autre grain soit achete pour le debloquer.
+
+La page `/bourse` expose deja une aide "comment ca marche", mais `/regles` est maintenant le hub complet pour comprendre l'impact economique.
+
+## 11. Marche, galerie et objets
+
+### Marche aux cochons
+
+- debloque apres `3` courses disputees ou `24h` d'anciennete du compte;
+- les surencheres remboursent automatiquement l'ancien meilleur enchereur;
+- un cochon non vendu retourne a son proprietaire;
+- les cochons du marche suivent les plages de stats / prix / duree de vie de leur rarete.
+
+### Galerie et P2P
+
+- la Galerie Lard-chande gere les equipements et cosmetiques;
+- Le Bon Groin gere la revente d'objets entre joueurs.
+
+## 12. Mini-jeux
+
+### Truffes
+- mini-jeu gratuit;
+- `7` clics max;
+- recompense actuelle: `20` BitGroins.
+
+### Agenda / Whack-a-Reu
+- `1` partie par jour;
+- objectif: attraper `5` COMOPs en `30 secondes`;
+- recompense actuelle: `50` BitGroins.
+
+### Groin Jack
+- mini-casino en BitGroins;
+- mise standard entre `5` et `500`;
+- deck 52 cartes + 2 jokers.
+
+### Live
+- replay anime de la derniere course terminee;
+- utile pour comprendre la narration et les evenements de course.
+
+## 13. Transparence dans l'interface
+
+Avant la mise a plat de mars 2026, l'aide etait reelle mais trop dispersee:
+- `Mon Cochon` expliquait deja une partie des jauges;
+- `Bourse` avait ses regles express;
+- `Paris` montrait surtout l'outil, moins la logique complete.
+
+Desormais:
+- `/regles` est la page centrale dans le menu principal;
+- `Mon Cochon`, `Paris` et `Bourse` pointent vers les sections pertinentes;
+- les regles joueur et les docs depot sont alignees.
+
+## 14. Reglages admin qui peuvent faire bouger ces chiffres
+
+Source de pilotage:
+- `/admin/economy` pour l'economie, les tickets, les rewards, les couts, les caps de payout et les types de paris;
+- `/admin/progression` pour l'energie, la satiete, la fraicheur, la courbe d'XP, l'XP de course, les multiplicateurs de progression et les couts veto.
+
+Conclusion:
+- le vocabulaire et les principes doivent rester stables;
+- les valeurs, elles, peuvent evoluer via l'admin;
+- la page `/regles` et ce fichier doivent donc rester coherents apres chaque reequilibrage important.

@@ -2,6 +2,8 @@
 
 Liste des fonctionnalités et idées déjà implémentées dans le projet.
 
+> Note: pour les règles réellement actives et les réglages joueurs à jour, la référence n'est plus ce fichier mais [docs/regles_du_jeu.md](/D:/Programmation/derby_des_groins/docs/regles_du_jeu.md) et la page `/regles`.
+
 ## Gestion des Courses
 - **Gestion des courses vides / sous-peuplées** : Mise en place d'une règle configurable (`min_real_participants`) pour remplir automatiquement les courses avec des bots ou les annuler.
 - **Remboursement automatique** : Les paris sur les courses annulées sont désormais automatiquement remboursés aux utilisateurs.
@@ -20,13 +22,18 @@ Liste des fonctionnalités et idées déjà implémentées dans le projet.
 - **Pression de nourrissage** : Le coût des céréales augmente avec le nombre de cochons dans la porcherie (+20% par cochon supplémentaire) pour équilibrer la progression.
 
 ## Bourse aux Grains (Marche dynamique)
-- **Grille de cotation 5x5** : un curseur partage entre tous les joueurs determine le prix (axe X) et la qualite (axe Y) de la nourriture.
+- **Grille de cotation 7x7** : un bloc 3x3 partage entre tous les joueurs determine le prix des grains selon sa position sur la grille.
 - **Points de mouvement** : chaque joueur accumule des points en achetant (1 pt / 10 achats) et peut deplacer le curseur pour influencer les prix.
 - **Vitrine anti-spam** : le dernier grain achete est bloque pour tous jusqu'a ce qu'un autre grain soit achete, forcant la variete.
 - **Prix dynamiques** : le cout final combine le modificateur Bourse, la pression de porcherie et le cout de base.
 - **Qualite variable** : les bonus de faim, energie et stats sont multiplies par le modificateur de qualite de la grille.
 - **Interface dediee** (`/bourse`) : grille visuelle, controles directionnels, selecteur de cochon, cartes de cereales avec prix ajustes.
 - **Modele GrainMarket** : singleton en base pour stocker l'etat partage du marche.
+
+## Transparence joueur
+- **Hub `Regles`** : une page publique `/regles` centralise maintenant les règles, jauges, paris, économie, Bourse, marché et mini-jeux.
+- **Liens contextuels** : `Mon Cochon`, `Paris` et `Bourse` pointent vers les sections utiles du hub pour éviter les règles cachées.
+- **Documentation alignée** : `README.md`, `docs/regles_du_jeu.md` et `docs/transparence_joueur.md` ont été mis à plat pour suivre les réglages actifs.
 
 ## Classement enrichi
 - **5 onglets** : General, Abattoir & Cimetiere, Paris & Fortune, Elevage & Ecole, Mur de la Honte.

@@ -103,6 +103,10 @@
             <h1 class="font-title text-3xl md:text-4xl text-white">{{ next_race_theme.name if next_race_theme else 'Prochaine course' }}</h1>
             <p class="text-white/55 text-lg font-semibold mt-2">{{ next_race.scheduled_at.strftime('%d/%m a %H:%M') }} · Course #{{ next_race.id }} · {{ participants|length }} partants</p>
             {% if next_race_theme %}<p class="text-white/45 text-sm font-semibold mt-3 max-w-2xl">{{ next_race_theme.description }}</p>{% endif %}
+            <div class="mt-4 flex flex-wrap gap-2">
+                <a href="/regles#paris" class="inline-flex items-center gap-2 rounded-xl border border-cyan-400/20 bg-cyan-500/10 px-3 py-2 text-xs font-black uppercase tracking-[0.14em] text-cyan-100 hover:bg-cyan-500/15 transition-colors">📘 Règles des paris</a>
+                <a href="/regles#tickets-paris" class="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-black uppercase tracking-[0.14em] text-white/60 hover:text-white transition-colors">🎟️ Formats de tickets</a>
+            </div>
             <div class="flex items-end gap-5 mt-5">
                 <div>
                     <p class="text-white/40 text-xs uppercase tracking-[0.22em] font-extrabold">Depart dans</p>

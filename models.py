@@ -152,7 +152,7 @@ class Pig(db.Model):
 
     # Blessures & Vétérinaire
     is_injured = db.Column(db.Boolean, default=False)
-    injury_risk = db.Column(db.Float, default=10.0)
+    injury_risk = db.Column(db.Float, default=4.0)
     vet_deadline = db.Column(db.DateTime, nullable=True)
 
     # Timestamps

@@ -72,6 +72,7 @@ Chaque joueur possède un **cochon virtuel** qu'il doit développer comme un Tam
 - **Entraîner** (Sprint, Cross-country, Obstacles, Sparring, Puzzles, Repos)
 - **Gérer le poids de forme** du cochon : trop léger ou trop lourd, et ses courses deviennent moins propres
 - **Envoyer à l'École porcine** pour répondre à des quiz tactiques et gagner des bonus de stats + XP
+- **Consulter les Règles** (`/regles`) — hub public qui explique les stats, jauges, économie, marchés et paris avec les réglages actifs
 - **Faire courir** automatiquement à l'heure configurée contre les cochons des autres joueurs et des PNJ
 - **Parier avec des limites** : mise entre 5 et 500 BitGroins, paris complexes (3+ selections) reserves aux joueurs dont le cochon participe
 - **Piloter la semaine** depuis un **dashboard d'accueil** qui met en avant la course du jour, le statut de ton cochon, tes paris restants et les derniers resultats
@@ -228,6 +229,7 @@ Note de demo:
 
 - [Architecture](/D:/Programmation/derby_des_groins/docs/architecture.md)
 - [Règles du jeu](/D:/Programmation/derby_des_groins/docs/regles_du_jeu.md)
+- [Transparence joueur](/D:/Programmation/derby_des_groins/docs/transparence_joueur.md)
 - [Panneau Admin Économie](/D:/Programmation/derby_des_groins/docs/admin_economie.md)
 
 ---
@@ -256,7 +258,7 @@ derby_des_groins/
 ├── routes/                 # 15 Blueprints Flask
 │   ├── __init__.py         # Registre des blueprints
 │   ├── auth.py             # register, login, logout, profil, magic-link login
-│   ├── main.py             # index (dashboard), history, classement, légendes pop
+│   ├── main.py             # index (dashboard), history, classement, règles, légendes pop
 │   ├── race.py             # courses (calendrier), plan_course, place_bet, circuit live
 │   ├── pig.py              # mon-cochon, adopt, feed, train, school, challenge, sacrifice
 │   ├── bourse.py           # Bourse aux Grains — marché dynamique, grille, vitrine
@@ -297,6 +299,7 @@ derby_des_groins/
 │   ├── _site_header.html   # Header partagé / navigation principale
 │   ├── 429.html            # Page d'erreur 429 (rate limit)
 │   ├── index.html          # Dashboard d'accueil
+│   ├── regles.html         # Hub public des règles joueur
 │   ├── courses.html        # Calendrier des courses (groupé par jour)
 │   ├── race_circuit.html   # Circuit Live SVG 2D
 │   ├── mon_cochon.html     # Tamagotchi — stats, nourrir, entraîner, radar chart

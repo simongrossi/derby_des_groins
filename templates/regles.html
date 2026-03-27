@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📘 Règles — Derby des Groins</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * { font-family: 'Nunito', sans-serif; }
+        .font-title { font-family: 'Lilita One', cursive; }
+
+        body {
+            background:
+                radial-gradient(circle at top left, rgba(244, 114, 182, 0.18), transparent 28%),
+                radial-gradient(circle at top right, rgba(251, 191, 36, 0.12), transparent 24%),
+                linear-gradient(180deg, #17071f 0%, #1f0a2f 45%, #140818 100%);
+            min-height: 100vh;
+        }
+
+        .glass-card {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 25px 50px rgba(10, 5, 18, 0.35);
+            backdrop-filter: blur(14px);
+        }
+
+        .section-shell {
+            background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02));
+            border: 1px solid rgba(255,255,255,0.08);
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.04);
+        }
+
+        .anchor-chip {
+            background: rgba(255,255,255,0.04);
+            border: 1px solid rgba(255,255,255,0.08);
+        }
+
+        .metric-card {
+            background: linear-gradient(145deg, rgba(244,114,182,0.10), rgba(255,255,255,0.03));
+            border: 1px solid rgba(244,114,182,0.16);
+        }
+
+        .data-table th {
+            font-size: 0.7rem;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: rgba(255, 255, 255, 0.45);
+            font-weight: 800;
+            padding: 0.8rem 1rem;
+            white-space: nowrap;
+        }
+
+        .data-table td {
+            padding: 0.85rem 1rem;
+            border-top: 1px solid rgba(255,255,255,0.08);
+            color: rgba(255,255,255,0.82);
+            font-weight: 700;
+            vertical-align: top;
+        }
+
+        .data-table tr:hover td {
+            background: rgba(255,255,255,0.03);
+        }
+    </style>
+</head>
+<body>
+{% set active_page = 'regles' %}
+
+{% include "_site_header.html" %}
+
+<main id="top" class="max-w-7xl mx-auto px-4 py-8 sm:py-10 space-y-8">
+    <section class="glass-card rounded-[2rem] p-6 sm:p-8 lg:p-10 overflow-hidden relative">
+        <div class="absolute top-0 right-0 w-52 h-52 bg-pink-400/10 blur-3xl rounded-full pointer-events-none"></div>
+        <div class="absolute bottom-0 left-0 w-52 h-52 bg-yellow-400/10 blur-3xl rounded-full pointer-events-none"></div>
+
+        <div class="relative">
+            <div class="flex flex-wrap items-center gap-2 mb-4">
+                <span class="inline-flex items-center gap-2 rounded-full border border-pink-300/20 bg-pink-400/10 px-3 py-1 text-xs font-black uppercase tracking-[0.2em] text-pink-100">📘 Transparence joueur</span>
+                <span class="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-black uppercase tracking-[0.2em] text-white/50">Valeurs synchronisées avec la config active</span>
+            </div>
+            <h1 class="font-title text-4xl sm:text-5xl lg:text-6xl text-white leading-none">Le mode d’emploi complet du Derby</h1>
+            <p class="mt-4 max-w-3xl text-white/70 text-base sm:text-lg font-semibold leading-relaxed">
+                Cette page centralise les règles en place aujourd’hui dans le jeu: statistiques, niveau, fatigue, alimentation, blessures,
+                économie, paris, Bourse aux Grains et marché. Les valeurs affichées suivent les réglages actifs du jeu, pas une vieille doc figée.
+            </p>
+            <div class="mt-6 rounded-2xl border border-emerald-400/20 bg-emerald-500/10 px-4 py-3 text-sm font-bold text-emerald-100">
+                Les écrans <a href="/mon-cochon" class="underline decoration-emerald-300/50 underline-offset-4 hover:text-white">Mon Cochon</a>,
+                <a href="/paris" class="underline decoration-emerald-300/50 underline-offset-4 hover:text-white">Paris</a> et
+                <a href="/bourse" class="underline decoration-emerald-300/50 underline-offset-4 hover:text-white">Bourse</a> pointent aussi vers ces sections pour éviter le flou côté joueur.
+            </div>
+        </div>
+    </section>
+
+    <section class="grid grid-cols-2 lg:grid-cols-3 gap-4">
+        {% for card in hero_cards %}
+        <article class="metric-card rounded-3xl p-5">
+            <p class="text-[10px] font-black uppercase tracking-[0.22em] text-white/45">{{ card.label }}</p>
+            <p class="font-title text-3xl text-white mt-2 leading-none">{{ card.value }}</p>
+            <p class="text-xs font-semibold text-white/45 mt-3 leading-relaxed">{{ card.note }}</p>
+        </article>
+        {% endfor %}
+    </section>
+
+    <nav class="glass-card rounded-3xl p-3 overflow-x-auto">
+        <div class="flex gap-2 min-w-max">
+            {% for section in sections %}
+            <a href="#{{ section.id }}" class="anchor-chip inline-flex items-center gap-2 rounded-2xl px-4 py-2 text-sm font-black text-white/75 hover:text-white hover:border-pink-300/20 hover:bg-pink-400/10 transition-all">
+                <span>{{ section.emoji }}</span>
+                <span>{{ section.title }}</span>
+            </a>
+            {% endfor %}
+        </div>
+    </nav>
+
+    <div class="space-y-6">
+        {% for section in sections %}
+        <section id="{{ section.id }}" class="section-shell rounded-[2rem] p-6 sm:p-8 scroll-mt-32">
+            <div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-5">
+                <div class="max-w-3xl">
+                    <p class="text-[11px] font-black uppercase tracking-[0.22em] text-pink-200/60">{{ section.emoji }} {{ section.title }}</p>
+                    <h2 class="font-title text-3xl sm:text-4xl text-white mt-2">{{ section.title }}</h2>
+                    <p class="mt-3 text-white/60 font-semibold leading-relaxed">{{ section.summary }}</p>
+                </div>
+                <a href="#top" class="self-start text-xs font-black uppercase tracking-[0.18em] text-white/35 hover:text-white/70 transition-colors">Haut ↑</a>
+            </div>
+            <div class="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-4">
+                {% for bullet in section.bullets %}
+                <div class="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-4 text-sm font-semibold text-white/80 leading-relaxed">
+                    {{ bullet }}
+                </div>
+                {% endfor %}
+            </div>
+        </section>
+        {% endfor %}
+    </div>
+
+    <section id="sources-stats" class="section-shell rounded-[2rem] p-6 sm:p-8 space-y-6 scroll-mt-32">
+        <div>
+            <p class="text-[11px] font-black uppercase tracking-[0.22em] text-pink-200/60">🧪 Sources de progression</p>
+            <h2 class="font-title text-3xl sm:text-4xl text-white mt-2">Comment faire monter un cochon</h2>
+            <p class="mt-3 text-white/60 font-semibold leading-relaxed">
+                Pour éviter les règles cachées, voici les gains structurants actuels par nourriture, entraînement et école. Les boosts listés sont les effets directs de base avant les éventuels multiplicateurs admin.
+            </p>
+        </div>
+
+        <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
+            <article class="glass-card rounded-3xl overflow-hidden xl:col-span-1">
+                <div class="px-5 py-4 border-b border-white/10">
+                    <p class="font-title text-2xl text-white">🌽 Céréales</p>
+                    <p class="text-sm font-semibold text-white/45 mt-1">Nourrir agit surtout sur la satiété, l’énergie, le poids et quelques stats ciblées.</p>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="data-table min-w-full">
+                        <thead>
+                            <tr>
+                                <th>Grain</th>
+                                <th>Coût</th>
+                                <th>Satiété</th>
+                                <th>Énergie</th>
+                                <th>Poids</th>
+                                <th>Boosts</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for row in cereal_rows %}
+                            <tr>
+                                <td>{{ row.emoji }} {{ row.name }}</td>
+                                <td>{{ "%.0f"|format(row.cost) }} 🪙</td>
+                                <td>+{{ row.hunger }}</td>
+                                <td>+{{ row.energy }}</td>
+                                <td>{{ "%+.1f"|format(row.weight) }} kg</td>
+                                <td>{{ row.stats }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </article>
+
+            <article class="glass-card rounded-3xl overflow-hidden xl:col-span-1">
+                <div class="px-5 py-4 border-b border-white/10">
+                    <p class="font-title text-2xl text-white">🏋️ Entraînements</p>
+                    <p class="text-sm font-semibold text-white/45 mt-1">Chaque séance consomme de la forme. Le repos est aussi une vraie action utile.</p>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="data-table min-w-full">
+                        <thead>
+                            <tr>
+                                <th>Séance</th>
+                                <th>Énergie</th>
+                                <th>Satiété</th>
+                                <th>Humeur mini</th>
+                                <th>Poids</th>
+                                <th>Boosts</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for row in training_rows %}
+                            <tr>
+                                <td>{{ row.emoji }} {{ row.name }}</td>
+                                <td>{% if row.energy_cost >= 0 %}-{{ row.energy_cost }}{% else %}+{{ row.energy_cost|abs }}{% endif %}</td>
+                                <td>{% if row.hunger_cost >= 0 %}-{{ row.hunger_cost }}{% else %}+{{ row.hunger_cost|abs }}{% endif %}</td>
+                                <td>{{ row.min_happiness }}</td>
+                                <td>{{ "%+.1f"|format(row.weight) }} kg</td>
+                                <td>{{ row.stats }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </article>
+
+            <article class="glass-card rounded-3xl overflow-hidden xl:col-span-1">
+                <div class="px-5 py-4 border-b border-white/10">
+                    <p class="font-title text-2xl text-white">🎓 École porcine</p>
+                    <p class="text-sm font-semibold text-white/45 mt-1">Une bonne réponse donne le boost complet. Une mauvaise réponse conserve un peu d’XP mais pénalise l’humeur.</p>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="data-table min-w-full">
+                        <thead>
+                            <tr>
+                                <th>Cours</th>
+                                <th>XP</th>
+                                <th>XP erreur</th>
+                                <th>Énergie</th>
+                                <th>Satiété</th>
+                                <th>Boosts</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for row in lesson_rows %}
+                            <tr>
+                                <td>{{ row.emoji }} {{ row.name }}</td>
+                                <td>+{{ row.xp }}</td>
+                                <td>+{{ row.wrong_xp }}</td>
+                                <td>-{{ row.energy_cost }}</td>
+                                <td>-{{ row.hunger_cost }}</td>
+                                <td>{{ row.stats }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </article>
+        </div>
+    </section>
+
+    <section id="niveaux" class="section-shell rounded-[2rem] p-6 sm:p-8 grid grid-cols-1 xl:grid-cols-[0.9fr_1.1fr] gap-6 scroll-mt-32">
+        <article class="glass-card rounded-3xl overflow-hidden">
+            <div class="px-5 py-4 border-b border-white/10">
+                <p class="font-title text-2xl text-white">⭐ Seuils de niveau</p>
+                <p class="text-sm font-semibold text-white/45 mt-1">XP totale à atteindre pour passer au niveau suivant.</p>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="data-table min-w-full">
+                    <thead>
+                        <tr>
+                            <th>Niveau cible</th>
+                            <th>XP totale</th>
+                            <th>XP à ajouter</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in level_rows %}
+                        <tr>
+                            <td>Niveau {{ row.level }}</td>
+                            <td>{{ row.total_xp }}</td>
+                            <td>{{ row.xp_delta }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </article>
+
+        <article class="glass-card rounded-3xl overflow-hidden">
+            <div class="px-5 py-4 border-b border-white/10">
+                <p class="font-title text-2xl text-white">🏆 XP de course</p>
+                <p class="text-sm font-semibold text-white/45 mt-1">Répartition actuelle de l’XP par classement d’arrivée.</p>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="data-table min-w-full">
+                    <thead>
+                        <tr>
+                            <th>Position</th>
+                            <th>XP gagnée</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in race_xp_rows %}
+                        <tr>
+                            <td>{{ row.position }}e place</td>
+                            <td>{{ row.xp }} XP</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </article>
+    </section>
+
+    <section id="economie-detail" class="section-shell rounded-[2rem] p-6 sm:p-8 grid grid-cols-1 xl:grid-cols-2 gap-6 scroll-mt-32">
+        <article class="glass-card rounded-3xl overflow-hidden">
+            <div class="px-5 py-4 border-b border-white/10">
+                <p class="font-title text-2xl text-white">🐖 Coût des cochons</p>
+                <p class="text-sm font-semibold text-white/45 mt-1">Adoption progressive en fonction de la taille de la porcherie.</p>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="data-table min-w-full">
+                    <thead>
+                        <tr>
+                            <th>Objectif</th>
+                            <th>Coût</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in adoption_rows %}
+                        <tr>
+                            <td>{{ row.label }}</td>
+                            <td>{{ "%.0f"|format(row.cost) }} 🪙</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </article>
+
+        <article class="glass-card rounded-3xl overflow-hidden">
+            <div class="px-5 py-4 border-b border-white/10">
+                <p class="font-title text-2xl text-white">🌾 Pression de nourrissage</p>
+                <p class="text-sm font-semibold text-white/45 mt-1">Plus tu as de cochons, plus chaque achat de céréales coûte cher.</p>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="data-table min-w-full">
+                    <thead>
+                        <tr>
+                            <th>Cochons actifs</th>
+                            <th>Multiplicateur</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in feeding_rows %}
+                        <tr>
+                            <td>{{ row.stable_size }}</td>
+                            <td>x{{ "%.2f"|format(row.multiplier) }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </article>
+    </section>
+
+    <section id="tickets-paris" class="section-shell rounded-[2rem] p-6 sm:p-8 scroll-mt-32">
+        <div>
+            <p class="text-[11px] font-black uppercase tracking-[0.22em] text-pink-200/60">🎟️ Formats de tickets</p>
+            <h2 class="font-title text-3xl sm:text-4xl text-white mt-2">Comprendre les paris</h2>
+            <p class="mt-3 text-white/60 font-semibold leading-relaxed">
+                Chaque ligne ci-dessous décrit le ticket, sa difficulté et son retour théorique actuel. Les tickets marqués <span class="text-pink-300">cochon participant requis</span> sont ceux qui demandent d’avoir son propre cochon dans la course.
+            </p>
+        </div>
+        <div class="mt-6 glass-card rounded-3xl overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="data-table min-w-full">
+                    <thead>
+                        <tr>
+                            <th>Ticket</th>
+                            <th>Sélections</th>
+                            <th>Objectif</th>
+                            <th>Retour théorique</th>
+                            <th>Règle spéciale</th>
+                            <th>Description</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in bet_rows %}
+                        <tr>
+                            <td>{{ row.icon }} {{ row.label }}</td>
+                            <td>{{ row.selection_count }}</td>
+                            <td>{{ row.goal }}</td>
+                            <td>{{ row.return_pct }}%</td>
+                            <td>{% if row.is_complex %}<span class="text-pink-300">Cochon participant requis</span>{% else %}<span class="text-white/35">Aucune</span>{% endif %}</td>
+                            <td>{{ row.description }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    <footer class="pb-8 text-center text-sm font-semibold text-white/28">
+        Les docs détaillées côté dépôt restent dans <code>docs/regles_du_jeu.md</code> et <code>docs/transparence_joueur.md</code>. Pour l’admin, le pilotage fin se fait via <code>/admin/economy</code> et <code>/admin/progression</code>.
+    </footer>
+</main>
+
+{% include '_footer.html' %}
+</body>
+</html>
