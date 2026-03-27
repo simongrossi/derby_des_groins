@@ -32,6 +32,7 @@
             border-radius:.9rem; padding:.85rem 1.15rem; transition:all .2s ease;
         }
         .btn-primary:hover { transform:translateY(-1px); box-shadow:0 10px 28px rgba(244,114,182,.34); }
+        .btn-primary.btn-disabled { opacity:.6; cursor:not-allowed; box-shadow:none; transform:none; }
         .btn-secondary {
             display:inline-flex; align-items:center; justify-content:center; gap:.5rem; border-radius:.9rem;
             border:1px solid rgba(255, 205, 226, .14); background:rgba(255, 232, 240, .045); color:rgba(255,255,255,.88);
@@ -40,10 +41,11 @@
         .btn-secondary:hover { background:rgba(255, 232, 240, .085); border-color:rgba(255, 205, 226, .22); }
         .pig-card {
             background: rgba(255,244,247,.06); border:2px solid transparent; border-radius:1rem; cursor:pointer;
-            transition:all .2s ease;
+            transition:all .2s ease; touch-action: manipulation;
         }
         .pig-card:hover { background:rgba(244,114,182,.14); border-color:rgba(244,114,182,.4); transform:translateY(-2px); }
         .pig-card.selected { background:rgba(244,114,182,.2); border-color:#f472b6; box-shadow:0 0 20px rgba(244,114,182,.24); }
+        .pig-card:focus-visible { outline:none; border-color:#f9a8d4; box-shadow:0 0 0 3px rgba(249,168,212,.2); }
         .selection-badge {
             position:absolute; top:.6rem; right:.6rem; width:1.7rem; height:1.7rem; border-radius:999px;
             background:linear-gradient(135deg,#ec4899,#fb7185); color:#fff; font-size:.85rem; font-weight:800;
@@ -145,7 +147,7 @@
             <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-5" id="pig-grid">
                 {% for pig in participants %}
                 {% set odds_class = 'odds-low' if pig.odds <= 2.5 else ('odds-mid' if pig.odds <= 4.0 else 'odds-high') %}
-                <div class="pig-card relative p-4 text-center {% if pig.pig_id %}ring-1 ring-pink-500/30{% endif %}" data-participant-id="{{ pig.id }}" data-pig-name="{{ pig.name }}" data-odds="{{ pig.odds }}" data-win-probability="{{ pig.win_probability }}">
+                <div class="pig-card relative p-4 text-center {% if pig.pig_id %}ring-1 ring-pink-500/30{% endif %}" data-participant-id="{{ pig.id }}" data-pig-name="{{ pig.name }}" data-odds="{{ pig.odds }}" data-win-probability="{{ pig.win_probability }}" role="button" tabindex="0" aria-pressed="false">
                     <span class="selection-badge" data-selection-badge></span>
                     <div class="text-4xl">{{ pig.emoji }}</div>
                     <p class="text-white font-bold mt-2 text-sm leading-tight">{{ pig.name }}</p>
@@ -244,8 +246,9 @@
                             <p class="text-white/30 text-[11px] font-semibold mt-1">Gain plafonne a {{ "%.0f"|format(max_payout_race) }} 🪙 par ticket.</p>
                             {% endif %}
                         </div>
-                        <button type="submit" id="bet-submit" class="btn-primary" disabled>Parier</button>
+                        <button type="submit" id="bet-submit" class="btn-primary btn-disabled" aria-disabled="true">Parier</button>
                     </div>
+                    <p id="bet-inline-feedback" class="mt-3 text-xs font-bold text-white/35">Selectionne d'abord ton ticket et ton cochon, puis saisis une mise valide.</p>
                     <div id="potential-win" class="mt-4 p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 hidden">
                         <div class="flex items-center justify-between text-sm font-bold">
                             <span class="text-white/60">Cote totale du ticket</span>
@@ -357,9 +360,42 @@ const participantMap = Object.fromEntries(participantCards.map((card) => {
     const participantId = Number(card.dataset.participantId);
     return [participantId, { id: participantId, name: card.dataset.pigName, odds: Number(card.dataset.odds), winProbability: Number(card.dataset.winProbability), card }];
 }));
+const pigGrid = document.getElementById('pig-grid');
+const betForm = document.getElementById('bet-form');
 let activeBetType = 'win';
 let selectedOrder = [];
 function getRequiredSelectionCount() { return betTypes[activeBetType]?.selection_count || 1; }
+function getAmountInput() { return document.getElementById('bet-amount'); }
+function getAmountConstraints() {
+    const amountInput = getAmountInput();
+    return {
+        min: Number(amountInput?.min || 0),
+        max: Number(amountInput?.max || 0),
+    };
+}
+function getSelectionValidationState() {
+    const requiredCount = getRequiredSelectionCount();
+    if (selectedOrder.length !== requiredCount) {
+        return {
+            valid: false,
+            message: `Selectionne ${requiredCount} cochon(s) pour un ticket ${betTypes[activeBetType].label.toLowerCase()}.`,
+        };
+    }
+    return { valid: true, message: null };
+}
+function getAmountValidationState() {
+    const amountInput = getAmountInput();
+    if (!amountInput) return { valid: false, message: 'Saisis une mise avant de valider.' };
+    const amount = Number(amountInput.value);
+    const { min, max } = getAmountConstraints();
+    if (!Number.isFinite(amount) || amount <= 0) {
+        return { valid: false, message: `Entre une mise entre ${min} et ${max} 🪙.` };
+    }
+    if (amount < min || amount > max) {
+        return { valid: false, message: `La mise doit rester entre ${min} et ${max} 🪙.` };
+    }
+    return { valid: true, message: null };
+}
 function calculateOrderedProbability(selectionIds) {
     const remainingProbabilities = {}; let remainingTotal = 0;
     Object.values(participantMap).forEach((participant) => { remainingProbabilities[participant.id] = participant.winProbability; remainingTotal += participant.winProbability; });
@@ -408,6 +444,7 @@ function renderSelectionSummary() {
     const selectionInput = document.getElementById('selection-order-input');
     const betTypeInput = document.getElementById('bet-type-input');
     const submitButton = document.getElementById('bet-submit');
+    const feedback = document.getElementById('bet-inline-feedback');
     if (!display || !selectionInput || !betTypeInput || !submitButton) return;
     betTypeInput.value = activeBetType;
     selectionInput.value = selectedOrder.join(',');
@@ -416,6 +453,7 @@ function renderSelectionSummary() {
         const badge = card.querySelector('[data-selection-badge]');
         const selectionIndex = selectedOrder.indexOf(participantId);
         card.classList.remove('selected');
+        card.setAttribute('aria-pressed', selectionIndex !== -1 ? 'true' : 'false');
         if (badge) { badge.textContent = ''; badge.classList.remove('visible'); }
         if (selectionIndex !== -1) {
             card.classList.add('selected');
@@ -428,7 +466,21 @@ function renderSelectionSummary() {
     } else {
         display.textContent = selectedOrder.map((participantId, index) => `${index + 1}. ${participantMap[participantId].name}`).join('  ->  ');
     }
-    submitButton.disabled = selectedOrder.length !== requiredCount;
+    const selectionState = getSelectionValidationState();
+    const amountState = getAmountValidationState();
+    const blockingMessage = !selectionState.valid ? selectionState.message : (!amountState.valid ? amountState.message : null);
+    submitButton.disabled = false;
+    submitButton.setAttribute('aria-disabled', blockingMessage ? 'true' : 'false');
+    submitButton.classList.toggle('btn-disabled', Boolean(blockingMessage));
+    if (feedback) {
+        if (blockingMessage) {
+            feedback.textContent = blockingMessage;
+            feedback.className = 'mt-3 text-xs font-bold text-yellow-200';
+        } else {
+            feedback.textContent = 'Ticket pret. Clique sur Parier pour l envoyer.';
+            feedback.className = 'mt-3 text-xs font-bold text-emerald-200';
+        }
+    }
     updatePotentialWin();
 }
 function setBetType(nextBetType) {
@@ -468,8 +520,40 @@ function updatePotentialWin() {
 }
 const amountInput = document.getElementById('bet-amount');
 if (amountInput) amountInput.addEventListener('input', updatePotentialWin);
-participantCards.forEach((card) => card.addEventListener('click', () => toggleParticipantSelection(Number(card.dataset.participantId))));
+if (amountInput) amountInput.addEventListener('input', renderSelectionSummary);
+if (pigGrid) {
+    pigGrid.addEventListener('click', (event) => {
+        const card = event.target.closest('.pig-card');
+        if (!card) return;
+        toggleParticipantSelection(Number(card.dataset.participantId));
+    });
+    pigGrid.addEventListener('keydown', (event) => {
+        if (event.key !== 'Enter' && event.key !== ' ') return;
+        const card = event.target.closest('.pig-card');
+        if (!card) return;
+        event.preventDefault();
+        toggleParticipantSelection(Number(card.dataset.participantId));
+    });
+}
 document.querySelectorAll('[data-bet-type-btn]').forEach((button) => button.addEventListener('click', () => { if (!button.disabled) setBetType(button.dataset.betType); }));
+if (betForm) {
+    betForm.addEventListener('submit', (event) => {
+        const selectionState = getSelectionValidationState();
+        const amountState = getAmountValidationState();
+        if (!selectionState.valid || !amountState.valid) {
+            event.preventDefault();
+            renderSelectionSummary();
+            if (!selectionState.valid && pigGrid) {
+                pigGrid.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                const firstCard = pigGrid.querySelector('.pig-card');
+                if (firstCard) firstCard.focus();
+                return;
+            }
+            const amountField = getAmountInput();
+            if (amountField) amountField.focus();
+        }
+    });
+}
 renderSelectionSummary();
 
 /* Countdown */
