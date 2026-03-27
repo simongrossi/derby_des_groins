@@ -14,7 +14,7 @@ from helpers import (
     get_cooldown_remaining, format_duration_short, get_seconds_until,
     get_cereals_dict, get_trainings_dict, get_school_lessons_dict,
 )
-from services.economy_service import get_breeding_cost_value
+from services.economy_service import get_breeding_cost_value, get_progression_settings
 from utils.time_utils import is_weekend_truce_active
 
 from services.finance_service import (
@@ -564,20 +564,27 @@ def typing_complete():
     # Score could be based on WPM
     wpm = (15 / time_taken) * 60 if time_taken > 0 else 0
     
+    progression = get_progression_settings()
+    typing_multiplier = progression.typing_stat_gain_multiplier
+    xp_reward = int(round(progression.typing_xp_reward))
+
     if wpm > 40 and errors <= 2:
-        pig.vitesse = min(100, pig.vitesse + 1.5)
-        pig.agilite = min(100, pig.agilite + 1.0)
-        bonus_msg = "Excellent ! +1.5 Vitesse, +1.0 Agilite."
+        vitesse_gain = round(1.5 * typing_multiplier, 2)
+        agilite_gain = round(1.0 * typing_multiplier, 2)
+        pig.vitesse = min(100, pig.vitesse + vitesse_gain)
+        pig.agilite = min(100, pig.agilite + agilite_gain)
+        bonus_msg = f"Excellent ! +{vitesse_gain:g} Vitesse, +{agilite_gain:g} Agilite."
         category = "success"
     elif wpm > 20:
-        pig.vitesse = min(100, pig.vitesse + 0.5)
-        bonus_msg = "Pas mal. +0.5 Vitesse."
+        vitesse_gain = round(0.5 * typing_multiplier, 2)
+        pig.vitesse = min(100, pig.vitesse + vitesse_gain)
+        bonus_msg = f"Pas mal. +{vitesse_gain:g} Vitesse."
         category = "success"
     else:
         bonus_msg = "Tu peux faire mieux !"
         category = "warning"
 
-    pig.xp += 20
+    pig.xp += xp_reward
     pig.last_school_at = datetime.utcnow()
     pig.last_updated = pig.last_school_at
     pig.reset_freshness()

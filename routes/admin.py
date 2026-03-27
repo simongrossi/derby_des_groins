@@ -20,22 +20,20 @@ from helpers import (
 from helpers.config import DEFAULT_RACE_THEMES
 from helpers.auth import admin_required
 from services.economy_service import (
+    build_admin_progression_context,
     build_admin_economy_context,
     build_day_reward_multipliers_from_form,
     build_economy_settings_from_form,
-    build_simulation_inputs_from_form,
-    get_economy_settings,
-    save_day_reward_multipliers,
-    save_economy_settings,
-)
-from services.game_settings_service import get_game_settings
-from services.progression_service import (
-    build_admin_progression_context,
     build_progression_settings_from_form,
     build_progression_simulation_inputs_from_form,
+    build_simulation_inputs_from_form,
+    get_economy_settings,
     get_progression_settings,
+    save_day_reward_multipliers,
+    save_economy_settings,
     save_progression_settings,
 )
+from services.game_settings_service import get_game_settings
 from services.race_service import get_configured_npcs
 
 admin_bp = Blueprint('admin', __name__)
@@ -195,6 +193,7 @@ def admin_economy(user):
         'admin_economy.html',
         user=user,
         admin_tab='economy',
+        admin_page='economy',
         **context,
     )
 
@@ -223,9 +222,10 @@ def admin_progression(user):
         context = build_admin_progression_context(settings=current_settings)
 
     return render_template(
-        'admin_progression.html',
+        'admin_economy.html',
         user=user,
         admin_tab='progression',
+        admin_page='progression',
         **context,
     )
 

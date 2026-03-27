@@ -11,6 +11,7 @@ from helpers import (
     xp_for_level, get_first_injured_pig,
     get_prix_moyen_groin,
 )
+from services.economy_service import get_progression_settings
 
 api_bp = Blueprint('api', __name__)
 
@@ -94,10 +95,11 @@ def vet_solve():
         db.session.commit()
         return jsonify({'dead': True, 'message': 'Le délai était dépassé. RIP.'}), 200
 
+    progression = get_progression_settings()
     pig.heal()
     pig.injury_risk = min(35.0, max(MIN_INJURY_RISK, (pig.injury_risk or MIN_INJURY_RISK) + 2.0))
-    pig.energy = max(0, pig.energy - 10)
-    pig.happiness = max(0, pig.happiness - 5)
+    pig.energy = max(0, pig.energy - progression.vet_energy_cost)
+    pig.happiness = max(0, pig.happiness - progression.vet_happiness_cost)
     db.session.commit()
     return jsonify({'healed': True, 'message': f"{pig.name} s'en sort ! Repos, soupe tiède et pas de sprint tout de suite."})
 

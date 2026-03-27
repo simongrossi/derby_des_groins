@@ -161,6 +161,9 @@
                 <a href="{{ url_for('admin.admin_economy') }}" class="sidebar-link {{ 'active' if admin_tab == 'economy' }}">
                     <span class="text-base w-6 text-center">💰</span> Economie
                 </a>
+                <a href="{{ url_for('admin.admin_progression') }}" class="sidebar-link {{ 'active' if admin_tab == 'progression' }}">
+                    <span class="text-base w-6 text-center">📈</span> Progression
+                </a>
                 <a href="{{ url_for('admin.admin_races') }}#npcs" class="sidebar-link">
                     <span class="text-base w-6 text-center">🐽</span> PNJ de course
                 </a>
@@ -205,6 +208,9 @@
             </a>
             <a href="{{ url_for('admin.admin_economy') }}" class="flex flex-col items-center gap-0.5 px-2 py-1 rounded-lg text-[10px] font-bold {{ 'text-indigo-400' if admin_tab == 'economy' else 'text-white/40' }}">
                 <span class="text-lg">💰</span>Eco
+            </a>
+            <a href="{{ url_for('admin.admin_progression') }}" class="flex flex-col items-center gap-0.5 px-2 py-1 rounded-lg text-[10px] font-bold {{ 'text-indigo-400' if admin_tab == 'progression' else 'text-white/40' }}">
+                <span class="text-lg">📈</span>Prog
             </a>
             <a href="{{ url_for('admin.admin_races') }}#npcs" class="flex flex-col items-center gap-0.5 px-2 py-1 rounded-lg text-[10px] font-bold text-white/40">
                 <span class="text-lg">🐽</span>PNJ

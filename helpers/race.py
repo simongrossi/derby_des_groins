@@ -23,7 +23,10 @@ from race_engine import CourseManager
 from helpers.config import get_config
 from services.economy_service import (
     get_configured_bet_types,
+    get_progression_settings,
+    get_race_position_xp_value,
     get_race_reward_settings,
+    get_recent_race_penalty_multiplier,
 )
 from services.finance_service import credit_user_balance
 from services.pig_service import (
@@ -134,6 +137,7 @@ def ensure_race_for_slot(slot_time):
 def run_race_if_needed():
     now = datetime.now()
     MAX_RACES_PER_TICK = 3
+    progression = get_progression_settings()
     due_races = (
         Race.query
         .filter(Race.status == 'open', Race.scheduled_at <= now)
@@ -198,11 +202,10 @@ def run_race_if_needed():
                     hours_since_last_race = (
                         (race.scheduled_at - last_race_at).total_seconds() / 3600.0
                     ) if last_race_at else 999.0
-                    recent_race_penalty_multiplier = 1.0
-                    if hours_since_last_race < 24:
-                        recent_race_penalty_multiplier = 0.9
-                    elif hours_since_last_race < 48:
-                        recent_race_penalty_multiplier = 0.95
+                    recent_race_penalty_multiplier = get_recent_race_penalty_multiplier(
+                        hours_since_last_race,
+                        progression,
+                    )
                     pigs_for_sim.append({
                         'id': pig.id, 'name': pig.name, 'emoji': pig.emoji,
                         'vitesse': pig.vitesse, 'endurance': pig.endurance,
@@ -212,7 +215,7 @@ def run_race_if_needed():
                         'strategy_profile': strategy_profile,
                         'freshness': pig.freshness,
                         'is_happy': (pig.freshness or 0) > 90.0,
-                        'speed_bonus_multiplier': 1.1 if pig.comeback_bonus_ready else 1.0,
+                        'speed_bonus_multiplier': progression.comeback_speed_bonus_multiplier if pig.comeback_bonus_ready else 1.0,
                         'recent_race_penalty_multiplier': recent_race_penalty_multiplier,
                     })
                 else:
@@ -267,7 +270,6 @@ def run_race_if_needed():
         race.finished_at = now
         race.status = 'finished'
 
-        POSITION_XP = {1: 100, 2: 60, 3: 40, 4: 25, 5: 15, 6: 10, 7: 5, 8: 3}
         num_participants = len(order)
 
         for p in order:
@@ -277,7 +279,7 @@ def run_race_if_needed():
                     continue
                 owner = User.query.get(pig.user_id)
                 pig.races_entered += 1
-                xp_gained = POSITION_XP.get(p.finish_position, 3)
+                xp_gained = get_race_position_xp_value(p.finish_position, progression)
 
                 if owner:
                     theme = get_course_theme(race.scheduled_at)
@@ -340,18 +342,31 @@ def run_race_if_needed():
                             description="Remporter une course juste apres une periode d'inactivite.",
                             pig_name=pig.name,
                         )
-                    pig.vitesse = min(100, pig.vitesse + random.uniform(0.5, 1.5))
-                    pig.endurance = min(100, pig.endurance + random.uniform(0.5, 1.5))
+                    pig.vitesse = min(
+                        100,
+                        pig.vitesse + (random.uniform(0.5, 1.5) * progression.race_winner_stat_gain_multiplier),
+                    )
+                    pig.endurance = min(
+                        100,
+                        pig.endurance + (random.uniform(0.5, 1.5) * progression.race_winner_stat_gain_multiplier),
+                    )
                     pig.moral = min(100, pig.moral + 2)
                 elif p.finish_position <= 3:
                     pig.moral = min(100, pig.moral + 1)
                     stat = random.choice(['vitesse', 'endurance', 'agilite', 'force', 'intelligence'])
-                    setattr(pig, stat, min(100, getattr(pig, stat) + random.uniform(0.3, 0.8)))
+                    setattr(
+                        pig,
+                        stat,
+                        min(
+                            100,
+                            getattr(pig, stat) + (random.uniform(0.3, 0.8) * progression.race_podium_stat_gain_multiplier),
+                        ),
+                    )
 
-                pig.energy = max(0, pig.energy - 15)
+                pig.energy = max(0, pig.energy - progression.race_energy_cost)
                 pig.comeback_bonus_ready = False
-                pig.hunger = max(0, pig.hunger - 10)
-                pig.adjust_weight(-0.3)
+                pig.hunger = max(0, pig.hunger - progression.race_hunger_cost)
+                pig.adjust_weight(progression.race_weight_delta)
                 pig.mark_bad_state_if_needed()
                 pig.last_updated = datetime.utcnow()
                 pig.check_level_up()

@@ -235,10 +235,13 @@ class Pig(db.Model):
 
     def check_level_up(self):
         """Monte de niveau tant que l'XP le permet (+10 bonheur par level)."""
-        from helpers import xp_for_level
-        while self.xp >= xp_for_level(self.level + 1):
+        from services.economy_service import get_level_happiness_bonus_value, xp_for_level_value
+
+        self.level = max(1, int(self.level or 1))
+        current_xp = float(self.xp or 0.0)
+        while current_xp >= xp_for_level_value(self.level + 1):
             self.level += 1
-            self.happiness = min(100, self.happiness + 10)
+            self.happiness = min(100, float(self.happiness or 0.0) + get_level_happiness_bonus_value())
 
     def reset_freshness(self):
         """Remet la fraicheur a fond apres une interaction positive."""
@@ -364,31 +367,50 @@ class Pig(db.Model):
     def train(self, training: dict):
         """Entraîner le cochon (dict issu de data.TRAININGS).
         Consomme énergie/faim, modifie poids, stats et bonheur."""
-        self.energy = max(0, min(100, self.energy - training['energy_cost']))
-        self.hunger = max(0, self.hunger - training.get('hunger_cost', 0))
+        from services.economy_service import get_progression_settings, scale_stat_gains
+
+        progression = get_progression_settings()
+        self.energy = max(0, min(100, float(self.energy or 0.0) - training['energy_cost']))
+        self.hunger = max(0, float(self.hunger or 0.0) - training.get('hunger_cost', 0))
         self.adjust_weight(training.get('weight_delta', 0.0))
         if 'happiness_bonus' in training:
-            self.happiness = min(100, self.happiness + training['happiness_bonus'])
-        self.apply_stat_boosts(training.get('stats', {}))
+            self.happiness = min(
+                100,
+                float(self.happiness or 0.0) + (training['happiness_bonus'] * progression.training_happiness_multiplier),
+            )
+        self.apply_stat_boosts(
+            scale_stat_gains(training.get('stats', {}), progression.training_stat_gain_multiplier)
+        )
         self.register_positive_interaction(datetime.utcnow())
         self.mark_bad_state_if_needed()
 
     def study(self, lesson: dict, correct: bool) -> str:
         """Suivre un cours (dict issu de data.SCHOOL_LESSONS).
         Renvoie 'success' ou 'warning' selon la réponse."""
-        self.energy = max(0, self.energy - lesson['energy_cost'])
-        self.hunger = max(0, self.hunger - lesson['hunger_cost'])
+        from services.economy_service import get_progression_settings, scale_stat_gains
+
+        progression = get_progression_settings()
+        self.energy = max(0, float(self.energy or 0.0) - lesson['energy_cost'])
+        self.hunger = max(0, float(self.hunger or 0.0) - lesson['hunger_cost'])
         self.last_school_at = datetime.utcnow()
         self.school_sessions_completed = (self.school_sessions_completed or 0) + 1
 
         if correct:
-            self.apply_stat_boosts(lesson.get('stats', {}))
-            self.xp += lesson['xp']
-            self.happiness = min(100, self.happiness + lesson.get('happiness_bonus', 0))
+            self.apply_stat_boosts(
+                scale_stat_gains(lesson.get('stats', {}), progression.school_stat_gain_multiplier)
+            )
+            self.xp = int(self.xp or 0) + int(round(lesson['xp'] * progression.school_xp_multiplier))
+            self.happiness = min(
+                100,
+                float(self.happiness or 0.0) + (lesson.get('happiness_bonus', 0) * progression.school_happiness_multiplier),
+            )
             category = 'success'
         else:
-            self.xp += lesson.get('wrong_xp', 0)
-            self.happiness = max(0, self.happiness - lesson.get('wrong_happiness_penalty', 0))
+            self.xp = int(self.xp or 0) + int(round(lesson.get('wrong_xp', 0) * progression.school_wrong_xp_multiplier))
+            self.happiness = max(
+                0,
+                float(self.happiness or 0.0) - (lesson.get('wrong_happiness_penalty', 0) * progression.school_wrong_happiness_multiplier),
+            )
             category = 'warning'
 
         self.register_positive_interaction(datetime.utcnow())
@@ -445,8 +467,10 @@ class Pig(db.Model):
         Appelé avant chaque interaction pour synchroniser l'état."""
         from utils.time_utils import calculate_weekend_truce_hours
         from data import DEFAULT_PIG_WEIGHT_KG
+        from services.economy_service import get_progression_settings
 
         now = datetime.utcnow()
+        progression = get_progression_settings()
         self.award_longevity_trophies()
         if not self.last_updated:
             self.last_updated = now
@@ -464,7 +488,7 @@ class Pig(db.Model):
 
         reference_interaction = self.last_interaction_at or self.last_updated
         if reference_interaction:
-            grace_deadline = reference_interaction + timedelta(hours=48)
+            grace_deadline = reference_interaction + timedelta(hours=progression.freshness_grace_hours)
             if now > grace_deadline:
                 elapsed_workdays = 0
                 cursor = grace_deadline.date()
@@ -472,26 +496,29 @@ class Pig(db.Model):
                     if cursor.weekday() < 5:
                         elapsed_workdays += 1
                     cursor += timedelta(days=1)
-                self.freshness = max(0.0, 100.0 - (elapsed_workdays * 5.0))
+                self.freshness = max(0.0, 100.0 - (elapsed_workdays * progression.freshness_decay_per_workday))
             else:
                 self.freshness = 100.0
 
         # Faim décroît avec le temps
-        self.hunger = max(0, self.hunger - hours * 2)
+        self.hunger = max(0, self.hunger - (hours * progression.hunger_decay_per_hour))
 
         # Énergie dépend de la faim
-        if self.hunger > 30:
-            self.energy = min(100, self.energy + hours * 5)
+        if self.hunger > progression.energy_regen_hunger_threshold:
+            self.energy = min(100, self.energy + (hours * progression.energy_regen_per_hour))
         else:
-            self.energy = max(0, self.energy - hours * 1)
+            self.energy = max(0, self.energy - (hours * progression.energy_drain_per_hour))
 
         # Bonheur dépend de la faim
         if self.hunger < 15:
-            self.happiness = max(0, self.happiness - hours * 3)
+            self.happiness = max(0, self.happiness - (hours * progression.low_hunger_happiness_drain_per_hour))
         elif self.hunger < 30:
-            self.happiness = max(0, self.happiness - hours * 1)
-        elif self.happiness < 60:
-            self.happiness = min(60, self.happiness + hours * 0.3)
+            self.happiness = max(0, self.happiness - (hours * progression.mid_hunger_happiness_drain_per_hour))
+        elif self.happiness < progression.passive_happiness_regen_cap:
+            self.happiness = min(
+                progression.passive_happiness_regen_cap,
+                self.happiness + (hours * progression.passive_happiness_regen_per_hour),
+            )
 
         # Poids fluctue selon faim/énergie
         current_weight = self.weight_kg or DEFAULT_PIG_WEIGHT_KG

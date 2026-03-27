@@ -15,6 +15,8 @@ from models import Auction, Pig
 from services.economy_service import (
     calculate_adoption_cost_for_counts,
     get_feeding_multiplier_for_count,
+    get_level_happiness_bonus_value,
+    xp_for_level_value,
 )
 
 from utils.time_utils import calculate_weekend_truce_hours
@@ -186,13 +188,13 @@ def calculate_pig_power(pig):
 
 
 def xp_for_level(level):
-    return int(100 * (level ** 1.5))
+    return xp_for_level_value(level)
 
 
 def check_level_up(pig):
     while pig.xp >= xp_for_level(pig.level + 1):
         pig.level += 1
-        pig.happiness = min(100, pig.happiness + 10)
+        pig.happiness = min(100, pig.happiness + get_level_happiness_bonus_value())
 
 
 def reset_snack_share_limit_if_needed(user, now=None):
