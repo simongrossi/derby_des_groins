@@ -1,0 +1,515 @@
+{% from '_pig_avatar.html' import pig_display %}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🏥 URGENCE VÉTÉRINAIRE — Derby des Groins</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Nunito:wght@400;700;800;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    <style>
+        * { font-family: 'Nunito', sans-serif; }
+        .font-title { font-family: 'Lilita One', cursive; }
+        .font-mono { font-family: 'Share Tech Mono', monospace; }
+
+        body {
+            background: #0a0a0f;
+            background-image:
+                radial-gradient(ellipse at 30% 20%, rgba(180,0,0,0.2) 0%, transparent 55%),
+                radial-gradient(ellipse at 70% 80%, rgba(100,0,180,0.15) 0%, transparent 55%);
+            min-height: 100vh;
+            overflow-x: hidden;
+            color: #f8fafc;
+        }
+
+        .card {
+            background: linear-gradient(180deg, rgba(255,255,255,0.055) 0%, rgba(255,240,246,0.03) 100%);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 205, 226, 0.12);
+            border-radius: 1.5rem;
+        }
+
+        #chrono-ring {
+            width: 160px;
+            height: 160px;
+            position: relative;
+            flex-shrink: 0;
+        }
+        #chrono-svg { transform: rotate(-90deg); }
+        #chrono-circle {
+            fill: none;
+            stroke: #1a1a2e;
+            stroke-width: 10;
+        }
+        #chrono-progress {
+            fill: none;
+            stroke: #ef4444;
+            stroke-width: 10;
+            stroke-linecap: round;
+            stroke-dasharray: 377;
+            stroke-dashoffset: 0;
+            transition: stroke-dashoffset 1s linear, stroke 1s ease;
+        }
+        #chrono-text {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 2.2rem;
+            font-weight: 900;
+            color: #ef4444;
+            text-shadow: 0 0 20px rgba(239,68,68,0.6);
+        }
+
+        #puzzle-board {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+            max-width: 480px;
+            margin: 0 auto;
+            user-select: none;
+        }
+
+        .puzzle-slot {
+            aspect-ratio: 1;
+            border-radius: 12px;
+            border: 2px dashed rgba(255,255,255,0.15);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.2rem;
+            transition: all 0.2s;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+        .puzzle-slot.has-piece {
+            border-style: solid;
+            border-color: rgba(255,255,255,0.3);
+            background: rgba(255,255,255,0.05);
+        }
+        .puzzle-slot.correct {
+            border-color: #22c55e !important;
+            background: rgba(34,197,94,0.15) !important;
+            box-shadow: 0 0 15px rgba(34,197,94,0.3);
+        }
+        .puzzle-slot.drop-hover {
+            border-color: rgba(245,158,11,0.8);
+            background: rgba(245,158,11,0.1);
+            transform: scale(1.05);
+        }
+
+        #piece-tray {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: center;
+            max-width: 480px;
+            margin: 0 auto;
+        }
+
+        .bone-piece {
+            width: 68px;
+            height: 68px;
+            border-radius: 12px;
+            background: rgba(255,255,255,0.07);
+            border: 2px solid rgba(255,255,255,0.15);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            cursor: grab;
+            transition: all 0.2s;
+            touch-action: none;
+            position: relative;
+        }
+        .bone-piece:hover {
+            background: rgba(255,255,255,0.12);
+            border-color: rgba(245,158,11,0.5);
+            transform: scale(1.08);
+        }
+        .bone-piece.dragging { opacity: 0.3; }
+        .bone-piece.used { opacity: 0; pointer-events: none; }
+
+        .scanline {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 20;
+            background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.03) 2px, rgba(0,0,0,0.03) 4px);
+        }
+        .vignette {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 19;
+            background: radial-gradient(ellipse at center, transparent 60%, rgba(0,0,0,0.6) 100%);
+        }
+
+        .overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0,0,0,0.85);
+            backdrop-filter: blur(8px);
+        }
+        .result-card {
+            max-width: 420px;
+            width: 90%;
+            border-radius: 2rem;
+            padding: 3rem 2.5rem;
+            text-align: center;
+            animation: cardPop 0.5s cubic-bezier(0.34,1.56,0.64,1);
+        }
+        @keyframes cardPop {
+            from { transform: scale(0.6) rotate(-3deg); opacity: 0; }
+            to { transform: scale(1) rotate(0deg); opacity: 1; }
+        }
+
+        .heartbeat { animation: hb 0.8s ease-in-out infinite; }
+        @keyframes hb {
+            0%,100% { transform: scale(1); }
+            15% { transform: scale(1.25); }
+            30% { transform: scale(1); }
+            45% { transform: scale(1.15); }
+        }
+
+        @keyframes dangerFlash {
+            0%,100% { background-color: transparent; }
+            50% { background-color: rgba(220,38,38,0.15); }
+        }
+        .danger { animation: dangerFlash 0.5s ease infinite; }
+
+        .confetti-emoji {
+            position: fixed;
+            pointer-events: none;
+            font-size: 2rem;
+            z-index: 200;
+            animation: confettiFall 2s ease forwards;
+        }
+        @keyframes confettiFall {
+            0% { opacity: 1; transform: translateY(-50px) rotate(0deg); }
+            100% { opacity: 0; transform: translateY(100vh) rotate(720deg); }
+        }
+    </style>
+</head>
+<body>
+{% set active_page = 'veterinaire' %}
+{% include "_site_header.html" %}
+
+<div class="scanline"></div>
+<div class="vignette"></div>
+
+<main class="relative z-30 max-w-5xl mx-auto px-4 py-8">
+    <section class="card p-6 md:p-8 mb-8" style="background:linear-gradient(135deg,rgba(127,29,29,0.55),rgba(17,24,39,0.7));border-color:rgba(248,113,113,0.22);">
+        <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-8">
+            <div class="flex items-start gap-4">
+                <span class="heartbeat">{{ pig_display(pig, 'text-5xl md:text-6xl', 72) }}</span>
+                <div>
+                    <p class="text-red-300 font-bold uppercase tracking-[0.25em] text-xs mb-2">Urgence vétérinaire</p>
+                    <h1 class="font-title text-3xl md:text-4xl text-white">{{ pig.name }}</h1>
+                    <p class="text-red-200 font-bold text-sm mt-2">🩻 Fracture multi-osseuse détectée — puzzle chirurgical requis</p>
+                    <p class="text-white/55 text-sm font-semibold mt-2 max-w-2xl">Replacez les os dans le bon ordre pour soigner votre patient. Chaque erreur coûte du temps, et le chrono tourne vraiment.</p>
+                    <div class="flex flex-wrap gap-2 mt-4">
+                        <a href="/mon-cochon" class="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-bold text-white bg-white/10 border border-white/10 hover:bg-white/15 transition-colors">← Retour à l'écurie</a>
+                        <span class="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-bold text-red-100 bg-red-500/12 border border-red-400/20">❤️ Chaque seconde compte</span>
+                    </div>
+                </div>
+            </div>
+            <div class="mx-auto lg:mx-0">
+                <div id="chrono-ring">
+                    <svg id="chrono-svg" width="160" height="160" viewBox="0 0 140 140">
+                        <circle id="chrono-circle" cx="70" cy="70" r="60"></circle>
+                        <circle id="chrono-progress" cx="70" cy="70" r="60" stroke-dasharray="377" stroke-dashoffset="0"></circle>
+                    </svg>
+                    <div id="chrono-text">{{ "%d:%02d"|format(seconds_left // 60, seconds_left % 60) }}</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="max-w-2xl mx-auto">
+        <div class="mb-4 text-center">
+            <p class="text-white/65 text-sm font-bold">🦴 Glissez les os dans les cases numérotées dans le bon ordre (1 → 12)</p>
+        </div>
+
+        <div id="puzzle-board" class="mb-6">
+        {% for i in range(12) %}
+        <div class="puzzle-slot" data-slot="{{ i }}" ondragover="onDragOver(event, {{ i }})" ondragleave="onDragLeave(event, {{ i }})" ondrop="onDrop(event, {{ i }})">
+            <span class="text-white/15 font-bold text-lg absolute top-1 left-2">{{ i + 1 }}</span>
+        </div>
+        {% endfor %}
+        </div>
+
+        <p class="text-center text-white/40 text-xs font-bold mb-3 uppercase tracking-widest">⬆️ Faites glisser les os ci-dessous vers les cases</p>
+        <div id="piece-tray"></div>
+
+        <p class="text-center text-white/25 text-xs mt-4">
+            Le chrono tourne. Chaque os mal placé vous coûte 5 secondes.
+        </p>
+    </section>
+</main>
+
+<div id="overlay-win" class="overlay hidden">
+    <div class="result-card" style="background:linear-gradient(135deg,rgba(20,83,45,0.95),rgba(5,46,22,0.95));border:2px solid #22c55e">
+        <p class="text-7xl mb-4">🎉</p>
+        <p class="font-title text-4xl text-green-400 mb-2">SAUVÉ !</p>
+        <p class="text-white/80 font-bold mb-1" id="win-msg"></p>
+        <p class="text-white/40 text-sm mt-2">Il boitera un peu mais c'est déjà ça.</p>
+        <a href="/mon-cochon" class="mt-6 inline-block py-3 px-8 rounded-xl font-title text-lg text-white" style="background:linear-gradient(135deg,#16a34a,#15803d)">Retourner à l'écurie →</a>
+    </div>
+</div>
+
+<div id="overlay-dead" class="overlay hidden">
+    <div class="result-card" style="background:linear-gradient(135deg,rgba(60,5,5,0.97),rgba(20,5,5,0.97));border:2px solid #dc2626">
+        <p class="text-7xl mb-4">💀</p>
+        <p class="font-title text-4xl text-red-400 mb-2">TROP TARD...</p>
+        <p class="text-white/70 font-bold mb-1" id="dead-msg"></p>
+        <p class="text-white/35 text-sm mt-2">Peut-être qu'il deviendra un bon jambon.</p>
+        <div class="flex gap-3 justify-center mt-6">
+            <a href="/mon-cochon" class="py-3 px-6 rounded-xl font-bold text-white/80" style="background:rgba(255,255,255,0.08)">Mon écurie</a>
+            <a href="/cimetiere" class="py-3 px-6 rounded-xl font-bold text-white" style="background:linear-gradient(135deg,#dc2626,#991b1b)">🪦 Cimetière</a>
+        </div>
+    </div>
+</div>
+
+<script>
+const PIG_ID = {{ pig.id }};
+const TOTAL_SECONDS = {{ seconds_left }};
+const TOTAL_PIECES = 12;
+const PENALTY_SECONDS = 5;
+const BONE_EMOJIS = ['🦴', '🦷', '💉', '🩺', '🩻', '🧬', '🫀', '🫁', '🧪', '💊', '🩹', '🩼'];
+const SHUFFLED = [...BONE_EMOJIS].map((emoji, index) => ({ emoji, correctSlot: index }));
+for (let i = SHUFFLED.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [SHUFFLED[i], SHUFFLED[j]] = [SHUFFLED[j], SHUFFLED[i]];
+}
+
+let slotContents = new Array(TOTAL_PIECES).fill(null);
+let secondsLeft = TOTAL_SECONDS;
+let timerInterval = null;
+let solvedCount = 0;
+let gameOver = false;
+let dragPieceIdx = null;
+
+function initTray() {
+    const tray = document.getElementById('piece-tray');
+    tray.innerHTML = '';
+    SHUFFLED.forEach((piece, idx) => {
+        const el = document.createElement('div');
+        el.className = 'bone-piece';
+        el.id = 'piece-' + idx;
+        el.textContent = piece.emoji;
+        el.title = `Os n°${piece.correctSlot + 1}`;
+        el.draggable = true;
+        el.addEventListener('dragstart', event => onPieceDragStart(event, idx));
+        el.addEventListener('dragend', event => onPieceDragEnd(event, idx));
+        el.addEventListener('touchstart', event => touchStart(event, idx), { passive: false });
+        tray.appendChild(el);
+    });
+}
+
+function onPieceDragStart(event, idx) {
+    dragPieceIdx = idx;
+    event.currentTarget.classList.add('dragging');
+    event.dataTransfer.effectAllowed = 'move';
+}
+
+function onPieceDragEnd(event) {
+    event.currentTarget.classList.remove('dragging');
+    dragPieceIdx = null;
+}
+
+function onDragOver(event, slotIdx) {
+    event.preventDefault();
+    event.dataTransfer.dropEffect = 'move';
+    document.querySelector(`[data-slot="${slotIdx}"]`).classList.add('drop-hover');
+}
+
+function onDragLeave(event, slotIdx) {
+    document.querySelector(`[data-slot="${slotIdx}"]`).classList.remove('drop-hover');
+}
+
+function onDrop(event, slotIdx) {
+    event.preventDefault();
+    document.querySelector(`[data-slot="${slotIdx}"]`).classList.remove('drop-hover');
+    if (gameOver || dragPieceIdx === null) return;
+    placePiece(dragPieceIdx, slotIdx);
+}
+
+let touchPieceIdx = null;
+let touchClone = null;
+
+function touchStart(event, idx) {
+    event.preventDefault();
+    touchPieceIdx = idx;
+    const el = document.getElementById('piece-' + idx);
+    touchClone = el.cloneNode(true);
+    touchClone.style.cssText = 'position:fixed;z-index:999;pointer-events:none;opacity:0.8;width:68px;height:68px;border-radius:12px;background:rgba(245,158,11,0.3);border:2px solid #f59e0b;display:flex;align-items:center;justify-content:center;font-size:2rem;';
+    document.body.appendChild(touchClone);
+    document.addEventListener('touchmove', touchMove, { passive: false });
+    document.addEventListener('touchend', touchEnd);
+}
+
+function touchMove(event) {
+    event.preventDefault();
+    const touch = event.touches[0];
+    if (touchClone) {
+        touchClone.style.left = (touch.clientX - 34) + 'px';
+        touchClone.style.top = (touch.clientY - 34) + 'px';
+    }
+}
+
+function touchEnd(event) {
+    document.removeEventListener('touchmove', touchMove);
+    document.removeEventListener('touchend', touchEnd);
+    if (!touchClone) return;
+    const touch = event.changedTouches[0];
+    const el = document.elementFromPoint(touch.clientX, touch.clientY);
+    touchClone.remove();
+    touchClone = null;
+    if (!el) return;
+    const slot = el.closest('[data-slot]');
+    if (slot) placePiece(touchPieceIdx, parseInt(slot.dataset.slot, 10));
+    touchPieceIdx = null;
+}
+
+function placePiece(pieceIdx, slotIdx) {
+    const piece = SHUFFLED[pieceIdx];
+    const slotEl = document.querySelector(`[data-slot="${slotIdx}"]`);
+    const pieceEl = document.getElementById('piece-' + pieceIdx);
+
+    if (!slotEl || slotContents[slotIdx] !== null) {
+        flashError(slotEl);
+        return;
+    }
+
+    slotContents[slotIdx] = piece;
+    pieceEl.classList.add('used');
+    slotEl.classList.add('has-piece');
+    slotEl.innerHTML = `<span class="absolute top-1 left-2 text-white/15 font-bold text-sm">${slotIdx + 1}</span><span style="font-size:2rem">${piece.emoji}</span>`;
+
+    if (piece.correctSlot === slotIdx) {
+        slotEl.classList.add('correct');
+        solvedCount++;
+        if (solvedCount >= TOTAL_PIECES) winGame();
+    } else {
+        slotEl.style.borderColor = 'rgba(239,68,68,0.6)';
+        slotEl.style.background = 'rgba(239,68,68,0.1)';
+        secondsLeft = Math.max(0, secondsLeft - PENALTY_SECONDS);
+        updateChronoDisplay();
+        flashBody();
+    }
+}
+
+function flashError(el) {
+    if (!el) return;
+    el.style.borderColor = '#ef4444';
+    setTimeout(() => { el.style.borderColor = ''; }, 400);
+}
+
+function flashBody() {
+    document.body.classList.add('danger');
+    setTimeout(() => document.body.classList.remove('danger'), 600);
+}
+
+const CIRCUMFERENCE = 377;
+
+function updateChronoDisplay() {
+    const frac = TOTAL_SECONDS > 0 ? secondsLeft / TOTAL_SECONDS : 0;
+    const offset = CIRCUMFERENCE * (1 - frac);
+    const circle = document.getElementById('chrono-progress');
+    const text = document.getElementById('chrono-text');
+    circle.style.strokeDashoffset = offset;
+
+    const minutes = Math.floor(secondsLeft / 60);
+    const secs = secondsLeft % 60;
+    text.textContent = `${minutes}:${String(secs).padStart(2, '0')}`;
+
+    if (secondsLeft <= 30) {
+        circle.style.stroke = '#ef4444';
+        text.style.color = '#ef4444';
+    } else if (secondsLeft <= 60) {
+        circle.style.stroke = '#f59e0b';
+        text.style.color = '#f59e0b';
+    } else {
+        circle.style.stroke = '#22c55e';
+        text.style.color = '#22c55e';
+    }
+}
+
+function startTimer() {
+    updateChronoDisplay();
+    timerInterval = setInterval(() => {
+        if (gameOver) {
+            clearInterval(timerInterval);
+            return;
+        }
+        secondsLeft--;
+        updateChronoDisplay();
+        if (secondsLeft <= 0) loseGame();
+    }, 1000);
+}
+
+async function winGame() {
+    if (gameOver) return;
+    gameOver = true;
+    clearInterval(timerInterval);
+    spawnConfetti();
+    const response = await fetch('/api/vet/solve', {
+        method: 'POST',
+        headers: { 
+            'Content-Type': 'application/json',
+            'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+        },
+        body: JSON.stringify({ pig_id: PIG_ID })
+    });
+    const data = await response.json();
+    document.getElementById('win-msg').textContent = data.message || 'Puzzle résolu !';
+    document.getElementById('overlay-win').classList.remove('hidden');
+}
+
+async function loseGame() {
+    if (gameOver) return;
+    gameOver = true;
+    clearInterval(timerInterval);
+    await fetch('/api/vet/timeout', {
+        method: 'POST',
+        headers: { 
+            'Content-Type': 'application/json',
+            'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+        },
+        body: JSON.stringify({ pig_id: PIG_ID })
+    });
+    document.getElementById('dead-msg').textContent = "{{ pig.name }} n'a pas survécu à l'opération.";
+    document.getElementById('overlay-dead').classList.remove('hidden');
+}
+
+function spawnConfetti() {
+    const emojis = ['🎉', '✨', '🏆', '🐷', '🦴', '💊', '🩹', '🌟'];
+    for (let i = 0; i < 20; i++) {
+        setTimeout(() => {
+            const el = document.createElement('div');
+            el.className = 'confetti-emoji';
+            el.textContent = emojis[Math.floor(Math.random() * emojis.length)];
+            el.style.left = Math.random() * 100 + 'vw';
+            el.style.top = '-50px';
+            el.style.animationDuration = (1.5 + Math.random() * 1.5) + 's';
+            document.body.appendChild(el);
+            setTimeout(() => el.remove(), 3000);
+        }, i * 80);
+    }
+}
+
+initTray();
+startTimer();
+</script>
+
+{% include '_footer.html' %}
+</body>
+</html>

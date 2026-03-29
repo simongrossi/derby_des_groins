@@ -1,0 +1,769 @@
+{% from '_pig_avatar.html' import pig_display %}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Derby des Groins -- Classement</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Nunito:wght@400;600;700;800&family=Creepster&display=swap" rel="stylesheet">
+    <style>
+        * { font-family: 'Nunito', sans-serif; }
+        .font-title { font-family: 'Lilita One', cursive; }
+        .font-creep { font-family: 'Creepster', cursive; }
+
+        body {
+            background: #0f172a;
+            background-image:
+                radial-gradient(at 0% 0%, rgba(30, 64, 175, 0.15) 0, transparent 50%),
+                radial-gradient(at 50% 0%, rgba(139, 92, 246, 0.1) 0, transparent 50%),
+                radial-gradient(at 100% 0%, rgba(217, 70, 239, 0.15) 0, transparent 50%);
+            color: #f8fafc;
+            min-height: 100vh;
+        }
+
+        .card {
+            background: rgba(30, 41, 59, 0.5);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 1.5rem;
+        }
+
+        .leaderboard-row:hover { background: rgba(255, 255, 255, 0.03); }
+
+        .rank-top-1 { color: #fbbf24; text-shadow: 0 0 15px rgba(251, 191, 36, 0.5); }
+        .rank-top-2 { color: #94a3b8; }
+        .rank-top-3 { color: #b45309; }
+
+        .trophy-badge {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 0.75rem;
+            padding: 0.25rem 0.5rem;
+        }
+
+        .tab-btn { transition: all 0.2s; }
+        .tab-btn.active {
+            background: rgba(244, 114, 182, 0.15);
+            border-color: rgba(244, 114, 182, 0.4);
+            color: #f9a8d4;
+        }
+        .tab-panel { display: none; }
+        .tab-panel.active { display: block; }
+
+        .award-card {
+            background: rgba(30, 41, 59, 0.6);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 1rem;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .award-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 30px rgba(0,0,0,0.3);
+        }
+
+        .stat-pill {
+            display: inline-flex; align-items: center; gap: 0.25rem;
+            background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 0.5rem; padding: 0.125rem 0.5rem; font-size: 0.7rem; font-weight: 700;
+        }
+    </style>
+</head>
+<body>
+
+{% include '_site_header.html' %}
+
+<main class="max-w-6xl mx-auto px-4 py-10">
+
+    <!-- TITRE -->
+    <div class="text-center mb-10">
+        <h1 class="font-title text-3xl md:text-4xl lg:text-5xl mb-3 bg-gradient-to-r from-yellow-400 via-orange-400 to-red-500 bg-clip-text text-transparent">Hall of Fame</h1>
+        <p class="text-white/50 text-base md:text-xl font-medium">L'elite des eleveurs de porcins -- stats, records & humiliations</p>
+    </div>
+
+    <!-- ===== PALMARES / AWARDS ===== -->
+    {% if awards %}
+    <section class="mb-12">
+        <h2 class="font-title text-2xl text-yellow-400 mb-6 flex items-center gap-3">
+            <span class="text-3xl">🏅</span> Palmares -- Qui est qui ?
+        </h2>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            {% for a in awards %}
+            <div class="award-card p-4 flex items-start gap-3 border-{{ a.color }}-500/20">
+                <div class="text-3xl shrink-0 mt-0.5">{{ a.emoji }}</div>
+                <div class="min-w-0">
+                    <p class="font-title text-sm text-{{ a.color }}-400 leading-tight">{{ a.title }}</p>
+                    <p class="text-white/40 text-[11px] font-semibold mt-0.5">{{ a.desc }}</p>
+                    <div class="mt-2 flex items-center gap-2">
+                        <span class="text-white font-bold text-sm">{{ a.user }}</span>
+                        <span class="stat-pill text-{{ a.color }}-300">{{ a.value }}</span>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </section>
+    {% endif %}
+
+    <!-- ===== ONGLETS ===== -->
+    <div class="flex flex-wrap gap-2 mb-6">
+        <button class="tab-btn active card px-4 py-3 text-sm font-bold border border-white/10 cursor-pointer" data-tab="general">🏆 General</button>
+        <button class="tab-btn card px-4 py-3 text-sm font-bold border border-white/10 cursor-pointer text-white/50" data-tab="abattoir">🔪 Abattoir & Cimetiere</button>
+        <button class="tab-btn card px-4 py-3 text-sm font-bold border border-white/10 cursor-pointer text-white/50" data-tab="paris">🎟️ Paris & Fortune</button>
+        <button class="tab-btn card px-4 py-3 text-sm font-bold border border-white/10 cursor-pointer text-white/50" data-tab="elevage">🐷 Elevage & Ecole</button>
+        <button class="tab-btn card px-4 py-3 text-sm font-bold border border-white/10 cursor-pointer text-white/50" data-tab="honte">💩 Mur de la Honte</button>
+    </div>
+
+    <!-- ==================== TAB: GENERAL ==================== -->
+    <div id="tab-general" class="tab-panel active">
+
+        <!-- Charts -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+            <div class="card p-6">
+                <h3 class="font-title text-lg text-yellow-500 mb-4">💰 Top Fortunes (🪙 BitGroins)</h3>
+                <canvas id="balanceChart" height="180"></canvas>
+            </div>
+            <div class="card p-6">
+                <h3 class="font-title text-lg text-blue-500 mb-4">🏆 Top Victoires</h3>
+                <canvas id="winsChart" height="180"></canvas>
+            </div>
+        </div>
+
+        <!-- Table classement general -->
+        <div class="card overflow-x-auto">
+            <table class="w-full border-collapse text-left min-w-[800px]">
+                <thead>
+                    <tr class="bg-white/5 text-white/40 text-xs font-bold uppercase tracking-wider">
+                        <th class="px-4 py-3">#</th>
+                        <th class="px-4 py-3">Eleveur</th>
+                        <th class="px-4 py-3">Score</th>
+                        <th class="px-4 py-3">Fortune</th>
+                        <th class="px-4 py-3">Wins</th>
+                        <th class="px-4 py-3">Courses</th>
+                        <th class="px-4 py-3">Win %</th>
+                        <th class="px-4 py-3">Trophees</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-white/5">
+                    {% for r in rankings %}
+                    <tr class="leaderboard-row transition-colors">
+                        <td class="px-4 py-4 font-title text-xl {% if loop.index <= 3 %}rank-top-{{loop.index}}{% else %}text-white/20{% endif %}">
+                            {% if loop.index == 1 %}🥇{% elif loop.index == 2 %}🥈{% elif loop.index == 3 %}🥉{% else %}#{{ loop.index }}{% endif %}
+                        </td>
+                        <td class="px-4 py-4">
+                            <div class="flex items-center gap-3">
+                                <div class="w-9 h-9 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center font-bold text-sm">
+                                    {{ r.user.username[0]|upper }}
+                                </div>
+                                <div>
+                                    <p class="font-bold text-white text-sm">{{ r.user.username }}</p>
+                                    {% if r.best_pig %}
+                                    <p class="text-white/25 text-[10px] font-semibold">{{ pig_display(r.best_pig, 'text-[10px]', 14) }} {{ r.best_pig.name }}</p>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </td>
+                        <td class="px-4 py-4 font-title text-blue-400">{{ "%.0f"|format(r.score) }}</td>
+                        <td class="px-4 py-4 font-bold text-yellow-400 text-sm">{{ "%.2f"|format(r.user.balance) }} <span class="text-white/30">🪙</span></td>
+                        <td class="px-4 py-4 font-bold text-green-400">{{ r.total_wins }}</td>
+                        <td class="px-4 py-4 text-white/50 text-sm">{{ r.total_races }}</td>
+                        <td class="px-4 py-4">
+                            <span class="text-sm font-bold {% if r.win_rate >= 40 %}text-green-400{% elif r.win_rate >= 20 %}text-yellow-400{% else %}text-red-400{% endif %}">{{ r.win_rate }}%</span>
+                        </td>
+                        <td class="px-4 py-4">
+                            <div class="flex flex-wrap gap-1">
+                                {% for t in r.trophies[:6] %}
+                                <span class="trophy-badge text-xs cursor-help" title="{{ t.n }} : {{ t.d }}">{{ t.e }}</span>
+                                {% endfor %}
+                                {% if r.trophies|length > 6 %}
+                                <span class="trophy-badge text-xs text-white/30">+{{ r.trophies|length - 6 }}</span>
+                                {% endif %}
+                                {% if not r.trophies %}<span class="text-white/10 text-xs">--</span>{% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- ==================== TAB: ABATTOIR & CIMETIERE ==================== -->
+    <div id="tab-abattoir" class="tab-panel">
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+            <div class="card p-6">
+                <h3 class="font-title text-lg text-red-500 mb-4">💀 Victimes par eleveur</h3>
+                <canvas id="deathsChart" height="200"></canvas>
+            </div>
+            <div class="card p-6">
+                <h3 class="font-title text-lg text-purple-500 mb-4">🔪 Causes de deces</h3>
+                <canvas id="deathCausesChart" height="200"></canvas>
+            </div>
+        </div>
+
+        <!-- Table abattoir -->
+        <div class="card overflow-x-auto">
+            <div class="px-6 py-4 border-b border-white/5">
+                <h3 class="font-creep text-2xl text-red-400">Tableau de Chasse</h3>
+                <p class="text-white/30 text-xs font-semibold mt-1">Qui a envoye le plus de cochons a l'abattoir ?</p>
+            </div>
+            <table class="w-full border-collapse text-left min-w-[700px]">
+                <thead>
+                    <tr class="bg-white/5 text-white/40 text-xs font-bold uppercase tracking-wider">
+                        <th class="px-4 py-3">#</th>
+                        <th class="px-4 py-3">Eleveur</th>
+                        <th class="px-4 py-3">Total morts</th>
+                        <th class="px-4 py-3">💀 Challenge</th>
+                        <th class="px-4 py-3">🩹 Blessure</th>
+                        <th class="px-4 py-3">🗡️ Sacrifice</th>
+                        <th class="px-4 py-3">🧓 Vieillesse</th>
+                        <th class="px-4 py-3">⚱️ Legendaires perdus</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-white/5">
+                    {% for r in rankings|sort(attribute='dead_count', reverse=true) %}
+                    <tr class="leaderboard-row transition-colors">
+                        <td class="px-4 py-3 font-title text-lg {% if loop.index == 1 and r.dead_count > 0 %}text-red-400{% else %}text-white/20{% endif %}">
+                            {% if loop.index == 1 and r.dead_count > 0 %}🔪{% else %}#{{ loop.index }}{% endif %}
+                        </td>
+                        <td class="px-4 py-3 font-bold text-white text-sm">{{ r.user.username }}</td>
+                        <td class="px-4 py-3 font-title text-red-400 text-lg">{{ r.dead_count }}</td>
+                        <td class="px-4 py-3 text-sm {% if r.deaths_challenge > 0 %}text-purple-400 font-bold{% else %}text-white/15{% endif %}">{{ r.deaths_challenge }}</td>
+                        <td class="px-4 py-3 text-sm {% if r.deaths_blessure > 0 %}text-orange-400 font-bold{% else %}text-white/15{% endif %}">{{ r.deaths_blessure }}</td>
+                        <td class="px-4 py-3 text-sm {% if r.deaths_sacrifice > 0 %}text-rose-400 font-bold{% else %}text-white/15{% endif %}">{{ r.deaths_sacrifice }}</td>
+                        <td class="px-4 py-3 text-sm {% if r.deaths_vieillesse > 0 %}text-sky-400 font-bold{% else %}text-white/15{% endif %}">{{ r.deaths_vieillesse }}</td>
+                        <td class="px-4 py-3 text-sm {% if r.legendary_dead > 0 %}text-fuchsia-400 font-bold{% else %}text-white/15{% endif %}">{{ r.legendary_dead }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- ==================== TAB: PARIS & FORTUNE ==================== -->
+    <div id="tab-paris" class="tab-panel">
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+            <div class="card p-6">
+                <h3 class="font-title text-lg text-emerald-500 mb-4">📈 Profit/Perte aux paris (🪙)</h3>
+                <canvas id="betProfitChart" height="200"></canvas>
+            </div>
+            <div class="card p-6">
+                <h3 class="font-title text-lg text-cyan-500 mb-4">🎯 Taux de reussite aux paris</h3>
+                <canvas id="betWinRateChart" height="200"></canvas>
+            </div>
+        </div>
+
+        <!-- Table paris -->
+        <div class="card overflow-x-auto">
+            <div class="px-6 py-4 border-b border-white/5">
+                <h3 class="font-title text-2xl text-yellow-400">Le Bureau des Bookmakers</h3>
+                <p class="text-white/30 text-xs font-semibold mt-1">Qui parie le mieux (ou le pire) ?</p>
+            </div>
+            <table class="w-full border-collapse text-left min-w-[800px]">
+                <thead>
+                    <tr class="bg-white/5 text-white/40 text-xs font-bold uppercase tracking-wider">
+                        <th class="px-4 py-3">#</th>
+                        <th class="px-4 py-3">Eleveur</th>
+                        <th class="px-4 py-3">Paris places</th>
+                        <th class="px-4 py-3">Gagnes</th>
+                        <th class="px-4 py-3">Perdus</th>
+                        <th class="px-4 py-3">Win %</th>
+                        <th class="px-4 py-3">Total mise</th>
+                        <th class="px-4 py-3">Total gagne</th>
+                        <th class="px-4 py-3">Profit</th>
+                        <th class="px-4 py-3">Meilleure cote</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-white/5">
+                    {% for r in rankings|sort(attribute='bet_profit', reverse=true) %}
+                    <tr class="leaderboard-row transition-colors">
+                        <td class="px-4 py-3 font-title text-lg text-white/20">#{{ loop.index }}</td>
+                        <td class="px-4 py-3 font-bold text-white text-sm">{{ r.user.username }}</td>
+                        <td class="px-4 py-3 text-white/60 text-sm font-bold">{{ r.total_bets }}</td>
+                        <td class="px-4 py-3 text-green-400 text-sm font-bold">{{ r.won_bets }}</td>
+                        <td class="px-4 py-3 text-red-400 text-sm font-bold">{{ r.lost_bets }}</td>
+                        <td class="px-4 py-3">
+                            <span class="text-sm font-bold {% if r.bet_win_rate >= 50 %}text-green-400{% elif r.bet_win_rate >= 30 %}text-yellow-400{% else %}text-red-400{% endif %}">
+                                {{ r.bet_win_rate }}%
+                            </span>
+                        </td>
+                        <td class="px-4 py-3 text-white/50 text-sm">{{ "%.0f"|format(r.total_staked) }} 🪙</td>
+                        <td class="px-4 py-3 text-yellow-400 text-sm font-bold">{{ "%.0f"|format(r.total_winnings) }} 🪙</td>
+                        <td class="px-4 py-3 font-bold text-sm {% if r.bet_profit > 0 %}text-green-400{% elif r.bet_profit < 0 %}text-red-400{% else %}text-white/30{% endif %}">
+                            {% if r.bet_profit > 0 %}+{% endif %}{{ "%.1f"|format(r.bet_profit) }} 🪙
+                        </td>
+                        <td class="px-4 py-3 text-sm {% if r.best_odds_hit >= 5 %}text-cyan-400 font-bold{% else %}text-white/40{% endif %}">
+                            {% if r.best_odds_hit > 0 %}x{{ r.best_odds_hit }}{% else %}--{% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- ==================== TAB: ELEVAGE & ECOLE ==================== -->
+    <div id="tab-elevage" class="tab-panel">
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+            <div class="card p-6">
+                <h3 class="font-title text-lg text-violet-500 mb-4">📊 Courses disputees</h3>
+                <canvas id="racesChart" height="200"></canvas>
+            </div>
+            <div class="card p-6">
+                <h3 class="font-title text-lg text-pink-500 mb-4">🏅 Taux de victoire (%)</h3>
+                <canvas id="winRateChart" height="200"></canvas>
+            </div>
+        </div>
+
+        <!-- Table elevage -->
+        <div class="card overflow-x-auto">
+            <div class="px-6 py-4 border-b border-white/5">
+                <h3 class="font-title text-2xl text-purple-400">L'Academie Porcine</h3>
+                <p class="text-white/30 text-xs font-semibold mt-1">Qui eleve le mieux ses cochons ?</p>
+            </div>
+            <table class="w-full border-collapse text-left min-w-[750px]">
+                <thead>
+                    <tr class="bg-white/5 text-white/40 text-xs font-bold uppercase tracking-wider">
+                        <th class="px-4 py-3">#</th>
+                        <th class="px-4 py-3">Eleveur</th>
+                        <th class="px-4 py-3">Meilleur cochon</th>
+                        <th class="px-4 py-3">Niv. max</th>
+                        <th class="px-4 py-3">XP total</th>
+                        <th class="px-4 py-3">Ecole</th>
+                        <th class="px-4 py-3">Cochons actifs</th>
+                        <th class="px-4 py-3">Legendaires</th>
+                        <th class="px-4 py-3">Nourriture</th>
+                        <th class="px-4 py-3">🪙 gagnes</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-white/5">
+                    {% for r in rankings|sort(attribute='total_xp', reverse=true) %}
+                    <tr class="leaderboard-row transition-colors">
+                        <td class="px-4 py-3 font-title text-lg text-white/20">#{{ loop.index }}</td>
+                        <td class="px-4 py-3 font-bold text-white text-sm">{{ r.user.username }}</td>
+                        <td class="px-4 py-3 text-sm">
+                            {% if r.best_pig %}
+                            <span class="text-white/70">{{ pig_display(r.best_pig, 'text-sm', 18) }} {{ r.best_pig.name }}</span>
+                            <span class="stat-pill text-green-300 ml-1">{{ r.best_pig.races_won or 0 }}W</span>
+                            {% else %}<span class="text-white/15">--</span>{% endif %}
+                        </td>
+                        <td class="px-4 py-3 text-violet-400 font-bold text-sm">{{ r.max_level }}</td>
+                        <td class="px-4 py-3 text-amber-400 font-bold text-sm">{{ r.total_xp }}</td>
+                        <td class="px-4 py-3 text-blue-400 text-sm font-bold">{{ r.total_school }} <span class="text-white/20">sess.</span></td>
+                        <td class="px-4 py-3 text-white/50 text-sm">{{ r.active_pigs_count }}</td>
+                        <td class="px-4 py-3 text-sm {% if r.legendary_count > 0 %}text-yellow-400 font-bold{% else %}text-white/15{% endif %}">{{ r.legendary_count }}</td>
+                        <td class="px-4 py-3 text-lime-400 text-sm">{{ "%.0f"|format(r.total_spent_on_food) }} <span class="text-white/20">🪙</span></td>
+                        <td class="px-4 py-3 text-emerald-400 text-sm font-bold">{{ "%.0f"|format(r.total_earned) }} <span class="text-white/20">🪙</span></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- ==================== TAB: MUR DE LA HONTE ==================== -->
+    <div id="tab-honte" class="tab-panel">
+
+        <div class="text-center mb-8">
+            <h2 class="font-creep text-4xl text-red-500 mb-2">Le Mur de la Honte</h2>
+            <p class="text-white/40 text-sm font-semibold">Les pires performances dans chaque categorie</p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+
+            <!-- Pire win rate -->
+            {% set losers_wr = rankings|selectattr('total_races', 'ge', 3)|sort(attribute='win_rate')|list %}
+            {% if losers_wr %}
+            <div class="card p-6 border-red-500/20">
+                <div class="flex items-center gap-3 mb-4">
+                    <span class="text-3xl">🐌</span>
+                    <div>
+                        <p class="font-title text-red-400">Le Looser Officiel</p>
+                        <p class="text-white/30 text-[11px]">Pire taux de victoire (3+ courses)</p>
+                    </div>
+                </div>
+                {% for r in losers_wr[:3] %}
+                <div class="flex items-center justify-between py-2 {% if not loop.last %}border-b border-white/5{% endif %}">
+                    <div class="flex items-center gap-2">
+                        <span class="font-title text-white/20 text-sm">#{{ loop.index }}</span>
+                        <span class="text-white font-bold text-sm">{{ r.user.username }}</span>
+                    </div>
+                    <span class="text-red-400 font-bold text-sm">{{ r.win_rate }}% <span class="text-white/20">({{ r.total_races }} courses)</span></span>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <!-- Plus de cochons morts -->
+            {% set top_dead = rankings|sort(attribute='dead_count', reverse=true)|list %}
+            {% if top_dead and top_dead[0].dead_count > 0 %}
+            <div class="card p-6 border-purple-500/20">
+                <div class="flex items-center gap-3 mb-4">
+                    <span class="text-3xl">💀</span>
+                    <div>
+                        <p class="font-title text-purple-400">Le Boucher en Serie</p>
+                        <p class="text-white/30 text-[11px]">Le plus de cochons envoyes au tapis</p>
+                    </div>
+                </div>
+                {% for r in top_dead[:3] %}
+                {% if r.dead_count > 0 %}
+                <div class="flex items-center justify-between py-2 {% if not loop.last %}border-b border-white/5{% endif %}">
+                    <div class="flex items-center gap-2">
+                        <span class="font-title text-white/20 text-sm">#{{ loop.index }}</span>
+                        <span class="text-white font-bold text-sm">{{ r.user.username }}</span>
+                    </div>
+                    <span class="text-purple-400 font-bold text-sm">{{ r.dead_count }} victime(s)</span>
+                </div>
+                {% endif %}
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <!-- Pire profit paris -->
+            {% set worst_betters = rankings|sort(attribute='bet_profit')|list %}
+            {% if worst_betters and worst_betters[0].bet_profit < 0 %}
+            <div class="card p-6 border-orange-500/20">
+                <div class="flex items-center gap-3 mb-4">
+                    <span class="text-3xl">📉</span>
+                    <div>
+                        <p class="font-title text-orange-400">Le Pigeon Dore</p>
+                        <p class="text-white/30 text-[11px]">Les pires pertes aux paris</p>
+                    </div>
+                </div>
+                {% for r in worst_betters[:3] %}
+                {% if r.bet_profit < 0 %}
+                <div class="flex items-center justify-between py-2 {% if not loop.last %}border-b border-white/5{% endif %}">
+                    <div class="flex items-center gap-2">
+                        <span class="font-title text-white/20 text-sm">#{{ loop.index }}</span>
+                        <span class="text-white font-bold text-sm">{{ r.user.username }}</span>
+                    </div>
+                    <span class="text-orange-400 font-bold text-sm">{{ "%.1f"|format(r.bet_profit) }} 🪙</span>
+                </div>
+                {% endif %}
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <!-- Plus de morts au Challenge -->
+            {% set top_challenge = rankings|sort(attribute='deaths_challenge', reverse=true)|list %}
+            {% if top_challenge and top_challenge[0].deaths_challenge > 0 %}
+            <div class="card p-6 border-rose-500/20">
+                <div class="flex items-center gap-3 mb-4">
+                    <span class="text-3xl">💣</span>
+                    <div>
+                        <p class="font-title text-rose-400">Kamikaze Supreme</p>
+                        <p class="text-white/30 text-[11px]">Le plus de morts au Challenge de la Mort</p>
+                    </div>
+                </div>
+                {% for r in top_challenge[:3] %}
+                {% if r.deaths_challenge > 0 %}
+                <div class="flex items-center justify-between py-2 {% if not loop.last %}border-b border-white/5{% endif %}">
+                    <div class="flex items-center gap-2">
+                        <span class="font-title text-white/20 text-sm">#{{ loop.index }}</span>
+                        <span class="text-white font-bold text-sm">{{ r.user.username }}</span>
+                    </div>
+                    <span class="text-rose-400 font-bold text-sm">{{ r.deaths_challenge }} sacrifice(s)</span>
+                </div>
+                {% endif %}
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <!-- Plus de morts par blessure -->
+            {% set top_blessure = rankings|sort(attribute='deaths_blessure', reverse=true)|list %}
+            {% if top_blessure and top_blessure[0].deaths_blessure > 0 %}
+            <div class="card p-6 border-amber-500/20">
+                <div class="flex items-center gap-3 mb-4">
+                    <span class="text-3xl">🩹</span>
+                    <div>
+                        <p class="font-title text-amber-400">Le Negligent</p>
+                        <p class="text-white/30 text-[11px]">Cochons morts faute de soins</p>
+                    </div>
+                </div>
+                {% for r in top_blessure[:3] %}
+                {% if r.deaths_blessure > 0 %}
+                <div class="flex items-center justify-between py-2 {% if not loop.last %}border-b border-white/5{% endif %}">
+                    <div class="flex items-center gap-2">
+                        <span class="font-title text-white/20 text-sm">#{{ loop.index }}</span>
+                        <span class="text-white font-bold text-sm">{{ r.user.username }}</span>
+                    </div>
+                    <span class="text-amber-400 font-bold text-sm">{{ r.deaths_blessure }} victime(s)</span>
+                </div>
+                {% endif %}
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <!-- Plus de sacrifices volontaires -->
+            {% set top_sacrifice = rankings|sort(attribute='deaths_sacrifice', reverse=true)|list %}
+            {% if top_sacrifice and top_sacrifice[0].deaths_sacrifice > 0 %}
+            <div class="card p-6 border-fuchsia-500/20">
+                <div class="flex items-center gap-3 mb-4">
+                    <span class="text-3xl">🗡️</span>
+                    <div>
+                        <p class="font-title text-fuchsia-400">Sans Pitie</p>
+                        <p class="text-white/30 text-[11px]">Cochons envoyes a l'abattoir volontairement</p>
+                    </div>
+                </div>
+                {% for r in top_sacrifice[:3] %}
+                {% if r.deaths_sacrifice > 0 %}
+                <div class="flex items-center justify-between py-2 {% if not loop.last %}border-b border-white/5{% endif %}">
+                    <div class="flex items-center gap-2">
+                        <span class="font-title text-white/20 text-sm">#{{ loop.index }}</span>
+                        <span class="text-white font-bold text-sm">{{ r.user.username }}</span>
+                    </div>
+                    <span class="text-fuchsia-400 font-bold text-sm">{{ r.deaths_sacrifice }} sacrifice(s)</span>
+                </div>
+                {% endif %}
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <!-- Plus gros flambeur -->
+            {% set top_staked = rankings|sort(attribute='total_staked', reverse=true)|list %}
+            {% if top_staked and top_staked[0].total_staked > 0 %}
+            <div class="card p-6 border-yellow-500/20">
+                <div class="flex items-center gap-3 mb-4">
+                    <span class="text-3xl">🎰</span>
+                    <div>
+                        <p class="font-title text-yellow-400">Le Flambeur Fou</p>
+                        <p class="text-white/30 text-[11px]">Le plus mise au total</p>
+                    </div>
+                </div>
+                {% for r in top_staked[:3] %}
+                {% if r.total_staked > 0 %}
+                <div class="flex items-center justify-between py-2 {% if not loop.last %}border-b border-white/5{% endif %}">
+                    <div class="flex items-center gap-2">
+                        <span class="font-title text-white/20 text-sm">#{{ loop.index }}</span>
+                        <span class="text-white font-bold text-sm">{{ r.user.username }}</span>
+                    </div>
+                    <span class="text-yellow-400 font-bold text-sm">{{ "%.0f"|format(r.total_staked) }} 🪙</span>
+                </div>
+                {% endif %}
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <!-- Pauvre en BitGroins -->
+            {% set poorest = rankings|sort(attribute='user.balance')|list %}
+            {% if poorest %}
+            <div class="card p-6 border-slate-500/20">
+                <div class="flex items-center gap-3 mb-4">
+                    <span class="text-3xl">🪙</span>
+                    <div>
+                        <p class="font-title text-slate-400">Le Rat Fauche</p>
+                        <p class="text-white/30 text-[11px]">Le plus pauvre du Derby</p>
+                    </div>
+                </div>
+                {% for r in poorest[:3] %}
+                <div class="flex items-center justify-between py-2 {% if not loop.last %}border-b border-white/5{% endif %}">
+                    <div class="flex items-center gap-2">
+                        <span class="font-title text-white/20 text-sm">#{{ loop.index }}</span>
+                        <span class="text-white font-bold text-sm">{{ r.user.username }}</span>
+                    </div>
+                    <span class="text-slate-400 font-bold text-sm">{{ "%.2f"|format(r.user.balance) }} 🪙</span>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <!-- Le plus de nourriture achetee -->
+            {% set top_food = rankings|sort(attribute='total_spent_on_food', reverse=true)|list %}
+            {% if top_food and top_food[0].total_spent_on_food > 0 %}
+            <div class="card p-6 border-lime-500/20">
+                <div class="flex items-center gap-3 mb-4">
+                    <span class="text-3xl">🌽</span>
+                    <div>
+                        <p class="font-title text-lime-400">Le Gaveur</p>
+                        <p class="text-white/30 text-[11px]">Le plus depense en nourriture</p>
+                    </div>
+                </div>
+                {% for r in top_food[:3] %}
+                {% if r.total_spent_on_food > 0 %}
+                <div class="flex items-center justify-between py-2 {% if not loop.last %}border-b border-white/5{% endif %}">
+                    <div class="flex items-center gap-2">
+                        <span class="font-title text-white/20 text-sm">#{{ loop.index }}</span>
+                        <span class="text-white font-bold text-sm">{{ r.user.username }}</span>
+                    </div>
+                    <span class="text-lime-400 font-bold text-sm">{{ "%.0f"|format(r.total_spent_on_food) }} 🪙</span>
+                </div>
+                {% endif %}
+                {% endfor %}
+            </div>
+            {% endif %}
+
+        </div>
+    </div>
+
+</main>
+
+<script>
+    // ===== TABS =====
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.tab-btn').forEach(b => { b.classList.remove('active'); b.classList.add('text-white/50'); });
+            document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+            btn.classList.add('active');
+            btn.classList.remove('text-white/50');
+            document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+        });
+    });
+
+    // ===== CHART DATA =====
+    const chartLabels = {{ chart_data.labels | tojson }};
+    const balanceData = {{ chart_data.balances | tojson }};
+    const winsData = {{ chart_data.wins | tojson }};
+    const allLabels = {{ chart_data.all_labels | tojson }};
+    const allDead = {{ chart_data.all_dead | tojson }};
+    const allChallenge = {{ chart_data.all_challenge | tojson }};
+    const allBlessure = {{ chart_data.all_blessure | tojson }};
+    const allSacrifice = {{ chart_data.all_sacrifice | tojson }};
+    const allVieillesse = {{ chart_data.all_vieillesse | tojson }};
+    const allBetProfit = {{ chart_data.all_bet_profit | tojson }};
+    const allWinRate = {{ chart_data.all_win_rate | tojson }};
+    const allRaces = {{ chart_data.all_races | tojson }};
+
+    const chartOpts = (display_legend = false) => ({
+        plugins: { legend: { display: display_legend, labels: { color: 'rgba(255,255,255,0.5)', font: { size: 11 } } } },
+        scales: {
+            y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: 'rgba(255,255,255,0.3)' } },
+            x: { grid: { display: false }, ticks: { color: 'rgba(255,255,255,0.3)' } }
+        }
+    });
+
+    // Cache chartOpts() — évite les appels répétés dans chaque options spread
+    const _opts = chartOpts();
+    const _optsLegend = chartOpts(true);
+
+    // Balance chart
+    new Chart(document.getElementById('balanceChart').getContext('2d'), {
+        type: 'bar',
+        data: { labels: chartLabels, datasets: [{ label: 'Fortune (BitGroins)', data: balanceData, backgroundColor: 'rgba(251, 191, 36, 0.4)', borderColor: '#fbbf24', borderWidth: 2, borderRadius: 8 }] },
+        options: _opts
+    });
+
+    // Wins chart
+    new Chart(document.getElementById('winsChart').getContext('2d'), {
+        type: 'bar',
+        data: { labels: chartLabels, datasets: [{ label: 'Victoires', data: winsData, backgroundColor: 'rgba(59, 130, 246, 0.4)', borderColor: '#3b82f6', borderWidth: 2, borderRadius: 8 }] },
+        options: { ..._opts, scales: { ..._opts.scales, y: { ..._opts.scales.y, ticks: { ..._opts.scales.y.ticks, stepSize: 1 } } } }
+    });
+
+    // Deaths stacked bar chart
+    new Chart(document.getElementById('deathsChart').getContext('2d'), {
+        type: 'bar',
+        data: {
+            labels: allLabels,
+            datasets: [
+                { label: 'Challenge', data: allChallenge, backgroundColor: 'rgba(168, 85, 247, 0.6)', borderRadius: 4 },
+                { label: 'Blessure', data: allBlessure, backgroundColor: 'rgba(251, 146, 60, 0.6)', borderRadius: 4 },
+                { label: 'Sacrifice', data: allSacrifice, backgroundColor: 'rgba(244, 114, 182, 0.6)', borderRadius: 4 },
+                { label: 'Vieillesse', data: allVieillesse, backgroundColor: 'rgba(56, 189, 248, 0.6)', borderRadius: 4 },
+            ]
+        },
+        options: { ..._optsLegend, scales: { ..._opts.scales, x: { ..._opts.scales.x, stacked: true }, y: { ..._opts.scales.y, stacked: true, ticks: { ..._opts.scales.y.ticks, stepSize: 1 } } } }
+    });
+
+    // Death causes doughnut
+    const totalChallenge = allChallenge.reduce((a, b) => a + b, 0);
+    const totalBlessure = allBlessure.reduce((a, b) => a + b, 0);
+    const totalSacrifice = allSacrifice.reduce((a, b) => a + b, 0);
+    const totalVieillesse = allVieillesse.reduce((a, b) => a + b, 0);
+    new Chart(document.getElementById('deathCausesChart').getContext('2d'), {
+        type: 'doughnut',
+        data: {
+            labels: ['Challenge', 'Blessure', 'Sacrifice', 'Vieillesse'],
+            datasets: [{
+                data: [totalChallenge, totalBlessure, totalSacrifice, totalVieillesse],
+                backgroundColor: ['rgba(168, 85, 247, 0.7)', 'rgba(251, 146, 60, 0.7)', 'rgba(244, 114, 182, 0.7)', 'rgba(56, 189, 248, 0.7)'],
+                borderWidth: 0
+            }]
+        },
+        options: {
+            plugins: {
+                legend: { position: 'bottom', labels: { color: 'rgba(255,255,255,0.5)', padding: 15, font: { size: 12, weight: 'bold' } } }
+            }
+        }
+    });
+
+    // Bet profit chart
+    new Chart(document.getElementById('betProfitChart').getContext('2d'), {
+        type: 'bar',
+        data: {
+            labels: allLabels,
+            datasets: [{
+                label: 'Profit (BitGroins)',
+                data: allBetProfit,
+                backgroundColor: allBetProfit.map(v => v >= 0 ? 'rgba(52, 211, 153, 0.5)' : 'rgba(248, 113, 113, 0.5)'),
+                borderColor: allBetProfit.map(v => v >= 0 ? '#34d399' : '#f87171'),
+                borderWidth: 2,
+                borderRadius: 6
+            }]
+        },
+        options: _opts
+    });
+
+    // Bet win rate chart
+    const betWinRates = {{ chart_data.all_labels | tojson }}.map((_, i) => {
+        const r = {{ rankings | map(attribute='bet_win_rate') | list | tojson }}[i];
+        return r || 0;
+    });
+    new Chart(document.getElementById('betWinRateChart').getContext('2d'), {
+        type: 'bar',
+        data: {
+            labels: allLabels,
+            datasets: [{
+                label: 'Win Rate Paris (%)',
+                data: betWinRates,
+                backgroundColor: betWinRates.map(v => v >= 50 ? 'rgba(52, 211, 153, 0.4)' : v >= 30 ? 'rgba(251, 191, 36, 0.4)' : 'rgba(248, 113, 113, 0.4)'),
+                borderColor: betWinRates.map(v => v >= 50 ? '#34d399' : v >= 30 ? '#fbbf24' : '#f87171'),
+                borderWidth: 2,
+                borderRadius: 6
+            }]
+        },
+        options: { ..._opts, scales: { ..._opts.scales, y: { ..._opts.scales.y, max: 100 } } }
+    });
+
+    // Races chart
+    new Chart(document.getElementById('racesChart').getContext('2d'), {
+        type: 'bar',
+        data: {
+            labels: allLabels,
+            datasets: [{
+                label: 'Courses',
+                data: allRaces,
+                backgroundColor: 'rgba(139, 92, 246, 0.4)',
+                borderColor: '#8b5cf6',
+                borderWidth: 2,
+                borderRadius: 6
+            }]
+        },
+        options: { ..._opts, scales: { ..._opts.scales, y: { ..._opts.scales.y, ticks: { ..._opts.scales.y.ticks, stepSize: 1 } } } }
+    });
+
+    // Win rate chart
+    new Chart(document.getElementById('winRateChart').getContext('2d'), {
+        type: 'bar',
+        data: {
+            labels: allLabels,
+            datasets: [{
+                label: 'Win Rate (%)',
+                data: allWinRate,
+                backgroundColor: allWinRate.map(v => v >= 40 ? 'rgba(52, 211, 153, 0.4)' : v >= 20 ? 'rgba(251, 191, 36, 0.4)' : 'rgba(248, 113, 113, 0.4)'),
+                borderColor: allWinRate.map(v => v >= 40 ? '#34d399' : v >= 20 ? '#fbbf24' : '#f87171'),
+                borderWidth: 2,
+                borderRadius: 6
+            }]
+        },
+        options: { ..._opts, scales: { ..._opts.scales, y: { ..._opts.scales.y, max: 100 } } }
+    });
+</script>
+
+{% include '_footer.html' %}
+</body>
+</html>

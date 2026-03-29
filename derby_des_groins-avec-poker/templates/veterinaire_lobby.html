@@ -1,0 +1,194 @@
+{% from '_pig_avatar.html' import pig_display %}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🏥 Derby des Groins — Vétérinaire</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * { font-family: 'Nunito', sans-serif; }
+        .font-title { font-family: 'Lilita One', cursive; }
+
+        body {
+            background: #120d24;
+            background-image:
+                radial-gradient(ellipse at 15% 20%, rgba(239, 68, 68, 0.12) 0%, transparent 45%),
+                radial-gradient(ellipse at 85% 25%, rgba(34, 197, 94, 0.12) 0%, transparent 45%),
+                radial-gradient(ellipse at 50% 90%, rgba(59, 130, 246, 0.10) 0%, transparent 55%);
+            min-height: 100vh;
+            color: #f8fafc;
+        }
+
+        .card {
+            background: linear-gradient(180deg, rgba(255,255,255,0.055) 0%, rgba(255,240,246,0.03) 100%);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 205, 226, 0.12);
+            border-radius: 1.5rem;
+        }
+
+        .hero-card {
+            background: linear-gradient(135deg, rgba(239, 68, 68, 0.14), rgba(34, 197, 94, 0.10));
+            border: 1px solid rgba(248, 113, 113, 0.18);
+            border-radius: 1.75rem;
+        }
+
+        .pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.45rem;
+            border-radius: 999px;
+            padding: 0.35rem 0.8rem;
+            font-size: 0.75rem;
+            font-weight: 800;
+            letter-spacing: 0.04em;
+        }
+    </style>
+</head>
+<body>
+{% set active_page = 'veterinaire' %}
+{% include "_site_header.html" %}
+
+<main class="max-w-6xl mx-auto px-4 py-8">
+    <section class="hero-card p-8 mb-8">
+        <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+            <div>
+                <p class="text-red-200/80 font-bold uppercase tracking-widest text-xs mb-2">Clinique porcine</p>
+                <h1 class="font-title text-3xl md:text-4xl text-white mb-2">🏥 Clinique des Groins Cassés</h1>
+                <p class="text-white/60 font-semibold text-sm max-w-2xl">
+                    Aucun patient critique pour l'instant. Profite de cette accalmie pour surveiller la fatigue, la satiété et le risque de blessure de ton élevage.
+                </p>
+            </div>
+            <div class="grid grid-cols-2 gap-3 min-w-[280px]">
+                <div class="card p-4 text-center">
+                    <p class="text-3xl font-title text-green-400">0</p>
+                    <p class="text-white/45 text-xs font-bold uppercase tracking-wide">Urgences</p>
+                </div>
+                <div class="card p-4 text-center">
+                    <p class="text-3xl font-title text-yellow-300">{{ "%.1f"|format(avg_risk) }}%</p>
+                    <p class="text-white/45 text-xs font-bold uppercase tracking-wide">Risque moyen</p>
+                </div>
+                <div class="card p-4 text-center">
+                    <p class="text-3xl font-title text-red-300">{{ "%.1f"|format(max_risk) }}%</p>
+                    <p class="text-white/45 text-xs font-bold uppercase tracking-wide">Risque max</p>
+                </div>
+                <div class="card p-4 text-center">
+                    <p class="text-3xl font-title text-cyan-300">{{ pigs_data|length }}</p>
+                    <p class="text-white/45 text-xs font-bold uppercase tracking-wide">Patients suivis</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+        <section class="xl:col-span-2">
+            <div class="card p-6">
+                <div class="flex items-center justify-between gap-4 mb-5">
+                    <div>
+                        <h2 class="font-title text-2xl text-white">Salle d'attente</h2>
+                        <p class="text-white/45 text-sm font-semibold mt-1">Les cochons les plus à risque apparaissent en haut.</p>
+                    </div>
+                    <a href="/mon-cochon" class="inline-flex items-center gap-2 rounded-xl px-4 py-3 text-sm font-bold text-white bg-white/10 border border-white/10 hover:bg-white/15 transition-colors">
+                        🐷 Retour à l'écurie
+                    </a>
+                </div>
+
+                {% if pigs_data %}
+                <div class="space-y-4">
+                    {% for item in pigs_data %}
+                    {% set pig = item.pig %}
+                    <div class="rounded-2xl border border-white/10 bg-white/5 p-4">
+                        <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+                            <div class="flex items-center gap-4">
+                                <span>{{ pig_display(pig, 'text-5xl', 64) }}</span>
+                                <div>
+                                    <div class="flex items-center gap-2 flex-wrap">
+                                        <p class="text-white font-bold text-lg">{{ pig.name }}</p>
+                                        {% if item.status == 'eleve' %}
+                                        <span class="pill bg-red-500/15 border border-red-400/25 text-red-200">⚠️ Vigilance élevée</span>
+                                        {% elif item.status == 'modere' %}
+                                        <span class="pill bg-amber-500/15 border border-amber-400/25 text-amber-200">⚡ Vigilance modérée</span>
+                                        {% else %}
+                                        <span class="pill bg-emerald-500/15 border border-emerald-400/25 text-emerald-200">✅ Ras</span>
+                                        {% endif %}
+                                    </div>
+                                    <p class="text-white/40 text-sm font-semibold mt-1">
+                                        {{ pig.origin_flag }} {{ pig.origin_country }} • Puissance {{ "%.1f"|format(item.power) }} • Niveau {{ pig.level }}
+                                    </p>
+                                </div>
+                            </div>
+                            <div class="lg:text-right">
+                                <p class="text-white/35 text-[11px] font-bold uppercase tracking-widest mb-1">Risque de blessure</p>
+                                <p class="font-title text-3xl {{ 'text-red-300' if item.status == 'eleve' else ('text-yellow-300' if item.status == 'modere' else 'text-emerald-300') }}">{{ "%.1f"|format(item.injury_risk) }}%</p>
+                            </div>
+                        </div>
+
+                        <div class="mt-4 grid grid-cols-1 md:grid-cols-4 gap-3">
+                            <div class="rounded-xl bg-black/20 px-3 py-3">
+                                <p class="text-white/35 text-[11px] font-bold uppercase tracking-wide">Énergie</p>
+                                <p class="text-white font-bold mt-1">{{ "%.0f"|format(pig.energy) }}%</p>
+                            </div>
+                            <div class="rounded-xl bg-black/20 px-3 py-3">
+                                <p class="text-white/35 text-[11px] font-bold uppercase tracking-wide">Satiété</p>
+                                <p class="text-white font-bold mt-1">{{ "%.0f"|format(pig.hunger) }}%</p>
+                            </div>
+                            <div class="rounded-xl bg-black/20 px-3 py-3">
+                                <p class="text-white/35 text-[11px] font-bold uppercase tracking-wide">Moral</p>
+                                <p class="text-white font-bold mt-1">{{ "%.0f"|format(pig.happiness) }}%</p>
+                            </div>
+                            <div class="rounded-xl bg-black/20 px-3 py-3">
+                                <p class="text-white/35 text-[11px] font-bold uppercase tracking-wide">Courses</p>
+                                <p class="text-white font-bold mt-1">{{ pig.races_entered }}</p>
+                            </div>
+                        </div>
+
+                        <div class="mt-4 h-2 rounded-full bg-white/10 overflow-hidden">
+                            <div class="h-full rounded-full {{ 'bg-gradient-to-r from-red-600 to-red-300' if item.status == 'eleve' else ('bg-gradient-to-r from-amber-500 to-yellow-300' if item.status == 'modere' else 'bg-gradient-to-r from-emerald-600 to-emerald-300') }}" style="width: {{ [item.injury_risk / 40 * 100, 100] | min }}%"></div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-center py-12">
+                    <p class="text-6xl mb-4">🩺</p>
+                    <h3 class="font-title text-3xl text-white">Aucun patient suivi</h3>
+                    <p class="text-white/45 text-sm font-semibold mt-3">L'écurie est vide pour l'instant. Reviens quand un cochon aura besoin d'un check-up.</p>
+                </div>
+                {% endif %}
+            </div>
+        </section>
+
+        <aside class="space-y-6">
+            <div class="card p-6">
+                <h2 class="font-title text-2xl text-white mb-4">Conseils du véto</h2>
+                <div class="space-y-3 text-sm font-semibold text-white/65">
+                    <p>🍽️ Un cochon affamé ou épuisé prend plus de risques en course.</p>
+                    <p>😴 Le repos et les céréales de récupération sont tes meilleurs anti-inflammatoires.</p>
+                    <p>🏁 Les blessures arrivent surtout après l'usure accumulée en course.</p>
+                </div>
+            </div>
+
+            <div class="card p-6">
+                <h2 class="font-title text-2xl text-white mb-4">Quand s'inquiéter ?</h2>
+                <div class="space-y-3">
+                    <div class="rounded-xl border border-emerald-400/20 bg-emerald-500/10 p-3">
+                        <p class="text-emerald-200 font-bold text-sm">0 à 15%</p>
+                        <p class="text-white/50 text-xs font-semibold mt-1">Situation normale, on surveille juste l'usure.</p>
+                    </div>
+                    <div class="rounded-xl border border-amber-400/20 bg-amber-500/10 p-3">
+                        <p class="text-amber-200 font-bold text-sm">15 à 25%</p>
+                        <p class="text-white/50 text-xs font-semibold mt-1">Le cochon commence à tirer. Mieux vaut le ménager.</p>
+                    </div>
+                    <div class="rounded-xl border border-red-400/20 bg-red-500/10 p-3">
+                        <p class="text-red-200 font-bold text-sm">25% et +</p>
+                        <p class="text-white/50 text-xs font-semibold mt-1">Zone chaude. Une mauvaise course peut finir sur la table d'opération.</p>
+                    </div>
+                </div>
+            </div>
+        </aside>
+    </div>
+</main>
+{% include '_footer.html' %}
+</body>
+</html>

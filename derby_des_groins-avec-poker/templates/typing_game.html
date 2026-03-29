@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🚀 Turbo-Groin — Vitesse de Frappe</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Nunito:wght@400;700;800&display=swap" rel="stylesheet">
+    <style>
+        body {
+            background-color: #1a0a24;
+            color: #f8fafc;
+            font-family: 'Nunito', sans-serif;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+        }
+        .font-title { font-family: 'Lilita One', cursive; }
+        .game-card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 2rem;
+            padding: 2rem 1.5rem;
+            max-width: 600px;
+            width: 100%;
+            text-align: center;
+        }
+        @media (min-width: 640px) {
+            .game-card { padding: 3rem; }
+        }
+        .word-display {
+            font-size: clamp(2rem, 8vw, 3.5rem);
+            margin-bottom: 2rem;
+            min-height: 5rem;
+            color: #fb7185;
+            letter-spacing: 2px;
+        }
+        .input-box {
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 1rem;
+            color: white;
+            font-size: clamp(1rem, 4vw, 1.5rem);
+            padding: 1rem;
+            text-align: center;
+            width: 100%;
+            outline: none;
+            transition: all 0.2s;
+        }
+        .input-box:focus {
+            border-color: #fb7185;
+            box-shadow: 0 0 15px rgba(251, 113, 133, 0.3);
+        }
+        .progress-indicator {
+            font-weight: 800;
+            color: rgba(255, 255, 255, 0.4);
+            margin-bottom: 1rem;
+            font-size: 0.9rem;
+        }
+        .timer {
+            font-family: 'Lilita One', cursive;
+            font-size: 1.5rem;
+            color: #4ade80;
+            margin-top: 1.5rem;
+        }
+        .accuracy {
+            color: #f472b6;
+            margin-top: 0.5rem;
+            font-weight: 700;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="game-card shadow-2xl">
+        <h1 class="font-title mb-2 text-white">TURBO-GROIN 🚀</h1>
+        <p class="text-white/50 mb-4 text-sm font-bold">TAPE LES MOTS LE PLUS VITE POSSIBLE POUR BOOSTER {{ pig.name|upper }} !</p>
+
+        <div class="progress-indicator">
+            MOT <span id="current-idx">1</span> SUR {{ words|length }}
+        </div>
+
+        <div id="word-to-type" class="word-display font-title">{{ words[0] }}</div>
+
+        <input type="text" id="typing-input" class="input-box" placeholder="Tape ici..." autocomplete="off">
+
+        <div class="timer" id="timer-display">00.0s</div>
+        <div class="accuracy" id="error-display">Erreurs: 0</div>
+
+        <form id="complete-form" action="{{ url_for('pig.typing_complete') }}" method="POST" style="display: none;">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="pig_id" value="{{ pig.id }}">
+            <input type="hidden" name="time_taken" id="form-time">
+            <input type="hidden" name="errors" id="form-errors">
+        </form>
+    </div>
+
+    <script>
+        const words = {{ words|tojson }};
+        let currentIndex = 0;
+        let errors = 0;
+        let startTime = null;
+        let timerInterval = null;
+        let gameFinished = false;
+
+        const inputEl = document.getElementById('typing-input');
+        const wordDisplay = document.getElementById('word-to-type');
+        const currentIdxEl = document.getElementById('current-idx');
+        const timerEl = document.getElementById('timer-display');
+        const errorEl = document.getElementById('error-display');
+        const form = document.getElementById('complete-form');
+
+        inputEl.focus();
+
+        inputEl.addEventListener('input', (e) => {
+            if (gameFinished) return;
+
+            // Start timer on first strike
+            if (startTime === null) {
+                startTime = Date.now();
+                timerInterval = setInterval(updateTimer, 100);
+            }
+
+            const currentWord = words[currentIndex];
+            const typedValue = e.target.value;
+
+            // Check for match
+            if (typedValue === currentWord) {
+                currentIndex++;
+                if (currentIndex >= words.length) {
+                    finishGame();
+                } else {
+                    // Next word
+                    e.target.value = '';
+                    wordDisplay.textContent = words[currentIndex];
+                    currentIdxEl.textContent = currentIndex + 1;
+                }
+            } else {
+                // Check if mistake happened (naive check)
+                if (typedValue.length > 0 && !currentWord.startsWith(typedValue)) {
+                    // Mistakes can be counted differently, here we count if user pressed a wrong key compared to prefix
+                    // But to avoid spamming errors, let's just count unique mistakes until fix
+                }
+            }
+        });
+
+        // Simple error counting: count backspaces or incorrect chars?
+        // Let's do a more robust error count on keydown
+        inputEl.addEventListener('keydown', (e) => {
+            if (gameFinished || startTime === null) return;
+            
+            // Ignore non-char keys
+            if (e.key.length !== 1) return;
+
+            const currentWord = words[currentIndex];
+            const typedValue = inputEl.value + e.key;
+
+            if (!currentWord.startsWith(typedValue)) {
+                errors++;
+                errorEl.textContent = `Erreurs: ${errors}`;
+                
+                // Visual feedback
+                inputEl.style.borderColor = "#ef4444";
+                setTimeout(() => {
+                    if (!gameFinished) inputEl.style.borderColor = "";
+                }, 100);
+            }
+        });
+
+        function updateTimer() {
+            const now = Date.now();
+            const diff = (now - startTime) / 1000;
+            timerEl.textContent = diff.toFixed(1) + 's';
+        }
+
+        function finishGame() {
+            gameFinished = true;
+            clearInterval(timerInterval);
+            const totalTime = (Date.now() - startTime) / 1000;
+            
+            document.getElementById('form-time').value = totalTime;
+            document.getElementById('form-errors').value = errors;
+            
+            wordDisplay.textContent = "FINI ! 🏁";
+            wordDisplay.style.color = "#4ade80";
+            inputEl.disabled = true;
+
+            // Redirect after a short delay
+            setTimeout(() => {
+                form.submit();
+            }, 800);
+        }
+    </script>
+    {% include '_footer.html' %}
+</body>
+</html>

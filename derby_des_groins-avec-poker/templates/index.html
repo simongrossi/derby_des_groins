@@ -1,0 +1,301 @@
+{% from '_pig_avatar.html' import pig_display %}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🐷 Derby des Groins</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * { font-family: 'Nunito', sans-serif; }
+        .font-title { font-family: 'Lilita One', cursive; }
+        body {
+            background: #1b0b23;
+            background-image:
+                radial-gradient(circle at 12% 18%, rgba(244, 114, 182, 0.22), transparent 30%),
+                radial-gradient(circle at 82% 8%, rgba(251, 146, 60, 0.14), transparent 28%),
+                radial-gradient(circle at 50% 100%, rgba(190, 24, 93, 0.10), transparent 36%),
+                linear-gradient(180deg, #210d29 0%, #120917 100%);
+            min-height: 100vh;
+        }
+        .card {
+            background: linear-gradient(180deg, rgba(255,255,255,.055) 0%, rgba(255,240,246,.03) 100%);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 205, 226, .12);
+            border-radius: 1.5rem;
+            box-shadow: 0 18px 60px rgba(18, 8, 20, .28);
+        }
+        .soft { background: rgba(255, 232, 240, .035); border: 1px solid rgba(255, 205, 226, .09); border-radius: 1rem; }
+        .pill { display:inline-flex; align-items:center; gap:.45rem; padding:.42rem .82rem; border-radius:999px; font-size:.75rem; font-weight:800; }
+        .btn-primary {
+            background: linear-gradient(135deg,#ec4899,#fb7185 55%, #fb923c); color:#fff; font-weight:800;
+            border-radius:.9rem; padding:.85rem 1.15rem; transition:all .2s ease;
+        }
+        .btn-primary:hover { transform:translateY(-1px); box-shadow:0 10px 28px rgba(244,114,182,.34); }
+        .btn-secondary {
+            display:inline-flex; align-items:center; justify-content:center; gap:.5rem; border-radius:.9rem;
+            border:1px solid rgba(255, 205, 226, .14); background:rgba(255, 232, 240, .045); color:rgba(255,255,255,.88);
+            padding:.8rem 1.1rem; font-weight:800; transition:all .2s ease;
+        }
+        .btn-secondary:hover { background:rgba(255, 232, 240, .085); border-color:rgba(255, 205, 226, .22); }
+        .gauge { height:.62rem; width:100%; overflow:hidden; border-radius:999px; background:rgba(255,255,255,.08); }
+        .fill { height:100%; border-radius:999px; }
+        .info-tile {
+            background: rgba(255,255,255,.045);
+            border: 1px solid rgba(255,255,255,.09);
+            border-radius: 1rem;
+            padding: 1rem;
+        }
+        #countdown-display {
+            font-family:'Lilita One', cursive;
+            background:linear-gradient(135deg,#f472b6,#fb7185,#fdba74);
+            -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;
+        }
+    </style>
+</head>
+<body>
+{% set active_page = 'index' %}
+{% include "_site_header.html" %}
+
+<main class="max-w-6xl mx-auto px-4 py-8 space-y-8">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    <div class="space-y-2">
+        {% for category, message in messages %}
+        <div class="rounded-2xl px-4 py-3 text-sm font-bold border
+            {% if category == 'error' %}bg-red-500/12 border-red-500/30 text-red-200
+            {% elif category == 'warning' %}bg-yellow-500/12 border-yellow-500/30 text-yellow-100
+            {% else %}bg-emerald-500/12 border-emerald-500/30 text-emerald-200{% endif %}">
+            {{ message }}
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+    {% endwith %}
+
+    <section class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-[1.2fr_1fr] gap-6 items-start">
+        <article class="card p-6 lg:p-8">
+            <div class="flex flex-wrap items-center gap-2">
+                <span class="pill bg-pink-400/14 text-pink-100 border border-pink-300/22">🚨 A la une</span>
+                {% if next_race_theme %}
+                <span class="pill bg-white/8 text-white/70 border border-white/10">{{ next_race_theme.emoji }} {{ next_race_theme.tag }}</span>
+                {% endif %}
+            </div>
+            {% if next_race %}
+            <h1 class="font-title text-3xl md:text-4xl lg:text-5xl text-white mt-5">{{ next_race_theme.name if next_race_theme else 'Prochaine course' }}</h1>
+            <p class="text-white/55 text-lg font-semibold mt-2">Aujourd'hui, {{ next_race.scheduled_at.strftime('%H:%M') }} • Course #{{ next_race.id }}</p>
+            {% if next_race_theme %}<p class="text-white/55 text-sm font-semibold mt-4 max-w-2xl">{{ next_race_theme.description }}</p>{% endif %}
+            <div class="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-5 items-end mt-6">
+                <div>
+                    <p class="text-white/40 text-xs uppercase tracking-[0.22em] font-extrabold">Depart dans</p>
+                    <div id="countdown-display" class="text-6xl lg:text-7xl leading-none mt-2">--:--:--</div>
+                    <div id="race-running-msg" class="hidden mt-3 text-yellow-300 font-bold animate-pulse">🏁 La course est en cours...</div>
+                </div>
+                <div class="flex flex-col gap-3 md:items-end">
+                    {% if headline_status %}
+                    <div class="rounded-2xl border px-4 py-3 max-w-md
+                        {% if headline_status.tone == 'success' %}bg-emerald-500/12 border-emerald-400/25 text-emerald-100
+                        {% elif headline_status.tone == 'planned' %}bg-cyan-500/12 border-cyan-400/25 text-cyan-100
+                        {% else %}bg-white/8 border-white/10 text-white/85{% endif %}">
+                        <p class="font-extrabold">{{ headline_status.label }}</p>
+                        <p class="text-sm font-semibold mt-1 opacity-80">{{ headline_status.subtext }}</p>
+                    </div>
+                    {% endif %}
+                    <a href="/paris" class="btn-primary">Voir les cotes & Parier</a>
+                </div>
+            </div>
+            {% else %}
+            <h1 class="font-title text-3xl md:text-4xl text-white mt-5">Pas de course programmee</h1>
+            <p class="text-white/55 font-semibold mt-3">Le prochain creneau sera genere automatiquement.</p>
+            {% endif %}
+        </article>
+
+        <article class="card p-6 lg:p-7 flex flex-col">
+            <p class="text-white/40 text-xs uppercase tracking-[0.22em] font-extrabold">🎟️ Le guichet des paris</p>
+            <div class="flex items-center justify-between gap-3 mt-2">
+                <h2 class="font-title text-3xl text-white">Tickets Bacon</h2>
+                <span class="pill {% if bacon_tickets_remaining > 0 %}bg-emerald-500/12 text-emerald-200 border border-emerald-400/20{% else %}bg-red-500/12 text-red-200 border border-red-400/20{% endif %}">
+                    {{ bacon_tickets_remaining }} / {{ weekly_bacon_tickets }}
+                </span>
+            </div>
+            {% if user %}
+            <div class="info-tile flex items-center gap-3 mt-4">
+                <span class="text-pink-200 font-extrabold text-xl">🎟️ {{ bacon_tickets_remaining }}</span>
+                <span class="text-white/30 text-sm font-bold">/ {{ weekly_bacon_tickets }} tickets cette semaine</span>
+            </div>
+            {% if user_bets %}
+            <div class="soft p-4 mt-4">
+                <p class="text-white font-extrabold text-sm">Ticket deja pose sur la prochaine course</p>
+                {% for bet in user_bets %}
+                {% set bet_type_key = bet.bet_type if bet.bet_type in bet_types else 'win' %}
+                <p class="text-white/55 text-sm font-semibold mt-2">{{ bet_types[bet_type_key].icon }} {{ bet.pig_name }} • {{ bet.amount }} 🪙 @ x{{ bet.odds_at_bet }}</p>
+                {% endfor %}
+            </div>
+            {% endif %}
+            <div class="mt-4 space-y-2">
+                {% for slot in week_race_cards %}
+                <div class="flex items-center justify-between gap-3 soft px-3 py-2.5">
+                    <div class="min-w-0">
+                        <p class="text-white font-bold text-sm truncate">{{ slot.theme.emoji }} {{ slot.theme.name }}</p>
+                        <p class="text-white/35 text-xs font-semibold">{{ slot.day_name }} • {{ slot.slot.strftime('%d/%m %H:%M') }}{% if slot.user_plan_names %} · <span class="text-cyan-300">{{ slot.user_plan_names | join(', ') }}</span>{% endif %}</p>
+                    </div>
+                    {% if slot.race and not slot.is_locked %}
+                    <span class="pill bg-emerald-500/12 text-emerald-200 border border-emerald-400/20 shrink-0 text-[10px]">Ouverts</span>
+                    {% elif slot.is_locked %}
+                    <span class="pill bg-white/8 text-white/50 border border-white/10 shrink-0 text-[10px]">Lock</span>
+                    {% else %}
+                    <span class="pill bg-cyan-500/12 text-cyan-200 border border-cyan-400/20 shrink-0 text-[10px]">A venir</span>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+            <div class="mt-auto pt-4 flex flex-wrap gap-3">
+                <a href="/courses" class="btn-secondary text-sm">📅 Calendrier</a>
+                <a href="/paris" class="btn-secondary text-sm">💰 Parier</a>
+                <a href="/history#bitgroins" class="btn-secondary text-sm">📊 Historique</a>
+            </div>
+            {% else %}
+            <p class="text-white/55 font-semibold mt-4">Connecte-toi pour suivre tes tickets Bacon et tes paris de la semaine.</p>
+            <div class="mt-5 flex flex-wrap gap-3">
+                <a href="/login" class="btn-primary">Connexion</a>
+                <a href="/register" class="btn-secondary">Inscription</a>
+            </div>
+            {% endif %}
+        </article>
+    </section>
+
+    <section class="grid grid-cols-1 xl:grid-cols-2 gap-6">
+        <article class="card p-6 lg:p-7">
+            <p class="text-white/40 text-xs uppercase tracking-[0.22em] font-extrabold">🐽 Ma Bauge</p>
+            <h2 class="font-title text-3xl text-white mt-2">Resume du cochon</h2>
+            {% if featured_pig %}
+            {% set pig = featured_pig.pig %}
+            <div class="mt-5 flex items-start gap-4">
+                <div>{{ pig_display(pig, 'text-5xl', 64) }}</div>
+                <div>
+                    <h3 class="text-white text-2xl font-extrabold">{{ pig.name }}</h3>
+                    <p class="text-white/45 text-sm font-semibold mt-1">Niveau {{ pig.level }} • {{ featured_pig.weight_profile.status_label }} • {{ "%.1f"|format(pig.weight_kg or 112) }} kg</p>
+                    {% if featured_pig.weight_profile.force_mod != 1.0 or featured_pig.weight_profile.agilite_mod != 1.0 %}
+                    <div class="flex gap-4 mt-2 text-[11px] font-black uppercase">
+                        <span class="{% if featured_pig.weight_profile.force_mod > 1.0 %}text-green-400{% else %}text-red-400{% endif %}">💪 Force x{{ featured_pig.weight_profile.force_mod }}</span>
+                        <span class="{% if featured_pig.weight_profile.agilite_mod > 1.0 %}text-green-400{% else %}text-red-400{% endif %} text-cyan-400">⚡ Agilité x{{ featured_pig.weight_profile.agilite_mod }}</span>
+                    </div>
+                    {% endif %}
+                    <p class="text-cyan-200 text-sm font-bold mt-3">Repos depuis {{ featured_pig_status.rest_days }} jour(s) • {{ featured_pig_status.rest_label }}</p>
+                    <p class="text-white/45 text-sm font-semibold mt-1">{{ featured_pig_status.rest_note }}</p>
+                </div>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-6">
+                <div class="soft p-4"><div class="flex justify-between"><p class="text-white font-bold">Sante</p><span class="text-emerald-200 font-extrabold">{{ featured_pig_status.health_pct }}%</span></div><div class="gauge mt-3"><div class="fill bg-gradient-to-r from-emerald-500 to-green-300" style="width: {{ featured_pig_status.health_pct }}%"></div></div></div>
+                <div class="soft p-4"><div class="flex justify-between"><p class="text-white font-bold">Faim</p><span class="text-amber-200 font-extrabold">{{ "%.0f"|format(pig.hunger) }}%</span></div><div class="gauge mt-3"><div class="fill bg-gradient-to-r from-amber-500 to-yellow-300" style="width: {{ pig.hunger }}%"></div></div></div>
+                <div class="soft p-4"><div class="flex justify-between"><p class="text-white font-bold">Fatigue</p><span class="text-rose-200 font-extrabold">{{ featured_pig_status.fatigue_pct }}%</span></div><div class="gauge mt-3"><div class="fill bg-gradient-to-r from-rose-500 to-pink-300" style="width: {{ featured_pig_status.fatigue_pct }}%"></div></div></div>
+            </div>
+            <div class="mt-5 flex flex-wrap gap-3">
+                <form method="POST" action="/feed">
+                    <input type="hidden" name="pig_id" value="{{ pig.id }}">
+                    <input type="hidden" name="cereal" value="avoine">
+                    <button type="submit" class="btn-primary">🍬 Donner une friandise</button>
+                </form>
+                <a href="/mon-cochon" class="btn-secondary">🐷 Ouvrir Ma Bauge</a>
+            </div>
+            {% else %}
+            <p class="text-white/55 font-semibold mt-4">Connecte-toi pour voir l'etat de ton cochon et agir rapidement.</p>
+            {% endif %}
+        </article>
+
+        <article class="card p-6 lg:p-7">
+            <p class="text-white/40 text-xs uppercase tracking-[0.22em] font-extrabold">🏆 Fil d'actualite</p>
+            <h2 class="font-title text-3xl text-white mt-2">Derniers resultats</h2>
+            {% if latest_race and latest_race_participants %}
+            <div class="soft p-4 mt-5">
+                <p class="text-white font-extrabold">Podium de la derniere course</p>
+                <div class="mt-3 space-y-2">
+                    {% for participant in latest_race_participants[:3] %}
+                    <div class="rounded-xl border border-white/8 bg-white/[0.03] px-3 py-2.5 flex items-center justify-between gap-3">
+                        <div><p class="text-white font-bold">{{ participant.finish_position or '?' }}. {{ participant.emoji }} {{ participant.name }}</p><p class="text-white/35 text-xs font-semibold mt-1">{{ participant.owner_name if participant.owner_name else 'Ordinateur' }}</p></div>
+                        <span class="text-yellow-300 text-sm font-extrabold">x{{ "%.1f"|format(participant.odds or 0) }}</span>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+            <div class="mt-5 space-y-3">
+                {% for item in news_items %}
+                <div class="soft p-4">
+                    <div class="flex items-start gap-3">
+                        <div class="text-2xl">{{ item.emoji }}</div>
+                        <div><p class="text-white font-extrabold">{{ item.title }}</p><p class="text-white/45 text-sm font-semibold mt-1">{{ item.text }}</p></div>
+                    </div>
+                </div>
+                {% else %}
+                <div class="soft p-5 text-center"><p class="text-white/45 font-semibold">Aucun evenement marquant a signaler pour le moment.</p></div>
+                {% endfor %}
+            </div>
+        </article>
+    </section>
+
+    <!-- ═══ ENCART PARIS RAPIDE ═══ -->
+    <section class="card p-6 lg:p-7">
+        <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div>
+                <p class="text-white/40 text-xs uppercase tracking-[0.22em] font-extrabold">💰 Paris</p>
+                <h2 class="font-title text-2xl text-white mt-1">Guichet des paris</h2>
+                {% if next_race and participants %}
+                <p class="text-white/50 text-sm font-semibold mt-2">{{ participants|length }} partants · Course #{{ next_race.id }} · {{ next_race.scheduled_at.strftime('%H:%M') }}</p>
+                <div class="flex flex-wrap gap-2 mt-3">
+                    {% for pig in participants[:6] %}
+                    {% set odds_class = 'odds-low' if pig.odds <= 2.5 else ('odds-mid' if pig.odds <= 4.0 else 'odds-high') %}
+                    <span class="inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-2.5 py-1.5">
+                        <span class="text-lg">{{ pig.emoji }}</span>
+                        <span class="text-white/70 text-xs font-bold">{{ pig.name }}</span>
+                        <span class="text-xs font-black {% if pig.odds <= 2.5 %}text-green-400{% elif pig.odds <= 4.0 %}text-yellow-400{% else %}text-red-400{% endif %}">x{{ pig.odds }}</span>
+                    </span>
+                    {% endfor %}
+                    {% if participants|length > 6 %}
+                    <span class="inline-flex items-center text-white/30 text-xs font-bold px-2">+{{ participants|length - 6 }} autres</span>
+                    {% endif %}
+                </div>
+                {% else %}
+                <p class="text-white/50 text-sm font-semibold mt-2">Aucune course ouverte aux paris pour le moment.</p>
+                {% endif %}
+            </div>
+            <div class="flex flex-col gap-2 shrink-0">
+                {% if user %}
+                <div class="flex items-center gap-3 text-sm">
+                    <span class="text-pink-400 font-extrabold">🎟️ {{ bacon_tickets_remaining }}/{{ weekly_bacon_tickets }}</span>
+                    <span class="text-white/20">·</span>
+                    <span class="text-yellow-400 font-extrabold">{{ "%.0f"|format(user.balance) }} 🪙</span>
+                </div>
+                {% endif %}
+                <a href="/paris" class="btn-primary text-center">💰 Voir les cotes & Parier</a>
+            </div>
+        </div>
+    </section>
+</main>
+
+<footer class="text-center py-8 text-white/20 text-sm font-semibold">🐷 Derby des Groins — Tous droits de groin reserves</footer>
+
+<script>
+function formatTime(seconds) {
+    if (seconds <= 0) return '00:00:00';
+    const h = Math.floor(seconds / 3600), m = Math.floor((seconds % 3600) / 60), s = seconds % 60;
+    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+}
+let countdownSeconds = null;
+async function fetchCountdown() { try { const res = await fetch('/api/countdown'); const data = await res.json(); countdownSeconds = data.seconds; } catch (e) { console.warn('[index] Erreur fetch countdown', e); } }
+function tickCountdown() {
+    const display = document.getElementById('countdown-display'), running = document.getElementById('race-running-msg');
+    if (!display) return;
+    if (countdownSeconds === null) { display.textContent = '--:--:--'; return; }
+    if (countdownSeconds <= 0) { display.textContent = '00:00:00'; if (running) running.classList.remove('hidden'); setTimeout(() => location.reload(), 3000); return; }
+    display.textContent = formatTime(countdownSeconds); countdownSeconds--;
+}
+fetchCountdown();
+const _tickTimer = setInterval(tickCountdown, 1000);
+const _fetchTimer = setInterval(fetchCountdown, 30000);
+window.addEventListener('beforeunload', () => { clearInterval(_tickTimer); clearInterval(_fetchTimer); });
+</script>
+{% include '_footer.html' %}
+</body>
+</html>

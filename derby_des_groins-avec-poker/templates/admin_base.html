@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Admin{% endblock %} — Derby des Groins</title>
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * { font-family: 'Nunito', sans-serif; }
+        .font-title { font-family: 'Lilita One', cursive; }
+
+        body {
+            background: #0f0a1e;
+            background-image:
+                radial-gradient(ellipse at 20% 50%, rgba(99, 102, 241, 0.12) 0%, transparent 60%),
+                radial-gradient(ellipse at 80% 20%, rgba(139, 92, 246, 0.08) 0%, transparent 50%);
+            min-height: 100vh;
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 1.5rem;
+        }
+
+        .input-admin {
+            background: rgba(255, 255, 255, 0.07);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 0.75rem;
+            padding: 0.6rem 1rem;
+            color: white;
+            font-weight: 700;
+            font-size: 0.9rem;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        .input-admin:focus { border-color: #8b5cf6; }
+
+        select.input-admin {
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23888' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 0.75rem center;
+            padding-right: 2.5rem;
+        }
+
+        .btn-admin {
+            background: linear-gradient(135deg, #6366f1, #8b5cf6);
+            border: none; color: white; font-weight: 800;
+            border-radius: 0.75rem; padding: 0.65rem 1.5rem;
+            cursor: pointer; transition: all 0.2s; font-size: 0.85rem;
+            text-transform: uppercase; letter-spacing: 0.05em;
+        }
+        .btn-admin:hover { transform: translateY(-1px); box-shadow: 0 8px 25px rgba(99, 102, 241, 0.4); }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #dc2626, #991b1b);
+            border: none; color: white; font-weight: 800;
+            border-radius: 0.75rem; padding: 0.65rem 1.5rem;
+            cursor: pointer; transition: all 0.2s; font-size: 0.85rem;
+            text-transform: uppercase; letter-spacing: 0.05em;
+        }
+        .btn-danger:hover { transform: translateY(-1px); box-shadow: 0 8px 25px rgba(220, 38, 38, 0.4); }
+
+        .btn-success {
+            background: linear-gradient(135deg, #10b981, #059669);
+            border: none; color: white; font-weight: 800;
+            border-radius: 0.75rem; padding: 0.65rem 1.5rem;
+            cursor: pointer; transition: all 0.2s; font-size: 0.85rem;
+            text-transform: uppercase; letter-spacing: 0.05em;
+        }
+        .btn-success:hover { transform: translateY(-1px); box-shadow: 0 8px 25px rgba(16, 185, 129, 0.4); }
+
+        .btn-warning {
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            border: none; color: white; font-weight: 800;
+            border-radius: 0.75rem; padding: 0.65rem 1.5rem;
+            cursor: pointer; transition: all 0.2s; font-size: 0.85rem;
+            text-transform: uppercase; letter-spacing: 0.05em;
+        }
+        .btn-warning:hover { transform: translateY(-1px); box-shadow: 0 8px 25px rgba(245, 158, 11, 0.4); }
+
+        .flash-msg {
+            animation: flashIn 0.4s ease-out;
+        }
+        @keyframes flashIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .result-card {
+            background: linear-gradient(135deg, rgba(34, 197, 94, 0.1), rgba(16, 185, 129, 0.06));
+            border: 1px solid rgba(34, 197, 94, 0.2);
+            border-radius: 0.75rem;
+        }
+
+        .user-row {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 0.75rem;
+            transition: background 0.2s;
+        }
+        .user-row:hover { background: rgba(255, 255, 255, 0.06); }
+
+        /* Sidebar */
+        .sidebar-link {
+            display: flex; align-items: center; gap: 0.75rem;
+            padding: 0.7rem 1rem; border-radius: 0.75rem;
+            font-weight: 700; font-size: 0.85rem;
+            color: rgba(255,255,255,0.55);
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+        .sidebar-link:hover {
+            background: rgba(255,255,255,0.06);
+            color: rgba(255,255,255,0.85);
+        }
+        .sidebar-link.active {
+            background: linear-gradient(135deg, rgba(99,102,241,0.2), rgba(139,92,246,0.15));
+            color: white;
+            border: 1px solid rgba(139,92,246,0.3);
+        }
+        .sidebar-section {
+            font-size: 0.65rem; font-weight: 800;
+            text-transform: uppercase; letter-spacing: 0.15em;
+            color: rgba(255,255,255,0.2);
+            padding: 0.5rem 1rem 0.25rem;
+            margin-top: 0.5rem;
+        }
+
+        {% block extra_style %}{% endblock %}
+    </style>
+</head>
+<body>
+{% set active_page = 'admin' %}
+{% include "_site_header.html" %}
+
+<div class="max-w-[1400px] mx-auto px-4 py-6 flex gap-6">
+
+    <!-- SIDEBAR -->
+    <aside class="w-56 shrink-0 hidden lg:block">
+        <div class="sticky top-28">
+            <div class="flex items-center gap-2 px-3 mb-4">
+                <span class="text-2xl">🔧</span>
+                <span class="font-title text-lg text-white">Admin</span>
+            </div>
+
+            <nav class="space-y-0.5">
+                <div class="sidebar-section">General</div>
+                <a href="{{ url_for('admin.admin_dashboard') }}" class="sidebar-link {{ 'active' if admin_tab == 'dashboard' }}">
+                    <span class="text-base w-6 text-center">📊</span> Dashboard
+                </a>
+
+                <div class="sidebar-section">Jeu</div>
+                <a href="{{ url_for('admin.admin_races') }}" class="sidebar-link {{ 'active' if admin_tab == 'races' }}">
+                    <span class="text-base w-6 text-center">🏁</span> Courses & March&eacute;
+                </a>
+                <a href="{{ url_for('admin.admin_economy') }}" class="sidebar-link {{ 'active' if admin_tab == 'economy' }}">
+                    <span class="text-base w-6 text-center">💰</span> Economie
+                </a>
+                <a href="{{ url_for('admin.admin_progression') }}" class="sidebar-link {{ 'active' if admin_tab == 'progression' }}">
+                    <span class="text-base w-6 text-center">📈</span> Progression
+                </a>
+                <a href="{{ url_for('admin.admin_races') }}#npcs" class="sidebar-link">
+                    <span class="text-base w-6 text-center">🐽</span> PNJ de course
+                </a>
+                <a href="{{ url_for('admin.admin_pigs') }}" class="sidebar-link {{ 'active' if admin_tab == 'pigs' }}">
+                    <span class="text-base w-6 text-center">🐷</span> Cochons
+                </a>
+                <a href="{{ url_for('admin.admin_events') }}" class="sidebar-link {{ 'active' if admin_tab == 'events' }}">
+                    <span class="text-base w-6 text-center">🎭</span> Evenements
+                </a>
+                <a href="{{ url_for('admin.admin_data') }}" class="sidebar-link {{ 'active' if admin_tab == 'data' }}">
+                    <span class="text-base w-6 text-center">🗃️</span> Donnees de jeu
+                </a>
+                <a href="{{ url_for('admin.admin_avatars') }}" class="sidebar-link {{ 'active' if admin_tab == 'avatars' }}">
+                    <span class="text-base w-6 text-center">🖼️</span> Avatars
+                </a>
+
+                <div class="sidebar-section">Utilisateurs</div>
+                <a href="{{ url_for('admin.admin_users') }}" class="sidebar-link {{ 'active' if admin_tab == 'users' }}">
+                    <span class="text-base w-6 text-center">👥</span> Joueurs
+                </a>
+
+                <div class="sidebar-section">Systeme</div>
+                <a href="{{ url_for('admin.admin_notifications') }}" class="sidebar-link {{ 'active' if admin_tab == 'notifications' }}">
+                    <span class="text-base w-6 text-center">📧</span> Notifications
+                </a>
+            </nav>
+
+            <div class="mt-6 px-3">
+                <a href="/" class="text-white/20 text-xs font-bold hover:text-white/40 transition-colors">&larr; Retour au jeu</a>
+            </div>
+        </div>
+    </aside>
+
+    <!-- MOBILE NAV -->
+    <div class="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-[#1a1030]/95 backdrop-blur-lg border-t border-white/10 px-2 py-2">
+        <div class="flex items-center justify-around gap-1 overflow-x-auto">
+            <a href="{{ url_for('admin.admin_dashboard') }}" class="flex flex-col items-center gap-0.5 px-2 py-1 rounded-lg text-[10px] font-bold {{ 'text-indigo-400' if admin_tab == 'dashboard' else 'text-white/40' }}">
+                <span class="text-lg">📊</span>Board
+            </a>
+            <a href="{{ url_for('admin.admin_races') }}" class="flex flex-col items-center gap-0.5 px-2 py-1 rounded-lg text-[10px] font-bold {{ 'text-indigo-400' if admin_tab == 'races' else 'text-white/40' }}">
+                <span class="text-lg">🏁</span>Courses
+            </a>
+            <a href="{{ url_for('admin.admin_economy') }}" class="flex flex-col items-center gap-0.5 px-2 py-1 rounded-lg text-[10px] font-bold {{ 'text-indigo-400' if admin_tab == 'economy' else 'text-white/40' }}">
+                <span class="text-lg">💰</span>Eco
+            </a>
+            <a href="{{ url_for('admin.admin_progression') }}" class="flex flex-col items-center gap-0.5 px-2 py-1 rounded-lg text-[10px] font-bold {{ 'text-indigo-400' if admin_tab == 'progression' else 'text-white/40' }}">
+                <span class="text-lg">📈</span>Prog
+            </a>
+            <a href="{{ url_for('admin.admin_races') }}#npcs" class="flex flex-col items-center gap-0.5 px-2 py-1 rounded-lg text-[10px] font-bold text-white/40">
+                <span class="text-lg">🐽</span>PNJ
+            </a>
+            <a href="{{ url_for('admin.admin_pigs') }}" class="flex flex-col items-center gap-0.5 px-2 py-1 rounded-lg text-[10px] font-bold {{ 'text-indigo-400' if admin_tab == 'pigs' else 'text-white/40' }}">
+                <span class="text-lg">🐷</span>Cochons
+            </a>
+            <a href="{{ url_for('admin.admin_users') }}" class="flex flex-col items-center gap-0.5 px-2 py-1 rounded-lg text-[10px] font-bold {{ 'text-indigo-400' if admin_tab == 'users' else 'text-white/40' }}">
+                <span class="text-lg">👥</span>Joueurs
+            </a>
+            <a href="{{ url_for('admin.admin_events') }}" class="flex flex-col items-center gap-0.5 px-2 py-1 rounded-lg text-[10px] font-bold {{ 'text-indigo-400' if admin_tab == 'events' else 'text-white/40' }}">
+                <span class="text-lg">🎭</span>Events
+            </a>
+            <a href="{{ url_for('admin.admin_notifications') }}" class="flex flex-col items-center gap-0.5 px-2 py-1 rounded-lg text-[10px] font-bold {{ 'text-indigo-400' if admin_tab == 'notifications' else 'text-white/40' }}">
+                <span class="text-lg">📧</span>SMTP
+            </a>
+            <a href="{{ url_for('admin.admin_avatars') }}" class="flex flex-col items-center gap-0.5 px-2 py-1 rounded-lg text-[10px] font-bold {{ 'text-indigo-400' if admin_tab == 'avatars' else 'text-white/40' }}">
+                <span class="text-lg">🖼️</span>Avatars
+            </a>
+        </div>
+    </div>
+
+    <!-- MAIN CONTENT -->
+    <main class="flex-1 min-w-0 pb-20 lg:pb-0">
+        <!-- FLASH MESSAGES -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+        <div class="mb-6 space-y-2">
+            {% for category, message in messages %}
+            <div class="flash-msg p-4 rounded-xl text-sm font-bold text-center
+                {% if category == 'error' %}bg-red-500/15 border border-red-500/30 text-red-400
+                {% elif category == 'warning' %}bg-yellow-500/15 border border-yellow-500/30 text-yellow-400
+                {% else %}bg-green-500/15 border border-green-500/30 text-green-400{% endif %}">
+                {{ message }}
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+        {% endwith %}
+
+        {% block content %}{% endblock %}
+    </main>
+</div>
+
+<footer class="text-center py-8 text-white/15 text-sm font-semibold">
+    🔧 Administration — Derby des Groins
+</footer>
+
+{% block extra_script %}{% endblock %}
+</body>
+</html>

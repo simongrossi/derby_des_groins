@@ -1,0 +1,250 @@
+{% from '_pig_avatar.html' import pig_display %}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>⚰️ Derby des Groins — Le Cimetière des Légendes</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Nunito:wght@400;600;700;800&family=Creepster&display=swap" rel="stylesheet">
+    <style>
+        * { font-family: 'Nunito', sans-serif; }
+        .font-title { font-family: 'Lilita One', cursive; }
+        .font-creepy { font-family: 'Creepster', cursive; }
+
+        body {
+            background: #0a0a1a;
+            background-image:
+                radial-gradient(ellipse at 20% 80%, rgba(100, 0, 200, 0.1) 0%, transparent 50%),
+                radial-gradient(ellipse at 80% 30%, rgba(0, 50, 100, 0.08) 0%, transparent 50%),
+                radial-gradient(ellipse at 50% 50%, rgba(50, 0, 80, 0.1) 0%, transparent 60%);
+            min-height: 100vh;
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 1.5rem;
+        }
+
+        .tombstone {
+            background: linear-gradient(180deg, rgba(80, 80, 100, 0.25), rgba(40, 40, 60, 0.2));
+            border: 2px solid rgba(150, 150, 180, 0.2);
+            border-radius: 2rem 2rem 0.5rem 0.5rem;
+            position: relative;
+            transition: all 0.3s;
+        }
+        .tombstone:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(100, 50, 200, 0.2);
+            border-color: rgba(180, 150, 255, 0.3);
+        }
+        .tombstone::before {
+            content: '✝';
+            position: absolute;
+            top: -15px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 1.5rem;
+            color: rgba(180, 150, 255, 0.4);
+        }
+
+        .ghost {
+            animation: float 3s ease-in-out infinite;
+        }
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        .fog {
+            background: linear-gradient(90deg, transparent, rgba(100, 80, 150, 0.05), transparent);
+            height: 2px;
+            animation: fogMove 8s ease-in-out infinite;
+        }
+        @keyframes fogMove {
+            0% { transform: translateX(-20%); opacity: 0.3; }
+            50% { transform: translateX(20%); opacity: 0.8; }
+            100% { transform: translateX(-20%); opacity: 0.3; }
+        }
+
+        .stars {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none; z-index: 0;
+        }
+        .star {
+            position: absolute;
+            width: 2px; height: 2px;
+            background: white;
+            border-radius: 50%;
+            animation: twinkle 3s ease-in-out infinite;
+        }
+        @keyframes twinkle {
+            0%, 100% { opacity: 0.1; }
+            50% { opacity: 0.6; }
+        }
+
+        .stat-mini {
+            font-size: 0.65rem;
+            padding: 0.15rem 0.4rem;
+            border-radius: 0.25rem;
+            font-weight: 800;
+        }
+
+        .win-crown { color: #fbbf24; text-shadow: 0 0 10px rgba(251, 191, 36, 0.5); }
+    </style>
+</head>
+<body>
+{% set active_page = 'cimetiere' %}
+
+<!-- ÉTOILES -->
+<div class="stars">
+    <div class="star" style="top: 8%; left: 15%; animation-delay: 0s;"></div>
+    <div class="star" style="top: 15%; left: 45%; animation-delay: 0.5s;"></div>
+    <div class="star" style="top: 5%; left: 75%; animation-delay: 1s;"></div>
+    <div class="star" style="top: 22%; left: 90%; animation-delay: 1.5s;"></div>
+    <div class="star" style="top: 12%; left: 30%; animation-delay: 2s;"></div>
+    <div class="star" style="top: 3%; left: 60%; animation-delay: 0.8s;"></div>
+    <div class="star" style="top: 18%; left: 8%; animation-delay: 1.2s;"></div>
+    <div class="star" style="top: 25%; left: 55%; animation-delay: 0.3s;"></div>
+</div>
+
+{% include "_site_header.html" %}
+
+<main class="max-w-6xl mx-auto px-4 py-8 relative z-10">
+
+    <!-- HERO -->
+    <section class="text-center mb-12">
+        <div class="ghost inline-block mb-4">
+            <span class="text-6xl">👻</span>
+        </div>
+        <h1 class="font-creepy text-6xl text-purple-300 mb-3" style="text-shadow: 0 0 40px rgba(150, 100, 255, 0.4);">
+            Le Cimetière des Légendes
+        </h1>
+        <p class="text-purple-300/50 font-bold text-lg">
+            Seuls les plus glorieux méritent une tombe ici.
+        </p>
+        <p class="text-purple-400/30 text-sm mt-1 font-semibold">
+            Minimum 3 victoires pour reposer parmi les légendes.
+        </p>
+        <div class="fog max-w-lg mx-auto mt-6"></div>
+    </section>
+
+    <!-- COMPTEURS -->
+    <div class="grid grid-cols-2 gap-4 mb-10 max-w-md mx-auto">
+        <div class="card p-5 text-center">
+            <p class="font-creepy text-4xl text-purple-400">{{ total_legends }}</p>
+            <p class="text-purple-300/40 text-sm font-bold mt-1">Légendes</p>
+        </div>
+        <div class="card p-5 text-center">
+            <p class="font-creepy text-4xl text-red-400/60">{{ total_dead }}</p>
+            <p class="text-purple-300/40 text-sm font-bold mt-1">Total tombés</p>
+        </div>
+    </div>
+
+    {% if legends %}
+    <!-- TOMBES -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+        {% for pig in legends %}
+        <div class="tombstone p-6 pt-8 text-center">
+            <!-- Emoji fantôme du cochon -->
+            <div class="ghost mb-3">
+                <span class="opacity-60">{{ pig_display(pig, 'text-4xl', 56) }}</span>
+            </div>
+
+            <!-- Nom -->
+            <h3 class="font-creepy text-2xl text-white/80 mb-1">{{ pig.name }}</h3>
+
+            <!-- Couronnes de victoire -->
+            <div class="flex justify-center gap-1 mb-2">
+                {% for i in range(pig.races_won) %}
+                <span class="win-crown text-sm">👑</span>
+                {% endfor %}
+            </div>
+
+            <!-- Propriétaire -->
+            <p class="text-purple-300/50 text-xs font-bold mb-3">
+                Élevé par {{ pig.owner.username if pig.owner else '???' }}
+            </p>
+
+            <!-- Épitaphe -->
+            <div class="bg-black/20 rounded-lg p-3 mb-4">
+                <p class="text-purple-200/60 text-sm italic">
+                    "{{ pig.epitaph or 'Groin groin... *silence éternel*' }}"
+                </p>
+            </div>
+
+            <!-- Stats au moment de la mort -->
+            <div class="flex gap-1 justify-center flex-wrap mb-3">
+                <span class="stat-mini bg-blue-500/15 text-blue-300/70">VIT {{ "%.0f"|format(pig.vitesse) }}</span>
+                <span class="stat-mini bg-green-500/15 text-green-300/70">END {{ "%.0f"|format(pig.endurance) }}</span>
+                <span class="stat-mini bg-yellow-500/15 text-yellow-300/70">AGI {{ "%.0f"|format(pig.agilite) }}</span>
+                <span class="stat-mini bg-red-500/15 text-red-300/70">FOR {{ "%.0f"|format(pig.force) }}</span>
+                <span class="stat-mini bg-purple-500/15 text-purple-300/70">INT {{ "%.0f"|format(pig.intelligence) }}</span>
+                <span class="stat-mini bg-pink-500/15 text-pink-300/70">MOR {{ "%.0f"|format(pig.moral) }}</span>
+            </div>
+
+            <!-- Bilan -->
+            <div class="border-t border-purple-900/30 pt-3">
+                <p class="text-white/30 text-xs font-bold">
+                    Niv. {{ pig.level }} — 🏁 {{ pig.races_entered }} courses — 🏆 {{ pig.races_won }} victoires
+                </p>
+                <p class="text-purple-400/30 text-xs mt-1">
+                    Devenu {{ pig.charcuterie_type or 'charcuterie' }} {{ pig.charcuterie_emoji or '🍖' }}
+                </p>
+                <p class="text-purple-900/50 text-xs mt-1">
+                    {{ pig.death_date.strftime('%d/%m/%Y') if pig.death_date else '' }}
+                </p>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    {% else %}
+    <!-- CIMETIÈRE VIDE -->
+    <div class="card p-16 text-center">
+        <div class="ghost inline-block mb-4">
+            <span class="text-7xl">⚰️</span>
+        </div>
+        <h2 class="font-creepy text-3xl text-purple-300/60 mb-3">Le cimetière est vide...</h2>
+        <p class="text-purple-300/30 text-lg font-semibold mb-2">
+            Aucun cochon n'a encore mérité sa place parmi les légendes.
+        </p>
+        <p class="text-purple-400/20 text-sm font-semibold mb-6">
+            Il faut au moins 3 victoires et un passage par l'abattoir pour entrer ici.
+        </p>
+        <div class="flex gap-3 justify-center">
+            <a href="/abattoir" class="inline-block bg-red-900/30 text-red-400 font-bold px-5 py-2.5 rounded-xl hover:bg-red-900/50 transition-colors text-sm">
+                🔪 Voir l'Abattoir
+            </a>
+            <a href="/mon-cochon" class="inline-block bg-purple-900/30 text-purple-300 font-bold px-5 py-2.5 rounded-xl hover:bg-purple-900/50 transition-colors text-sm">
+                🐷 Mon Cochon
+            </a>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- AMBIANCE -->
+    <div class="mt-16 text-center space-y-4">
+        <div class="fog max-w-sm mx-auto"></div>
+        <p class="text-purple-900/40 text-sm italic font-semibold">
+            "Les légendes ne meurent jamais... elles deviennent du jambon d'exception."
+        </p>
+        <p class="text-purple-900/40 text-sm italic font-semibold">
+            "Chaque tombe est un rappel : la gloire est éphémère, la charcuterie est éternelle."
+        </p>
+        <p class="text-purple-900/40 text-sm italic font-semibold">
+            "Groin groin... 👻"
+        </p>
+    </div>
+
+</main>
+
+<footer class="text-center py-8 text-purple-900/30 text-sm font-semibold relative z-10">
+    ⚰️ Le Cimetière des Légendes — Derby des Groins — Requiescat in Porcum
+</footer>
+
+{% include '_footer.html' %}
+</body>
+</html>

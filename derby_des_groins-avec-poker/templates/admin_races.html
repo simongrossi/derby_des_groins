@@ -1,0 +1,235 @@
+{% extends "admin_base.html" %}
+{% block title %}🏁 Courses & Marché — Admin{% endblock %}
+
+{% block content %}
+<h1 class="font-title text-3xl text-white mb-1">🏁 Courses & 🏪 Marche</h1>
+<p class="text-white/40 font-semibold text-sm mb-6">Planning hebdomadaire des courses, jours d'ouverture du marche aux cochons, et gestion des courses a venir.</p>
+
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+    <!-- GRILLE HORAIRE -->
+    <div class="card p-6">
+        <form method="POST" action="{{ url_for('admin.admin_save') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <h2 class="font-title text-xl text-white mb-3">📅 Grille Hebdomadaire</h2>
+            <p class="text-white/40 text-xs font-semibold mb-4">Heures separees par des virgules (ex: 08:30, 12:00, 17:30).</p>
+
+            <div class="space-y-3 mb-6">
+                {% for i in range(7) %}
+                <div class="flex items-center gap-3">
+                    <label class="text-white/60 text-xs font-bold w-16 shrink-0">{{ jours[i] }}</label>
+                    <input type="text" name="schedule_{{ i }}"
+                           value="{{ config.schedule_dict.get(i|string, []) | join(', ') }}"
+                           placeholder="HH:MM, HH:MM..."
+                           class="input-admin flex-1 text-xs">
+                </div>
+                {% endfor %}
+            </div>
+
+            <div class="bg-indigo-500/10 border border-indigo-500/20 rounded-xl p-3 mb-6">
+                <p class="text-indigo-300/70 text-xs font-bold leading-relaxed">
+                    💡 Vide un jour pour ne pas planifier de courses automatiques ce jour-la.
+                </p>
+            </div>
+
+            <h2 class="font-title text-xl text-white mb-3 mt-6">🏪 Horaire du Marche</h2>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                <div class="sm:col-span-2">
+                    <label class="text-white/60 text-xs font-bold block mb-2">Jours d'ouverture</label>
+                    <div class="flex flex-wrap gap-2">
+                        {% for i in range(7) %}
+                        <label class="flex items-center gap-1.5 px-3 py-2 rounded-lg border cursor-pointer transition-all
+                            {% if i in config.market_days %}bg-emerald-500/15 border-emerald-400/30 text-emerald-200{% else %}bg-white/5 border-white/10 text-white/50{% endif %}">
+                            <input type="checkbox" name="market_days" value="{{ i }}"
+                                   {% if i in config.market_days %}checked{% endif %}
+                                   class="accent-emerald-400">
+                            <span class="text-xs font-bold">{{ jours[i] }}</span>
+                        </label>
+                        {% endfor %}
+                    </div>
+                    <p class="text-white/30 text-[10px] font-semibold mt-1">Coche plusieurs jours pour ouvrir le marche sur plusieurs jours de la semaine.</p>
+                </div>
+                <div>
+                    <label class="text-white/60 text-xs font-bold block mb-1">Heure</label>
+                    <input type="number" name="market_hour" value="{{ config.market_hour }}" min="0" max="23" class="input-admin w-full">
+                </div>
+                <div>
+                    <label class="text-white/60 text-xs font-bold block mb-1">Minutes</label>
+                    <input type="number" name="market_minute" value="{{ config.market_minute }}" min="0" max="59" class="input-admin w-full">
+                </div>
+                <div class="col-span-2">
+                    <label class="text-white/60 text-xs font-bold block mb-1">Duree (minutes)</label>
+                    <input type="number" name="market_duration" value="{{ config.market_duration }}" min="15" max="1440" class="input-admin w-full">
+                </div>
+            </div>
+
+            <h2 class="font-title text-xl text-white mb-3 mt-6">⚙️ Courses Vides</h2>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                <div>
+                    <label class="text-white/60 text-xs font-bold block mb-1">Minimum reels</label>
+                    <input type="number" name="min_real_participants" value="{{ config.min_real_participants }}" min="0" max="8" class="input-admin w-full">
+                </div>
+                <div>
+                    <label class="text-white/60 text-xs font-bold block mb-1">Action</label>
+                    <select name="empty_race_mode" class="input-admin w-full">
+                        <option value="fill" {% if config.empty_race_mode == 'fill' %}selected{% endif %}>Remplir PNJ</option>
+                        <option value="cancel" {% if config.empty_race_mode == 'cancel' %}selected{% endif %}>Annuler</option>
+                    </select>
+                </div>
+            </div>
+
+            <h2 id="npcs" class="font-title text-xl text-white mb-3 mt-6">🐷 PNJ de remplissage</h2>
+            <p class="text-white/40 text-xs font-semibold mb-2">Une ligne par PNJ au format <code>Nom|Emoji</code>. Si l'emoji est omis, 🐷 est utilise.</p>
+            <div class="flex flex-wrap gap-2 mb-2">
+                <a href="{{ url_for('admin.admin_export_race_npcs_csv') }}" class="btn-admin text-xs !py-1.5 !px-3">⬇️ Export CSV</a>
+                <label class="btn-admin text-xs !py-1.5 !px-3 cursor-pointer">
+                    ⬆️ Import CSV
+                    <input type="file" name="race_npcs_csv" form="race-npcs-import-form" accept=".csv,text/csv" class="hidden" onchange="document.getElementById('race-npcs-import-form').submit()">
+                </label>
+            </div>
+            <textarea
+                name="race_npcs_text"
+                rows="8"
+                class="input-admin w-full text-xs mb-6"
+                placeholder="Rillette|🐷&#10;Bacon Express|🚂">{{ config.race_npcs_text }}</textarea>
+
+            <h2 class="font-title text-xl text-white mb-3 mt-6">🎨 Themes par Jour</h2>
+            <p class="text-white/40 text-xs font-semibold mb-4">Personnalise le theme, le multiplicateur de recompenses et la stat favorisee pour chaque jour.</p>
+
+            <div class="space-y-2 mb-6">
+                {% for i in range(7) %}
+                {% set t = config.race_themes[i|string] %}
+                <details class="bg-white/5 border border-white/10 rounded-xl overflow-hidden">
+                    <summary class="px-4 py-3 cursor-pointer flex items-center gap-3 text-white hover:bg-white/5 transition-colors">
+                        <span class="text-lg">{{ t.emoji }}</span>
+                        <span class="font-bold text-sm">{{ jours[i] }}</span>
+                        <span class="text-white/40 text-xs">— {{ t.name }}</span>
+                        <span class="ml-auto text-xs font-bold {% if t.reward_multiplier > 1 %}text-yellow-400{% else %}text-white/30{% endif %}">x{{ t.reward_multiplier }}</span>
+                    </summary>
+                    <div class="px-4 pb-4 pt-2 grid grid-cols-2 sm:grid-cols-3 gap-3">
+                        <div>
+                            <label class="text-white/60 text-[10px] font-bold block mb-1">Emoji</label>
+                            <input type="text" name="theme_{{ i }}_emoji" value="{{ t.emoji }}" class="input-admin w-full text-xs">
+                        </div>
+                        <div class="col-span-2">
+                            <label class="text-white/60 text-[10px] font-bold block mb-1">Nom du theme</label>
+                            <input type="text" name="theme_{{ i }}_name" value="{{ t.name }}" class="input-admin w-full text-xs">
+                        </div>
+                        <div>
+                            <label class="text-white/60 text-[10px] font-bold block mb-1">Tag court</label>
+                            <input type="text" name="theme_{{ i }}_tag" value="{{ t.tag }}" class="input-admin w-full text-xs">
+                        </div>
+                        <div>
+                            <label class="text-white/60 text-[10px] font-bold block mb-1">Multiplicateur</label>
+                            <input type="number" name="theme_{{ i }}_multiplier" value="{{ t.reward_multiplier }}" min="1" max="10" class="input-admin w-full text-xs">
+                        </div>
+                        <div>
+                            <label class="text-white/60 text-[10px] font-bold block mb-1">Couleur accent</label>
+                            <select name="theme_{{ i }}_accent" class="input-admin w-full text-xs">
+                                {% for c in ['amber','cyan','red','pink','emerald','indigo','yellow','purple'] %}
+                                <option value="{{ c }}" {% if t.accent == c %}selected{% endif %}>{{ c }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div>
+                            <label class="text-white/60 text-[10px] font-bold block mb-1">Stat favorisee</label>
+                            <input type="text" name="theme_{{ i }}_focus_stat" value="{{ t.focus_stat }}" class="input-admin w-full text-xs">
+                        </div>
+                        <div>
+                            <label class="text-white/60 text-[10px] font-bold block mb-1">Label stat</label>
+                            <input type="text" name="theme_{{ i }}_focus_label" value="{{ t.focus_label }}" class="input-admin w-full text-xs">
+                        </div>
+                        <div>
+                            <label class="text-white/60 text-[10px] font-bold block mb-1">Label evenement</label>
+                            <input type="text" name="theme_{{ i }}_event_label" value="{{ t.event_label }}" class="input-admin w-full text-xs">
+                        </div>
+                        <div class="col-span-2 sm:col-span-3">
+                            <label class="text-white/60 text-[10px] font-bold block mb-1">Description</label>
+                            <textarea name="theme_{{ i }}_description" rows="2" class="input-admin w-full text-xs">{{ t.description }}</textarea>
+                        </div>
+                        <div class="col-span-2 sm:col-span-3">
+                            <label class="text-white/60 text-[10px] font-bold block mb-1">Conseil planning</label>
+                            <input type="text" name="theme_{{ i }}_planning_hint" value="{{ t.planning_hint }}" class="input-admin w-full text-xs">
+                        </div>
+                    </div>
+                </details>
+                {% endfor %}
+            </div>
+
+            <button type="submit" class="btn-admin w-full mt-4">💾 Sauvegarder</button>
+        </form>
+    </div>
+
+    <!-- COURSES À VENIR + FORCER -->
+    <div class="space-y-6">
+        <div class="card p-6">
+            <h2 class="font-title text-xl text-white mb-3">⚡ Forcer une course</h2>
+            <form method="POST" action="{{ url_for('admin.admin_force_race') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="btn-danger w-full" onclick="return confirm('Lancer une course immediatement ?');">
+                    🏁 Lancer maintenant
+                </button>
+            </form>
+            <p class="text-white/30 text-xs font-semibold mt-2">Lance avec tous les cochons en forme + PNJ.</p>
+        </div>
+
+        <div class="card p-6">
+            <h2 class="font-title text-xl text-white mb-4">📅 Courses a venir ({{ upcoming_races|length }})</h2>
+            <div class="space-y-2 max-h-80 overflow-y-auto">
+                {% if upcoming_races %}
+                    {% for race in upcoming_races %}
+                    <div class="user-row p-3 flex items-center justify-between">
+                        <div>
+                            <p class="text-white font-bold text-sm">
+                                #{{ race.id }}
+                                <span class="ml-2 {% if race.status == 'open' %}text-green-400{% else %}text-yellow-400{% endif %} text-[10px] border border-current px-1 rounded">
+                                    {{ race.status | upper }}
+                                </span>
+                            </p>
+                            <p class="text-white/40 text-xs font-semibold">
+                                {{ race.scheduled_at.strftime('%d/%m a %H:%M') }}
+                                · {{ race.participants | length }} partants
+                                · {{ race.bets | length }} paris
+                            </p>
+                        </div>
+                        <form method="POST" action="{{ url_for('admin.admin_cancel_race', race_id=race.id) }}" onsubmit="return confirm('Annuler et rembourser ?');">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit" class="text-red-400 hover:text-red-300 text-xs font-bold uppercase">🗑️ Annuler</button>
+                        </form>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <p class="text-white/20 text-sm italic py-4">Aucune course a venir.</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- DERNIÈRES COURSES -->
+        {% if recent_races %}
+        <div class="card p-6">
+            <h2 class="font-title text-xl text-white mb-4">📜 Dernieres courses</h2>
+            <div class="space-y-2 max-h-80 overflow-y-auto">
+                {% for race in recent_races %}
+                <div class="result-card p-3">
+                    <div class="flex items-center justify-between mb-1">
+                        <span class="text-green-400 font-bold text-sm">#{{ race.id }}</span>
+                        <span class="text-white/30 text-xs">{{ race.finished_at.strftime('%d/%m %H:%M') if race.finished_at }}</span>
+                    </div>
+                    <p class="text-white font-bold text-sm">🥇 {{ race.winner_name }} <span class="text-white/40 text-xs">x{{ race.winner_odds }}</span></p>
+                    {% set sorted_parts = race.participants | selectattr('finish_position') | sort(attribute='finish_position') %}
+                    <div class="flex flex-wrap gap-x-3 gap-y-0.5 mt-1">
+                        {% for p in sorted_parts %}
+                        <span class="text-white/30 text-xs">{{ p.finish_position or '?' }}. {{ p.emoji }} {{ p.name }}</span>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<form id="race-npcs-import-form" method="POST" action="{{ url_for('admin.admin_import_race_npcs_csv') }}" enctype="multipart/form-data" class="hidden">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+</form>
+{% endblock %}

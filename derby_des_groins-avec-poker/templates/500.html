@@ -1,0 +1,41 @@
+{% include '_site_header.html' %}
+
+<main class="container py-5 text-center">
+    <div class="error-page py-5">
+        <div class="display-1 mb-4">500</div>
+        <div class="error-icon mb-4" style="font-size: 5rem;">😵‍💫</div>
+        <h1 class="h2 mb-3">Groin coincé !</h1>
+        <p class="lead text-muted mb-5">
+            Oups ! Une erreur interne s'est produite. Nos fermiers sont déjà sur le coup pour décoincer la situation.
+        </p>
+        <div class="d-flex justify-content-center gap-3">
+            <a href="{{ url_for('main.index') }}" class="btn btn-primary px-4 py-2 rounded-pill">
+                <i class="fas fa-home me-2"></i>Retour à l'accueil
+            </a>
+            <a href="mailto:admin@example.com" class="btn btn-outline-danger px-4 py-2 rounded-pill">
+                Signaler le problème
+            </a>
+        </div>
+    </div>
+</main>
+
+<style>
+    .error-page {
+        max-width: 600px;
+        margin: 0 auto;
+        animation: fadeIn 0.8s ease-out;
+    }
+    .display-1 {
+        font-weight: 900;
+        background: linear-gradient(135deg, #ef4444, #b91c1c);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        opacity: 0.2;
+    }
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(20px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+</style>
+
+{% include '_site_footer.html' %}

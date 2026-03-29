@@ -1,0 +1,16 @@
+.venv/
+venv/
+__pycache__/
+*.pyc
+*.pyo
+instance/
+*.db
+.git/
+.gitignore
+.env
+.claude/
+.gemini/
+.pytest_cache/
+tests/
+TODO_PRODUCTION.md
+LICENSE

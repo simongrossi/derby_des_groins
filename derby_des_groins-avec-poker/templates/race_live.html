@@ -1,0 +1,1020 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Derby des Groins — Replay live</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .lane-stripes {
+      background-image: repeating-linear-gradient(to bottom, transparent 0, transparent 48px, rgba(255,255,255,0.12) 48px, rgba(255,255,255,0.12) 50px);
+    }
+    /* ── Track surface ── */
+    .track-surface {
+      background:
+        linear-gradient(180deg, rgba(115,59,34,0.85) 0%, rgba(92,46,28,0.9) 40%, rgba(72,36,20,0.95) 100%);
+      position: relative;
+    }
+    .track-surface::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background:
+        repeating-linear-gradient(90deg, transparent 0, transparent 60px, rgba(255,255,255,0.03) 60px, rgba(255,255,255,0.03) 62px);
+      pointer-events: none;
+    }
+    /* ── Finish line ── */
+    .finish-line {
+      background: repeating-linear-gradient(to bottom, #fde047 0, #fde047 8px, transparent 8px, transparent 16px);
+      width: 4px;
+      opacity: 0.7;
+    }
+    /* ── Runner card ── */
+    .runner-card {
+      backdrop-filter: blur(8px);
+      transition: all 0.5s ease-out;
+    }
+    .runner-card .pig-emoji {
+      font-size: 1.6rem;
+      filter: drop-shadow(0 2px 4px rgba(0,0,0,0.4));
+      transition: transform 0.3s ease;
+    }
+    .runner-card:hover .pig-emoji {
+      transform: scale(1.2);
+    }
+    /* ── Event flash ── */
+    @keyframes event-flash {
+      0%   { opacity: 0; transform: translateY(4px); }
+      20%  { opacity: 1; transform: translateY(0); }
+      100% { opacity: 1; }
+    }
+    .event-badge { animation: event-flash 0.4s ease-out; }
+    /* ── Progress bar shimmer ── */
+    .progress-shimmer {
+      background-size: 200% 100%;
+      animation: shimmer 2s linear infinite;
+    }
+    @keyframes shimmer {
+      0%   { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+    /* ── Speed lines ── */
+    @keyframes speed-lines {
+      0%   { transform: translateX(0); opacity: 0.3; }
+      100% { transform: translateX(-20px); opacity: 0; }
+    }
+    .speed-line {
+      animation: speed-lines 0.6s linear infinite;
+    }
+    /* ── Strategy curve editor ── */
+    .strat-svg { background: rgba(0,0,0,0.25); border-radius: 0.5rem; border: 1px solid rgba(255,255,255,0.08); }
+    .strat-point {
+      cursor: grab;
+      transition: r 0.15s ease;
+    }
+    .strat-point:hover, .strat-point.dragging {
+      r: 8;
+      filter: drop-shadow(0 0 6px currentColor);
+    }
+    .strat-line { pointer-events: none; }
+    .strat-zone { fill: rgba(255,255,255,0.03); }
+    .strat-zone-label { font-size: 8px; fill: rgba(255,255,255,0.25); text-anchor: middle; }
+    /* ── Live stat bars ── */
+    .stat-bar { height: 4px; border-radius: 2px; transition: width 0.4s ease; }
+    .stat-bar-bg { background: rgba(255,255,255,0.08); }
+    .stat-energy { background: linear-gradient(90deg, #22c55e, #86efac); }
+    .stat-fatigue { background: linear-gradient(90deg, #f97316, #ef4444); }
+    .stat-label { font-size: 9px; line-height: 1; }
+    /* ── Specialization badges ── */
+    .spec-badge { font-size: 9px; padding: 1px 5px; border-radius: 6px; font-weight: 700; }
+    /* ── Stat editor ── */
+    .stat-btn { width: 18px; height: 18px; border-radius: 4px; font-size: 11px; font-weight: 900; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; border: 1px solid rgba(255,255,255,0.15); background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.6); transition: all 0.15s; }
+    .stat-btn:hover { background: rgba(255,255,255,0.15); color: white; }
+    .stat-btn:disabled { opacity: 0.2; cursor: default; }
+    .stat-gauge { height: 4px; border-radius: 2px; background: rgba(255,255,255,0.08); position: relative; overflow: hidden; }
+    .stat-gauge-fill { height: 100%; border-radius: 2px; transition: width 0.2s; }
+    .stat-row-editor { display: grid; grid-template-columns: 28px 18px 32px 18px 50px; align-items: center; gap: 2px; }
+    .terrain-indicator { animation: terrain-pulse 1.5s ease-in-out infinite; }
+    @keyframes terrain-pulse { 0%, 100% { opacity: 0.7; } 50% { opacity: 1; } }
+  </style>
+</head>
+<body class="min-h-screen bg-[radial-gradient(circle_at_top,rgba(22,57,96,0.96),rgba(8,13,26,1)_58%)] text-white">
+  {% include '_site_header.html' %}
+  <main class="mx-auto max-w-6xl px-4 py-8 space-y-6">
+    <section class="grid gap-6 md:grid-cols-2 xl:grid-cols-[1.4fr_0.6fr]">
+      <div class="rounded-3xl border border-cyan-200/10 bg-white/5 p-6 shadow-2xl shadow-cyan-950/20">
+        <div class="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <p class="text-sm uppercase tracking-[0.35em] text-cyan-200/45">Replay</p>
+            <h1 class="mt-2 text-3xl md:text-4xl font-black text-cyan-100">🏁 Course en direct</h1>
+            <p class="mt-3 max-w-2xl text-sm text-white/70">Visualise la dernière course terminée tour par tour, avec les accélérations, les glissades et les fins de course.</p>
+          </div>
+          <div class="rounded-2xl border border-cyan-300/20 bg-cyan-300/10 px-5 py-4 text-right">
+            <div class="text-xs uppercase tracking-[0.25em] text-cyan-100/55">Course</div>
+            <div id="race-label" class="mt-1 text-3xl font-black text-cyan-200">—</div>
+          </div>
+        </div>
+
+        <div class="mt-6 rounded-3xl border border-white/10 bg-slate-950/50 p-4">
+          <div class="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p class="text-xs uppercase tracking-[0.25em] text-white/40">Piste</p>
+              <div id="track-profile" class="mt-1 text-lg font-black text-white">Chargement…</div>
+            </div>
+            <div class="flex flex-wrap gap-2 text-xs font-bold">
+              <button id="play-pause" class="rounded-xl border border-cyan-300/20 bg-cyan-300/10 px-4 py-2 text-cyan-100 transition hover:bg-cyan-300/20">Pause</button>
+              <button id="restart" class="rounded-xl border border-white/10 bg-white/10 px-4 py-2 text-white transition hover:bg-white/20">Recommencer</button>
+              <button id="circuit-btn" class="rounded-xl border border-amber-300/20 bg-amber-300/10 px-4 py-2 text-amber-100 transition hover:bg-amber-300/20">🏟️ Circuit Live</button>
+              <button id="demo-btn" class="rounded-xl border border-emerald-300/20 bg-emerald-300/10 px-4 py-2 text-emerald-100 transition hover:bg-emerald-300/20">🎮 Démo</button>
+            </div>
+          </div>
+
+          <div class="mt-4 overflow-hidden rounded-3xl border border-white/10 bg-[linear-gradient(180deg,rgba(25,50,26,1),rgba(13,30,15,1))] p-6">
+            <div class="mb-4 flex items-center justify-between gap-3 text-xs font-bold uppercase tracking-[0.24em] text-white/45">
+              <span id="turn-label">Tour 0</span>
+              <span id="finished-at">—</span>
+            </div>
+            <!-- Track segments bar -->
+            <div id="track-segments" class="mb-3 flex h-6 overflow-hidden rounded-full border border-white/10"></div>
+            <div class="track-surface relative h-[18rem] md:h-[28rem] overflow-hidden rounded-2xl border border-white/10 p-4">
+              <div class="lane-stripes pointer-events-none absolute inset-0 opacity-20"></div>
+              <div id="finish-line" class="finish-line absolute bottom-0 right-8 top-0"></div>
+              <div id="lanes" class="relative h-full"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <aside class="space-y-6">
+        <section class="rounded-3xl border border-white/10 bg-white/5 p-6" style="min-height:140px">
+          <p class="text-xs uppercase tracking-[0.25em] text-white/40">Etat</p>
+          <div id="headline" class="mt-2 text-xl font-black text-cyan-100 truncate">Préparation du replay…</div>
+          <p id="subhead" class="mt-2 text-sm text-white/65 truncate">Les cochons rejoignent leur ligne de départ.</p>
+          <div class="mt-4 h-2 overflow-hidden rounded-full bg-white/10">
+            <div id="progress" class="progress-shimmer h-full w-0 rounded-full bg-gradient-to-r from-cyan-400 via-sky-300 to-yellow-300 transition-all duration-300"></div>
+          </div>
+        </section>
+
+        <section class="rounded-3xl border border-white/10 bg-white/5 p-6">
+          <div class="flex items-center justify-between gap-3">
+            <h2 class="text-lg font-black">Classement live</h2>
+            <span id="winner-pill" class="rounded-full border border-yellow-300/20 bg-yellow-300/10 px-3 py-1 text-xs font-black text-yellow-100">En course</span>
+          </div>
+          <div id="scoreboard" class="mt-4 space-y-2"></div>
+        </section>
+
+        <section class="rounded-3xl border border-white/10 bg-white/5 p-6 text-sm text-white/70">
+          <h2 class="text-lg font-black text-white">Légende</h2>
+          <ul class="mt-4 space-y-2 list-disc pl-5">
+            <li><strong>Sprint</strong> : le cochon accélère franchement.</li>
+            <li><strong>Drafting</strong> : il profite de l’aspiration.</li>
+            <li><strong>Tired</strong> : la fatigue ralentit son allure.</li>
+            <li><strong>Stumble</strong> : petit accroc dans la foulée.</li>
+          </ul>
+        </section>
+
+        <!-- Strategy editor (demo only) -->
+        <section id="strategy-editor" class="hidden rounded-3xl border border-emerald-300/15 bg-white/5 p-5">
+          <div class="flex items-center justify-between gap-2">
+            <h2 class="text-sm font-black text-emerald-200 uppercase tracking-wide">Stratégie (démo)</h2>
+            <button id="strat-apply" class="rounded-xl border border-emerald-300/20 bg-emerald-300/10 px-3 py-1 text-xs font-black text-emerald-100 transition hover:bg-emerald-300/20">Relancer</button>
+          </div>
+          <p class="mt-2 text-xs text-white/50">Intensité par phase + stats de chaque cochon (total <span id="stat-pool-label">27</span> pts).</p>
+          <div id="strat-curves" class="mt-3 space-y-4"></div>
+        </section>
+      </aside>
+    </section>
+  </main>
+
+  <script>
+    const lanesNode = document.getElementById('lanes');
+    const scoreboardNode = document.getElementById('scoreboard');
+    const trackProfileNode = document.getElementById('track-profile');
+    const raceLabelNode = document.getElementById('race-label');
+    const turnLabelNode = document.getElementById('turn-label');
+    const finishedAtNode = document.getElementById('finished-at');
+    const headlineNode = document.getElementById('headline');
+    const subheadNode = document.getElementById('subhead');
+    const progressNode = document.getElementById('progress');
+    const winnerPillNode = document.getElementById('winner-pill');
+    const playPauseButton = document.getElementById('play-pause');
+    const restartButton = document.getElementById('restart');
+
+    const EVENT_LABELS = {
+      sprint: '⚡ Sprint',
+      drafting: '💨 Aspiration',
+      tired: '🥵 Fatigue',
+      stumble: '🫨 Faux pas',
+      finished: '🏁 Arrivée',
+      leader: '🌬️ Tête (vent)',
+      exhausted: '💀 Épuisé',
+    };
+
+    const EVENT_CLASSES = {
+      sprint: 'border-yellow-300/25 bg-yellow-300/10 text-yellow-100',
+      drafting: 'border-cyan-300/25 bg-cyan-300/10 text-cyan-100',
+      tired: 'border-red-300/25 bg-red-300/10 text-red-100',
+      stumble: 'border-orange-300/25 bg-orange-300/10 text-orange-100',
+      finished: 'border-emerald-300/25 bg-emerald-300/10 text-emerald-100',
+      leader: 'border-amber-300/25 bg-amber-300/10 text-amber-100',
+      exhausted: 'border-red-400/30 bg-red-400/15 text-red-200',
+      none: 'border-white/10 bg-white/5 text-white/45',
+    };
+
+    let replay = null;
+    let timer = null;
+    let turnIndex = 0;
+    let isPlaying = true;
+    let totalDistance = 0;
+    let laneEls = new Map();
+
+    /* Returns HTML for a pig visual (avatar image or emoji fallback) */
+    function pigVisualHTML(pig, size = 24) {
+      const avatarUrl = pig.avatar_url || replay?.participant_meta?.[pig.id]?.avatar_url;
+      if (avatarUrl) {
+        return `<img src="${avatarUrl}" alt="${pig.name || ''}" width="${size}" height="${size}" style="image-rendering:pixelated;width:${size}px;height:${size}px;border-radius:4px;display:inline-block;vertical-align:middle;">`;
+      }
+      return `<span style="font-size:${Math.round(size * 0.8)}px;line-height:1;">${pig.emoji || '🐷'}</span>`;
+    }
+
+    function profileLabel(value) {
+      return {
+        MONTEE: '⛰️ Parcours vallonné',
+        DESCENTE: '🛷 Parcours descendant',
+        VIRAGE: '🌀 Tracé technique',
+        BOUE: '🟤 Piste boueuse',
+        PLAT: '🛣️ Piste rapide',
+      }[value] || value;
+    }
+
+    function eventClass(eventName) {
+      return EVENT_CLASSES[eventName || 'none'] || EVENT_CLASSES.none;
+    }
+
+    function createLane(pig, index, count) {
+      const lane = document.createElement('div');
+      lane.className = 'absolute left-0 right-0';
+      const laneHeight = 100 / Math.max(count, 1);
+      lane.style.top = `${index * laneHeight}%`;
+      lane.style.height = `${laneHeight}%`;
+      const eventName = pig.visual_event || deriveVisualEvent(pig);
+      const badgeClass = eventClass(eventName);
+      const badgeText = EVENT_LABELS[eventName] || '';
+      const energy = pig.energy ?? 100;
+      const fatigue = pig.fatigue ?? 0;
+      const terrainIcon = pig.current_terrain ? (SEGMENT_LABELS[pig.current_terrain] || '') : '';
+      lane.innerHTML = `
+        <div class="absolute inset-x-0 top-1/2 -translate-y-1/2 border-t border-dashed border-white/8"></div>
+        <div class="runner runner-card absolute top-1/2 -translate-y-1/2 flex items-center gap-2">
+          <div class="rounded-2xl border border-white/15 bg-slate-950/85 px-3 py-1.5 shadow-lg shadow-black/40">
+            <div class="flex items-center gap-2">
+              <span class="pig-emoji">${pigVisualHTML(pig, 22)}</span>
+              <span class="text-xs font-black text-white truncate max-w-[80px]">${pig.name}</span>
+            </div>
+            <div class="flex gap-1 mt-1" style="min-width:70px">
+              <div class="flex-1">
+                <div class="stat-bar-bg rounded-full overflow-hidden"><div class="stat-bar stat-energy" style="width:${energy}%"></div></div>
+              </div>
+              <div class="flex-1">
+                <div class="stat-bar-bg rounded-full overflow-hidden"><div class="stat-bar stat-fatigue" style="width:${fatigue}%"></div></div>
+              </div>
+            </div>
+          </div>
+          ${badgeText ? `<span class="event-badge rounded-full border px-2 py-0.5 text-[10px] font-black whitespace-nowrap ${badgeClass}">${badgeText}</span>` : ''}
+          ${terrainIcon ? `<span class="terrain-indicator text-xs">${terrainIcon}</span>` : ''}
+        </div>
+      `;
+      lanesNode.appendChild(lane);
+      laneEls.set(pig.id, lane);
+    }
+
+    function renderTurn() {
+      const turns = replay?.turns || [];
+      if (!turns.length) return;
+      const turn = turns[Math.min(turnIndex, turns.length - 1)];
+      const pigs = [...turn.pigs].sort((a, b) => b.distance - a.distance);
+      const leader = pigs[0];
+      const completed = ((turnIndex + 1) / turns.length) * 100;
+
+      turnLabelNode.textContent = `Tour ${turn.turn} / ${turns.length}`;
+      progressNode.style.width = `${completed}%`;
+      headlineNode.textContent = leader ? `${leader.name} mène la danse` : 'Replay en cours';
+      subheadNode.textContent = leader ? `${leader.name} parcourt ${leader.distance.toFixed(1)} m.` : 'Aucun participant.';
+
+      lanesNode.innerHTML = '';
+      laneEls = new Map();
+      pigs.forEach((pig, index) => createLane({ ...pig, owner: replay.participant_meta?.[pig.id]?.owner }, index, pigs.length));
+      pigs.forEach((pig) => {
+        const lane = laneEls.get(pig.id);
+        const runner = lane.querySelector('.runner');
+        const offset = totalDistance > 0 ? Math.min(88, Math.max(0, (pig.distance / totalDistance) * 88)) : 0;
+        runner.style.left = `${offset}%`;
+      });
+
+      scoreboardNode.innerHTML = pigs.map((pig, index) => {
+        const meta = replay.participant_meta?.[pig.id] || {};
+        const eventName = pig.visual_event || deriveVisualEvent(pig);
+        const energy = pig.energy ?? 100;
+        const fatigue = pig.fatigue ?? 0;
+        const specKey = meta.spec;
+        const specInfo = specKey ? SPEC_TYPES[specKey] : null;
+        const terrainLabel = pig.current_terrain ? (SEGMENT_LABELS[pig.current_terrain] || '') : '';
+        return `
+          <div class="rounded-xl border border-white/10 bg-black/15 px-3 py-2" style="height:68px">
+            <div class="flex items-center justify-between gap-2 h-full">
+              <div class="min-w-0 flex-1">
+                <div class="flex items-center gap-1.5 text-xs font-black text-white">
+                  <span class="text-white/45 w-4">#${index + 1}</span>
+                  ${meta.avatar_url ? `<img src="${meta.avatar_url}" width="16" height="16" style="image-rendering:pixelated;border-radius:2px;vertical-align:middle;">` : `<span>${meta.emoji || '🐷'}</span>`}
+                  <span class="truncate max-w-[80px]">${pig.name}</span>
+                  ${specInfo ? `<span class="spec-badge flex-shrink-0" style="background:${specInfo.color}22;color:${specInfo.color};border:1px solid ${specInfo.color}33">${specInfo.label}</span>` : ''}
+                </div>
+                <div class="mt-1 flex items-center gap-2 text-[10px] text-white/35">
+                  <span class="truncate">${pig.distance.toFixed(0)}m ${terrainLabel}</span>
+                  <span class="rounded-full border px-1.5 py-0 text-[9px] font-bold flex-shrink-0 ${eventClass(eventName)}">${EVENT_LABELS[eventName] || '—'}</span>
+                </div>
+                <div class="mt-1 flex gap-2 items-center">
+                  <div class="flex items-center gap-0.5 flex-1">
+                    <span class="stat-label text-green-400/60">⚡</span>
+                    <div class="stat-bar-bg rounded-full overflow-hidden flex-1 h-[4px]"><div class="stat-bar stat-energy" style="width:${energy}%"></div></div>
+                  </div>
+                  <div class="flex items-center gap-0.5 flex-1">
+                    <span class="stat-label text-orange-400/60">🔥</span>
+                    <div class="stat-bar-bg rounded-full overflow-hidden flex-1 h-[4px]"><div class="stat-bar stat-fatigue" style="width:${fatigue}%"></div></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      if (turnIndex >= turns.length - 1) {
+        winnerPillNode.textContent = replay.winner_name ? `🏆 ${replay.winner_name}` : 'Terminée';
+        headlineNode.textContent = replay.winner_name ? `${replay.winner_name} remporte la course` : 'Replay terminé';
+        subheadNode.textContent = replay.finished_at ? `Course terminée à ${replay.finished_at}.` : 'La ligne d’arrivée a été franchie.';
+        stopPlayback();
+      }
+    }
+
+    function tick() {
+      renderTurn();
+      if (turnIndex < (replay?.turns?.length || 0) - 1) {
+        turnIndex += 1;
+      }
+    }
+
+    function stopPlayback() {
+      isPlaying = false;
+      playPauseButton.textContent = 'Lecture';
+      if (timer) window.clearInterval(timer);
+      timer = null;
+    }
+
+    function startPlayback() {
+      if (!replay?.turns?.length || timer) return;
+      isPlaying = true;
+      playPauseButton.textContent = 'Pause';
+      timer = window.setInterval(tick, 550);
+    }
+
+    function restartPlayback() {
+      turnIndex = 0;
+      stopPlayback();
+      renderTurn();
+      startPlayback();
+    }
+
+    const SEGMENT_COLORS = {
+      PLAT: 'bg-amber-700/60',
+      MONTEE: 'bg-red-800/50',
+      DESCENTE: 'bg-emerald-700/50',
+      VIRAGE: 'bg-purple-700/50',
+      BOUE: 'bg-yellow-900/60',
+    };
+    const SEGMENT_LABELS = {
+      PLAT: '🛣️ Plat',
+      MONTEE: '⛰️ Montée',
+      DESCENTE: '🛷 Descente',
+      VIRAGE: '🌀 Virage',
+      BOUE: '🟤 Boue',
+    };
+
+    function renderTrackSegments(segments) {
+      const container = document.getElementById('track-segments');
+      if (!segments || !segments.length) {
+        /* Generate random segments for demo/old-format replays */
+        const allTypes = ['PLAT', 'MONTEE', 'VIRAGE', 'DESCENTE', 'BOUE'];
+        segments = [];
+        let remaining = totalDistance;
+        while (remaining > 0) {
+          const type = allTypes[Math.floor(Math.random() * allTypes.length)];
+          const len = Math.min(remaining, 60 + Math.floor(Math.random() * 120));
+          segments.push({ type, length: len });
+          remaining -= len;
+        }
+      }
+      const total = segments.reduce((s, seg) => s + seg.length, 0);
+      container.innerHTML = segments.map(seg => {
+        const pct = (seg.length / total) * 100;
+        return `<div class="${SEGMENT_COLORS[seg.type] || 'bg-white/10'} flex items-center justify-center text-[10px] font-bold text-white/70 overflow-hidden" style="width:${pct}%" title="${SEGMENT_LABELS[seg.type] || seg.type}">${pct > 15 ? (SEGMENT_LABELS[seg.type] || seg.type) : ''}</div>`;
+      }).join('');
+    }
+
+    function deriveVisualEvent(pig) {
+      if (pig.visual_event) return pig.visual_event;
+      if (pig.is_finished) return 'finished';
+      if (pig.stumbled) return 'stumble';
+      if ((pig.energy ?? 100) < 15) return 'exhausted';
+      if (pig.is_leader) return 'leader';
+      if (pig.has_draft) return 'drafting';
+      if (pig.fatigue > 60) return 'tired';
+      return 'none';
+    }
+
+    function enrichReplay(payload) {
+      /* Normalize turns and derive missing fields */
+      const turns = payload.turns || [];
+      turns.forEach(turn => {
+        turn.pigs.forEach(pig => {
+          if (!pig.visual_event) pig.visual_event = deriveVisualEvent(pig);
+        });
+      });
+      /* Compute totalDistance from max distance in last turn if no segments */
+      if (!payload.segments || !payload.segments.length) {
+        const lastTurn = turns[turns.length - 1];
+        if (lastTurn) {
+          const maxDist = Math.max(...lastTurn.pigs.map(p => p.distance));
+          totalDistance = maxDist > 0 ? maxDist : 300;
+        }
+      } else {
+        totalDistance = payload.segments.reduce((sum, s) => sum + Number(s.length || 0), 0);
+      }
+    }
+
+    /* ── Pig Specializations ── */
+    /* Each spec: 27 pts total, ONE stat at 8, ONE at 4, THREE at 5.
+       Weakness is on a DIFFERENT terrain per spec for rock-paper-scissors dynamics:
+       sprinteur(vit:8) weak on DESCENTE(end:4) — fast but tires on descents
+       grimpeur(gri:8) weak on VIRAGE(agi:4) — climber but clumsy in turns
+       endurant(end:8) weak on BOUE(for:4) — stamina but not strong in mud
+       agile(agi:8) weak on MONTEE(gri:4) — nimble but hates hills
+       costaud(for:8) weak on PLAT(vit:4) — powerful but slow on open ground */
+    const SPEC_TYPES = {
+      sprinteur: { label: '⚡ Sprinteur', desc: 'Rapide sur le plat, fatigue vite', color: '#facc15',
+        base: { vitesse: 8, endurance: 4, grimpe: 5, agilite: 5, force: 5 } },
+      grimpeur: { label: '⛰️ Grimpeur', desc: 'Excelle en montée, pataud en virage', color: '#34d399',
+        base: { vitesse: 5, endurance: 5, grimpe: 8, agilite: 4, force: 5 } },
+      endurant: { label: '🫁 Endurant', desc: 'Régulier en descente, faible en boue', color: '#60a5fa',
+        base: { vitesse: 5, endurance: 8, grimpe: 5, agilite: 5, force: 4 } },
+      agile: { label: '🌀 Agile', desc: 'Fort en virages, faible en montée', color: '#c084fc',
+        base: { vitesse: 5, endurance: 5, grimpe: 4, agilite: 8, force: 5 } },
+      costaud: { label: '💪 Costaud', desc: 'Puissant en boue, lent sur le plat', color: '#fb923c',
+        base: { vitesse: 4, endurance: 5, grimpe: 5, agilite: 5, force: 8 } },
+    };
+    const STAT_NAMES = { vitesse: '⚡ Vit', endurance: '🫁 End', grimpe: '⛰️ Gri', agilite: '🌀 Agi', force: '💪 For' };
+    const STAT_POOL = 27; /* total stat points per pig */
+    const NUM_SEGMENTS = 10; /* fixed number of circuit segments */
+
+    /* Terrain modifiers — each terrain has ONE key stat.
+       1:1 mapping so each spec shines on exactly one terrain:
+         sprinteur(vitesse)→PLAT, grimpeur(grimpe)→MONTEE,
+         agile(agilite)→VIRAGE, costaud(force)→BOUE,
+         endurant(endurance)→DESCENTE (controlled endurance descent)
+       Formula: speed *= baseMult * (1 + (keyStat - 5) * STAT_SCALE)
+       BaseMults are close together so no terrain is inherently "better" */
+    const STAT_SCALE = 0.07; /* each stat point = ±7% speed on its terrain */
+    /* Terrain character: fatigueMult adds strategic depth (save energy for hills).
+       FatigueMults are SYMMETRIC per spec: each spec's strong terrain has a
+       DIFFERENT fatigueMult, averaging to 1.0 across all terrains. */
+    const TERRAIN_EFFECTS = {
+      PLAT:     { statKey: 'vitesse',   baseMult: 0.90, fatigueMult: 0.9 },
+      MONTEE:   { statKey: 'grimpe',    baseMult: 0.90, fatigueMult: 1.3 },
+      DESCENTE: { statKey: 'endurance', baseMult: 0.90, fatigueMult: 0.8 },
+      VIRAGE:   { statKey: 'agilite',   baseMult: 0.90, fatigueMult: 1.1 },
+      BOUE:     { statKey: 'force',     baseMult: 0.90, fatigueMult: 1.2 },
+    };
+
+    /* ── Strategy Editor ── */
+    const DEMO_PIGS = [
+      { id: 1, name: 'Rillette Express', emoji: '🐷', color: '#f472b6', spec: 'sprinteur' },
+      { id: 2, name: 'Boudin Turbo', emoji: '🐽', color: '#60a5fa', spec: 'endurant' },
+      { id: 3, name: 'Saucisse Flash', emoji: '🌭', color: '#facc15', spec: 'agile' },
+      { id: 4, name: 'Groin de Tonnerre', emoji: '🐗', color: '#34d399', spec: 'grimpeur' },
+      { id: 5, name: 'Jambon Volant', emoji: '🥓', color: '#fb923c', spec: 'costaud' },
+    ];
+    const DEMO_OWNERS = ['Alice', 'Bob', 'Charlie', 'Diane', 'Émile'];
+
+    /* strategies[pigId] = array of NUM_SEGMENTS intensity values (0-100) */
+    const strategies = {};
+    /* pigStats[pigId] = { vitesse, endurance, grimpe, agilite, force } */
+    const pigStats = {};
+    /* demoSegmentTypes: the terrain type of each of the 10 segments (regenerated each demo) */
+    let demoSegmentTypes = [];
+    DEMO_PIGS.forEach(p => {
+      strategies[p.id] = Array.from({ length: NUM_SEGMENTS }, () => 40 + Math.random() * 40);
+      pigStats[p.id] = { ...SPEC_TYPES[p.spec].base };
+    });
+
+    function buildStrategyEditor() {
+      const container = document.getElementById('strat-curves');
+      container.innerHTML = '';
+      const N = NUM_SEGMENTS;
+      const W = 320, H = 70, PAD = 14;
+      const segW = (W - 2 * PAD) / (N - 1);
+
+      /* Segment terrain icons row (shared across all pigs) */
+      const terrainRow = document.createElement('div');
+      terrainRow.className = 'flex justify-between text-[9px] text-white/40 mb-1 px-1';
+      const segIcons = { PLAT: '🛣️', MONTEE: '⛰️', DESCENTE: '🛷', VIRAGE: '🌀', BOUE: '🟤' };
+      demoSegmentTypes.forEach((type, i) => {
+        const s = document.createElement('span');
+        s.textContent = segIcons[type] || '?';
+        s.title = `Segment ${i + 1}: ${SEGMENT_LABELS[type] || type}`;
+        s.className = 'w-7 text-center';
+        terrainRow.appendChild(s);
+      });
+      container.appendChild(terrainRow);
+
+      DEMO_PIGS.forEach(pig => {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'rounded-xl border border-white/5 bg-black/15 p-2';
+
+        /* Specialization label */
+        const specInfo = SPEC_TYPES[pig.spec];
+        const specRow = document.createElement('div');
+        specRow.className = 'flex items-center gap-2 mb-1';
+        specRow.innerHTML = `${pigVisualHTML(pig, 16)}<span class="spec-badge" style="background:${specInfo.color}22;color:${specInfo.color};border:1px solid ${specInfo.color}33">${specInfo.label}</span><span class="text-[9px] text-white/25">${pig.name}</span>`;
+        wrapper.appendChild(specRow);
+
+        /* SVG curve with N draggable points */
+        const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+        svg.setAttribute('class', 'strat-svg w-full');
+        svg.style.height = '56px';
+
+        /* Segment zone backgrounds */
+        for (let i = 0; i < N; i++) {
+          const x = i === 0 ? 0 : PAD + (i - 0.5) * segW;
+          const w = i === 0 || i === N - 1 ? PAD + segW / 2 : segW;
+          const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+          rect.setAttribute('x', x); rect.setAttribute('y', 0);
+          rect.setAttribute('width', w); rect.setAttribute('height', H);
+          rect.setAttribute('class', 'strat-zone');
+          if (i % 2 === 1) rect.setAttribute('fill', 'rgba(255,255,255,0.04)');
+          svg.appendChild(rect);
+        }
+
+        /* Polyline + area */
+        const polyline = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
+        polyline.setAttribute('class', 'strat-line');
+        polyline.setAttribute('stroke', pig.color);
+        polyline.setAttribute('stroke-width', '1.5');
+        polyline.setAttribute('fill', 'none');
+        polyline.setAttribute('stroke-linecap', 'round');
+        polyline.setAttribute('stroke-linejoin', 'round');
+        svg.appendChild(polyline);
+        const area = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+        area.setAttribute('fill', pig.color);
+        area.setAttribute('opacity', '0.10');
+        area.setAttribute('class', 'strat-line');
+        svg.appendChild(area);
+
+        const vals = strategies[pig.id];
+        /* Ensure we have N values */
+        while (vals.length < N) vals.push(50);
+        if (vals.length > N) vals.length = N;
+        const circleEls = [];
+        const tipEls = [];
+
+        function ptX(i) { return PAD + i * segW; }
+        function valToY(v) { return PAD + (1 - v / 100) * (H - 2 * PAD); }
+        function yToVal(y) { return Math.round(Math.max(0, Math.min(100, (1 - (y - PAD) / (H - 2 * PAD)) * 100))); }
+
+        function updateLines() {
+          const pts = vals.map((v, i) => `${ptX(i)},${valToY(v)}`).join(' ');
+          polyline.setAttribute('points', pts);
+          area.setAttribute('points', `${ptX(0)},${H - PAD} ${pts} ${ptX(N - 1)},${H - PAD}`);
+        }
+
+        for (let i = 0; i < N; i++) {
+          const cx = ptX(i);
+          const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+          circle.setAttribute('cx', cx);
+          circle.setAttribute('cy', valToY(vals[i]));
+          circle.setAttribute('r', '5');
+          circle.setAttribute('fill', pig.color);
+          circle.setAttribute('class', 'strat-point');
+          circleEls.push(circle);
+
+          const tip = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+          tip.setAttribute('x', cx);
+          tip.setAttribute('y', valToY(vals[i]) - 8);
+          tip.setAttribute('text-anchor', 'middle');
+          tip.setAttribute('fill', pig.color);
+          tip.setAttribute('font-size', '8');
+          tip.setAttribute('font-weight', 'bold');
+          tip.setAttribute('pointer-events', 'none');
+          tip.setAttribute('opacity', '0');
+          tip.textContent = Math.round(vals[i]);
+          tipEls.push(tip);
+
+          let dragging = false;
+          function onStart(e) { e.preventDefault(); dragging = true; circle.classList.add('dragging'); tip.setAttribute('opacity', '1'); }
+          function onMove(e) {
+            if (!dragging) return;
+            e.preventDefault();
+            const rect = svg.getBoundingClientRect();
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            const svgY = (clientY - rect.top) / rect.height * H;
+            const nv = yToVal(svgY);
+            vals[i] = nv;
+            circle.setAttribute('cy', valToY(nv));
+            tip.setAttribute('y', valToY(nv) - 8);
+            tip.textContent = nv;
+            updateLines();
+          }
+          function onEnd() { dragging = false; circle.classList.remove('dragging'); tip.setAttribute('opacity', '0'); }
+          circle.addEventListener('mousedown', onStart);
+          circle.addEventListener('touchstart', onStart, { passive: false });
+          window.addEventListener('mousemove', onMove);
+          window.addEventListener('touchmove', onMove, { passive: false });
+          window.addEventListener('mouseup', onEnd);
+          window.addEventListener('touchend', onEnd);
+
+          svg.appendChild(circle);
+          svg.appendChild(tip);
+        }
+        updateLines();
+        wrapper.appendChild(svg);
+
+        /* Stat point editor */
+        const statsRow = document.createElement('div');
+        statsRow.className = 'mt-2 space-y-1';
+        const stats = pigStats[pig.id];
+        const totalUsed = () => Object.values(stats).reduce((s, v) => s + v, 0);
+        const remainingEl = document.createElement('div');
+        remainingEl.className = 'text-[10px] font-bold text-right mt-1';
+
+        const STAT_COLORS = { vitesse: '#facc15', endurance: '#60a5fa', grimpe: '#34d399', agilite: '#c084fc', force: '#fb923c' };
+        const allUpdaters = [];
+
+        function refreshRemaining() {
+          const used = totalUsed();
+          const left = STAT_POOL - used;
+          remainingEl.innerHTML = `<span class="${left > 0 ? 'text-emerald-300' : 'text-white/30'}">${used}/${STAT_POOL} pts</span>${left > 0 ? ` <span class="text-emerald-400/80 ml-1">+${left} dispo</span>` : ''}`;
+        }
+
+        Object.keys(STAT_NAMES).forEach(key => {
+          const row = document.createElement('div');
+          row.className = 'stat-row-editor';
+          const lbl = document.createElement('span');
+          lbl.className = 'text-[9px] text-white/50 truncate';
+          lbl.textContent = STAT_NAMES[key].slice(2);
+          lbl.title = STAT_NAMES[key];
+          const minus = document.createElement('button');
+          minus.className = 'stat-btn'; minus.textContent = '−';
+          const valSpan = document.createElement('span');
+          valSpan.className = 'text-[10px] font-bold text-center';
+          const plus = document.createElement('button');
+          plus.className = 'stat-btn'; plus.textContent = '+';
+          const gauge = document.createElement('div');
+          gauge.className = 'stat-gauge';
+          const gaugeFill = document.createElement('div');
+          gaugeFill.className = 'stat-gauge-fill';
+          gaugeFill.style.background = STAT_COLORS[key] || '#fff';
+          gauge.appendChild(gaugeFill);
+
+          function upd() {
+            minus.disabled = stats[key] <= 1;
+            plus.disabled = totalUsed() >= STAT_POOL || stats[key] >= 10;
+            valSpan.textContent = `${stats[key]}/10`;
+            valSpan.style.color = stats[key] >= 8 ? STAT_COLORS[key] : (stats[key] <= 3 ? '#f87171' : 'rgba(255,255,255,0.7)');
+            gaugeFill.style.width = `${stats[key] * 10}%`;
+            refreshRemaining();
+          }
+          minus.onclick = () => { if (stats[key] > 1) { stats[key]--; allUpdaters.forEach(u => u()); } };
+          plus.onclick = () => { if (totalUsed() < STAT_POOL && stats[key] < 10) { stats[key]++; allUpdaters.forEach(u => u()); } };
+          allUpdaters.push(upd);
+          upd();
+          row.append(lbl, minus, valSpan, plus, gauge);
+          statsRow.appendChild(row);
+        });
+        statsRow.appendChild(remainingEl);
+        wrapper.appendChild(statsRow);
+
+        container.appendChild(wrapper);
+      });
+    }
+
+    function showStrategyEditor() {
+      document.getElementById('strategy-editor').classList.remove('hidden');
+      buildStrategyEditor();
+    }
+
+    function hideStrategyEditor() {
+      document.getElementById('strategy-editor').classList.add('hidden');
+    }
+
+    /* Find which segment index (0..N-1) a pig is on given its distance */
+    function getSegmentIndex(segments, distance) {
+      let cumul = 0;
+      for (let i = 0; i < segments.length; i++) {
+        cumul += segments[i].length;
+        if (distance < cumul) return i;
+      }
+      return segments.length - 1;
+    }
+
+    function generateDemoReplay() {
+      const pigs = DEMO_PIGS.map(p => ({ id: p.id, name: p.name, emoji: p.emoji, spec: p.spec }));
+      /* Shuffle pig processing order to avoid array-position bias */
+      for (let i = pigs.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [pigs[i], pigs[j]] = [pigs[j], pigs[i]];
+      }
+      const TOTAL = 600;
+      const MAX_TURNS = 100;
+      const turns = [];
+
+      /* Generate exactly NUM_SEGMENTS segments with balanced terrain:
+         each of 5 types appears at least once, then 5 more are random.
+         This ensures no spec is starved of their terrain. */
+      const segTypes = ['PLAT', 'MONTEE', 'VIRAGE', 'DESCENTE', 'BOUE'];
+      const demoSegments = [];
+      demoSegmentTypes = [];
+      /* 5 guaranteed + 5 random, then shuffle */
+      const terrainList = [...segTypes];
+      for (let i = 0; i < NUM_SEGMENTS - 5; i++) {
+        terrainList.push(segTypes[Math.floor(Math.random() * segTypes.length)]);
+      }
+      /* Fisher-Yates shuffle */
+      for (let i = terrainList.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [terrainList[i], terrainList[j]] = [terrainList[j], terrainList[i]];
+      }
+      const segLen = TOTAL / NUM_SEGMENTS;
+      for (let i = 0; i < NUM_SEGMENTS; i++) {
+        const len = Math.round(segLen * (0.7 + Math.random() * 0.6));
+        demoSegments.push({ type: terrainList[i], length: len });
+        demoSegmentTypes.push(terrainList[i]);
+      }
+      /* Normalize to exactly TOTAL */
+      const rawTotal = demoSegments.reduce((s, seg) => s + seg.length, 0);
+      demoSegments.forEach(seg => { seg.length = Math.round(seg.length / rawTotal * TOTAL); });
+      /* Fix rounding */
+      const diff = TOTAL - demoSegments.reduce((s, seg) => s + seg.length, 0);
+      demoSegments[demoSegments.length - 1].length += diff;
+
+      /* Running state per pig */
+      const state = pigs.map(() => ({
+        distance: 0, fatigue: 0, energy: 100,
+        finished: false, finishTurn: null,
+      }));
+
+      for (let t = 1; t <= MAX_TURNS; t++) {
+        /* Rank by distance for drafting/leader detection */
+        const ranked = pigs.map((p, i) => ({ i, dist: state[i].distance }))
+          .sort((a, b) => b.dist - a.dist);
+
+        const pigStates = pigs.map((pig, i) => {
+          const s = state[i];
+          if (s.finished) {
+            return {
+              id: pig.id, name: pig.name, emoji: pig.emoji,
+              distance: TOTAL, fatigue: s.fatigue, energy: s.energy,
+              is_finished: true, stumbled: false, has_draft: false,
+              is_leader: false, current_terrain: null,
+            };
+          }
+
+          const stats = pigStats[pig.id];
+          const segIdx = getSegmentIndex(demoSegments, s.distance);
+          const terrain = demoSegments[segIdx].type;
+          const terrainFx = TERRAIN_EFFECTS[terrain] || TERRAIN_EFFECTS.PLAT;
+
+          /* Strategy intensity for current segment */
+          const strat = strategies[pig.id];
+          const intensity = strat[Math.min(segIdx, strat.length - 1)] || 50;
+
+          /* ── Speed calculation ── */
+          const BASE_SPEED = 8;
+
+          /* Terrain modifier: baseMult × (1 + (keyStat - 5) × STAT_SCALE)
+             stat 3 → ×0.76, stat 5 → ×1.0, stat 8 → ×1.36 */
+          const keyStat = stats[terrainFx.statKey] || 5;
+          const terrainMult = terrainFx.baseMult * (1 + (keyStat - 5) * STAT_SCALE);
+
+          /* Intensity multiplier (0.70 - 1.20) */
+          const intensityMult = 0.70 + (intensity / 100) * 0.50;
+
+          /* Energy penalty: below 25 = significant slowdown */
+          const energyPenalty = s.energy < 25 ? 0.55 + (s.energy / 25) * 0.45 : 1.0;
+
+          /* Fatigue debuff: kicks in at 40, harsh above 70
+             fatigue 40→1.0, 70→0.80, 100→0.60 */
+          let fatigueDebuff = 1.0;
+          if (s.fatigue > 40) fatigueDebuff = 1 - (s.fatigue - 40) / 150;
+
+          let speed = BASE_SPEED * terrainMult * intensityMult * energyPenalty * fatigueDebuff;
+
+          /* Drafting: 2-15m behind = 10% speed boost */
+          const rank = ranked.findIndex(r => r.i === i);
+          let hasDraft = false;
+          if (rank > 0) {
+            const gap = ranked[rank - 1].dist - s.distance;
+            if (gap > 2 && gap < 15) {
+              hasDraft = true;
+              speed *= 1.10;
+            }
+          }
+
+          /* Leader penalty: 8% headwind + extra fatigue (from turn 1) */
+          const isLeader = rank === 0;
+          if (isLeader) speed *= 0.92;
+
+          /* Random variation: Flamme Rouge "card draw" (±2m) */
+          speed += (Math.random() - 0.4) * 2.5;
+          speed = Math.max(1, speed);
+
+          /* Stumble: more likely on technical terrain with low agility */
+          const stumbleBase = (terrain === 'VIRAGE' || terrain === 'BOUE') ? 0.06 : 0.02;
+          const stumbleChance = stumbleBase * Math.max(0.2, 1 - stats.agilite / 12);
+          const stumbled = Math.random() < stumbleChance;
+          if (stumbled) speed *= 0.35;
+
+          const newDist = Math.min(TOTAL, s.distance + speed);
+
+          /* ── Fatigue ── same for all specs (no endurance bonus).
+             Differentiation comes ONLY from terrain stat speed. */
+          let fatigueGain = (intensity / 100) * 2.5 * terrainFx.fatigueMult;
+          if (isLeader) fatigueGain += 1.8;
+          if (hasDraft) fatigueGain -= 2.2;
+          if (intensity < 20) fatigueGain -= 0.8;
+          const newFatigue = Math.max(0, Math.min(100, s.fatigue + fatigueGain));
+
+          /* ── Energy ── same for all specs */
+          let energyDelta = -(intensity / 100) * 1.8;
+          if (intensity < 20) energyDelta += 0.7;
+          if (hasDraft) energyDelta += 0.5;
+          const newEnergy = Math.max(0, Math.min(100, s.energy + energyDelta));
+
+          /* Update state */
+          s.distance = newDist;
+          s.fatigue = newFatigue;
+          s.energy = newEnergy;
+          if (newDist >= TOTAL && !s.finished) { s.finished = true; s.finishTurn = t; }
+
+          return {
+            id: pig.id, name: pig.name, emoji: pig.emoji,
+            distance: parseFloat(newDist.toFixed(1)),
+            fatigue: parseFloat(newFatigue.toFixed(1)),
+            energy: parseFloat(newEnergy.toFixed(1)),
+            is_finished: s.finished, stumbled, has_draft: hasDraft,
+            is_leader: isLeader,
+            current_terrain: terrain,
+          };
+        });
+        turns.push({ turn: t, pigs: pigStates });
+        if (state.every(s => s.finished)) break;
+      }
+
+      /* Determine winner from finish order */
+      const finishOrder = pigs.map((pig, i) => ({ pig, i, turn: state[i].finishTurn || MAX_TURNS + 1, dist: state[i].distance }))
+        .sort((a, b) => a.turn - b.turn || b.dist - a.dist);
+      const participantMeta = {};
+      pigs.forEach((pig, i) => {
+        const pos = finishOrder.findIndex(f => f.i === i) + 1;
+        participantMeta[pig.id] = { emoji: pig.emoji, owner: DEMO_OWNERS[i], finish_position: pos, spec: pig.spec };
+      });
+
+      return {
+        turns,
+        segments: demoSegments,
+        participant_meta: participantMeta,
+        track_profile: segTypes[Math.floor(Math.random() * 5)],
+        race_id: 'DEMO',
+        winner_name: finishOrder[0].pig.name,
+        finished_at: null,
+      };
+    }
+
+    async function loadReplay() {
+      try {
+        const response = await fetch('/api/race/latest/replay');
+        const payload = await response.json();
+        if (!response.ok) throw new Error(payload.error || 'Impossible de charger le replay.');
+
+        replay = payload;
+        enrichReplay(replay);
+        hideStrategyEditor();
+        renderTrackSegments(replay.segments);
+        trackProfileNode.textContent = profileLabel(payload.track_profile);
+        raceLabelNode.textContent = payload.race_id ? `#${payload.race_id}` : '—';
+        finishedAtNode.textContent = payload.finished_at ? `Arrivée ${payload.finished_at}` : 'Dernière course';
+        winnerPillNode.textContent = payload.winner_name ? `🏆 ${payload.winner_name}` : 'En course';
+        restartPlayback();
+      } catch (error) {
+        /* Fallback: load demo replay */
+        loadDemo();
+      }
+    }
+
+    function loadDemo() {
+      replay = generateDemoReplay();
+      enrichReplay(replay);
+      renderTrackSegments(replay.segments);
+      trackProfileNode.textContent = '🎮 ' + profileLabel(replay.track_profile) + ' (démo)';
+      raceLabelNode.textContent = 'DÉMO';
+      finishedAtNode.textContent = 'Mode démonstration';
+      winnerPillNode.textContent = 'En course';
+      headlineNode.textContent = 'Course de démonstration';
+      subheadNode.textContent = 'Données simulées pour le développement.';
+      showStrategyEditor();
+      restartPlayback();
+    }
+
+    playPauseButton.addEventListener('click', () => {
+      if (!replay?.turns?.length) return;
+      if (isPlaying) stopPlayback();
+      else startPlayback();
+    });
+
+    restartButton.addEventListener('click', restartPlayback);
+    document.getElementById('demo-btn').addEventListener('click', loadDemo);
+    document.getElementById('strat-apply').addEventListener('click', loadDemo);
+
+    loadReplay();
+
+    // ════════════════════════════════════════════════════════════════
+    //  CIRCUIT LIVE — Full-screen overlay + auto-trigger
+    // ════════════════════════════════════════════════════════════════
+    const circuitOverlay = document.createElement('div');
+    circuitOverlay.id = 'circuit-live-overlay';
+    circuitOverlay.style.cssText = 'position:fixed;inset:0;z-index:10000;display:none;';
+    circuitOverlay.innerHTML = '<iframe id="circuit-iframe" src="" style="width:100%;height:100%;border:none;"></iframe>';
+    document.body.appendChild(circuitOverlay);
+
+    let _circuitLastFinished = null;
+    let _circuitPhase = 'idle';
+
+    function openCircuit() {
+      const iframe = document.getElementById('circuit-iframe');
+      iframe.src = '/circuit';
+      circuitOverlay.style.display = 'block';
+    }
+
+    function closeCircuitOverlay() {
+      circuitOverlay.style.display = 'none';
+      const iframe = document.getElementById('circuit-iframe');
+      iframe.src = '';
+    }
+
+    // Close on Escape
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && circuitOverlay.style.display === 'block') {
+        closeCircuitOverlay();
+      }
+    });
+
+    // Manual button
+    document.getElementById('circuit-btn').addEventListener('click', openCircuit);
+
+    // Polling to auto-open circuit when a race is about to start
+    async function pollForCircuit() {
+      try {
+        const resp = await fetch('/api/race/live-state');
+        const state = await resp.json();
+        const prev = _circuitPhase;
+        _circuitPhase = state.phase;
+
+        // Auto-open when entering pre_race phase
+        if (state.phase === 'pre_race' && prev === 'idle') {
+          openCircuit();
+        }
+
+        // Track finished race ID
+        if (state.finished_race_id) {
+          if (_circuitLastFinished === null) {
+            _circuitLastFinished = state.finished_race_id;
+          } else if (state.finished_race_id !== _circuitLastFinished) {
+            _circuitLastFinished = state.finished_race_id;
+            // Reload the main replay too
+            setTimeout(loadReplay, 2000);
+          }
+        }
+      } catch (e) { console.warn('[live] Erreur poll circuit', e); }
+    }
+
+    const _circuitPollTimer = setInterval(pollForCircuit, 4000);
+    // Initial poll
+    setTimeout(pollForCircuit, 1000);
+
+    window.addEventListener('beforeunload', () => {
+      clearInterval(_circuitPollTimer);
+      if (timer) clearInterval(timer);
+    });
+  </script>
+{% include '_footer.html' %}
+</body>
+</html>

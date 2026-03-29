@@ -1,0 +1,488 @@
+{% from '_pig_avatar.html' import pig_display %}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🐷 Derby des Groins - Courses</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * { font-family: 'Nunito', sans-serif; }
+        .font-title { font-family: 'Lilita One', cursive; }
+        body {
+            background: #180a20;
+            background-image:
+                radial-gradient(circle at 15% 18%, rgba(244, 114, 182, 0.22), transparent 32%),
+                radial-gradient(circle at 82% 10%, rgba(251, 146, 60, 0.12), transparent 28%),
+                radial-gradient(circle at 50% 100%, rgba(190, 24, 93, 0.10), transparent 35%),
+                linear-gradient(180deg, #210d29 0%, #100915 100%);
+            min-height: 100vh;
+        }
+        .card {
+            background: linear-gradient(180deg, rgba(255,255,255,0.055) 0%, rgba(255,240,246,0.03) 100%);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 205, 226, 0.12);
+            border-radius: 1.5rem;
+            box-shadow: 0 16px 50px rgba(18, 8, 20, 0.28);
+        }
+        .soft-card {
+            background: rgba(255, 232, 240, 0.035);
+            border: 1px solid rgba(255, 205, 226, 0.09);
+            border-radius: 1rem;
+        }
+        .pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.45rem;
+            padding: 0.42rem 0.82rem;
+            border-radius: 999px;
+            font-size: 0.75rem;
+            font-weight: 800;
+        }
+        .hero-card {
+            background: linear-gradient(135deg, rgba(244, 114, 182, 0.16), rgba(251, 146, 60, 0.08));
+            border: 1px solid rgba(244, 114, 182, 0.22);
+            border-radius: 1.5rem;
+        }
+        .tab-btn { transition: all 0.2s; }
+        .tab-btn.active {
+            background: rgba(244, 114, 182, 0.15);
+            border-color: rgba(244, 114, 182, 0.4);
+            color: #f9a8d4;
+        }
+        .tab-panel { display: none; }
+        .tab-panel.active { display: block; }
+
+        /* Ligne de créneau compact */
+        .slot-row {
+            cursor: pointer;
+            transition: all 0.15s;
+            border-left: 3px solid transparent;
+        }
+        .slot-row:hover { background: rgba(255,255,255,0.03); }
+        .slot-row.inscribed {
+            border-left-color: rgba(52,211,153,0.6);
+            background: rgba(52,211,153,0.04);
+        }
+        .slot-row.inscribed:hover { background: rgba(52,211,153,0.07); }
+        .slot-row.expanded { background: rgba(244,114,182,0.05); }
+        .slot-row.is-next:not(.inscribed) { background: rgba(250,204,21,0.04); }
+
+        /* Panel d'inscription dépliable */
+        .slot-detail {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+        }
+        .slot-detail.open { max-height: 700px; }
+
+        .table-shell {
+            overflow: hidden;
+            border-radius: 1rem;
+            border: 1px solid rgba(255, 205, 226, 0.09);
+            background: rgba(255, 232, 240, 0.03);
+        }
+        .table-shell table { width: 100%; border-collapse: collapse; }
+        .table-shell th, .table-shell td {
+            padding: 0.95rem 1rem;
+            border-bottom: 1px solid rgba(255, 205, 226, 0.07);
+            text-align: left;
+            vertical-align: top;
+        }
+        .table-shell th {
+            color: rgba(255, 255, 255, 0.55);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            font-size: 0.72rem;
+            font-weight: 800;
+            background: rgba(255, 232, 240, 0.04);
+        }
+        .table-shell tr:last-child td { border-bottom: none; }
+        .table-shell tr.row-inscribed { border-left: 3px solid rgba(52,211,153,0.5); }
+    </style>
+</head>
+<body>
+{% set active_page = 'courses' %}
+{% include "_site_header.html" %}
+
+<main class="max-w-6xl mx-auto px-4 py-8 space-y-6">
+    {% include '_flash.html' %}
+
+    {# ══════════════════════════════════════════════ #}
+    {# HERO CARD simplifié                            #}
+    {# ══════════════════════════════════════════════ #}
+    <section class="hero-card p-6 lg:p-8">
+        <p class="text-xs uppercase tracking-[0.35em] text-pink-200/70 font-extrabold">Inscription aux courses</p>
+        <h1 class="font-title text-3xl md:text-4xl text-white mt-3">📅 Courses — Inscrire mon cochon</h1>
+        <p class="text-white/55 font-semibold mt-3 max-w-3xl">
+            Choisis les courses de la semaine et clique sur <strong class="text-pink-300">➕ Inscrire</strong> pour engager ton cochon.
+            Quota : {{ weekly_quota }} courses max par cochon et par semaine. Les creneaux ou ton cochon est inscrit sont marques d'une <strong class="text-emerald-300">bordure verte</strong>.
+        </p>
+
+        {# Barre résumé cochons #}
+        {% if pigs_data %}
+        <div class="flex flex-wrap gap-3 mt-5">
+            {% for pd in pigs_data %}
+            {% set pig = pd.pig %}
+            <div class="flex items-center gap-2.5 pill bg-white/8 border border-white/10 !py-2 !px-4">
+                {{ pig_display(pig, 'text-lg', 24) }}
+                <span class="text-white font-bold text-sm">{{ pig.name }}</span>
+                <span class="text-xs font-extrabold
+                    {% if pd.weekly_remaining == 0 %}text-red-300
+                    {% elif pd.weekly_remaining == 1 %}text-amber-300
+                    {% else %}text-emerald-300{% endif %}">
+                    {{ pd.weekly_remaining }}/{{ weekly_quota }} restantes
+                </span>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        {# Prochaines courses de vos cochons #}
+        {% if next_pig_races %}
+        <div class="soft-card p-4 mt-5" style="background: rgba(52,211,153,0.06); border-color: rgba(52,211,153,0.15);">
+            <div class="flex items-center gap-2 mb-3">
+                <span class="text-emerald-400 text-lg">🏁</span>
+                <p class="text-emerald-200 font-extrabold text-sm">Prochaines courses de vos cochons
+                    <span class="pill !px-2 !py-0.5 bg-emerald-500/15 text-emerald-200 border border-emerald-400/25 text-[11px] ml-1">{{ total_inscribed }} inscription{{ 's' if total_inscribed > 1 else '' }}</span>
+                </p>
+            </div>
+            <div class="flex flex-wrap gap-2">
+                {% for race in next_pig_races %}
+                <div class="flex items-center gap-2 pill bg-emerald-500/10 border border-emerald-400/20 !py-1.5 !px-3">
+                    {{ pig_display(race.pig, 'text-sm', 18) }}
+                    <span class="text-white font-bold text-xs">{{ race.pig.name }}</span>
+                    <span class="text-emerald-300/70 text-[11px] font-semibold">{{ race.date_label }} {{ race.slot.strftime('%H:%M') }}</span>
+                    <span class="text-white/30 text-[11px]">{{ race.theme.emoji }}</span>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% elif pigs_data %}
+        <div class="soft-card p-4 mt-5" style="background: rgba(255,255,255,0.02); border-color: rgba(255,255,255,0.06);">
+            <div class="flex items-center gap-2">
+                <span class="text-white/30 text-lg">📭</span>
+                <p class="text-white/40 font-semibold text-sm">Aucun cochon inscrit pour le moment. Clique sur <strong class="text-pink-300">➕ Inscrire</strong> ci-dessous pour engager ton cochon !</p>
+            </div>
+        </div>
+        {% endif %}
+    </section>
+
+    {# ══════════════════════════════════════════════ #}
+    {# ONGLETS (2)                                    #}
+    {# ══════════════════════════════════════════════ #}
+    <div class="flex flex-wrap gap-2">
+        <button class="tab-btn active card px-4 py-3 text-sm font-bold border border-white/10 cursor-pointer" data-tab="planifier">🎯 Inscrire mon cochon</button>
+        <button class="tab-btn card px-4 py-3 text-sm font-bold border border-white/10 cursor-pointer text-white/50" data-tab="mois">🧾 Vue 30 jours</button>
+    </div>
+
+    {# ══════════════════════════════════════════════ #}
+    {# ONGLET 1 : ACCORDÉON JOUR / CRÉNEAU            #}
+    {# ══════════════════════════════════════════════ #}
+    <div id="tab-planifier" class="tab-panel active space-y-4">
+
+        {% set current_date = {'val': ''} %}
+        {% for slot in next_week_slots %}
+            {% set is_new_day = (slot.date_key != current_date.val) %}
+            {% if is_new_day %}
+                {# Fermer le jour précédent #}
+                {% if current_date.val != '' %}
+                    </div></div>
+                {% endif %}
+                {% if current_date.update({'val': slot.date_key}) %}{% endif %}
+
+                {# En-tête du jour #}
+                <div class="soft-card overflow-hidden">
+                    <div class="px-4 py-3 border-b border-white/8 bg-white/[0.04] flex items-center gap-3">
+                        <span class="font-title text-2xl text-white">{{ slot.slot.strftime('%d') }}</span>
+                        <div>
+                            <p class="text-white font-extrabold text-sm leading-tight">{{ slot.date_label }}</p>
+                            <p class="text-white/40 text-[11px] font-semibold">{{ slot.theme.emoji }} {{ slot.theme.name }}</p>
+                        </div>
+                        {% set day_slots = next_week_slots | selectattr('date_key', 'equalto', slot.date_key) | list %}
+                        {% set day_inscribed = day_slots | selectattr('user_plans') | list | length %}
+                        <div class="ml-auto flex items-center gap-2">
+                            {% if day_inscribed > 0 %}
+                            <span class="pill !px-2 !py-1 bg-emerald-500/12 text-emerald-200 border border-emerald-400/20 text-[11px]">{{ day_inscribed }} inscription{{ 's' if day_inscribed > 1 else '' }}</span>
+                            {% endif %}
+                            <span class="pill !px-2 !py-1 bg-white/8 text-white/50 border border-white/10 text-[11px]">{{ day_slots | length }} creneau{{ 'x' if day_slots | length > 1 else '' }}</span>
+                        </div>
+                    </div>
+                    <div class="divide-y divide-white/[0.06]">
+            {% endif %}
+
+            {# ── Ligne créneau compact ── #}
+            {% set has_my_pig = slot.user_plans | length > 0 %}
+            <div class="slot-row {% if has_my_pig %}inscribed{% endif %} {% if slot.is_next %}is-next{% endif %}
+                 px-4 py-3 flex items-center gap-2 sm:gap-3" data-slot-idx="{{ loop.index }}">
+
+                {# Heure #}
+                <span class="text-white font-extrabold text-sm w-12 shrink-0">{{ slot.slot.strftime('%H:%M') }}</span>
+
+                {# Thème pill #}
+                {% set accent = slot.theme.accent %}
+                <span class="pill !px-2 !py-0.5 text-[11px] truncate max-w-[9rem] sm:max-w-[12rem]
+                    {% if accent == 'red' %}bg-red-500/12 text-red-200 border border-red-400/20
+                    {% elif accent == 'cyan' %}bg-cyan-500/12 text-cyan-200 border border-cyan-400/20
+                    {% elif accent == 'amber' %}bg-amber-500/12 text-amber-100 border border-amber-400/20
+                    {% elif accent == 'emerald' %}bg-emerald-500/12 text-emerald-200 border border-emerald-400/20
+                    {% else %}bg-pink-500/12 text-pink-200 border border-pink-400/20{% endif %}">
+                    {{ slot.theme.emoji }} {{ slot.theme.tag }}
+                </span>
+
+                {# Compteurs #}
+                <span class="text-white/35 text-[11px] font-semibold hidden sm:inline whitespace-nowrap">{{ slot.planned_count }} plans · {{ slot.participants | length }} partants</span>
+
+                {# Mon cochon inscrit (bulles vertes) #}
+                <div class="flex items-center gap-1 ml-auto shrink-0">
+                    {% if has_my_pig %}
+                        {% for plan in slot.user_plans %}
+                            {% if plan.pig %}
+                            <span class="inline-flex h-6 w-6 items-center justify-center rounded-full border-2 border-emerald-400/50 bg-emerald-500/15 text-xs" title="{{ plan.pig.name }}">
+                                {{ pig_display(plan.pig, 'text-xs', 16) }}
+                            </span>
+                            {% endif %}
+                        {% endfor %}
+                    {% endif %}
+                </div>
+
+                {# Badge Prochaine #}
+                {% if slot.is_next %}
+                <span class="pill !px-2 !py-0.5 bg-yellow-400/15 text-yellow-200 border border-yellow-400/20 text-[11px] hidden md:inline-flex">Prochaine</span>
+                {% endif %}
+
+                {# CTA expand #}
+                <span class="expand-btn pill !px-3 !py-1.5 text-[11px] font-extrabold shrink-0 select-none
+                    {% if has_my_pig %}bg-emerald-500/15 text-emerald-200 border border-emerald-400/30
+                    {% elif slot.is_locked %}bg-white/8 text-white/40 border border-white/10
+                    {% else %}bg-pink-500/15 text-pink-200 border border-pink-400/30{% endif %}">
+                    {% if has_my_pig %}✅ Inscrit ▾
+                    {% elif slot.is_locked %}🔒 {{ slot.lock_reason or 'Verrou' }}
+                    {% else %}➕ Inscrire ▾{% endif %}
+                </span>
+            </div>
+
+            {# ── Panel d'inscription (caché par défaut) — layout horizontal ── #}
+            <div class="slot-detail" id="detail-{{ loop.index }}">
+                <div class="px-4 py-3 bg-white/[0.015]">
+
+                    {# Layout horizontal : infos | inscription | partants #}
+                    <div class="flex flex-col lg:flex-row lg:items-start gap-4">
+
+                        {# Colonne 1 : Infos thème #}
+                        <div class="lg:w-48 shrink-0">
+                            <p class="text-white font-bold text-sm">{{ slot.theme.name }}</p>
+                            <p class="text-white/45 text-[11px] font-semibold mt-1">🎯 {{ slot.theme.focus_label }}</p>
+                            <div class="flex flex-wrap gap-1.5 mt-2">
+                                {% if slot.theme.reward_multiplier > 1 %}
+                                <span class="pill !px-2 !py-0.5 bg-yellow-400/15 text-yellow-100 border border-yellow-400/20 text-[10px]">💰 x{{ slot.theme.reward_multiplier }}</span>
+                                {% endif %}
+                                {% if slot.race %}
+                                <span class="pill !px-2 !py-0.5 bg-indigo-500/12 text-indigo-200 border border-indigo-400/20 text-[10px]">Course #{{ slot.race.id }}</span>
+                                {% endif %}
+                                {% if slot.race and slot.race.status == 'open' %}
+                                <a href="/paris" class="pill !px-2 !py-0.5 bg-pink-500/15 text-pink-200 border border-pink-400/20 text-[10px] hover:bg-pink-500/25 transition-colors">💰 Parier</a>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        {# Colonne 2 : Inscription (principale) #}
+                        <div class="flex-1 min-w-0">
+                            <p class="text-white font-extrabold text-xs mb-2">📝 Inscrire mon cochon</p>
+                            {% if slot.is_locked %}
+                            <div class="mb-2 p-2 bg-amber-500/10 border border-amber-500/20 rounded-lg text-[10px] text-amber-200/80 font-bold flex items-center gap-2">
+                                <span>⚠️</span>
+                                <span>La liste des partants est figée : des paris ont déjà été placés. Anticipez la prochaine fois !</span>
+                            </div>
+                            {% endif %}
+                            <div class="space-y-1.5">
+                                {% for option in slot.pig_options %}
+                                {% set pig = option.pig %}
+                                <form method="POST" action="/courses/plan" class="flex items-center gap-2 rounded-lg px-2.5 py-2
+                                    {% if option.is_actual_participant %}bg-emerald-500/8 border border-emerald-400/15
+                                    {% elif option.is_planned %}bg-yellow-500/8 border border-yellow-400/15
+                                    {% else %}bg-white/[0.03] border border-white/[0.06]{% endif %}">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <input type="hidden" name="pig_id" value="{{ pig.id }}">
+                                    <input type="hidden" name="scheduled_at" value="{{ slot.slot_key }}">
+                                    <input type="hidden" name="strategy_phase_1" value="{{ option.current_strategy_profile.phase_1 }}">
+                                    <input type="hidden" name="strategy_phase_2" value="{{ option.current_strategy_profile.phase_2 }}">
+                                    <input type="hidden" name="strategy_phase_3" value="{{ option.current_strategy_profile.phase_3 }}">
+
+                                    <span class="text-base shrink-0">{{ pig_display(pig, 'text-base', 18) }}</span>
+                                    <span class="text-white font-bold text-xs truncate">{{ pig.name }}</span>
+                                    <span class="text-white/35 text-[10px] font-semibold whitespace-nowrap hidden sm:inline">
+                                        {% if option.is_actual_participant %}✅ Partant
+                                        {% elif option.is_planned %}📌 Planifie
+                                        {% elif option.disabled_reason %}{{ option.disabled_reason }}
+                                        {% else %}{{ option.weekly_commitments }}/{{ weekly_quota }}{% endif %}
+                                    </span>
+
+                                    <button type="submit" class="ml-auto pill !px-2.5 !py-1 text-[10px] font-extrabold shrink-0 transition-all
+                                        {% if option.is_actual_participant %}bg-emerald-500/20 text-emerald-200 border border-emerald-400/30
+                                        {% elif option.is_planned %}bg-yellow-500/20 text-yellow-200 border border-yellow-400/30 hover:bg-yellow-500/30
+                                        {% elif not option.can_toggle %}bg-white/8 text-white/40 border border-white/10
+                                        {% else %}bg-pink-500/20 text-pink-200 border border-pink-400/30 hover:bg-pink-500/30{% endif %}"
+                                        {% if not option.can_toggle and not option.is_planned %}disabled{% endif %}>
+                                        {% if option.is_actual_participant %}✅ Partant
+                                        {% elif option.is_planned %}❌ Desinscrire
+                                        {% elif not option.can_toggle %}🚫
+                                        {% else %}➕ Inscrire{% endif %}
+                                    </button>
+                                </form>
+                                {% endfor %}
+                            </div>
+                        </div>
+
+                        {# Colonne 3 : Partants #}
+                        {% if slot.participants %}
+                        <div class="lg:w-56 shrink-0">
+                            <p class="text-white/50 text-xs font-bold mb-2">{{ slot.participants | length }} partants</p>
+                            <div class="flex flex-wrap gap-1.5">
+                                {% for p in slot.participants[:8] %}
+                                <span class="inline-flex items-center gap-1 pill !px-2 !py-0.5 bg-white/[0.04] border border-white/[0.06] text-[10px] text-white/55">
+                                    {% if p.avatar_url %}<img src="{{ p.avatar_url }}" width="12" height="12" class="inline" style="image-rendering:pixelated">{% else %}{{ p.emoji }}{% endif %}
+                                    {{ p.name }}
+                                    <span class="text-yellow-300/40">x{{ "%.1f"|format(p.odds or 0) }}</span>
+                                </span>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        {% elif slot.user_plan_names %}
+                        <div class="lg:w-48 shrink-0">
+                            <p class="text-white/50 text-xs font-bold mb-2">Planifies</p>
+                            <div class="flex flex-wrap gap-1.5">
+                                {% for name in slot.user_plan_names %}
+                                <span class="pill !px-2 !py-0.5 bg-white/[0.04] border border-white/[0.06] text-[10px] text-white/50">📌 {{ name }}</span>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        {% endif %}
+
+                    </div>
+                </div>
+            </div>
+
+        {% endfor %}
+        {# Fermer le dernier jour #}
+        {% if next_week_slots %}
+            </div></div>
+        {% endif %}
+
+        {% if not next_week_slots %}
+        <div class="card p-8 text-center">
+            <p class="text-white/40 font-semibold">Aucun creneau de course programme pour le moment.</p>
+        </div>
+        {% endif %}
+
+    </div>{# /tab-planifier #}
+
+    {# ══════════════════════════════════════════════ #}
+    {# ONGLET 2 : VUE 30 JOURS                       #}
+    {# ══════════════════════════════════════════════ #}
+    <div id="tab-mois" class="tab-panel">
+
+    <section class="space-y-4">
+        <div>
+            <h2 class="font-title text-3xl text-white">🧾 Vue sur 30 jours</h2>
+            <p class="text-white/45 font-semibold mt-1">Pour prendre de l'avance sur les gros derbys du mois.</p>
+        </div>
+        <div class="card p-5 lg:p-6">
+            <div class="table-shell overflow-x-auto">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Theme</th>
+                            <th>Etat</th>
+                            <th>Mes cochons</th>
+                            <th>Activite</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for slot in month_slots %}
+                        {% set has_plan = slot.user_plan_names | length > 0 if slot.user_plan_names else false %}
+                        <tr class="{% if has_plan %}row-inscribed{% endif %}">
+                            <td class="text-white font-bold whitespace-nowrap">
+                                {{ slot.day_name }}<br>
+                                <span class="text-white/40 text-xs font-semibold">{{ slot.slot.strftime('%d/%m/%Y %H:%M') }}</span>
+                            </td>
+                            <td>
+                                <p class="text-white font-bold">{{ slot.theme.emoji }} {{ slot.theme.name }}</p>
+                                <p class="text-white/40 text-xs font-semibold mt-1">{{ slot.theme.tag }}</p>
+                            </td>
+                            <td>
+                                {% if slot.is_locked %}
+                                <span class="pill bg-white/8 text-white/60 border border-white/10">Verrouillee ({{ slot.lock_reason or 'Verrou' }})</span>
+                                {% elif slot.race %}
+                                <span class="pill bg-indigo-500/12 text-indigo-200 border border-indigo-400/20">Course ouverte</span>
+                                {% else %}
+                                <span class="pill bg-emerald-500/12 text-emerald-200 border border-emerald-400/20">Planifiable</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if slot.user_plan_names %}
+                                    <p class="text-emerald-200 font-bold">✅ {{ slot.user_plan_names | join(', ') }}</p>
+                                {% else %}
+                                    <p class="text-white/30 font-semibold">—</p>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <p class="text-white font-bold">{{ slot.participants | length }} partant(s)</p>
+                                <p class="text-white/40 text-xs font-semibold mt-1">{{ slot.planned_count }} plan(s)</p>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    </div>{# /tab-mois #}
+
+</main>
+{% include '_footer.html' %}
+
+<script>
+/* ── Onglets ── */
+document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        document.querySelectorAll('.tab-btn').forEach(b => { b.classList.remove('active'); b.classList.add('text-white/50'); });
+        document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+        btn.classList.add('active');
+        btn.classList.remove('text-white/50');
+        document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+    });
+});
+
+/* ── Accordéon : un seul panel ouvert à la fois ── */
+document.querySelectorAll('.slot-row').forEach(row => {
+    row.addEventListener('click', (e) => {
+        /* Ne pas toggle si clic sur un bouton submit de form */
+        if (e.target.closest('form button[type="submit"]')) return;
+        if (e.target.closest('a')) return;
+
+        const idx = row.dataset.slotIdx;
+        const detail = document.getElementById('detail-' + idx);
+        if (!detail) return;
+
+        const wasOpen = detail.classList.contains('open');
+
+        /* Fermer tous les panels */
+        document.querySelectorAll('.slot-detail').forEach(d => d.classList.remove('open'));
+        document.querySelectorAll('.slot-row').forEach(r => r.classList.remove('expanded'));
+
+        /* Toggle le panel cliqué */
+        if (!wasOpen) {
+            detail.classList.add('open');
+            row.classList.add('expanded');
+            /* Scroll doux vers la ligne si elle est au-dessus de la vue */
+            row.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+    });
+});
+</script>
+</body>
+</html>

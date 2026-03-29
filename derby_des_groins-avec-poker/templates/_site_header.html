@@ -1,0 +1,172 @@
+{% set nav_base = "inline-flex w-full items-center justify-center gap-2 rounded-xl border px-3.5 py-2 text-sm font-bold transition-all whitespace-nowrap sm:w-auto" %}
+{% set nav_active = "border-pink-300/45 bg-pink-400/16 text-pink-100 shadow-[0_10px_26px_rgba(244,114,182,0.16)]" %}
+{% set nav_idle = "border-pink-100/10 bg-pink-200/[0.035] text-white/70 hover:border-pink-200/20 hover:bg-pink-200/[0.08] hover:text-white" %}
+{% set util_base = "inline-flex items-center gap-2 rounded-xl border px-3.5 py-2 text-sm font-bold transition-all whitespace-nowrap" %}
+{% set util_idle = "border-pink-100/10 bg-pink-200/[0.035] text-white/70 hover:border-pink-200/20 hover:bg-pink-200/[0.08] hover:text-white" %}
+
+<header class="border-b border-pink-200/10 sticky top-0 z-[100]" style="background: linear-gradient(180deg, rgba(39, 13, 49, 0.96) 0%, rgba(28, 11, 41, 0.94) 100%); box-shadow: inset 0 1px 0 rgba(255,255,255,0.04); backdrop-filter: blur(20px);">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <div class="max-w-6xl mx-auto px-4 py-4">
+        <div class="flex flex-col gap-3">
+
+            <!-- ── Ligne 1 : Logo + résumé utilisateur + hamburger ── -->
+            <div class="flex flex-wrap items-center justify-between gap-3">
+
+                <!-- Logo -->
+                <a href="/" class="flex max-w-full min-w-0 items-center gap-3 transition-opacity hover:opacity-90 sm:shrink-0">
+                    <span class="text-3xl drop-shadow-[0_0_12px_rgba(244,114,182,0.35)]">🐷</span>
+                    <div class="min-w-0">
+                        <p class="font-title text-xl sm:text-2xl text-pink-200 leading-none drop-shadow-[0_0_18px_rgba(251,113,133,0.18)]">Derby des Groins</p>
+                        <p class="text-xs text-pink-100/45 font-semibold mt-0.5 hidden sm:block">Le pari le plus porcin de l'internet</p>
+                    </div>
+                </a>
+
+                {% if user %}
+                <!-- Droite : balance (sm+), admin/quitter (lg+), hamburger (< lg) -->
+                <div class="flex items-center gap-2 sm:ml-auto">
+
+                    <!-- Balance + Tickets : visible dès sm -->
+                    <div class="hidden sm:inline-flex items-center gap-2.5 rounded-2xl border border-pink-200/12 bg-[linear-gradient(135deg,rgba(244,114,182,0.08),rgba(255,255,255,0.035))] px-3.5 py-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]">
+                        <div>
+                            <p class="text-[10px] uppercase tracking-[0.2em] text-pink-100/35 font-bold">BitGroins</p>
+                            <div class="flex items-center gap-1.5">
+                                <span class="font-title text-lg leading-none text-yellow-400">{{ "%.0f"|format(user.balance) }}</span>
+                                <span class="text-xs font-bold text-pink-100/45">🪙</span>
+                            </div>
+                        </div>
+                        <div class="h-6 w-px bg-pink-100/10"></div>
+                        <div class="cursor-help group relative" title="Chaque pari consomme 1 ticket. Ton quota de 3 tickets se réinitialise chaque lundi matin.">
+                            <p class="text-[10px] uppercase tracking-[0.2em] text-pink-100/35 font-bold group-hover:text-pink-300 transition-colors">Tickets</p>
+                            <div class="flex items-center gap-1.5">
+                                <span class="font-title text-lg leading-none text-pink-400">{{ user.bacon_tickets }}</span>
+                                <span class="text-xs font-bold text-pink-100/45">🎟️</span>
+                            </div>
+                        </div>
+                        <div class="h-6 w-px bg-pink-100/10 hidden md:block"></div>
+                        <div class="hidden md:block">
+                            <p class="text-[10px] uppercase tracking-[0.2em] text-pink-100/35 font-bold">Compte</p>
+                            <p class="text-sm font-bold text-white/85">{{ user.username }}</p>
+                        </div>
+                    </div>
+
+                    <!-- Admin + Quitter : desktop seulement -->
+                    {% if user.is_admin %}
+                    <a href="/admin" class="hidden lg:inline-flex {{ util_base }} {{ 'border-fuchsia-400/35 bg-fuchsia-400/12 text-fuchsia-200' if active_page == 'admin' else util_idle }}">🔧 Admin</a>
+                    {% endif %}
+                    <a href="/logout" class="hidden lg:inline-flex {{ util_base }} border-red-400/20 bg-red-400/10 text-red-200 hover:border-red-400/35 hover:bg-red-400/15 hover:text-red-100">Quitter</a>
+
+                    <!-- Hamburger (mobile & tablette) -->
+                    <button id="nav-hamburger" aria-label="Menu navigation" aria-expanded="false"
+                        class="lg:hidden inline-flex items-center justify-center w-10 h-10 rounded-xl border border-pink-200/15 bg-pink-200/[0.04] text-white/70 hover:text-white hover:bg-pink-200/[0.08] transition-all">
+                        <svg id="icon-open" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+                        <svg id="icon-close" class="w-5 h-5 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                    </button>
+                </div>
+
+                {% else %}
+                <div class="flex flex-wrap items-center gap-2">
+                    <a href="/regles" class="{{ util_base }} {{ util_idle }}">Règles</a>
+                    <a href="/login" class="{{ util_base }} {{ util_idle }}">Connexion</a>
+                    <a href="/register" class="inline-flex items-center gap-2 rounded-xl px-4 py-3 text-sm font-bold text-white transition-all bg-gradient-to-r from-pink-500 via-rose-500 to-orange-400 hover:translate-y-[-1px] hover:shadow-[0_8px_24px_rgba(244,114,182,0.28)]">S'inscrire</a>
+                </div>
+                {% endif %}
+            </div>
+
+            {% if user %}
+            <!-- ── Ligne 2 (mobile uniquement) : balance compacte ── -->
+            <div class="sm:hidden flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-pink-200/12 bg-[linear-gradient(135deg,rgba(244,114,182,0.08),rgba(255,255,255,0.035))] px-4 py-2.5">
+                <div class="flex min-w-0 flex-1 flex-wrap items-center gap-3">
+                    <div>
+                        <p class="text-[10px] uppercase tracking-[0.15em] text-pink-100/35 font-bold">BitGroins</p>
+                        <div class="flex items-center gap-1.5">
+                            <span class="font-title text-lg leading-none text-yellow-400">{{ "%.0f"|format(user.balance) }}</span>
+                            <span class="text-xs text-pink-100/45">🪙</span>
+                        </div>
+                    </div>
+                    <div class="h-6 w-px bg-pink-100/10"></div>
+                    <div>
+                        <p class="text-[10px] uppercase tracking-[0.15em] text-pink-100/35 font-bold">Tickets</p>
+                        <div class="flex items-center gap-1.5">
+                            <span class="font-title text-lg leading-none text-pink-400">{{ user.bacon_tickets }}</span>
+                            <span class="text-xs text-pink-100/45">🎟️</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="flex w-full items-center justify-end gap-1.5">
+                    {% if user.is_admin %}
+                    <a href="/admin" class="text-xs font-bold text-fuchsia-300 px-2.5 py-1.5 rounded-lg bg-fuchsia-400/10 border border-fuchsia-400/20">🔧</a>
+                    {% endif %}
+                    <a href="/logout" class="text-xs font-bold text-red-300 px-2.5 py-1.5 rounded-lg bg-red-400/10 border border-red-400/20">Quitter</a>
+                </div>
+            </div>
+
+            <!-- ── Nav : collapsible mobile, toujours visible lg+ ── -->
+            <nav id="main-nav" class="hidden flex-col items-stretch gap-2 rounded-2xl border border-pink-200/10 bg-[linear-gradient(180deg,rgba(39,13,49,0.96),rgba(28,11,41,0.94))] p-3 shadow-2xl max-h-[70vh] overflow-y-auto sm:flex-row sm:flex-wrap sm:items-center lg:flex lg:rounded-none lg:border-0 lg:bg-transparent lg:p-0 lg:shadow-none lg:max-h-none lg:overflow-visible">
+                <a href="/courses" class="{{ nav_base }} {{ nav_active if active_page == 'courses' else nav_idle }}">📅 Courses</a>
+                <a href="/paris" class="{{ nav_base }} {{ nav_active if active_page == 'paris' else nav_idle }}">💰 Paris</a>
+                <a href="/mon-cochon" class="{{ nav_base }} {{ nav_active if active_page == 'mon_cochon' else nav_idle }}">🐷 Mon Cochon</a>
+                <a href="/regles" class="{{ nav_base }} {{ nav_active if active_page == 'regles' else nav_idle }}">📘 Règles</a>
+                <a href="/veterinaire" class="{{ nav_base }} {{ 'border-red-400/35 bg-red-500/15 text-red-100 shadow-[0_8px_24px_rgba(248,113,113,0.12)]' if injured_pig_nav_id else (nav_active if active_page == 'veterinaire' else nav_idle) }}">{{ '🏥 Véto urgent' if injured_pig_nav_id else '🏥 Vétérinaire' }}</a>
+                <a href="/bourse" class="{{ nav_base }} {{ nav_active if active_page == 'bourse' else nav_idle }}">🌾 Bourse</a>
+                <a href="/marche" class="{{ nav_base }} {{ nav_active if active_page == 'marche' else nav_idle }}">🏪 Marché</a>
+                <a href="/galerie-lard-chande" class="{{ nav_base }} {{ nav_active if active_page == 'galerie' else nav_idle }}">🛒 Galerie</a>
+                <a href="/classement" class="{{ nav_base }} {{ nav_active if active_page == 'classement' else nav_idle }}">🏆 Classement</a>
+                <a href="/profil" class="{{ nav_base }} {{ nav_active if active_page == 'profil' else nav_idle }}">👤 Profil</a>
+                <a href="/history" class="{{ nav_base }} {{ nav_active if active_page == 'history' else nav_idle }}">📋 Historique</a>
+                <a href="/legendes-pop" class="{{ nav_base }} {{ nav_active if active_page == 'legendes_pop' else nav_idle }}">🌟 Pop Cult'</a>
+                <a href="/cimetiere" class="{{ nav_base }} {{ nav_active if active_page == 'cimetiere' else nav_idle }}">⚰️ Cimetière</a>
+                <a href="/blackjack" class="{{ nav_base }} {{ nav_active if active_page == 'blackjack' else nav_idle }}">🃏 Groin Jack</a>
+                <a href="/truffes" class="{{ nav_base }} {{ nav_active if active_page == 'truffes' else nav_idle }}">🍄 Truffes</a>
+                <a href="/poker" class="{{ nav_base }} {{ nav_active if active_page == 'poker' else nav_idle }}">🐷 Cochon Poker</a>
+                <a href="/agenda" class="{{ nav_base }} {{ nav_active if active_page == 'agenda' else nav_idle }}">📅 Whack-a-Réu</a>
+                <a href="/live" class="{{ nav_base }} {{ nav_active if active_page == 'live' else nav_idle }}">🏁 Live</a>
+            </nav>
+            {% endif %}
+
+        </div>
+    </div>
+</header>
+
+<!-- Backdrop mobile nav -->
+<div id="nav-backdrop" class="fixed inset-0 z-[99] bg-black/60 backdrop-blur-sm hidden" aria-hidden="true"></div>
+
+<script>
+(function () {
+    var btn = document.getElementById('nav-hamburger');
+    var nav = document.getElementById('main-nav');
+    var backdrop = document.getElementById('nav-backdrop');
+    var iconOpen = document.getElementById('icon-open');
+    var iconClose = document.getElementById('icon-close');
+    if (!btn || !nav) return;
+
+    function openNav() {
+        nav.classList.remove('hidden');
+        nav.classList.add('flex');
+        backdrop.classList.remove('hidden');
+        iconOpen.classList.add('hidden');
+        iconClose.classList.remove('hidden');
+        btn.setAttribute('aria-expanded', 'true');
+    }
+
+    function closeNav() {
+        nav.classList.add('hidden');
+        nav.classList.remove('flex');
+        backdrop.classList.add('hidden');
+        iconOpen.classList.remove('hidden');
+        iconClose.classList.add('hidden');
+        btn.setAttribute('aria-expanded', 'false');
+    }
+
+    btn.addEventListener('click', function () {
+        nav.classList.contains('hidden') ? openNav() : closeNav();
+    });
+
+    // Clic sur le backdrop ferme le menu
+    backdrop.addEventListener('click', closeNav);
+
+    // Ferme le menu si on passe en desktop
+    window.addEventListener('resize', function () {
+        if (window.innerWidth >= 1024) closeNav();
+    });
+}());
+</script>

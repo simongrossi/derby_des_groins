@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🌟 Derby des Groins — Les Cochons Pop Culture</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * { font-family: 'Nunito', sans-serif; }
+        .font-title { font-family: 'Lilita One', cursive; }
+
+        body {
+            background: #1a0a2e;
+            background-image:
+                radial-gradient(ellipse at 20% 50%, rgba(255, 100, 0, 0.15) 0%, transparent 60%),
+                radial-gradient(ellipse at 80% 20%, rgba(255, 200, 0, 0.1) 0%, transparent 50%),
+                radial-gradient(ellipse at 50% 80%, rgba(180, 0, 255, 0.1) 0%, transparent 50%);
+            min-height: 100vh;
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 1.5rem;
+            transition: all 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(255, 200, 0, 0.15);
+            border-color: rgba(255, 200, 0, 0.3);
+        }
+
+        .category-badge {
+            background: linear-gradient(135deg, rgba(168, 85, 247, 0.2), rgba(236, 72, 153, 0.2));
+            border: 1px solid rgba(236, 72, 153, 0.4);
+            color: #fbcfe8;
+            font-size: 0.70rem;
+            font-weight: 800;
+            padding: 0.15rem 0.5rem;
+            border-radius: 999px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        
+        .pig-emoji {
+            font-size: 3.5rem;
+            display: inline-block;
+            animation: bounce 3s ease-in-out infinite;
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-8px); }
+        }
+        
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: rgba(255,255,255,0.05); }
+        ::-webkit-scrollbar-thumb { background: rgba(245, 158, 11, 0.4); border-radius: 3px; }
+    </style>
+</head>
+<body>
+{% set active_page = 'legendes_pop' %}
+
+{% include "_site_header.html" %}
+
+<main class="max-w-6xl mx-auto px-4 py-8">
+
+    <!-- HERO -->
+    <section class="text-center mb-12 mt-4">
+        <p class="text-6xl mb-4">🌟🍿</p>
+        <h1 class="font-title text-5xl text-white mb-3 shadow-yellow-400/50" style="text-shadow: 0 0 30px rgba(255, 200, 0, 0.3);">
+            Hall of Fame : Culture Pop
+        </h1>
+        <p class="text-white/60 font-bold text-lg max-w-2xl mx-auto">
+            Morts ou vifs, animés ou sous forme de charcuterie... Voici un hommage aux plus grands cochons de l'histoire du divertissement et de l'industrie.
+        </p>
+    </section>
+
+    <!-- SECTIONS -->
+    {% set current_cat = [] %}
+    <div class="space-y-16">
+        {% for p in pop_pigs %}
+            {% if p.category != current_cat[-1] %}
+                {% if current_cat %}</div></div>{% endif %}
+                {% set _ = current_cat.append(p.category) %}
+                <div class="category-section">
+                    <h2 class="font-title text-3xl text-white mb-8 flex items-center gap-3">
+                        <span class="w-12 h-1 bg-yellow-500 rounded-full"></span>
+                        {{ p.category }}
+                    </h2>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {% endif %}
+            
+            <div class="card p-6 text-center">
+                <div class="mb-4 h-20 flex items-center justify-center">
+                    <span class="pig-emoji" style="animation-delay: {{ loop.index0 * 0.1 }}s;">{{ p.emoji }}</span>
+                </div>
+                <h3 class="font-title text-2xl text-yellow-400 mb-2">{{ p.name }}</h3>
+                <p class="text-white/70 text-sm font-semibold leading-relaxed">
+                    {{ p.desc }}
+                </p>
+            </div>
+            
+            {% if loop.last %}</div></div>{% endif %}
+        {% endfor %}
+    </div>
+
+</main>
+
+<footer class="text-center py-8 text-white/20 text-sm font-semibold">
+    🐷 Derby des Groins — Hommage à la culture porcine
+</footer>
+
+{% include '_footer.html' %}
+</body>
+</html>

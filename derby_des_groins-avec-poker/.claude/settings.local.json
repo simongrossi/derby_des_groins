@@ -1,0 +1,24 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__Claude_Preview__preview_start",
+      "Bash(netstat -ano)",
+      "Bash(findstr 5001.*LISTENING)",
+      "Bash(taskkill /F /PID 72528)",
+      "Bash(TASKKILL //F //PID 72528)",
+      "Bash(curl -s http://localhost:5001/circuit)",
+      "Bash(docker compose:*)",
+      "Bash(find /d/Programmation/derby_des_groins -name *.css -o -name *.js)",
+      "Bash(xxd docker-entrypoint.sh)",
+      "Bash(find D:Programmationderby_des_groins -maxdepth 2 -name CLAUDE.md -o -name TODO*.md -o -name CHANGELOG*.md)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(for file:*)",
+      "Bash(do if:*)",
+      "Bash(then echo:*)",
+      "Bash(fi)",
+      "Bash(done)",
+      "Bash(git push:*)"
+    ]
+  }
+}

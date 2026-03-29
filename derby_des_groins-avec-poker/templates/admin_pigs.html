@@ -1,0 +1,83 @@
+{% from '_pig_avatar.html' import pig_display %}
+{% extends "admin_base.html" %}
+{% block title %}🐷 Cochons — Admin{% endblock %}
+
+{% block content %}
+<div class="flex items-center justify-between mb-6">
+    <div>
+        <h1 class="font-title text-3xl text-white">🐷 Tous les cochons ({{ pigs|length }})</h1>
+        <p class="text-white/40 font-semibold text-sm">Proprietaire, etat, actions rapides.</p>
+    </div>
+    <div class="flex gap-2 text-xs font-bold">
+        <span class="text-green-400">{{ pigs|selectattr('is_alive')|list|length }} vivants</span>
+        <span class="text-white/20">·</span>
+        <span class="text-red-400">{{ pigs|rejectattr('is_alive')|list|length }} decedes</span>
+        <span class="text-white/20">·</span>
+        <span class="text-yellow-400">{{ pigs|selectattr('is_injured')|list|length }} blesses</span>
+    </div>
+</div>
+
+<!-- FILTRES -->
+<div class="flex flex-wrap gap-2 mb-4" id="pig-filters">
+    <button onclick="filterPigs('all')" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-white/10 text-white/70 hover:bg-white/15 transition-all" data-filter="all">Tous</button>
+    <button onclick="filterPigs('alive')" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-green-500/15 text-green-400 hover:bg-green-500/25 transition-all" data-filter="alive">Vivants</button>
+    <button onclick="filterPigs('dead')" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-red-500/15 text-red-400 hover:bg-red-500/25 transition-all" data-filter="dead">Decedes</button>
+    <button onclick="filterPigs('injured')" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-yellow-500/15 text-yellow-400 hover:bg-yellow-500/25 transition-all" data-filter="injured">Blesses</button>
+</div>
+
+<div class="space-y-3" id="pig-list">
+    {% for pig in pigs %}
+    <div class="user-row p-4 flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between pig-item"
+         data-alive="{{ pig.is_alive|int }}" data-injured="{{ pig.is_injured|int }}">
+        <div class="flex items-start gap-3">
+            <span>{{ pig_display(pig, 'text-2xl', 32) }}</span>
+            <div>
+                <p class="text-white font-bold text-base">{{ pig.name }}</p>
+                <p class="text-white/40 text-xs font-semibold">
+                    Proprio : {{ pig.owner.username if pig.owner else 'Ordinateur' }}
+                    · {{ pig.origin_flag }} {{ pig.origin_country }}
+                    · Niv. {{ pig.level }}
+                    · Gen. {{ pig.generation or 1 }}
+                </p>
+                <p class="text-white/30 text-xs font-semibold mt-1">
+                    {% if pig.is_alive %}<span class="text-green-400">Vivant</span>
+                    {% else %}<span class="text-red-400">Decede</span>{% endif %}
+                    {% if pig.is_injured %} · <span class="text-yellow-300">Blesse</span>{% endif %}
+                    · 🏁 {{ pig.races_entered }} · 🏆 {{ pig.races_won }}
+                    · {{ "%.1f"|format(pig.weight_kg or 112) }}kg
+                </p>
+            </div>
+        </div>
+        <div class="flex gap-2">
+            {% if pig.is_injured %}
+            <form method="POST" action="{{ url_for('admin.admin_heal_pig', pig_id=pig.id) }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="btn-success text-xs px-3 py-2">🏥 Soigner</button>
+            </form>
+            {% endif %}
+            <form method="POST" action="{{ url_for('admin.admin_toggle_pig_life', pig_id=pig.id) }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="{{ 'btn-danger' if pig.is_alive else 'btn-admin' }} text-xs px-3 py-2">
+                    {{ '☠️ Tuer' if pig.is_alive else '✨ Reanimer' }}
+                </button>
+            </form>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}
+
+{% block extra_script %}
+<script>
+function filterPigs(type) {
+    document.querySelectorAll('.pig-item').forEach(el => {
+        const alive = el.dataset.alive === '1';
+        const injured = el.dataset.injured === '1';
+        if (type === 'all') el.style.display = '';
+        else if (type === 'alive') el.style.display = alive ? '' : 'none';
+        else if (type === 'dead') el.style.display = !alive ? '' : 'none';
+        else if (type === 'injured') el.style.display = injured ? '' : 'none';
+    });
+}
+</script>
+{% endblock %}

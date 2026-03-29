@@ -1,0 +1,92 @@
+{% extends "admin_base.html" %}
+{% block title %}Editer avatar — {{ avatar.name }}{% endblock %}
+
+{% block extra_style %}
+    .upload-zone {
+        background: rgba(255, 255, 255, 0.03);
+        border: 2px dashed rgba(255, 255, 255, 0.1);
+        border-radius: 1rem;
+    }
+    .avatar-preview {
+        image-rendering: pixelated;
+        border-radius: 0.5rem;
+        background: rgba(255, 255, 255, 0.05);
+    }
+    .tab-btn { cursor: pointer; padding: 0.4rem 1rem; border-radius: 0.5rem; font-size: 0.8rem; font-weight: 800; transition: all 0.2s; }
+    .tab-btn.active { background: rgba(139, 92, 246, 0.3); color: #c4b5fd; }
+    .tab-btn:not(.active) { background: rgba(255, 255, 255, 0.05); color: rgba(255, 255, 255, 0.4); }
+{% endblock %}
+
+{% block content %}
+<div class="flex items-center gap-4 mb-6">
+    <a href="{{ url_for('admin.admin_avatars') }}" class="text-white/30 hover:text-white/60 text-sm font-bold">&larr; Retour</a>
+    <h1 class="font-title text-2xl text-white/90">Editer « {{ avatar.name }} »</h1>
+</div>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+{% if messages %}
+<div class="mb-4 space-y-2">
+    {% for cat, msg in messages %}
+    <div class="px-4 py-2 rounded-xl text-sm font-bold
+                {{ 'bg-green-500/15 text-green-300' if cat == 'success' else 'bg-red-500/15 text-red-300' }}">
+        {{ msg }}
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+{% endwith %}
+
+<div class="flex flex-col lg:flex-row gap-6">
+    <!-- Apercu actuel -->
+    <div class="flex flex-col items-center gap-3 p-6 rounded-2xl border border-white/6 bg-white/3 min-w-[180px]">
+        <p class="text-[10px] text-white/30 font-bold uppercase tracking-wide">Apercu actuel</p>
+        <img src="/static/avatars/{{ avatar.filename }}?t={{ avatar.created_at.timestamp()|int }}" alt="{{ avatar.name }}"
+             width="96" height="96" class="avatar-preview" id="current-preview">
+        <p class="text-white/50 text-xs font-bold">{{ avatar.format|upper }} #{{ avatar.id }}</p>
+    </div>
+
+    <!-- Formulaire d'edition -->
+    <div class="upload-zone p-5 flex-1">
+        <form method="POST" action="{{ url_for('admin.admin_avatar_edit', avatar_id=avatar.id) }}" enctype="multipart/form-data">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="mb-4">
+                <label class="text-[10px] text-white/40 font-bold block mb-1">Nom</label>
+                <input type="text" name="name" value="{{ avatar.name }}" class="input-admin w-full max-w-xs">
+            </div>
+
+            <div class="flex gap-2 mb-4">
+                <button type="button" class="tab-btn {{ 'active' if avatar.format != 'svg' }}" onclick="switchTab('file')" id="tab-file">Remplacer par fichier</button>
+                <button type="button" class="tab-btn {{ 'active' if avatar.format == 'svg' }}" onclick="switchTab('code')" id="tab-code">Code SVG</button>
+            </div>
+
+            <div id="panel-file" class="{{ 'hidden' if avatar.format == 'svg' }}">
+                <label class="text-[10px] text-white/40 font-bold block mb-1">Nouveau fichier (PNG ou SVG, max 256 Ko)</label>
+                <input type="file" name="avatar_file" accept=".png,.svg"
+                       class="text-xs text-white/60 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-violet-500/20 file:text-violet-300 file:font-bold file:cursor-pointer hover:file:bg-violet-500/30 w-full max-w-md">
+                <p class="text-white/20 text-[10px] mt-1">Laisser vide pour ne changer que le nom.</p>
+            </div>
+
+            <div id="panel-code" class="{{ 'hidden' if avatar.format != 'svg' }}">
+                <label class="text-[10px] text-white/40 font-bold block mb-1">Code SVG</label>
+                <textarea name="svg_code" rows="10" placeholder='<svg viewBox="0 0 64 64" ...>'
+                          class="input-admin w-full font-mono text-xs" style="resize: vertical;">{{ svg_code }}</textarea>
+                <p class="text-white/20 text-[10px] mt-1">Laisser vide pour ne changer que le nom.</p>
+            </div>
+
+            <div class="mt-4 flex gap-3">
+                <button type="submit" class="btn-admin">Enregistrer</button>
+                <a href="{{ url_for('admin.admin_avatars') }}" class="btn-admin" style="background: rgba(255,255,255,0.05);">Annuler</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function switchTab(tab) {
+    document.getElementById('panel-file').classList.toggle('hidden', tab !== 'file');
+    document.getElementById('panel-code').classList.toggle('hidden', tab !== 'code');
+    document.getElementById('tab-file').classList.toggle('active', tab === 'file');
+    document.getElementById('tab-code').classList.toggle('active', tab === 'code');
+}
+</script>
+{% endblock %}

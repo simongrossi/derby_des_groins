@@ -1,0 +1,201 @@
+{% extends "admin_base.html" %}
+{% block title %}🗃️ Donnees de jeu{% endblock %}
+
+{% block extra_style %}
+    .item-row {
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid rgba(255, 255, 255, 0.06);
+        border-radius: 0.75rem;
+        transition: background 0.2s;
+    }
+    .item-row:hover { background: rgba(255, 255, 255, 0.06); }
+    .btn-sm {
+        padding: 0.35rem 0.8rem; font-size: 0.7rem; border-radius: 0.5rem;
+    }
+    .btn-toggle-off {
+        background: linear-gradient(135deg, #f59e0b, #d97706);
+    }
+    .btn-toggle-on {
+        background: linear-gradient(135deg, #10b981, #059669);
+    }
+    .stat-pill {
+        display: inline-block; padding: 0.15rem 0.5rem;
+        border-radius: 9999px; font-size: 0.65rem; font-weight: 800;
+        background: rgba(99, 102, 241, 0.15); color: #a5b4fc;
+        margin-right: 0.25rem;
+    }
+    .badge-inactive {
+        background: rgba(239, 68, 68, 0.15); color: #fca5a5;
+        padding: 0.1rem 0.5rem; border-radius: 9999px;
+        font-size: 0.65rem; font-weight: 800;
+    }
+    .badge-seasonal {
+        background: rgba(245, 158, 11, 0.15); color: #fcd34d;
+        padding: 0.1rem 0.5rem; border-radius: 9999px;
+        font-size: 0.65rem; font-weight: 800;
+    }
+{% endblock %}
+
+{% block content %}
+<div class="flex items-center justify-between mb-2">
+    <h1 class="font-title text-3xl text-white">🗃️ Donnees de jeu</h1>
+</div>
+<p class="text-white/40 font-semibold text-sm mb-8">
+    Modifie cereales, entrainements et lecons sans redemarrer le serveur.
+</p>
+
+<!-- ══════════════════ CEREALES ══════════════════ -->
+<div class="card p-6 mb-8">
+    <div class="flex items-center justify-between mb-4">
+        <div>
+            <h2 class="font-title text-2xl text-white">🌾 Cereales ({{ cereals | length }})</h2>
+            <p class="text-white/40 text-sm font-semibold">Nourriture achetable pour nourrir les cochons.</p>
+        </div>
+        <a href="{{ url_for('admin.admin_cereal_new') }}" class="btn-admin btn-sm">+ Ajouter</a>
+    </div>
+
+    <div class="space-y-2">
+        {% for c in cereals %}
+        <div class="item-row p-4 flex items-center justify-between gap-4">
+            <div class="flex items-center gap-3 flex-1 min-w-0">
+                <span class="text-2xl">{{ c.emoji }}</span>
+                <div class="min-w-0">
+                    <p class="text-white font-bold text-sm truncate">
+                        {{ c.name }}
+                        <span class="text-white/20 text-xs ml-1">[{{ c.key }}]</span>
+                        {% if not c.is_active %}<span class="badge-inactive ml-1">OFF</span>{% endif %}
+                        {% if c.available_from or c.available_until %}<span class="badge-seasonal ml-1">Saisonnier</span>{% endif %}
+                    </p>
+                    <p class="text-white/30 text-xs font-semibold truncate">
+                        {{ c.cost }} 🪙 · Faim +{{ c.hunger_restore|int }} · Energie +{{ c.energy_restore|int }} · Poids {{ "%+.1f"|format(c.weight_delta) }}kg
+                    </p>
+                    <div class="mt-1">
+                        {% for s in stat_names %}
+                        {% set v = c['stat_' + s] or 0 %}
+                        {% if v %}<span class="stat-pill">{{ s[:3]|upper }} +{{ v }}</span>{% endif %}
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            <div class="flex items-center gap-2 shrink-0">
+                <form method="POST" action="{{ url_for('admin.admin_cereal_toggle', item_id=c.id) }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn-sm {{ 'btn-toggle-on' if c.is_active else 'btn-toggle-off' }}" style="border:none;color:white;font-weight:800;cursor:pointer;">
+                        {{ '✅ Actif' if c.is_active else '⏸️ Inactif' }}
+                    </button>
+                </form>
+                <a href="{{ url_for('admin.admin_cereal_edit', item_id=c.id) }}" class="btn-admin btn-sm">Modifier</a>
+                <form method="POST" action="{{ url_for('admin.admin_cereal_delete', item_id=c.id) }}" onsubmit="return confirm('Supprimer {{ c.name }} ?');">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn-danger btn-sm">🗑️</button>
+                </form>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- ══════════════════ ENTRAINEMENTS ══════════════════ -->
+<div class="card p-6 mb-8">
+    <div class="flex items-center justify-between mb-4">
+        <div>
+            <h2 class="font-title text-2xl text-white">💪 Entrainements ({{ trainings | length }})</h2>
+            <p class="text-white/40 text-sm font-semibold">Exercices pour ameliorer les cochons.</p>
+        </div>
+        <a href="{{ url_for('admin.admin_training_new') }}" class="btn-admin btn-sm">+ Ajouter</a>
+    </div>
+
+    <div class="space-y-2">
+        {% for t in trainings %}
+        <div class="item-row p-4 flex items-center justify-between gap-4">
+            <div class="flex items-center gap-3 flex-1 min-w-0">
+                <span class="text-2xl">{{ t.emoji }}</span>
+                <div class="min-w-0">
+                    <p class="text-white font-bold text-sm truncate">
+                        {{ t.name }}
+                        <span class="text-white/20 text-xs ml-1">[{{ t.key }}]</span>
+                        {% if not t.is_active %}<span class="badge-inactive ml-1">OFF</span>{% endif %}
+                        {% if t.available_from or t.available_until %}<span class="badge-seasonal ml-1">Saisonnier</span>{% endif %}
+                    </p>
+                    <p class="text-white/30 text-xs font-semibold truncate">
+                        Energie -{{ t.energy_cost }} · Faim -{{ t.hunger_cost }} · Poids {{ "%+.1f"|format(t.weight_delta) }}kg
+                        {% if t.happiness_bonus %} · Bonheur +{{ t.happiness_bonus }}{% endif %}
+                    </p>
+                    <div class="mt-1">
+                        {% for s in stat_names %}
+                        {% set v = t['stat_' + s] or 0 %}
+                        {% if v %}<span class="stat-pill">{{ s[:3]|upper }} +{{ v }}</span>{% endif %}
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            <div class="flex items-center gap-2 shrink-0">
+                <form method="POST" action="{{ url_for('admin.admin_training_toggle', item_id=t.id) }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn-sm {{ 'btn-toggle-on' if t.is_active else 'btn-toggle-off' }}" style="border:none;color:white;font-weight:800;cursor:pointer;">
+                        {{ '✅ Actif' if t.is_active else '⏸️ Inactif' }}
+                    </button>
+                </form>
+                <a href="{{ url_for('admin.admin_training_edit', item_id=t.id) }}" class="btn-admin btn-sm">Modifier</a>
+                <form method="POST" action="{{ url_for('admin.admin_training_delete', item_id=t.id) }}" onsubmit="return confirm('Supprimer {{ t.name }} ?');">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn-danger btn-sm">🗑️</button>
+                </form>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- ══════════════════ LECONS ══════════════════ -->
+<div class="card p-6 mb-8">
+    <div class="flex items-center justify-between mb-4">
+        <div>
+            <h2 class="font-title text-2xl text-white">📚 Lecons d'ecole ({{ lessons | length }})</h2>
+            <p class="text-white/40 text-sm font-semibold">Quiz pour les cochons studieux.</p>
+        </div>
+        <a href="{{ url_for('admin.admin_lesson_new') }}" class="btn-admin btn-sm">+ Ajouter</a>
+    </div>
+
+    <div class="space-y-2">
+        {% for l in lessons %}
+        <div class="item-row p-4 flex items-center justify-between gap-4">
+            <div class="flex items-center gap-3 flex-1 min-w-0">
+                <span class="text-2xl">{{ l.emoji }}</span>
+                <div class="min-w-0">
+                    <p class="text-white font-bold text-sm truncate">
+                        {{ l.name }}
+                        <span class="text-white/20 text-xs ml-1">[{{ l.key }}]</span>
+                        {% if not l.is_active %}<span class="badge-inactive ml-1">OFF</span>{% endif %}
+                        {% if l.available_from or l.available_until %}<span class="badge-seasonal ml-1">Saisonnier</span>{% endif %}
+                    </p>
+                    <p class="text-white/30 text-xs font-semibold truncate">
+                        XP +{{ l.xp }} (erreur +{{ l.wrong_xp }}) · Energie -{{ l.energy_cost }} · Faim -{{ l.hunger_cost }}
+                    </p>
+                    <p class="text-white/20 text-xs italic mt-0.5 truncate">{{ l.question }}</p>
+                    <div class="mt-1">
+                        {% for s in stat_names %}
+                        {% set v = l['stat_' + s] or 0 %}
+                        {% if v %}<span class="stat-pill">{{ s[:3]|upper }} +{{ v }}</span>{% endif %}
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            <div class="flex items-center gap-2 shrink-0">
+                <form method="POST" action="{{ url_for('admin.admin_lesson_toggle', item_id=l.id) }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn-sm {{ 'btn-toggle-on' if l.is_active else 'btn-toggle-off' }}" style="border:none;color:white;font-weight:800;cursor:pointer;">
+                        {{ '✅ Actif' if l.is_active else '⏸️ Inactif' }}
+                    </button>
+                </form>
+                <a href="{{ url_for('admin.admin_lesson_edit', item_id=l.id) }}" class="btn-admin btn-sm">Modifier</a>
+                <form method="POST" action="{{ url_for('admin.admin_lesson_delete', item_id=l.id) }}" onsubmit="return confirm('Supprimer {{ l.name }} ?');">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn-danger btn-sm">🗑️</button>
+                </form>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

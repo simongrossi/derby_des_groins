@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Derby des Groins -- Bourse aux Grains</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * { font-family: 'Nunito', sans-serif; }
+        .font-title { font-family: 'Lilita One', cursive; }
+
+        body {
+            background: #0f172a;
+            background-image:
+                radial-gradient(at 20% 10%, rgba(234, 179, 8, 0.12) 0, transparent 50%),
+                radial-gradient(at 80% 10%, rgba(16, 185, 129, 0.10) 0, transparent 50%),
+                radial-gradient(at 50% 80%, rgba(139, 92, 246, 0.08) 0, transparent 50%);
+            color: #f8fafc; min-height: 100vh;
+        }
+
+        .card {
+            background: rgba(30, 41, 59, 0.5);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 1.5rem;
+        }
+
+        /* --- Grille 7x7 --- */
+        .grid-cell {
+            width: 52px; height: 52px;
+            border: 1px solid rgba(255,255,255,0.04);
+            border-radius: 0.4rem;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 0.6rem; font-weight: 700;
+            transition: all 0.2s;
+            position: relative;
+        }
+        .grid-cell:hover { border-color: rgba(255,255,255,0.15); transform: scale(1.08); z-index: 10; }
+
+        /* Cellules du bloc 3x3 */
+        .block-cell {
+            border: 2px solid rgba(251, 191, 36, 0.3) !important;
+            background: rgba(251, 191, 36, 0.06) !important;
+        }
+        .block-cell.has-grain {
+            border-color: rgba(251, 191, 36, 0.5) !important;
+            background: rgba(251, 191, 36, 0.12) !important;
+        }
+        .block-center {
+            border-color: rgba(251, 191, 36, 0.7) !important;
+            box-shadow: 0 0 18px rgba(251, 191, 36, 0.3), inset 0 0 10px rgba(251, 191, 36, 0.1);
+            animation: pulse-center 2.5s ease-in-out infinite;
+        }
+        @keyframes pulse-center {
+            0%, 100% { box-shadow: 0 0 18px rgba(251, 191, 36, 0.3), inset 0 0 10px rgba(251, 191, 36, 0.1); }
+            50% { box-shadow: 0 0 30px rgba(251, 191, 36, 0.5), inset 0 0 16px rgba(251, 191, 36, 0.2); }
+        }
+
+        /* Couleurs selon valeur du surcout */
+        .val-0  { background: rgba(52, 211, 153, 0.15); }
+        .val-2  { background: rgba(163, 230, 53, 0.10); }
+        .val-4  { background: rgba(251, 191, 36, 0.10); }
+        .val-6  { background: rgba(251, 146, 60, 0.10); }
+        .val-8  { background: rgba(248, 113, 113, 0.10); }
+        .val-10 { background: rgba(236, 72, 153, 0.10); }
+        .val-12 { background: rgba(168, 85, 247, 0.10); }
+
+        .move-btn {
+            width: 44px; height: 44px;
+            display: flex; align-items: center; justify-content: center;
+            border-radius: 0.75rem;
+            font-size: 1.2rem;
+            transition: all 0.15s;
+            cursor: pointer;
+            border: 1px solid rgba(255,255,255,0.1);
+            background: rgba(255,255,255,0.05);
+        }
+        .move-btn:hover:not(:disabled) { background: rgba(251, 191, 36, 0.2); border-color: rgba(251, 191, 36, 0.4); }
+        .move-btn:disabled { opacity: 0.2; cursor: not-allowed; }
+
+        .grain-card { transition: all 0.2s; }
+        .grain-card:hover:not(.grain-blocked) { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(0,0,0,0.3); }
+        .grain-blocked { opacity: 0.35; filter: saturate(0.3); }
+
+        /* Labels d'axe */
+        .axis-label {
+            width: 52px; height: 20px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 0.55rem; font-weight: 800;
+        }
+        .axis-label-y {
+            width: 20px; height: 52px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 0.55rem; font-weight: 800;
+        }
+
+        @media (max-width: 640px) {
+            .grid-cell { width: 36px; height: 36px; font-size: 0.5rem; }
+            .axis-label { width: 36px; height: 16px; font-size: 0.45rem; }
+            .axis-label-y { width: 16px; height: 36px; font-size: 0.45rem; }
+            .move-btn { width: 32px; height: 32px; font-size: 1rem; }
+        }
+        @media (max-width: 400px) {
+            .grid-cell { width: 28px; height: 28px; font-size: 0.4rem; }
+            .axis-label { width: 28px; height: 14px; font-size: 0.4rem; }
+            .axis-label-y { width: 14px; height: 28px; font-size: 0.4rem; }
+        }
+    </style>
+</head>
+<body>
+
+{% include '_site_header.html' %}
+
+<main class="max-w-6xl mx-auto px-4 py-8">
+
+    <!-- TITRE -->
+    <div class="text-center mb-8">
+        <h1 class="font-title text-3xl md:text-4xl mb-2 bg-gradient-to-r from-yellow-400 via-green-400 to-emerald-500 bg-clip-text text-transparent">Bourse aux Grains</h1>
+        <p class="text-white/40 text-sm font-semibold">Deplacez le bloc pour ajuster les prix. Chaque grain a son propre surcout !</p>
+        <div class="mt-4 flex flex-wrap items-center justify-center gap-2">
+            <a href="/regles#bourse" class="inline-flex items-center gap-2 rounded-xl border border-cyan-400/20 bg-cyan-500/10 px-3 py-2 text-xs font-black uppercase tracking-[0.14em] text-cyan-100 hover:bg-cyan-500/15 transition-colors">📘 Règles de la Bourse</a>
+            <a href="/regles#economie" class="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-black uppercase tracking-[0.14em] text-white/60 hover:text-white transition-colors">🪙 Impact économique</a>
+        </div>
+    </div>
+
+    <!-- SOUS-MENU -->
+    <div class="max-w-xl mx-auto mb-8">
+        <div class="flex p-1.5 rounded-2xl bg-white/5 border border-white/10">
+            <button onclick="switchTab('market')" id="tab-market" class="flex-1 py-3 rounded-xl text-sm font-bold transition-all bg-yellow-400/20 text-yellow-100 border border-yellow-400/30">
+                🏪 Marché Temps Réel
+            </button>
+            <button onclick="switchTab('charts')" id="tab-charts" class="flex-1 py-3 rounded-xl text-sm font-bold transition-all text-white/50 hover:text-white hover:bg-white/5">
+                📉 Graphiques d'Évolution
+            </button>
+        </div>
+    </div>
+
+    {% include '_flash.html' %}
+
+    <div id="view-market" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+        <!-- ===== COLONNE GAUCHE : GRILLE 7x7 ===== -->
+
+        <!-- ===== COLONNE GAUCHE : GRILLE 7x7 ===== -->
+        <div class="xl:col-span-2">
+            <div class="card p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="font-title text-xl text-yellow-400 flex items-center gap-2">
+                        <span class="text-2xl">📊</span> Grille de Cotation 7&times;7
+                    </h2>
+                    <div class="text-xs font-bold text-white/40">
+                        Bloc en <span class="text-yellow-300">({{ market.cursor_x }}, {{ market.cursor_y }})</span>
+                    </div>
+                </div>
+
+                <div class="overflow-x-auto">
+                <div class="flex items-start gap-2">
+                    <!-- Axe Y labels -->
+                    <div class="flex flex-col gap-0.5 mt-6">
+                        {% for row in grid %}
+                        <div class="axis-label-y text-white/20">{{ row[0].val_y }}</div>
+                        {% endfor %}
+                    </div>
+
+                    <div class="flex flex-col gap-0.5">
+                        <!-- Axe X labels (en haut) -->
+                        <div class="flex gap-0.5">
+                            {% for cell in grid[0] %}
+                            <div class="axis-label text-white/20">{{ cell.val_x }}</div>
+                            {% endfor %}
+                        </div>
+
+                        <!-- Grille 7x7 -->
+                        {% for row in grid %}
+                        <div class="flex gap-0.5">
+                            {% for cell in row %}
+                            <div class="grid-cell val-{{ cell.cell_value }}
+                                {% if cell.is_block %}block-cell{% endif %}
+                                {% if cell.is_center %}block-center{% endif %}
+                                {% if cell.grain_key %}has-grain{% endif %}"
+                                 title="({{ cell.x }},{{ cell.y }}) val={{ cell.cell_value }} → x{{ '%.2f'|format(cell.surcharge) }}{% if cell.grain_name %} | {{ cell.grain_name }}{% endif %}">
+                                {% if cell.grain_emoji %}
+                                <div class="flex flex-col items-center leading-none">
+                                    <span class="text-lg drop-shadow-md">{{ cell.grain_emoji }}</span>
+                                    <span class="text-[8px] mt-0.5
+                                        {% if cell.cell_value == 0 %}text-green-400
+                                        {% elif cell.cell_value <= 4 %}text-yellow-300
+                                        {% elif cell.cell_value <= 8 %}text-orange-300
+                                        {% else %}text-red-300{% endif %}">
+                                        {% if cell.cell_value == 0 %}0%{% else %}+{{ cell.cell_value * 5 }}%{% endif %}
+                                    </span>
+                                </div>
+                                {% elif cell.is_block %}
+                                <span class="text-white/8 text-[9px]">{{ cell.cell_value }}</span>
+                                {% else %}
+                                <span class="text-white/10 text-[9px]">{{ cell.cell_value }}</span>
+                                {% endif %}
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% endfor %}
+                    </div>
+
+                    <!-- CONTROLES DE DEPLACEMENT -->
+                    <div class="flex flex-col items-center gap-2 ml-4 mt-6">
+                        <p class="text-[10px] text-white/40 font-bold uppercase mb-1">Deplacer</p>
+
+                        <!-- Haut (dy = -1 car y=0 est en haut) -->
+                        <form method="POST" action="/bourse/move">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <input type="hidden" name="dx" value="0">
+                            <input type="hidden" name="dy" value="-1">
+                            <button type="submit" class="move-btn" {% if movement_points < 1 or market.cursor_y <= block_min %}disabled{% endif %} title="Monter">
+                                ⬆️
+                            </button>
+                        </form>
+
+                        <div class="flex gap-2">
+                            <!-- Gauche -->
+                            <form method="POST" action="/bourse/move">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <input type="hidden" name="dx" value="-1">
+                                <input type="hidden" name="dy" value="0">
+                                <button type="submit" class="move-btn" {% if movement_points < 1 or market.cursor_x <= block_min %}disabled{% endif %} title="Gauche">
+                                    ⬅️
+                                </button>
+                            </form>
+
+                            <!-- Centre info -->
+                            <div class="move-btn border-yellow-500/30 bg-yellow-500/10 text-yellow-300 text-xs font-bold cursor-default" title="Tes points de mouvement">
+                                {{ movement_points }}
+                            </div>
+
+                            <!-- Droite -->
+                            <form method="POST" action="/bourse/move">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <input type="hidden" name="dx" value="1">
+                                <input type="hidden" name="dy" value="0">
+                                <button type="submit" class="move-btn" {% if movement_points < 1 or market.cursor_x >= block_max %}disabled{% endif %} title="Droite">
+                                    ➡️
+                                </button>
+                            </form>
+                        </div>
+
+                        <!-- Bas (dy = +1) -->
+                        <form method="POST" action="/bourse/move">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <input type="hidden" name="dx" value="0">
+                            <input type="hidden" name="dy" value="1">
+                            <button type="submit" class="move-btn" {% if movement_points < 1 or market.cursor_y >= block_max %}disabled{% endif %} title="Descendre">
+                                ⬇️
+                            </button>
+                        </form>
+
+                        <div class="text-center mt-2">
+                            <p class="text-[10px] text-white/30 font-bold">{{ total_purchases }} achats</p>
+                            <p class="text-[10px] text-white/20">&rarr; {{ movement_points }} pt(s)</p>
+                        </div>
+                    </div>
+                </div>
+                </div>
+
+                <!-- LEGENDE -->
+                <div class="mt-4 flex flex-wrap gap-3 text-[10px] font-bold">
+                    <span class="flex items-center gap-1"><span class="w-3 h-3 rounded val-0"></span> <span class="text-white/40">0 (pas de surcout)</span></span>
+                    <span class="flex items-center gap-1"><span class="w-3 h-3 rounded val-4"></span> <span class="text-white/40">+10% a +20%</span></span>
+                    <span class="flex items-center gap-1"><span class="w-3 h-3 rounded val-8"></span> <span class="text-white/40">+30% a +40%</span></span>
+                    <span class="flex items-center gap-1"><span class="w-3 h-3 rounded val-12"></span> <span class="text-white/40">+50% a +60%</span></span>
+                    <span class="flex items-center gap-1 ml-auto">
+                        <span class="w-4 h-4 rounded border-2 border-yellow-500/50 bg-yellow-500/10"></span>
+                        <span class="text-yellow-400">= Bloc 3&times;3</span>
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== COLONNE DROITE : INFOS MARCHE ===== -->
+        <div class="space-y-5">
+
+            <!-- Vitrine -->
+            <div class="card p-5">
+                <h3 class="font-title text-base text-pink-400 mb-3 flex items-center gap-2">
+                    <span class="text-xl">🪟</span> Vitrine
+                </h3>
+                {% if market.vitrine_grain and market.vitrine_grain in cereals %}
+                {% set vg = cereals[market.vitrine_grain] %}
+                <div class="flex items-center gap-3 p-3 rounded-xl border border-red-500/20 bg-red-500/8">
+                    <span class="text-3xl">{{ vg.emoji }}</span>
+                    <div>
+                        <p class="text-red-300 font-bold text-sm">{{ vg.name }} <span class="text-red-400/60">BLOQUE</span></p>
+                        <p class="text-white/30 text-[10px] font-semibold">
+                            Dernier achat par <span class="text-white/50">{{ market.vitrine_user.username if market.vitrine_user else '?' }}</span>
+                        </p>
+                        <p class="text-white/20 text-[10px]">Achete un autre grain pour debloquer !</p>
+                    </div>
+                </div>
+                {% else %}
+                <div class="p-3 rounded-xl border border-white/10 bg-white/5 text-center">
+                    <p class="text-white/30 text-xs font-semibold">Aucun grain en vitrine</p>
+                    <p class="text-white/20 text-[10px]">Tous les grains sont disponibles !</p>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Regles express -->
+            <div class="card p-5">
+                <h3 class="font-title text-base text-cyan-400 mb-3 flex items-center gap-2">
+                    <span class="text-xl">📖</span> Comment ca marche ?
+                </h3>
+                <ol class="space-y-2 text-white/50 text-xs font-semibold">
+                    <li class="flex gap-2">
+                        <span class="text-cyan-400 font-bold shrink-0">1.</span>
+                        <span><strong class="text-white/70">Grille 7&times;7</strong> : chaque case a une valeur de surcout (0 au centre, 6 aux bords). Le surcout = valeur_X + valeur_Y.</span>
+                    </li>
+                    <li class="flex gap-2">
+                        <span class="text-cyan-400 font-bold shrink-0">2.</span>
+                        <span><strong class="text-white/70">Bloc 3&times;3</strong> : tes grains sont fixes dans ce bloc. Chaque grain herite du surcout de sa case.</span>
+                    </li>
+                    <li class="flex gap-2">
+                        <span class="text-cyan-400 font-bold shrink-0">3.</span>
+                        <span><strong class="text-white/70">Deplace le bloc</strong> : tu as <span class="text-yellow-400">{{ movement_points }} point(s)</span> (1 pt / 10 achats). Bouger change les prix !</span>
+                    </li>
+                    <li class="flex gap-2">
+                        <span class="text-cyan-400 font-bold shrink-0">4.</span>
+                        <span><strong class="text-white/70">Strategie</strong> : baisse le prix d'un grain... mais ca en augmente d'autres ! Le grain de base (🌽) au centre du bloc est le moins cher.</span>
+                    </li>
+                    <li class="flex gap-2">
+                        <span class="text-cyan-400 font-bold shrink-0">5.</span>
+                        <span><strong class="text-white/70">Vitrine</strong> : le dernier grain achete est bloque pour tous. Varie tes achats !</span>
+                    </li>
+                </ol>
+            </div>
+
+            <!-- Etat du marche -->
+            <div class="card p-5">
+                <h3 class="font-title text-base text-violet-400 mb-3 flex items-center gap-2">
+                    <span class="text-xl">📈</span> Etat du marche
+                </h3>
+                <div class="grid grid-cols-2 gap-3">
+                    <div class="text-center p-3 rounded-xl bg-white/5 border border-white/5">
+                        <p class="text-yellow-400 font-title text-lg">({{ market.cursor_x }}, {{ market.cursor_y }})</p>
+                        <p class="text-white/30 text-[9px] font-bold uppercase">Position bloc</p>
+                    </div>
+                    <div class="text-center p-3 rounded-xl bg-white/5 border border-white/5">
+                        <p class="text-pink-400 font-title text-lg">{{ market.total_transactions or 0 }}</p>
+                        <p class="text-white/30 text-[9px] font-bold uppercase">Transactions</p>
+                    </div>
+                    {% if last_movers %}
+                    {% for m in last_movers %}
+                    <div class="col-span-2 p-2 rounded-lg bg-white/3 border border-white/5 text-[10px] font-semibold text-white/30">
+                        {% if m.action == 'deplacement' %}
+                        🔄 <span class="text-white/50">{{ m.user }}</span> a deplace le bloc
+                        {% else %}
+                        {{ m.grain_emoji }} <span class="text-white/50">{{ m.user }}</span> a achete {{ m.grain }}
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== CEREALES DISPONIBLES (dans le bloc 3x3) ===== -->
+    <section class="mt-8">
+        <h2 class="font-title text-2xl text-green-400 mb-5 flex items-center gap-3">
+            <span class="text-3xl">🌾</span> Acheter du grain
+            {% if active_pigs %}
+            <span class="text-white/30 text-sm font-bold ml-auto">pour</span>
+            <select id="pig-selector" class="ml-2 bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-sm text-white font-bold focus:outline-none focus:border-pink-400/40">
+                {% for pig in active_pigs %}
+                <option value="{{ pig.id }}">{{ pig.emoji }} {{ pig.name }} (Faim {{ "%.0f"|format(pig.hunger) }}%)</option>
+                {% endfor %}
+            </select>
+            {% endif %}
+        </h2>
+
+        {% if not active_pigs %}
+        <div class="card p-8 text-center">
+            <p class="text-white/40 text-sm font-bold">Aucun cochon actif. Adopte d'abord un cochon !</p>
+        </div>
+        {% else %}
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {% for key, cer in cereals.items() %}
+            <div class="card grain-card p-5 {% if cer.is_blocked %}grain-blocked{% endif %}">
+                <div class="flex items-start justify-between mb-3">
+                    <div class="flex items-center gap-2">
+                        <span class="text-3xl">{{ cer.emoji }}</span>
+                        <div>
+                            <p class="font-bold text-white text-sm">{{ cer.name }}</p>
+                            <p class="text-white/30 text-[10px] font-semibold">{{ cer.description }}</p>
+                        </div>
+                    </div>
+                    <div class="flex flex-col items-end gap-1">
+                        {% if cer.is_blocked %}
+                        <span class="px-2 py-1 rounded-lg bg-red-500/20 border border-red-500/30 text-red-300 text-[9px] font-bold uppercase">Vitrine</span>
+                        {% endif %}
+                        <span class="px-2 py-0.5 rounded-md text-[9px] font-bold
+                            {% if cer.cell_value == 0 %}bg-green-500/20 text-green-300
+                            {% elif cer.cell_value <= 4 %}bg-yellow-500/20 text-yellow-300
+                            {% elif cer.cell_value <= 8 %}bg-orange-500/20 text-orange-300
+                            {% else %}bg-red-500/20 text-red-300{% endif %}">
+                            {% if cer.cell_value == 0 %}Pas de surcout{% else %}+{{ cer.cell_value * 5 }}% surcout{% endif %}
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Stats -->
+                <div class="flex flex-wrap gap-1.5 mb-3">
+                    {% for st, b in cer.stats.items() %}
+                    <span class="px-2 py-0.5 rounded-md bg-white/5 border border-white/8 text-[10px] font-bold
+                        {% if b >= 2.0 %}text-green-400{% elif b >= 1.0 %}text-emerald-300{% else %}text-white/40{% endif %}">
+                        +{{ "%.1f"|format(b) }} {{ st[:3]|upper }}
+                    </span>
+                    {% endfor %}
+                </div>
+
+                <!-- Effets -->
+                <div class="flex flex-wrap gap-3 text-[10px] font-bold text-white/40 mb-3">
+                    <span>🍽️ +{{ "%.0f"|format(cer.hunger_restore) }} faim</span>
+                    <span>⚡ +{{ "%.0f"|format(cer.energy_restore) }} energie</span>
+                    <span>⚖️ {{ '+' if cer.weight_delta >= 0 else '' }}{{ "%.1f"|format(cer.weight_delta) }} kg</span>
+                </div>
+
+                <!-- Prix -->
+                <div class="flex items-center justify-between">
+                    <div class="text-xs">
+                        {% if cer.surcharge != 1.0 %}
+                        <span class="text-white/20 line-through">{{ cer.original_cost }} 🪙</span>
+                        {% endif %}
+                        <span class="text-yellow-400 font-bold ml-1">{{ "%.1f"|format(cer.effective_cost) }} 🪙</span>
+                        {% if feeding_multiplier != 1.0 %}
+                        <span class="text-orange-400/60 ml-1 text-[10px]">(pression x{{ "%.2f"|format(feeding_multiplier) }})</span>
+                        {% endif %}
+                    </div>
+
+                    {% if not cer.is_blocked %}
+                    <form method="POST" action="/bourse/buy" class="cereal-form">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <input type="hidden" name="cereal" value="{{ key }}">
+                        <input type="hidden" name="pig_id" value="{{ active_pigs[0].id }}" class="pig-id-input">
+                        <button type="submit"
+                                class="bg-green-600 hover:bg-green-500 px-4 py-2 rounded-xl font-bold text-xs transition-all"
+                                {% if user.balance < cer.effective_cost %}disabled title="Pas assez de BitGroins"{% endif %}>
+                            Acheter
+                        </button>
+                    </form>
+                    {% else %}
+                    <span class="px-4 py-2 rounded-xl bg-white/5 text-white/20 text-xs font-bold">Bloque</span>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+    </section>
+
+    <!-- ===== VUE GRAPHIQUES (Hidden by default) ===== -->
+    <section id="view-charts" class="hidden space-y-6">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- Graphique des Prix -->
+            <div class="card p-6">
+                <h3 class="font-title text-xl text-yellow-400 mb-4 flex items-center gap-2">
+                    <span class="text-2xl">💰</span> Évolution des Prix (BitGroins)
+                </h3>
+                <div class="relative h-[400px]">
+                    <canvas id="priceChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Graphique des Surcouts -->
+            <div class="card p-6">
+                <h3 class="font-title text-xl text-pink-400 mb-4 flex items-center gap-2">
+                    <span class="text-2xl">📈</span> Évolution des Surcharges (%)
+                </h3>
+                <div class="relative h-[400px]">
+                    <canvas id="surchargeChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div class="card p-6">
+            <h3 class="font-title text-xl text-emerald-400 mb-4">Zoom sur une céréale</h3>
+            <div class="flex overflow-x-auto gap-3 pb-2 scrollbar-hide">
+                {% for key, cer in cereals.items() %}
+                <button onclick="toggleDataset('{{ key }}')" class="dataset-toggle flex items-center gap-2 px-4 py-2 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 transition-all text-sm font-bold whitespace-nowrap" id="toggle-{{ key }}">
+                    <span>{{ cer.emoji }}</span>
+                    <span>{{ cer.name }}</span>
+                </button>
+                {% endfor %}
+            </div>
+        </div>
+    </section>
+
+</main>
+
+<script>
+    // Synchroniser le selecteur de cochon avec tous les formulaires d'achat
+    const pigSelector = document.getElementById('pig-selector');
+    if (pigSelector) {
+        pigSelector.addEventListener('change', () => {
+            document.querySelectorAll('.pig-id-input').forEach(input => {
+                input.value = pigSelector.value;
+            });
+        });
+    }
+
+    // Gestion des Onglets
+    function switchTab(tab) {
+        const viewMarket = document.getElementById('view-market');
+        const viewCharts = document.getElementById('view-charts');
+        const buySection = document.querySelector('section.mt-8'); // L'achat
+        const tabMarket = document.getElementById('tab-market');
+        const tabCharts = document.getElementById('tab-charts');
+
+        if (tab === 'charts') {
+            viewMarket.classList.add('hidden');
+            buySection.classList.add('hidden');
+            viewCharts.classList.remove('hidden');
+            tabCharts.className = "flex-1 py-3 rounded-xl text-sm font-bold transition-all bg-yellow-400/20 text-yellow-100 border border-yellow-400/30";
+            tabMarket.className = "flex-1 py-3 rounded-xl text-sm font-bold transition-all text-white/50 hover:text-white hover:bg-white/5";
+            loadCharts();
+        } else {
+            viewMarket.classList.remove('hidden');
+            buySection.classList.remove('hidden');
+            viewCharts.classList.add('hidden');
+            tabMarket.className = "flex-1 py-3 rounded-xl text-sm font-bold transition-all bg-yellow-400/20 text-yellow-100 border border-yellow-400/30";
+            tabCharts.className = "flex-1 py-3 rounded-xl text-sm font-bold transition-all text-white/50 hover:text-white hover:bg-white/5";
+        }
+    }
+
+    let priceChart, surchargeChart, chartData;
+    const colors = {
+        mais: '#facc15', // yellow
+        orge: '#60a5fa', // blue
+        avoine: '#c084fc', // purple
+        ble: '#fb923c', // orange
+        soja: '#4ade80', // green
+        tapioca: '#f472b6', // pink
+        pois: '#2dd4bf', // teal
+        colza: '#fb7185', // rose
+        tournesol: '#a78bfa' // violet
+    };
+
+    async function loadCharts() {
+        if (priceChart) return; // Déjà chargé
+
+        const res = await fetch('/bourse/history?days=7');
+        chartData = await res.json();
+
+        const ts = chartData.timestamps.map(t => new Date(t).toLocaleString('fr-FR', {
+            day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit'
+        }));
+
+        const priceDatasets = [];
+        const surchargeDatasets = [];
+
+        for (const [key, ds] of Object.entries(chartData.datasets)) {
+            const color = colors[key] || '#ffffff';
+            priceDatasets.push({
+                label: ds.label,
+                data: ds.prices,
+                borderColor: color,
+                backgroundColor: color + '20',
+                borderWidth: 2,
+                tension: 0.3,
+                pointRadius: 2,
+                key: key
+            });
+            surchargeDatasets.push({
+                label: ds.label,
+                data: ds.surcharges.map(s => (s - 1) * 100), // En % additionnel
+                borderColor: color,
+                backgroundColor: color + '20',
+                borderWidth: 2,
+                tension: 0.3,
+                pointRadius: 2,
+                key: key
+            });
+        }
+
+        const commonOptions = {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: { mode: 'index', intersect: false },
+            plugins: {
+                legend: { display: false }
+            },
+            scales: {
+                x: {
+                    grid: { color: 'rgba(255,255,255,0.05)' },
+                    ticks: { color: 'rgba(255,255,255,0.4)', font: { size: 10 } }
+                },
+                y: {
+                    grid: { color: 'rgba(255,255,255,0.05)' },
+                    ticks: { color: 'rgba(255,255,255,0.6)', font: { size: 10, weight: 'bold' } }
+                }
+            }
+        };
+
+        priceChart = new Chart(document.getElementById('priceChart'), {
+            type: 'line',
+            data: { labels: ts, datasets: priceDatasets },
+            options: commonOptions
+        });
+
+        surchargeChart = new Chart(document.getElementById('surchargeChart'), {
+            type: 'line',
+            data: { labels: ts, datasets: surchargeDatasets },
+            options: {
+                ...commonOptions,
+                scales: {
+                    ...commonOptions.scales,
+                    y: { ...commonOptions.scales.y, ticks: { ...commonOptions.scales.y.ticks, callback: v => '+' + v + '%' } }
+                }
+            }
+        });
+    }
+
+    function toggleDataset(key) {
+        const btn = document.getElementById('toggle-' + key);
+        priceChart.data.datasets.forEach(ds => {
+            if (ds.key === key) ds.hidden = !ds.hidden;
+        });
+        surchargeChart.data.datasets.forEach(ds => {
+            if (ds.key === key) ds.hidden = !ds.hidden;
+        });
+        
+        priceChart.update();
+        surchargeChart.update();
+        
+        const isHidden = priceChart.data.datasets.find(ds => ds.key === key).hidden;
+        btn.style.opacity = isHidden ? '0.4' : '1';
+        btn.style.borderColor = isHidden ? 'rgba(255,255,255,0.1)' : (colors[key] + '60');
+    }
+</script>
+
+{% include '_footer.html' %}
+</body>
+</html>

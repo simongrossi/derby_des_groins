@@ -1,0 +1,525 @@
+{% extends "admin_base.html" %}
+{% block title %}{{ '📈 Progression' if admin_page == 'progression' else '💰 Economie' }}{% endblock %}
+
+{% block content %}
+{% if admin_page == 'progression' %}
+<div class="flex flex-col gap-8">
+    <section>
+        <h1 class="font-title text-3xl text-white mb-1">📈 Progression & simulation</h1>
+        <p class="text-white/45 font-semibold text-sm">Ajuste la récupération, l’XP, les gains d’entraînement et l’usure des courses, puis simule l’impact sur les cochons déjà en base.</p>
+    </section>
+
+    <section class="grid grid-cols-2 xl:grid-cols-4 gap-4">
+        <div class="card p-5"><p class="text-white/40 text-xs font-bold uppercase tracking-wider">Cochons actifs</p><p class="font-title text-3xl text-yellow-300 mt-2">{{ snapshot.active_pigs }}</p><p class="text-white/35 text-xs font-semibold mt-2">Niveau moyen {{ "%.1f"|format(snapshot.avg_level) }}</p></div>
+        <div class="card p-5"><p class="text-white/40 text-xs font-bold uppercase tracking-wider">Condition moyenne</p><p class="font-title text-3xl text-cyan-300 mt-2">{{ "%.0f"|format((snapshot.avg_energy + snapshot.avg_hunger + snapshot.avg_happiness) / 3) }}%</p><p class="text-white/35 text-xs font-semibold mt-2">Énergie {{ "%.0f"|format(snapshot.avg_energy) }} · Satiété {{ "%.0f"|format(snapshot.avg_hunger) }}</p></div>
+        <div class="card p-5"><p class="text-white/40 text-xs font-bold uppercase tracking-wider">Fraîcheur</p><p class="font-title text-3xl text-emerald-300 mt-2">{{ "%.0f"|format(snapshot.avg_freshness) }}%</p><p class="text-white/35 text-xs font-semibold mt-2">{{ "%.1f"|format(snapshot.race_ready_pct) }}% aptes à courir</p></div>
+        <div class="card p-5"><p class="text-white/40 text-xs font-bold uppercase tracking-wider">Rythme réel</p><p class="font-title text-3xl text-white mt-2">{{ "%.2f"|format(snapshot.recent_races_per_pig_per_week) }}</p><p class="text-white/35 text-xs font-semibold mt-2">courses / cochon / semaine · champ {{ snapshot.avg_field_size }}</p></div>
+    </section>
+
+    <form method="POST" action="{{ url_for('admin.admin_progression') }}" class="space-y-8">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+        <section class="grid grid-cols-1 xl:grid-cols-2 gap-6">
+            <div class="card p-6">
+                <h2 class="font-title text-2xl text-white mb-4">Récupération & niveaux</h2>
+                <div class="grid grid-cols-2 gap-3">
+                    <label class="text-white/65 text-sm font-bold">Faim / h<input class="input-admin w-full mt-2" type="number" min="0" max="10" step="0.1" name="progression_hunger_decay_per_hour" value="{{ settings.hunger_decay_per_hour }}"></label>
+                    <label class="text-white/65 text-sm font-bold">Seuil regen<input class="input-admin w-full mt-2" type="number" min="0" max="100" step="0.1" name="progression_energy_regen_hunger_threshold" value="{{ settings.energy_regen_hunger_threshold }}"></label>
+                    <label class="text-white/65 text-sm font-bold">Énergie + / h<input class="input-admin w-full mt-2" type="number" min="0" max="20" step="0.1" name="progression_energy_regen_per_hour" value="{{ settings.energy_regen_per_hour }}"></label>
+                    <label class="text-white/65 text-sm font-bold">Énergie - / h<input class="input-admin w-full mt-2" type="number" min="0" max="10" step="0.1" name="progression_energy_drain_per_hour" value="{{ settings.energy_drain_per_hour }}"></label>
+                    <label class="text-white/65 text-sm font-bold">Drain moral bas<input class="input-admin w-full mt-2" type="number" min="0" max="10" step="0.1" name="progression_low_hunger_happiness_drain_per_hour" value="{{ settings.low_hunger_happiness_drain_per_hour }}"></label>
+                    <label class="text-white/65 text-sm font-bold">Drain moral moyen<input class="input-admin w-full mt-2" type="number" min="0" max="10" step="0.1" name="progression_mid_hunger_happiness_drain_per_hour" value="{{ settings.mid_hunger_happiness_drain_per_hour }}"></label>
+                    <label class="text-white/65 text-sm font-bold">Regen moral / h<input class="input-admin w-full mt-2" type="number" min="0" max="5" step="0.1" name="progression_passive_happiness_regen_per_hour" value="{{ settings.passive_happiness_regen_per_hour }}"></label>
+                    <label class="text-white/65 text-sm font-bold">Cap regen moral<input class="input-admin w-full mt-2" type="number" min="0" max="100" step="1" name="progression_passive_happiness_regen_cap" value="{{ settings.passive_happiness_regen_cap }}"></label>
+                    <label class="text-white/65 text-sm font-bold">Grâce fraîcheur (h)<input class="input-admin w-full mt-2" type="number" min="0" max="168" step="1" name="progression_freshness_grace_hours" value="{{ settings.freshness_grace_hours }}"></label>
+                    <label class="text-white/65 text-sm font-bold">Perte fraîcheur / jour<input class="input-admin w-full mt-2" type="number" min="0" max="50" step="0.1" name="progression_freshness_decay_per_workday" value="{{ settings.freshness_decay_per_workday }}"></label>
+                    <label class="text-white/65 text-sm font-bold">Base XP niveau<input class="input-admin w-full mt-2" type="number" min="1" max="5000" step="1" name="progression_level_xp_base" value="{{ settings.level_xp_base }}"></label>
+                    <label class="text-white/65 text-sm font-bold">Exposant XP<input class="input-admin w-full mt-2" type="number" min="1" max="4" step="0.1" name="progression_level_xp_exponent" value="{{ settings.level_xp_exponent }}"></label>
+                    <label class="text-white/65 text-sm font-bold col-span-2">Bonheur gagné au level-up<input class="input-admin w-full mt-2" type="number" min="0" max="100" step="1" name="progression_level_happiness_bonus" value="{{ settings.level_happiness_bonus }}"></label>
+                </div>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4">
+                    {% for row in snapshot.level_curve_rows %}
+                    <div class="user-row p-3"><p class="text-white font-bold">Niv. {{ row.level }}</p><p class="text-white/35 text-xs font-semibold mt-1">Total {{ row.total_xp }}</p><p class="text-cyan-300 text-xs font-bold mt-1">+{{ row.incremental_xp }}</p></div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="card p-6">
+                <h2 class="font-title text-2xl text-white mb-4">Activités & usure</h2>
+                <div class="grid grid-cols-2 gap-3">
+                    <label class="text-white/65 text-sm font-bold">Mult. stats entraînement<input class="input-admin w-full mt-2" type="number" min="0" max="5" step="0.1" name="progression_training_stat_gain_multiplier" value="{{ settings.training_stat_gain_multiplier }}"></label>
+                    <label class="text-white/65 text-sm font-bold">Mult. moral entraînement<input class="input-admin w-full mt-2" type="number" min="0" max="5" step="0.1" name="progression_training_happiness_multiplier" value="{{ settings.training_happiness_multiplier }}"></label>
+                    <label class="text-white/65 text-sm font-bold">Mult. stats école<input class="input-admin w-full mt-2" type="number" min="0" max="5" step="0.1" name="progression_school_stat_gain_multiplier" value="{{ settings.school_stat_gain_multiplier }}"></label>
+                    <label class="text-white/65 text-sm font-bold">Mult. XP école<input class="input-admin w-full mt-2" type="number" min="0" max="5" step="0.1" name="progression_school_xp_multiplier" value="{{ settings.school_xp_multiplier }}"></label>
+                    <label class="text-white/65 text-sm font-bold">Mult. XP échec<input class="input-admin w-full mt-2" type="number" min="0" max="5" step="0.1" name="progression_school_wrong_xp_multiplier" value="{{ settings.school_wrong_xp_multiplier }}"></label>
+                    <label class="text-white/65 text-sm font-bold">Mult. moral école<input class="input-admin w-full mt-2" type="number" min="0" max="5" step="0.1" name="progression_school_happiness_multiplier" value="{{ settings.school_happiness_multiplier }}"></label>
+                    <label class="text-white/65 text-sm font-bold">Mult. malus échec<input class="input-admin w-full mt-2" type="number" min="0" max="5" step="0.1" name="progression_school_wrong_happiness_multiplier" value="{{ settings.school_wrong_happiness_multiplier }}"></label>
+                    <label class="text-white/65 text-sm font-bold">Mult. stats typing<input class="input-admin w-full mt-2" type="number" min="0" max="5" step="0.1" name="progression_typing_stat_gain_multiplier" value="{{ settings.typing_stat_gain_multiplier }}"></label>
+                    <label class="text-white/65 text-sm font-bold">XP typing<input class="input-admin w-full mt-2" type="number" min="0" max="500" step="1" name="progression_typing_xp_reward" value="{{ settings.typing_xp_reward }}"></label>
+                    <label class="text-white/65 text-sm font-bold">Mult. gains vainqueur<input class="input-admin w-full mt-2" type="number" min="0" max="5" step="0.1" name="progression_race_winner_stat_gain_multiplier" value="{{ settings.race_winner_stat_gain_multiplier }}"></label>
+                    <label class="text-white/65 text-sm font-bold">Mult. gains podium<input class="input-admin w-full mt-2" type="number" min="0" max="5" step="0.1" name="progression_race_podium_stat_gain_multiplier" value="{{ settings.race_podium_stat_gain_multiplier }}"></label>
+                    <label class="text-white/65 text-sm font-bold">Coût énergie course<input class="input-admin w-full mt-2" type="number" min="0" max="100" step="0.1" name="progression_race_energy_cost" value="{{ settings.race_energy_cost }}"></label>
+                    <label class="text-white/65 text-sm font-bold">Coût satiété course<input class="input-admin w-full mt-2" type="number" min="0" max="100" step="0.1" name="progression_race_hunger_cost" value="{{ settings.race_hunger_cost }}"></label>
+                    <label class="text-white/65 text-sm font-bold">Variation poids course<input class="input-admin w-full mt-2" type="number" min="-10" max="10" step="0.1" name="progression_race_weight_delta" value="{{ settings.race_weight_delta }}"></label>
+                    <label class="text-white/65 text-sm font-bold">Malus &lt; 24h<input class="input-admin w-full mt-2" type="number" min="0.5" max="1.2" step="0.01" name="progression_recent_race_penalty_under_24h" value="{{ settings.recent_race_penalty_under_24h }}"></label>
+                    <label class="text-white/65 text-sm font-bold">Malus &lt; 48h<input class="input-admin w-full mt-2" type="number" min="0.5" max="1.2" step="0.01" name="progression_recent_race_penalty_under_48h" value="{{ settings.recent_race_penalty_under_48h }}"></label>
+                    <label class="text-white/65 text-sm font-bold">Bonus retour<input class="input-admin w-full mt-2" type="number" min="1" max="3" step="0.1" name="progression_comeback_speed_bonus_multiplier" value="{{ settings.comeback_speed_bonus_multiplier }}"></label>
+                    <label class="text-white/65 text-sm font-bold">Coût énergie véto<input class="input-admin w-full mt-2" type="number" min="0" max="100" step="0.1" name="progression_vet_energy_cost" value="{{ settings.vet_energy_cost }}"></label>
+                    <label class="text-white/65 text-sm font-bold">Coût moral véto<input class="input-admin w-full mt-2" type="number" min="0" max="100" step="0.1" name="progression_vet_happiness_cost" value="{{ settings.vet_happiness_cost }}"></label>
+                </div>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4">
+                    {% for position in range(1, 9) %}
+                    <label class="text-white/65 text-sm font-bold">Place {{ position }}<input class="input-admin w-full mt-2" type="number" min="0" max="10000" step="1" name="progression_race_xp_{{ position }}" value="{{ settings.race_position_xp[position] }}"></label>
+                    {% endfor %}
+                </div>
+            </div>
+        </section>
+
+        <section class="card p-6">
+            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-6"><div><h2 class="font-title text-2xl text-white">Simulateur</h2><p class="text-white/40 text-sm font-semibold">Projection par cochon sur une boucle bureau, fondée sur les activités et cochons actuels.</p></div><div class="text-white/30 text-xs font-bold uppercase tracking-[0.2em]">Preview sans sauvegarde possible</div></div>
+            <div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3 mb-6">
+                <label class="text-white/60 text-xs font-bold">Cochons actifs<input class="input-admin w-full mt-1" type="number" min="1" name="prog_active_pigs" value="{{ simulation_inputs.active_pigs }}"></label>
+                <label class="text-white/60 text-xs font-bold">Jours actifs<input class="input-admin w-full mt-1" type="number" min="0" max="7" name="prog_active_days" value="{{ simulation_inputs.active_days_per_week }}"></label>
+                <label class="text-white/60 text-xs font-bold">Courses / cochon<input class="input-admin w-full mt-1" type="number" min="0" step="0.1" name="prog_races_per_pig" value="{{ simulation_inputs.races_per_pig_per_week }}"></label>
+                <label class="text-white/60 text-xs font-bold">Entraînements<input class="input-admin w-full mt-1" type="number" min="0" step="0.1" name="prog_trainings_per_pig" value="{{ simulation_inputs.trainings_per_pig_per_week }}"></label>
+                <label class="text-white/60 text-xs font-bold">Repos<input class="input-admin w-full mt-1" type="number" min="0" step="0.1" name="prog_rest_sessions_per_pig" value="{{ simulation_inputs.rest_sessions_per_pig_per_week }}"></label>
+                <label class="text-white/60 text-xs font-bold">École<input class="input-admin w-full mt-1" type="number" min="0" step="0.1" name="prog_school_sessions_per_pig" value="{{ simulation_inputs.school_sessions_per_pig_per_week }}"></label>
+                <label class="text-white/60 text-xs font-bold">Réussite école<input class="input-admin w-full mt-1" type="number" min="0" max="1" step="0.05" name="prog_lesson_success_rate" value="{{ simulation_inputs.lesson_success_rate }}"></label>
+                <label class="text-white/60 text-xs font-bold">Typing<input class="input-admin w-full mt-1" type="number" min="0" step="0.1" name="prog_typing_sessions_per_pig" value="{{ simulation_inputs.typing_sessions_per_pig_per_week }}"></label>
+                <label class="text-white/60 text-xs font-bold">Maîtrise typing<input class="input-admin w-full mt-1" type="number" min="0" max="1" step="0.05" name="prog_typing_mastery" value="{{ simulation_inputs.typing_mastery }}"></label>
+                <label class="text-white/60 text-xs font-bold">Nourrissages<input class="input-admin w-full mt-1" type="number" min="0" step="0.1" name="prog_feedings_per_pig" value="{{ simulation_inputs.feedings_per_pig_per_week }}"></label>
+                <label class="text-white/60 text-xs font-bold">Champ<input class="input-admin w-full mt-1" type="number" min="2" max="8" name="prog_field_size" value="{{ simulation_inputs.field_size }}"></label>
+                <label class="text-white/60 text-xs font-bold">Projection<input class="input-admin w-full mt-1" type="number" min="1" max="52" name="prog_projection_weeks" value="{{ simulation_inputs.projection_weeks }}"></label>
+            </div>
+            <div class="grid grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
+                <div class="result-card p-4"><p class="text-white/45 text-xs font-bold uppercase tracking-wider">XP / cochon / sem</p><p class="font-title text-3xl text-yellow-300 mt-2">{{ "%.1f"|format(custom_simulation.xp_per_pig_per_week) }}</p></div>
+                <div class="result-card p-4"><p class="text-white/45 text-xs font-bold uppercase tracking-wider">Gain total de stats</p><p class="font-title text-3xl text-cyan-300 mt-2">{{ "%.2f"|format(custom_simulation.total_stat_gain_per_pig_per_week) }}</p></div>
+                <div class="result-card p-4"><p class="text-white/45 text-xs font-bold uppercase tracking-wider">Readiness</p><p class="font-title text-3xl {{ 'text-green-300' if custom_simulation.readiness_score >= 65 else 'text-yellow-300' if custom_simulation.readiness_score >= 45 else 'text-red-300' }} mt-2">{{ "%.1f"|format(custom_simulation.readiness_score) }}%</p></div>
+                <div class="result-card p-4"><p class="text-white/45 text-xs font-bold uppercase tracking-wider">Niveaux gagnés</p><p class="font-title text-3xl text-white mt-2">+{{ custom_simulation.levels_gained_per_pig_projection }}</p></div>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full min-w-[620px] text-sm">
+                    <thead><tr class="text-left text-white/35 uppercase tracking-wider text-xs"><th class="pb-3">Stat</th><th class="pb-3 text-right">Gain / sem</th><th class="pb-3 text-right">Gain projeté</th></tr></thead>
+                    <tbody>{% for row in custom_simulation.stat_rows %}<tr class="border-t border-white/8"><td class="py-3 text-white font-bold">{{ row.label }}</td><td class="py-3 text-right text-cyan-300 font-bold">{{ "%+.2f"|format(row.weekly_gain) }}</td><td class="py-3 text-right text-white/70 font-semibold">{{ "%+.2f"|format(row.projected_gain) }}</td></tr>{% endfor %}</tbody>
+                </table>
+            </div>
+            <div class="grid grid-cols-1 2xl:grid-cols-2 gap-6 mt-6">
+                <div class="card p-4"><h3 class="font-title text-lg text-white mb-3">Presets cohérents</h3><div class="space-y-2">{% for row in preset_rows %}<div class="user-row p-3 flex items-center justify-between gap-3"><div><p class="text-white font-bold">{{ row.label }}</p><p class="text-white/30 text-xs font-semibold">{{ row.description }}</p></div><div class="text-right"><p class="text-cyan-300 font-bold">{{ "%.1f"|format(row.xp_per_week) }} XP</p><p class="text-white/30 text-xs font-semibold">{{ "%.1f"|format(row.readiness_score) }}%</p></div></div>{% endfor %}</div></div>
+                <div class="card p-4"><h3 class="font-title text-lg text-white mb-3">Cadence de courses</h3><div class="space-y-2">{% for row in cadence_rows %}<div class="user-row p-3 flex items-center justify-between gap-3"><div><p class="text-white font-bold">{{ "%.1f"|format(row.races_per_week) }} course(s) / sem</p><p class="text-white/30 text-xs font-semibold">malus x{{ "%.2f"|format(row.recent_penalty_multiplier) }}</p></div><div class="text-right"><p class="text-cyan-300 font-bold">{{ "%.1f"|format(row.xp_per_week) }} XP</p><p class="text-white/30 text-xs font-semibold">{{ "%.1f"|format(row.readiness_score) }}%</p></div></div>{% endfor %}</div></div>
+            </div>
+            <div class="flex flex-wrap gap-3 mt-6"><button type="submit" name="action" value="preview" class="btn-admin">Prévisualiser</button><button type="submit" name="action" value="save" class="btn-success">💾 Sauvegarder ces réglages</button></div>
+        </section>
+    </form>
+</div>
+{% else %}
+<div class="flex flex-col gap-8">
+    <section>
+        <h1 class="font-title text-3xl text-white mb-1">💰 Economie du jeu</h1>
+        <p class="text-white/45 font-semibold text-sm">Ajuste les sources, les sinks et les cotes, puis prévisualise l’impact sur la circulation avant de sauvegarder.</p>
+    </section>
+
+    <section class="grid grid-cols-2 xl:grid-cols-4 gap-4">
+        <div class="card p-5">
+            <p class="text-white/40 text-xs font-bold uppercase tracking-wider">BitGroins en circulation</p>
+            <p class="font-title text-3xl text-yellow-300 mt-2">{{ "%.0f"|format(snapshot.total_balance) }} 🪙</p>
+            <p class="text-white/35 text-xs font-semibold mt-2">{{ snapshot.users }} joueurs · {{ snapshot.alive_pigs }} cochons vivants</p>
+        </div>
+        <div class="card p-5">
+            <p class="text-white/40 text-xs font-bold uppercase tracking-wider">Capacité hebdo</p>
+            <p class="font-title text-3xl text-cyan-300 mt-2">{{ snapshot.weekly_capacity }}</p>
+            <p class="text-white/35 text-xs font-semibold mt-2">{{ snapshot.weekly_slots }} créneaux × 8 partants</p>
+        </div>
+        <div class="card p-5">
+            <p class="text-white/40 text-xs font-bold uppercase tracking-wider">Champ moyen</p>
+            <p class="font-title text-3xl text-emerald-300 mt-2">{{ snapshot.avg_field_size }}</p>
+            <p class="text-white/35 text-xs font-semibold mt-2">{{ snapshot.finished_races }} courses terminées</p>
+        </div>
+        <div class="card p-5">
+            <p class="text-white/40 text-xs font-bold uppercase tracking-wider">Balance moyenne</p>
+            <p class="font-title text-3xl text-white mt-2">{{ "%.1f"|format(snapshot.avg_balance) }} 🪙</p>
+            <p class="text-white/35 text-xs font-semibold mt-2">{{ "%.2f"|format(snapshot.avg_alive_pigs_per_user) }} cochon(s) / joueur actif</p>
+        </div>
+    </section>
+
+    <form method="POST" action="{{ url_for('admin.admin_economy') }}" class="space-y-8">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+        <section class="card p-6">
+            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-6">
+                <div>
+                    <h2 class="font-title text-2xl text-white">Réglages appliqués</h2>
+                    <p class="text-white/40 text-sm font-semibold">Le simulateur ci-dessous utilise ces mêmes valeurs.</p>
+                </div>
+                <div class="text-white/30 text-xs font-bold uppercase tracking-[0.2em]">Persisté via GameConfig</div>
+            </div>
+
+            <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
+                <div class="card p-5">
+                    <h3 class="font-title text-lg text-white mb-4">Récompenses</h3>
+                    <div class="grid grid-cols-2 gap-3">
+                        <label class="text-white/65 text-sm font-bold col-span-2">
+                            Bonus de bienvenue
+                            <input class="input-admin w-full mt-2" type="number" min="0" step="0.1" name="welcome_bonus" value="{{ settings.welcome_bonus }}">
+                        </label>
+                        <label class="text-white/65 text-sm font-bold">
+                            Prime quotidienne
+                            <input class="input-admin w-full mt-2" type="number" min="0" step="0.1" name="daily_login_reward" value="{{ settings.daily_login_reward }}">
+                        </label>
+                        <label class="text-white/65 text-sm font-bold">
+                            Prime participation
+                            <input class="input-admin w-full mt-2" type="number" min="0" step="0.1" name="race_appearance_reward" value="{{ settings.race_appearance_reward }}">
+                        </label>
+                        <label class="text-white/65 text-sm font-bold">
+                            1re place
+                            <input class="input-admin w-full mt-2" type="number" min="0" step="0.1" name="race_reward_1" value="{{ settings.race_position_rewards[1] }}">
+                        </label>
+                        <label class="text-white/65 text-sm font-bold">
+                            2e place
+                            <input class="input-admin w-full mt-2" type="number" min="0" step="0.1" name="race_reward_2" value="{{ settings.race_position_rewards[2] }}">
+                        </label>
+                        <label class="text-white/65 text-sm font-bold col-span-2">
+                            3e place
+                            <input class="input-admin w-full mt-2" type="number" min="0" step="0.1" name="race_reward_3" value="{{ settings.race_position_rewards[3] }}">
+                        </label>
+                    </div>
+                </div>
+
+                <div class="card p-5">
+                    <h3 class="font-title text-lg text-white mb-4">Cochons</h3>
+                    <div class="grid grid-cols-2 gap-3">
+                        <label class="text-white/65 text-sm font-bold">
+                            Cochon de secours
+                            <input class="input-admin w-full mt-2" type="number" min="0" step="0.1" name="replacement_pig_cost" value="{{ settings.replacement_pig_cost }}">
+                        </label>
+                        <label class="text-white/65 text-sm font-bold">
+                            2e cochon
+                            <input class="input-admin w-full mt-2" type="number" min="0" step="0.1" name="second_pig_cost" value="{{ settings.second_pig_cost }}">
+                        </label>
+                        <label class="text-white/65 text-sm font-bold">
+                            Incrément / cochon
+                            <input class="input-admin w-full mt-2" type="number" min="0" step="0.1" name="additional_pig_step_cost" value="{{ settings.additional_pig_step_cost }}">
+                        </label>
+                        <label class="text-white/65 text-sm font-bold">
+                            Portée
+                            <input class="input-admin w-full mt-2" type="number" min="0" step="0.1" name="breeding_cost" value="{{ settings.breeding_cost }}">
+                        </label>
+                        <label class="text-white/65 text-sm font-bold col-span-2">
+                            Pression nourriture / cochon supp.
+                            <input class="input-admin w-full mt-2" type="number" min="0" step="0.01" name="feeding_pressure_per_pig" value="{{ settings.feeding_pressure_per_pig }}">
+                        </label>
+                    </div>
+                </div>
+
+                <div class="card p-5">
+                    <h3 class="font-title text-lg text-white mb-4">Paris</h3>
+                    <div class="grid grid-cols-2 gap-3">
+                        <label class="text-white/65 text-sm font-bold">
+                            Tickets / semaine
+                            <input class="input-admin w-full mt-2" type="number" min="0" step="1" name="weekly_bacon_tickets" value="{{ settings.weekly_bacon_tickets }}">
+                        </label>
+                        <label class="text-white/65 text-sm font-bold">
+                            Quota courses / cochon
+                            <input class="input-admin w-full mt-2" type="number" min="0" step="1" name="weekly_race_quota" value="{{ settings.weekly_race_quota }}">
+                        </label>
+                        <label class="text-white/65 text-sm font-bold">
+                            Mise min
+                            <input class="input-admin w-full mt-2" type="number" min="1" step="1" name="min_bet_race" value="{{ settings.min_bet_race }}">
+                        </label>
+                        <label class="text-white/65 text-sm font-bold">
+                            Mise max
+                            <input class="input-admin w-full mt-2" type="number" min="1" step="1" name="max_bet_race" value="{{ settings.max_bet_race }}">
+                        </label>
+                        <label class="text-white/65 text-sm font-bold col-span-2">
+                            Cap de payout par ticket
+                            <input class="input-admin w-full mt-2" type="number" min="0" step="1" name="max_payout_race" value="{{ settings.max_payout_race }}">
+                            <span class="text-white/30 text-xs font-semibold mt-2 block">0 = pas de cap. La limite coupe les jackpots extrêmes même si la cote calculée est plus haute.</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card p-5 mt-6">
+                <h3 class="font-title text-lg text-white mb-4">Multiplicateurs journaliers</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
+                    {% for row in day_theme_rows %}
+                    <label class="text-white/65 text-sm font-bold">
+                        {{ row.label }}
+                        <span class="block text-white/35 text-xs font-semibold mt-1">{{ row.theme_name }}</span>
+                        <input class="input-admin w-full mt-2" type="number" min="1" step="1" name="day_multiplier_{{ row.day }}" value="{{ row.reward_multiplier }}">
+                    </label>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="card p-5 mt-6">
+                <h3 class="font-title text-lg text-white mb-4">House edge par type de ticket</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+                    {% for bet_key, bet_meta in settings.bet_types.items() %}
+                    <label class="text-white/65 text-sm font-bold">
+                        {{ bet_meta.icon }} {{ bet_meta.label }}
+                        <span class="block text-white/35 text-xs font-semibold mt-1">{{ bet_key }}</span>
+                        <input class="input-admin w-full mt-2" type="number" min="1.01" max="5" step="0.01" name="bet_house_edge_{{ bet_key }}" value="{{ bet_meta.house_edge }}">
+                    </label>
+                    {% endfor %}
+                </div>
+            </div>
+        </section>
+
+        <section class="grid grid-cols-1 2xl:grid-cols-[1.3fr,0.7fr] gap-6">
+            <div class="card p-6">
+                <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-6">
+                    <div>
+                        <h2 class="font-title text-2xl text-white">Simulateur</h2>
+                        <p class="text-white/40 text-sm font-semibold">Hypothèses: répartition homogène du niveau, coût nourriture basé sur le céréale le moins cher, et saturation bornée par la capacité du planning.</p>
+                    </div>
+                    <div class="text-white/30 text-xs font-bold uppercase tracking-[0.2em]">Preview sans sauvegarde possible</div>
+                </div>
+
+                <div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3 mb-6">
+                    <label class="text-white/60 text-xs font-bold">
+                        Joueurs actifs
+                        <input class="input-admin w-full mt-1" type="number" min="1" name="sim_active_users" value="{{ simulation_inputs.active_users }}">
+                    </label>
+                    <label class="text-white/60 text-xs font-bold">
+                        Cochons / joueur
+                        <input class="input-admin w-full mt-1" type="number" min="1" name="sim_pigs_per_user" value="{{ simulation_inputs.pigs_per_user }}">
+                    </label>
+                    <label class="text-white/60 text-xs font-bold">
+                        Jours actifs / semaine
+                        <input class="input-admin w-full mt-1" type="number" min="0" max="7" name="sim_active_days" value="{{ simulation_inputs.active_days_per_week }}">
+                    </label>
+                    <label class="text-white/60 text-xs font-bold">
+                        Courses / cochon
+                        <input class="input-admin w-full mt-1" type="number" min="0" step="0.1" name="sim_races_per_pig" value="{{ simulation_inputs.races_per_pig_per_week }}">
+                    </label>
+                    <label class="text-white/60 text-xs font-bold">
+                        Stratégie
+                        <select class="input-admin w-full mt-1" name="sim_strategy">
+                            {% for strategy_key, strategy_label in strategy_choices.items() %}
+                            <option value="{{ strategy_key }}" {{ 'selected' if simulation_inputs.strategy == strategy_key else '' }}>{{ strategy_label }}</option>
+                            {% endfor %}
+                        </select>
+                    </label>
+                    <label class="text-white/60 text-xs font-bold">
+                        Mise moyenne
+                        <input class="input-admin w-full mt-1" type="number" min="{{ settings.min_bet_race }}" max="{{ settings.max_bet_race }}" step="1" name="sim_avg_stake" value="{{ simulation_inputs.avg_stake }}">
+                    </label>
+                    <label class="text-white/60 text-xs font-bold">
+                        Tickets / joueur
+                        <input class="input-admin w-full mt-1" type="number" min="0" step="0.1" name="sim_tickets_per_user" value="{{ simulation_inputs.tickets_used_per_user }}">
+                    </label>
+                    <label class="text-white/60 text-xs font-bold">
+                        Type de ticket
+                        <select class="input-admin w-full mt-1" name="sim_bet_type">
+                            {% for bet_key, bet_meta in settings.bet_types.items() %}
+                            <option value="{{ bet_key }}" {{ 'selected' if simulation_inputs.bet_type == bet_key else '' }}>{{ bet_meta.label }}</option>
+                            {% endfor %}
+                        </select>
+                    </label>
+                    <label class="text-white/60 text-xs font-bold">
+                        Taille du champ
+                        <input class="input-admin w-full mt-1" type="number" min="2" max="8" name="sim_field_size" value="{{ simulation_inputs.field_size }}">
+                    </label>
+                    <label class="text-white/60 text-xs font-bold">
+                        Projection (semaines)
+                        <input class="input-admin w-full mt-1" type="number" min="1" max="52" name="sim_projection_weeks" value="{{ simulation_inputs.projection_weeks }}">
+                    </label>
+                </div>
+
+                <div class="grid grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
+                    <div class="result-card p-4">
+                        <p class="text-white/45 text-xs font-bold uppercase tracking-wider">Net / joueur / semaine</p>
+                        <p class="font-title text-3xl {{ 'text-green-300' if custom_simulation.net_per_user >= 0 else 'text-red-300' }} mt-2">{{ "%+.2f"|format(custom_simulation.net_per_user) }}</p>
+                    </div>
+                    <div class="result-card p-4">
+                        <p class="text-white/45 text-xs font-bold uppercase tracking-wider">Delta global / semaine</p>
+                        <p class="font-title text-3xl {{ 'text-green-300' if custom_simulation.total_weekly_delta >= 0 else 'text-red-300' }} mt-2">{{ "%+.0f"|format(custom_simulation.total_weekly_delta) }} 🪙</p>
+                    </div>
+                    <div class="result-card p-4">
+                        <p class="text-white/45 text-xs font-bold uppercase tracking-wider">Projection</p>
+                        <p class="font-title text-3xl text-yellow-300 mt-2">{{ "%.0f"|format(custom_simulation.projected_circulation) }} 🪙</p>
+                    </div>
+                    <div class="result-card p-4">
+                        <p class="text-white/45 text-xs font-bold uppercase tracking-wider">Variation circulation</p>
+                        <p class="font-title text-3xl {{ 'text-green-300' if custom_simulation.circulation_delta_pct >= 0 else 'text-red-300' }} mt-2">{{ "%+.1f"|format(custom_simulation.circulation_delta_pct) }}%</p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    <div class="card p-4">
+                        <h3 class="font-title text-lg text-white mb-3">Flux hebdo par joueur</h3>
+                        <div class="space-y-2 text-sm font-bold">
+                            <div class="flex items-center justify-between">
+                                <span class="text-white/50">Connexion</span>
+                                <span class="text-green-300">+{{ "%.2f"|format(custom_simulation.login_reward_per_user) }} 🪙</span>
+                            </div>
+                            <div class="flex items-center justify-between">
+                                <span class="text-white/50">Courses</span>
+                                <span class="text-green-300">+{{ "%.2f"|format(custom_simulation.race_reward_per_user) }} 🪙</span>
+                            </div>
+                            <div class="flex items-center justify-between">
+                                <span class="text-white/50">Paris</span>
+                                <span class="{{ 'text-green-300' if custom_simulation.betting_delta_per_user >= 0 else 'text-red-300' }}">{{ "%+.2f"|format(custom_simulation.betting_delta_per_user) }} 🪙</span>
+                            </div>
+                            <div class="flex items-center justify-between">
+                                <span class="text-white/50">Nourriture</span>
+                                <span class="text-red-300">-{{ "%.2f"|format(custom_simulation.feed_cost_per_user) }} 🪙</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card p-4">
+                        <h3 class="font-title text-lg text-white mb-3">Hypothèses actives</h3>
+                        <div class="space-y-2 text-sm font-bold">
+                            <div class="flex items-center justify-between">
+                                <span class="text-white/50">Courses effectives / cochon</span>
+                                <span class="text-white">{{ "%.2f"|format(custom_simulation.races_per_pig_effective) }}</span>
+                            </div>
+                            <div class="flex items-center justify-between">
+                                <span class="text-white/50">Capacité sollicitée</span>
+                                <span class="text-white">{{ "%.1f"|format(custom_simulation.capacity_usage_pct) }}%</span>
+                            </div>
+                            <div class="flex items-center justify-between">
+                                <span class="text-white/50">Céréale la moins chère</span>
+                                <span class="text-white">{{ snapshot.cheapest_cereal.name if snapshot.cheapest_cereal else 'Aucune' }}</span>
+                            </div>
+                            <div class="flex items-center justify-between">
+                                <span class="text-white/50">Coût moyen des céréales</span>
+                                <span class="text-white">{{ "%.2f"|format(snapshot.average_cereal_cost) }} 🪙</span>
+                            </div>
+                            <div class="flex items-center justify-between">
+                                <span class="text-white/50">Tickets récents / joueur</span>
+                                <span class="text-white">{{ "%.2f"|format(snapshot.recent_bets_per_user_per_week) }}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex flex-wrap gap-3 mt-6">
+                    <button type="submit" name="action" value="preview" class="btn-admin">Prévisualiser</button>
+                    <button type="submit" name="action" value="save" class="btn-success">💾 Sauvegarder ces réglages</button>
+                </div>
+            </div>
+
+            <div class="flex flex-col gap-6">
+                <div class="card p-5">
+                    <h2 class="font-title text-xl text-white mb-4">Distribution live</h2>
+                    <div class="space-y-2">
+                        {% for row in distribution_scenarios %}
+                        <div class="user-row p-3">
+                            <div class="flex items-center justify-between gap-3">
+                                <div>
+                                    <p class="text-white font-bold">{{ row.label }}</p>
+                                    <p class="text-white/30 text-xs font-semibold">{{ row.users }} joueurs · projection 4 sem {{ "%.0f"|format(row.projected_4_weeks) }} 🪙</p>
+                                </div>
+                                <div class="text-right">
+                                    <p class="font-bold {{ 'text-green-300' if row.total_weekly_delta >= 0 else 'text-red-300' }}">{{ "%+.0f"|format(row.total_weekly_delta) }} / sem</p>
+                                    <p class="text-white/30 text-xs font-semibold">12 sem: {{ "%.0f"|format(row.projected_12_weeks) }}</p>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <div class="card p-5">
+                    <h2 class="font-title text-xl text-white mb-4">Créneaux & multiplicateurs</h2>
+                    <div class="space-y-3">
+                        {% for row in snapshot.day_slots %}
+                        <div class="user-row p-3">
+                            <div class="flex items-center justify-between gap-3">
+                                <div>
+                                    <p class="text-white font-bold">{{ row.day_name }}</p>
+                                    <p class="text-white/30 text-xs font-semibold">{{ row.slot_count }} créneaux · {{ row.theme_name or 'Thème par défaut' }}</p>
+                                </div>
+                                <div class="text-cyan-300 font-bold">x{{ "%.0f"|format(row.reward_multiplier) }}</div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </section>
+    </form>
+
+    <section class="grid grid-cols-1 2xl:grid-cols-2 gap-6">
+        <div class="card p-6">
+            <h2 class="font-title text-2xl text-white mb-4">Profils types</h2>
+            <div class="overflow-x-auto">
+                <table class="w-full min-w-[620px] text-sm">
+                    <thead>
+                        <tr class="text-left text-white/35 uppercase tracking-wider text-xs">
+                            <th class="pb-3">Cochons</th>
+                            <th class="pb-3 text-right">Étale</th>
+                            <th class="pb-3 text-right">Focus</th>
+                            <th class="pb-3 text-right">Adoption</th>
+                            <th class="pb-3 text-right">Payback</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in profile_rows %}
+                        <tr class="border-t border-white/8">
+                            <td class="py-3 text-white font-bold">{{ row.pig_count }}</td>
+                            <td class="py-3 text-right {{ 'text-green-300' if row.spread_net >= 0 else 'text-red-300' }} font-bold">{{ "%+.2f"|format(row.spread_net) }}</td>
+                            <td class="py-3 text-right {{ 'text-green-300' if row.focus_net >= 0 else 'text-red-300' }} font-bold">{{ "%+.2f"|format(row.focus_net) }}</td>
+                            <td class="py-3 text-right text-white/65 font-semibold">{{ "%.0f"|format(row.adoption_cost) if row.adoption_cost else '—' }}</td>
+                            <td class="py-3 text-right text-white/65 font-semibold">{{ "%.1f sem."|format(row.payback_weeks) if row.payback_weeks else '—' }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="card p-6">
+            <h2 class="font-title text-2xl text-white mb-4">Analyse des tickets</h2>
+            <div class="overflow-x-auto">
+                <table class="w-full min-w-[640px] text-sm">
+                    <thead>
+                        <tr class="text-left text-white/35 uppercase tracking-wider text-xs">
+                            <th class="pb-3">Ticket</th>
+                            <th class="pb-3 text-right">Cote</th>
+                            <th class="pb-3 text-right">EV</th>
+                            <th class="pb-3 text-right">Min payout</th>
+                            <th class="pb-3 text-right">Max payout</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in bet_analysis_rows %}
+                        <tr class="border-t border-white/8">
+                            <td class="py-3 text-white font-bold">{{ row.icon }} {{ row.label }}</td>
+                            <td class="py-3 text-right text-white/70 font-semibold">x{{ "%.1f"|format(row.odds) }}</td>
+                            <td class="py-3 text-right {{ 'text-green-300' if row.expected_return_pct >= 0 else 'text-red-300' }} font-bold">{{ "%+.1f"|format(row.expected_return_pct) }}%</td>
+                            <td class="py-3 text-right text-white/70 font-semibold">{{ "%.0f"|format(row.min_payout) }}</td>
+                            <td class="py-3 text-right {{ 'text-cyan-300' if row.is_capped_on_max else 'text-red-300' }} font-bold">{{ "%.0f"|format(row.max_payout) }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    <section class="card p-6">
+        <h2 class="font-title text-2xl text-white mb-4">Mouvements récents</h2>
+        {% if snapshot.recent_transactions %}
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-3">
+            {% for row in snapshot.recent_transactions %}
+            <div class="user-row p-3 flex items-center justify-between gap-3">
+                <div>
+                    <p class="text-white font-bold">{{ row.reason_code }}</p>
+                    <p class="text-white/30 text-xs font-semibold">{{ row.count }} mouvement(s)</p>
+                </div>
+                <div class="text-right font-bold {{ 'text-green-300' if row.amount > 0 else 'text-red-300' if row.amount < 0 else 'text-white/50' }}">
+                    {{ "%+.0f"|format(row.amount) }} 🪙
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p class="text-white/35 text-sm font-semibold">Aucun mouvement récent.</p>
+        {% endif %}
+    </section>
+</div>
+{% endif %}
+{% endblock %}

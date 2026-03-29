@@ -1,0 +1,364 @@
+{% from '_pig_avatar.html' import pig_display %}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>👤 Derby des Groins — Mon Profil</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * { font-family: 'Nunito', sans-serif; }
+        .font-title { font-family: 'Lilita One', cursive; }
+
+        body {
+            background: #160b20;
+            background-image:
+                radial-gradient(ellipse at 18% 18%, rgba(244, 114, 182, 0.16) 0%, transparent 45%),
+                radial-gradient(ellipse at 80% 30%, rgba(251, 146, 60, 0.10) 0%, transparent 50%),
+                radial-gradient(ellipse at 50% 80%, rgba(190, 24, 93, 0.12) 0%, transparent 55%);
+            min-height: 100vh;
+            color: #f8fafc;
+        }
+
+        .card {
+            background: linear-gradient(180deg, rgba(255,255,255,0.055) 0%, rgba(255,240,246,0.03) 100%);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 205, 226, 0.12);
+            border-radius: 1.5rem;
+        }
+
+        .hero-card {
+            background: linear-gradient(135deg, rgba(244, 114, 182, 0.16), rgba(251, 146, 60, 0.08));
+            border: 1px solid rgba(244, 114, 182, 0.22);
+            border-radius: 1.5rem;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #ec4899, #fb7185 55%, #fb923c);
+            border: none;
+            color: white;
+            font-weight: 800;
+            border-radius: 0.75rem;
+            padding: 0.8rem 1.2rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            font-size: 0.85rem;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 8px 25px rgba(244, 114, 182, 0.3);
+        }
+
+        .form-input {
+            width: 100%;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 0.9rem;
+            padding: 0.8rem 1rem;
+            color: white;
+            font-weight: 700;
+            font-size: 0.9rem;
+            outline: none;
+        }
+
+        .form-input:focus {
+            border-color: rgba(244, 114, 182, 0.7);
+            box-shadow: 0 0 0 3px rgba(244, 114, 182, 0.12);
+        }
+
+        .stat-card {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 1rem;
+        }
+
+        .status-ok {
+            background: rgba(34, 197, 94, 0.15);
+            border: 1px solid rgba(34, 197, 94, 0.35);
+            color: #86efac;
+        }
+
+        .status-warn {
+            background: rgba(245, 158, 11, 0.15);
+            border: 1px solid rgba(245, 158, 11, 0.35);
+            color: #fcd34d;
+        }
+
+        .pig-pill {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 1rem;
+        }
+
+        .flash-msg { animation: flashIn 0.4s ease-out; }
+        @keyframes flashIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body>
+{% set active_page = 'profil' %}
+
+{% include "_site_header.html" %}
+
+<main class="max-w-6xl mx-auto px-4 py-8">
+    {% include '_flash.html' %}
+
+    <section class="hero-card p-8 mb-8">
+        <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+            <div>
+                <p class="text-cyan-300/80 font-bold uppercase tracking-widest text-xs mb-2">Compte éleveur</p>
+                <h1 class="font-title text-3xl md:text-4xl text-white mb-2">👤 {{ user.username }}</h1>
+                <p class="text-white/55 font-semibold text-sm">
+                    Membre depuis le {{ user.created_at.strftime('%d/%m/%Y à %H:%M') if user.created_at else 'inconnu' }}
+                    {% if user.is_admin %}• accès admin{% endif %}
+                </p>
+            </div>
+            <div class="grid grid-cols-2 gap-3 min-w-[260px]">
+                <div class="stat-card p-4 text-center">
+                    <p class="text-3xl font-title text-yellow-400">{{ "%.0f"|format(user.balance) }}</p>
+                    <p class="text-white/45 text-xs font-bold uppercase tracking-wide">🪙 BitGroins</p>
+                </div>
+                <div class="stat-card p-4 text-center">
+                    <p class="text-3xl font-title text-pink-300">{{ active_pigs|length }}</p>
+                    <p class="text-white/45 text-xs font-bold uppercase tracking-wide">Cochons actifs</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+        <section class="xl:col-span-1 space-y-6">
+            <div class="card p-6">
+                <h2 class="font-title text-2xl text-white mb-4">Mon compte</h2>
+                <div class="space-y-3 text-sm font-semibold">
+                    <div class="flex items-center justify-between gap-4">
+                        <span class="text-white/45">Pseudo</span>
+                        <span class="text-white">{{ user.username }}</span>
+                    </div>
+                    <div class="flex items-center justify-between gap-4">
+                        <span class="text-white/45">Compte créé</span>
+                        <span class="text-white">{{ user.created_at.strftime('%d/%m/%Y') if user.created_at else 'N/A' }}</span>
+                    </div>
+                    <div class="flex items-center justify-between gap-4">
+                        <span class="text-white/45">Cochons au marché</span>
+                        <span class="text-white">{{ active_listing_count }}</span>
+                    </div>
+                    <div class="flex items-center justify-between gap-4">
+                        <span class="text-white/45">Meilleur champion</span>
+                        <span class="text-white">
+                            {% if best_pig %}
+                            {{ pig_display(best_pig, 'text-sm', 18) }} {{ best_pig.name }}
+                            {% else %}
+                            Aucun pour l'instant
+                            {% endif %}
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card p-6">
+                <div class="flex items-center justify-between gap-3 mb-4">
+                    <h2 class="font-title text-2xl text-white">Marché</h2>
+                    <span class="px-3 py-1 rounded-full text-xs font-bold {{ 'status-ok' if market_unlocked else 'status-warn' }}">
+                        {{ 'Débloqué' if market_unlocked else 'Verrouillé' }}
+                    </span>
+                </div>
+                {% if market_unlocked %}
+                <p class="text-sm font-semibold text-white/65">
+                    Ton compte a accès au marché. Tu peux acheter, miser et vendre pendant les fenêtres d'ouverture.
+                </p>
+                {% else %}
+                <p class="text-sm font-semibold text-white/65">{{ market_lock_reason }}</p>
+                <div class="grid grid-cols-2 gap-3 mt-4">
+                    <div class="stat-card p-4 text-center">
+                        <p class="text-2xl font-title text-yellow-300">{{ market_progress_races }}</p>
+                        <p class="text-white/45 text-[11px] font-bold uppercase tracking-wide">Courses jouées</p>
+                    </div>
+                    <div class="stat-card p-4 text-center">
+                        <p class="text-2xl font-title text-yellow-300">{{ market_hours_left }}</p>
+                        <p class="text-white/45 text-[11px] font-bold uppercase tracking-wide">Heures max restantes</p>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+
+            <div class="card p-6">
+                <div class="flex items-center justify-between gap-3 mb-4">
+                    <h2 class="font-title text-2xl text-white">Palmares memoire</h2>
+                    <span class="px-3 py-1 rounded-full text-xs font-bold status-ok">{{ memorial_trophies|length }} trophée{{ 's' if memorial_trophies|length != 1 else '' }}</span>
+                </div>
+                {% if memorial_trophies %}
+                <div class="space-y-3">
+                    {% for trophy in memorial_trophies %}
+                    <div class="pig-pill p-4">
+                        <div class="flex items-start gap-3">
+                            <div class="text-2xl">{{ trophy.emoji }}</div>
+                            <div>
+                                <p class="text-white font-bold">{{ trophy.label }}</p>
+                                <p class="text-white/55 text-sm font-semibold">{{ trophy.description }}</p>
+                                <p class="text-white/35 text-xs font-bold mt-1">{{ trophy.pig_name or 'Elevage' }} • {{ trophy.earned_at.strftime('%d/%m/%Y') if trophy.earned_at else 'archive' }}</p>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="text-white/45 text-sm font-semibold">Aucun trophée mémoriel pour l'instant. Les grands exploits survivront ici après la fin de carrière d'un cochon.</p>
+                {% endif %}
+            </div>
+
+            <div class="card p-6">
+                <h2 class="font-title text-2xl text-white mb-2">Mot de passe</h2>
+                <p class="text-white/45 text-sm font-semibold mb-5">Change ton mot de passe sans quitter la piste.</p>
+                <form method="POST" action="/profil" class="space-y-4">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <div>
+                        <label class="text-xs font-bold text-white/45 uppercase tracking-wide block mb-2">Mot de passe actuel</label>
+                        <input class="form-input" type="password" name="current_password" autocomplete="current-password" required>
+                    </div>
+                    <div>
+                        <label class="text-xs font-bold text-white/45 uppercase tracking-wide block mb-2">Nouveau mot de passe</label>
+                        <input class="form-input" type="password" name="new_password" minlength="6" autocomplete="new-password" required>
+                    </div>
+                    <div>
+                        <label class="text-xs font-bold text-white/45 uppercase tracking-wide block mb-2">Confirmation</label>
+                        <input class="form-input" type="password" name="confirm_password" minlength="6" autocomplete="new-password" required>
+                    </div>
+                    <button type="submit" class="btn-primary w-full">Mettre à jour mon mot de passe</button>
+                </form>
+            </div>
+        </section>
+
+        <section class="xl:col-span-2 space-y-6">
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                <div class="stat-card p-5 text-center">
+                    <p class="text-3xl font-title text-pink-300">{{ pigs|length }}</p>
+                    <p class="text-white/45 text-xs font-bold uppercase tracking-wide mt-1">Cochons élevés</p>
+                </div>
+                <div class="stat-card p-5 text-center">
+                    <p class="text-3xl font-title text-red-300">{{ retired_pigs|length }}</p>
+                    <p class="text-white/45 text-xs font-bold uppercase tracking-wide mt-1">Fin de vie</p>
+                </div>
+                <div class="stat-card p-5 text-center">
+                    <p class="text-3xl font-title text-green-300">{{ total_wins }}</p>
+                    <p class="text-white/45 text-xs font-bold uppercase tracking-wide mt-1">Victoires</p>
+                </div>
+                <div class="stat-card p-5 text-center">
+                    <p class="text-3xl font-title text-cyan-300">{{ "%.1f"|format(race_win_rate) }}%</p>
+                    <p class="text-white/45 text-xs font-bold uppercase tracking-wide mt-1">Taux de victoire</p>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="card p-6">
+                    <h2 class="font-title text-2xl text-white mb-4">Élevage</h2>
+                    <div class="grid grid-cols-2 gap-4 mb-5">
+                        <div class="stat-card p-4 text-center">
+                            <p class="text-2xl font-title text-yellow-300">{{ total_races }}</p>
+                            <p class="text-white/45 text-[11px] font-bold uppercase tracking-wide">Courses disputées</p>
+                        </div>
+                        <div class="stat-card p-4 text-center">
+                            <p class="text-2xl font-title text-indigo-300">{{ total_school_sessions }}</p>
+                            <p class="text-white/45 text-[11px] font-bold uppercase tracking-wide">Séances d'école</p>
+                        </div>
+                        <div class="stat-card p-4 text-center">
+                            <p class="text-2xl font-title text-amber-300">{{ legendary_pigs }}</p>
+                            <p class="text-white/45 text-[11px] font-bold uppercase tracking-wide">Légendaires</p>
+                        </div>
+                        <div class="stat-card p-4 text-center">
+                            <p class="text-2xl font-title text-emerald-300">{{ active_listing_count }}</p>
+                            <p class="text-white/45 text-[11px] font-bold uppercase tracking-wide">En vente</p>
+                        </div>
+                    </div>
+
+                    {% if pigs %}
+                    <div class="space-y-3">
+                        {% for pig in pigs[:5] %}
+                        <div class="pig-pill p-4 flex items-center justify-between gap-4">
+                            <div class="flex items-center gap-3">
+                                <span>{{ pig_display(pig, 'text-3xl', 40) }}</span>
+                                <div>
+                                    <p class="text-white font-bold">{{ pig.name }}</p>
+                                    <p class="text-white/40 text-xs font-semibold">
+                                        Niveau {{ pig.level }} • {{ pig.origin_flag }} {{ pig.origin_country }} • {{ pig.rarity|capitalize }}
+                                    </p>
+                                </div>
+                            </div>
+                            <span class="text-xs font-bold px-3 py-1 rounded-full {{ 'status-ok' if pig.is_alive else 'status-warn' }}">
+                                {% if pig.id in active_listing_ids %}
+                                En vente
+                                {% elif pig.is_alive %}
+                                Actif
+                                {% else %}
+                                {{ pig.death_cause or 'Retiré' }}
+                                {% endif %}
+                            </span>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <p class="text-white/45 text-sm font-semibold">Aucun cochon enregistré pour ce compte.</p>
+                    {% endif %}
+                </div>
+
+                <div class="card p-6">
+                    <h2 class="font-title text-2xl text-white mb-4">Paris</h2>
+                    <div class="grid grid-cols-2 gap-4 mb-5">
+                        <div class="stat-card p-4 text-center">
+                            <p class="text-2xl font-title text-green-300">{{ won_bets|length }}</p>
+                            <p class="text-white/45 text-[11px] font-bold uppercase tracking-wide">Paris gagnés</p>
+                        </div>
+                        <div class="stat-card p-4 text-center">
+                            <p class="text-2xl font-title text-red-300">{{ lost_bets|length }}</p>
+                            <p class="text-white/45 text-[11px] font-bold uppercase tracking-wide">Paris perdus</p>
+                        </div>
+                        <div class="stat-card p-4 text-center">
+                            <p class="text-2xl font-title text-yellow-300">{{ "%.0f"|format(total_winnings) }}</p>
+                            <p class="text-white/45 text-[11px] font-bold uppercase tracking-wide">🪙 encaisses</p>
+                        </div>
+                        <div class="stat-card p-4 text-center">
+                            <p class="text-2xl font-title {{ 'text-green-300' if total_profit >= 0 else 'text-red-300' }}">{{ "%.0f"|format(total_profit) }}</p>
+                            <p class="text-white/45 text-[11px] font-bold uppercase tracking-wide">Profit net réglé</p>
+                        </div>
+                    </div>
+
+                    <div class="space-y-3">
+                        <div class="pig-pill p-4 flex items-center justify-between">
+                            <span class="text-white/55 text-sm font-semibold">Total de mises</span>
+                            <span class="text-white font-bold">{{ "%.0f"|format(total_staked) }} 🪙</span>
+                        </div>
+                        <div class="pig-pill p-4 flex items-center justify-between">
+                            <span class="text-white/55 text-sm font-semibold">Paris encore ouverts</span>
+                            <span class="text-white font-bold">{{ pending_bets|length }}</span>
+                        </div>
+                        <div class="pig-pill p-4 flex items-center justify-between">
+                            <span class="text-white/55 text-sm font-semibold">Taux de réussite</span>
+                            <span class="text-white font-bold">{{ "%.1f"|format(bet_win_rate) }}%</span>
+                        </div>
+                        <div class="pig-pill p-4 flex items-center justify-between">
+                            <span class="text-white/55 text-sm font-semibold">Dernier pari</span>
+                            <span class="text-white font-bold">
+                                {% if bets %}
+                                {% set latest_bet_type = bets[0].bet_type if bets[0].bet_type in bet_types else 'win' %}
+                                {{ bet_types[latest_bet_type].icon }} {{ bets[0].pig_name }} le {{ bets[0].placed_at.strftime('%d/%m') }}
+                                {% else %}
+                                Aucun
+                                {% endif %}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+</main>
+
+{% include '_footer.html' %}
+</body>
+</html>

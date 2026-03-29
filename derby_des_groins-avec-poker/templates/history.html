@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🐷 Derby des Groins - Historique & Tracabilite</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * { font-family: 'Nunito', sans-serif; }
+        .font-title { font-family: 'Lilita One', cursive; }
+        body {
+            background: #140a25;
+            background-image:
+                radial-gradient(circle at top left, rgba(236, 72, 153, 0.18), transparent 35%),
+                radial-gradient(circle at 85% 10%, rgba(251, 191, 36, 0.12), transparent 28%),
+                linear-gradient(180deg, #1b0b31 0%, #0f0a1c 100%);
+            min-height: 100vh;
+        }
+        .card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.10);
+            border-radius: 1.5rem;
+            box-shadow: 0 18px 60px rgba(7, 10, 18, 0.22);
+        }
+        .soft-card {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 1rem;
+        }
+        .pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.4rem 0.8rem;
+            border-radius: 999px;
+            font-size: 0.75rem;
+            font-weight: 800;
+            letter-spacing: 0.01em;
+        }
+        .table-shell {
+            overflow: hidden;
+            border-radius: 1rem;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            background: rgba(255, 255, 255, 0.03);
+        }
+        .table-shell table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .table-shell th {
+            background: rgba(255, 255, 255, 0.04);
+            color: rgba(255, 255, 255, 0.55);
+            font-size: 0.72rem;
+            font-weight: 800;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+        }
+        .table-shell th,
+        .table-shell td {
+            padding: 0.95rem 1rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+            text-align: left;
+            vertical-align: top;
+        }
+        .table-shell tr:last-child td { border-bottom: none; }
+    </style>
+</head>
+<body>
+{% set active_page = 'history' %}
+{% include "_site_header.html" %}
+
+{% set total_won = won_bets | sum(attribute='winnings') %}
+{% set total_staked = bets | sum(attribute='amount') %}
+
+<main class="max-w-7xl mx-auto px-4 py-8 space-y-8">
+    <section class="card p-6 lg:p-8">
+        <div class="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+            <div>
+                <p class="text-xs uppercase tracking-[0.35em] text-yellow-300/70 font-extrabold">Audit du derby</p>
+                <h1 class="font-title text-3xl md:text-4xl text-white mt-3">Historique & Tracabilite</h1>
+                <p class="text-white/55 font-semibold mt-3 max-w-3xl">
+                    Retrouve toutes les courses terminees, tes tickets, et le journal des credits/debits BitGroins.
+                    {% if user.is_admin %}
+                    En tant qu'admin, tu vois aussi le flux global des utilisateurs.
+                    {% endif %}
+                </p>
+            </div>
+            <nav class="flex flex-wrap gap-2" id="history-tabs">
+                <button data-tab="courses" class="hist-tab pill bg-yellow-400/15 text-yellow-300 border border-yellow-400/20 ring-2 ring-yellow-400/40">🏁 Courses</button>
+                <button data-tab="bitgroins" class="hist-tab pill bg-cyan-400/12 text-cyan-200 border border-cyan-400/20">💰 Journal BitGroins</button>
+                <button data-tab="paris" class="hist-tab pill bg-pink-400/12 text-pink-200 border border-pink-400/20">🎯 Mes Paris</button>
+            </nav>
+        </div>
+    </section>
+
+    <section class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+        <div class="card p-5">
+            <p class="text-white/45 text-xs uppercase tracking-[0.2em] font-extrabold">Courses archivees</p>
+            <p class="font-title text-4xl text-white mt-3">{{ race_history | length }}</p>
+            <p class="text-white/45 text-sm font-semibold mt-2">Arrivees partagees pour tout le Derby.</p>
+        </div>
+        <div class="card p-5">
+            <p class="text-white/45 text-xs uppercase tracking-[0.2em] font-extrabold">Tickets de {{ target_user.username }}</p>
+            <p class="font-title text-4xl text-white mt-3">{{ bets | length }}</p>
+            <p class="text-white/45 text-sm font-semibold mt-2">{{ won_bets | length }} gagnes, {{ lost_bets | length }} perdus.</p>
+        </div>
+        <div class="card p-5">
+            <p class="text-white/45 text-xs uppercase tracking-[0.2em] font-extrabold">Credits ({{ target_user.username }})</p>
+            <p class="font-title text-4xl text-emerald-300 mt-3">+{{ "%.2f"|format(credited_amount) }}</p>
+            <p class="text-white/45 text-sm font-semibold mt-2">Plus-values BitGroins journalisees.</p>
+        </div>
+        <div class="card p-5">
+            <p class="text-white/45 text-xs uppercase tracking-[0.2em] font-extrabold">Debits ({{ target_user.username }})</p>
+            <p class="font-title text-4xl text-rose-300 mt-3">-{{ "%.2f"|format(debited_amount) }}</p>
+            <p class="text-white/45 text-sm font-semibold mt-2">Flux negatifs BitGroins.</p>
+        </div>
+    </section>
+
+    <section id="courses" class="space-y-4">
+        <div class="flex items-center justify-between gap-4">
+            <div>
+                <h2 class="font-title text-3xl text-white">🏁 Historique complet des courses</h2>
+                <p class="text-white/45 font-semibold mt-1">Classements finaux, volume de paris et detail des participants.</p>
+            </div>
+        </div>
+
+        {% if race_history %}
+        <div class="space-y-4">
+            {% for entry in race_history %}
+            {% set race = entry.race %}
+            {% set winner = entry.winner %}
+            <article class="card p-5 lg:p-6">
+                <div class="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
+                    <div>
+                        <div class="flex flex-wrap items-center gap-2">
+                            <span class="pill bg-white/8 text-white/70 border border-white/10">Course #{{ race.id }}</span>
+                            <span class="pill bg-amber-400/12 text-amber-200 border border-amber-400/20">{{ race.finished_at.strftime('%d/%m/%Y %H:%M') if race.finished_at else 'Non datee' }}</span>
+                            <span class="pill bg-cyan-400/12 text-cyan-200 border border-cyan-400/20">{{ entry.player_count }} eleveur(s)</span>
+                            <span class="pill bg-fuchsia-400/12 text-fuchsia-200 border border-fuchsia-400/20">{{ entry.npc_count }} PNJ</span>
+                        </div>
+                        <h3 class="text-white text-2xl font-extrabold mt-4">
+                            {% if winner %}
+                            {{ winner.emoji }} {{ winner.name }}
+                            {% else %}
+                            Arrivee indisponible
+                            {% endif %}
+                        </h3>
+                        <p class="text-white/45 font-semibold mt-2">
+                            {% if winner and winner.owner_name %}
+                            Ecurie {{ winner.owner_name }} • cote finale x{{ "%.2f"|format(winner.odds or 0) }}
+                            {% elif winner %}
+                            Participant PNJ • cote finale x{{ "%.2f"|format(winner.odds or 0) }}
+                            {% else %}
+                            Aucun gagnant enregistre
+                            {% endif %}
+                        </p>
+                    </div>
+
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-3 min-w-full xl:min-w-[30rem]">
+                        <div class="soft-card p-4">
+                            <p class="text-white/35 text-[11px] uppercase tracking-[0.18em] font-extrabold">Paris</p>
+                            <p class="font-title text-2xl text-white mt-2">{{ entry.bet_count }}</p>
+                        </div>
+                        <div class="soft-card p-4">
+                            <p class="text-white/35 text-[11px] uppercase tracking-[0.18em] font-extrabold">Mises</p>
+                            <p class="font-title text-2xl text-cyan-200 mt-2">{{ "%.2f"|format(entry.total_staked) }}</p>
+                        </div>
+                        <div class="soft-card p-4">
+                            <p class="text-white/35 text-[11px] uppercase tracking-[0.18em] font-extrabold">Paiements</p>
+                            <p class="font-title text-2xl text-emerald-200 mt-2">{{ "%.2f"|format(entry.total_paid_out) }}</p>
+                        </div>
+                        <div class="soft-card p-4">
+                            <p class="text-white/35 text-[11px] uppercase tracking-[0.18em] font-extrabold">Partants</p>
+                            <p class="font-title text-2xl text-white mt-2">{{ entry.participants | length }}</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-5 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-[18rem_minmax(0,1fr)] gap-4">
+                    <div class="soft-card p-4">
+                        <p class="text-white font-extrabold text-sm">Podium</p>
+                        <div class="mt-3 space-y-2">
+                            {% for participant in entry.podium %}
+                            <div class="flex items-center justify-between gap-3 rounded-xl border border-white/8 bg-white/[0.03] px-3 py-2.5">
+                                <div class="min-w-0">
+                                    <p class="text-white font-bold">{{ participant.finish_position or '?' }}. {{ participant.emoji }} {{ participant.name }}</p>
+                                    <p class="text-white/40 text-xs font-semibold">
+                                        {{ participant.owner_name if participant.owner_name else 'PNJ' }}
+                                    </p>
+                                </div>
+                                <span class="text-yellow-300 font-extrabold text-sm">x{{ "%.2f"|format(participant.odds or 0) }}</span>
+                            </div>
+                            {% else %}
+                            <p class="text-white/40 text-sm font-semibold">Pas de podium disponible.</p>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <div class="soft-card p-4">
+                        <p class="text-white font-extrabold text-sm">Ordre d'arrivee complet</p>
+                        <div class="mt-3 grid grid-cols-1 md:grid-cols-2 gap-2.5">
+                            {% for participant in entry.participants %}
+                            <div class="rounded-xl border border-white/8 bg-white/[0.03] px-3 py-2.5 flex items-center justify-between gap-3">
+                                <div class="min-w-0">
+                                    <p class="text-white font-bold">{{ participant.finish_position or '?' }}. {{ participant.emoji }} {{ participant.name }}</p>
+                                    <p class="text-white/40 text-xs font-semibold">
+                                        {{ participant.owner_name if participant.owner_name else 'PNJ' }}
+                                    </p>
+                                </div>
+                                <span class="text-white/55 text-xs font-extrabold">x{{ "%.2f"|format(participant.odds or 0) }}</span>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </article>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="card p-10 text-center">
+            <p class="text-5xl mb-4">🏁</p>
+            <p class="text-white/60 text-lg font-bold">Aucune course terminee pour le moment.</p>
+        </div>
+        {% endif %}
+    </section>
+
+    <section id="bitgroins" class="space-y-4">
+        <div class="flex flex-col md:flex-row md:items-end justify-between gap-6">
+            <div>
+                <h2 class="font-title text-3xl text-white">💰 Journal BitGroins</h2>
+                <p class="text-white/45 font-semibold mt-1">Chaque credit, debit, remboursement ou prime reste visible pour reconstituer ton solde.</p>
+            </div>
+            
+            <form method="GET" action="/history" class="flex items-center gap-3">
+                <label for="u_filter" class="text-xs font-bold text-white/40 uppercase tracking-wider">Inspecter un eleveur :</label>
+                <select name="u" id="u_filter" onchange="this.form.submit()"
+                        class="bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-white font-bold text-sm focus:outline-none focus:border-cyan-500/50">
+                    {% for u in all_users %}
+                    <option value="{{ u.id }}" {% if u.id == target_user.id %}selected{% endif %}>{{ u.username }}</option>
+                    {% endfor %}
+                </select>
+            </form>
+        </div>
+
+        <div class="card p-5 lg:p-6 space-y-4">
+            <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                    <h3 class="text-white text-xl font-extrabold">{% if target_user.id == user.id %}Mon journal{% else %}Journal de {{ target_user.username }}{% endif %} 🪙 BitGroins</h3>
+                    <p class="text-white/45 text-sm font-semibold mt-1">Les mouvements sont horodates et incluent le solde apres transaction.</p>
+                </div>
+                <span class="pill bg-cyan-400/12 text-cyan-200 border border-cyan-400/20">{{ transactions | length }} mouvement(s)</span>
+            </div>
+
+            {% if transactions %}
+            <div class="table-shell overflow-x-auto">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Mouvement</th>
+                            <th>Detail</th>
+                            <th>Solde apres</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for tx in transactions %}
+                        {% set amount_color = 'text-emerald-300' if tx.amount > 0 else ('text-rose-300' if tx.amount < 0 else 'text-cyan-200') %}
+                        <tr>
+                            <td class="text-white/70 text-sm font-bold whitespace-nowrap">{{ tx.created_at.strftime('%d/%m/%Y %H:%M') }}</td>
+                            <td>
+                                <p class="font-extrabold {{ amount_color }}">
+                                    {% if tx.amount > 0 %}+{% endif %}{{ "%.2f"|format(tx.amount) }} 🪙
+                                </p>
+                                <p class="text-white/35 text-xs font-semibold mt-1">{{ tx.reason_label }}</p>
+                            </td>
+                            <td>
+                                <p class="text-white font-bold">{{ tx.details or 'Aucun detail complementaire' }}</p>
+                                <p class="text-white/35 text-xs font-semibold mt-1">
+                                    Avant {{ "%.2f"|format(tx.balance_before or 0) }} 🪙
+                                    {% if tx.reference_type and tx.reference_id %}
+                                    • {{ tx.reference_type }} #{{ tx.reference_id }}
+                                    {% endif %}
+                                </p>
+                            </td>
+                            <td class="text-white font-extrabold whitespace-nowrap">{{ "%.2f"|format(tx.balance_after or 0) }} 🪙</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="soft-card p-8 text-center">
+                <p class="text-white/50 font-bold">Aucun mouvement BitGroins enregistre pour l'instant.</p>
+            </div>
+            {% endif %}
+        </div>
+
+        {% if user.is_admin %}
+        <div class="card p-5 lg:p-6 space-y-4">
+            <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                    <h3 class="text-white text-xl font-extrabold">Vue admin - flux global des utilisateurs</h3>
+                    <p class="text-white/45 text-sm font-semibold mt-1">Pratique pour remonter un litige, une suspicion de triche ou une incoherence de solde.</p>
+                </div>
+                <span class="pill bg-indigo-400/12 text-indigo-200 border border-indigo-400/20">{{ global_transactions | length }} entree(s)</span>
+            </div>
+
+            {% if global_transactions %}
+            <div class="table-shell overflow-x-auto">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Utilisateur</th>
+                            <th>Mouvement</th>
+                            <th>Detail</th>
+                            <th>Solde apres</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for tx in global_transactions %}
+                        {% set amount_color = 'text-emerald-300' if tx.amount > 0 else ('text-rose-300' if tx.amount < 0 else 'text-cyan-200') %}
+                        <tr>
+                            <td class="text-white/70 text-sm font-bold whitespace-nowrap">{{ tx.created_at.strftime('%d/%m/%Y %H:%M') }}</td>
+                            <td class="text-white font-bold">{{ tx.user.username if tx.user else 'Utilisateur supprime' }}</td>
+                            <td>
+                                <p class="font-extrabold {{ amount_color }}">
+                                    {% if tx.amount > 0 %}+{% endif %}{{ "%.2f"|format(tx.amount) }} 🪙
+                                </p>
+                                <p class="text-white/35 text-xs font-semibold mt-1">{{ tx.reason_label }}</p>
+                            </td>
+                            <td>
+                                <p class="text-white font-bold">{{ tx.details or 'Aucun detail complementaire' }}</p>
+                                <p class="text-white/35 text-xs font-semibold mt-1">
+                                    Avant {{ "%.2f"|format(tx.balance_before or 0) }} 🪙
+                                    {% if tx.reference_type and tx.reference_id %}
+                                    • {{ tx.reference_type }} #{{ tx.reference_id }}
+                                    {% endif %}
+                                </p>
+                            </td>
+                            <td class="text-white font-extrabold whitespace-nowrap">{{ "%.2f"|format(tx.balance_after or 0) }} 🪙</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="soft-card p-8 text-center">
+                <p class="text-white/50 font-bold">Aucun flux global enregistre.</p>
+            </div>
+            {% endif %}
+        </div>
+        {% endif %}
+    </section>
+
+    <section id="paris" class="space-y-4">
+        <div>
+            <h2 class="font-title text-3xl text-white">🎯 Paris de {{ target_user.username }}</h2>
+            <p class="text-white/45 font-semibold mt-1">Tickets avec mise, cote et resultat final.</p>
+        </div>
+
+        {% if bets %}
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div class="card p-4 text-center">
+                <p class="font-title text-3xl text-emerald-300">{{ won_bets | length }}</p>
+                <p class="text-white/50 text-sm font-bold mt-1">Paris gagnes</p>
+            </div>
+            <div class="card p-4 text-center">
+                <p class="font-title text-3xl text-rose-300">{{ lost_bets | length }}</p>
+                <p class="text-white/50 text-sm font-bold mt-1">Paris perdus</p>
+            </div>
+            <div class="card p-4 text-center">
+                <p class="font-title text-3xl text-yellow-300">{{ "%.2f"|format(total_won - (settled_bets | sum(attribute='amount'))) }}</p>
+                <p class="text-white/50 text-sm font-bold mt-1">Resultat net des tickets regles</p>
+            </div>
+        </div>
+
+        <div class="space-y-3">
+            {% for bet in bets %}
+            {% set bet_type_key = bet.bet_type if bet.bet_type in bet_types else 'win' %}
+            {% set status_bg = 'bg-emerald-400/10 border-emerald-400/20' if bet.status == 'won' else ('bg-rose-400/10 border-rose-400/20' if bet.status == 'lost' else 'bg-amber-400/10 border-amber-400/20') %}
+            <article class="card p-4 border {{ status_bg }}">
+                <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                    <div class="min-w-0">
+                        <div class="flex flex-wrap items-center gap-2">
+                            <span class="pill bg-white/8 text-white/70 border border-white/10">{{ bet_types[bet_type_key].icon }} {{ bet_types[bet_type_key].label }}</span>
+                            <span class="pill bg-white/8 text-white/70 border border-white/10">Course #{{ bet.race_id }}</span>
+                            <span class="pill bg-white/8 text-white/70 border border-white/10">{{ bet.placed_at.strftime('%d/%m/%Y %H:%M') }}</span>
+                        </div>
+                        <p class="text-white font-extrabold text-lg mt-3">{{ bet.pig_name }}</p>
+                        <p class="text-white/45 text-sm font-semibold mt-1">Mise {{ "%.2f"|format(bet.amount) }} 🪙 • Cote x{{ "%.2f"|format(bet.odds_at_bet) }}</p>
+                    </div>
+                    <div class="text-left lg:text-right">
+                        {% if bet.status == 'won' %}
+                        <p class="font-title text-3xl text-emerald-300">+{{ "%.2f"|format(bet.winnings) }}</p>
+                        <p class="text-white/45 text-sm font-semibold">Ticket gagnant</p>
+                        {% elif bet.status == 'lost' %}
+                        <p class="font-title text-3xl text-rose-300">-{{ "%.2f"|format(bet.amount) }}</p>
+                        <p class="text-white/45 text-sm font-semibold">Ticket perdu</p>
+                        {% else %}
+                        <p class="font-title text-3xl text-amber-300">{{ "%.2f"|format(bet.amount) }}</p>
+                        <p class="text-white/45 text-sm font-semibold">En attente de la course</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </article>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="card p-10 text-center">
+            <p class="text-5xl mb-4">🎯</p>
+            <p class="text-white/60 text-lg font-bold">Aucun pari enregistre pour l'instant.</p>
+            <a href="/" class="inline-flex items-center gap-2 mt-5 rounded-xl bg-yellow-400/15 border border-yellow-400/20 px-5 py-3 text-yellow-200 font-bold hover:bg-yellow-400/20 transition-colors">
+                Voir les courses ouvertes
+            </a>
+        </div>
+        {% endif %}
+    </section>
+</main>
+<script>
+(function() {
+  const tabs = document.querySelectorAll('.hist-tab');
+  const sections = {
+    courses: document.getElementById('courses'),
+    bitgroins: document.getElementById('bitgroins'),
+    paris: document.getElementById('paris'),
+  };
+  // Also hide the stats overview when not on "courses"
+  const statsGrid = document.querySelector('main > section.grid');
+
+  const colors = {
+    courses: 'ring-yellow-400/40',
+    bitgroins: 'ring-cyan-400/40',
+    paris: 'ring-pink-400/40',
+  };
+
+  function activate(tabName) {
+    // Show/hide sections
+    Object.entries(sections).forEach(([name, el]) => {
+      if (el) el.style.display = name === tabName ? '' : 'none';
+    });
+    // Stats grid only visible on courses tab
+    if (statsGrid) statsGrid.style.display = tabName === 'courses' ? '' : 'none';
+    // Update tab styles
+    tabs.forEach(btn => {
+      const t = btn.dataset.tab;
+      btn.classList.remove('ring-2', colors.courses, colors.bitgroins, colors.paris);
+      if (t === tabName) {
+        btn.classList.add('ring-2', colors[t]);
+      }
+    });
+    // Update URL hash without scroll
+    history.replaceState(null, '', '#' + tabName);
+  }
+
+  tabs.forEach(btn => {
+    btn.addEventListener('click', () => activate(btn.dataset.tab));
+  });
+
+  // Activate from URL hash or default to courses
+  const hash = window.location.hash.replace('#', '');
+  activate(sections[hash] ? hash : 'courses');
+})();
+</script>
+{% include '_footer.html' %}
+</body>
+</html>

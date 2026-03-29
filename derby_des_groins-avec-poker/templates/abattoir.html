@@ -1,0 +1,227 @@
+{% from '_pig_avatar.html' import pig_display %}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔪 Derby des Groins — L'Abattoir</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Nunito:wght@400;600;700;800&family=Creepster&display=swap" rel="stylesheet">
+    <style>
+        * { font-family: 'Nunito', sans-serif; }
+        .font-title { font-family: 'Lilita One', cursive; }
+        .font-creepy { font-family: 'Creepster', cursive; }
+
+        body {
+            background: #1a0505;
+            background-image:
+                radial-gradient(ellipse at 30% 40%, rgba(200, 0, 0, 0.15) 0%, transparent 60%),
+                radial-gradient(ellipse at 70% 70%, rgba(100, 0, 0, 0.1) 0%, transparent 50%),
+                radial-gradient(ellipse at 50% 20%, rgba(255, 50, 0, 0.08) 0%, transparent 50%);
+            min-height: 100vh;
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.04);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 1.5rem;
+        }
+
+        .meat-card {
+            background: linear-gradient(135deg, rgba(139, 0, 0, 0.2), rgba(80, 0, 0, 0.15));
+            border: 1px solid rgba(200, 50, 50, 0.3);
+            border-radius: 1rem;
+            transition: all 0.3s;
+        }
+        .meat-card:hover {
+            transform: translateY(-3px) rotate(-0.5deg);
+            box-shadow: 0 10px 30px rgba(200, 0, 0, 0.3);
+            border-color: rgba(255, 80, 80, 0.5);
+        }
+
+        .blood-drip {
+            background: linear-gradient(180deg, #8b0000, #4a0000);
+            height: 4px;
+            border-radius: 0 0 999px 999px;
+            animation: drip 3s ease-in-out infinite;
+        }
+        @keyframes drip {
+            0%, 100% { opacity: 0.6; }
+            50% { opacity: 1; }
+        }
+
+        .hanging {
+            animation: swing 4s ease-in-out infinite;
+            transform-origin: top center;
+        }
+        @keyframes swing {
+            0%, 100% { transform: rotate(-2deg); }
+            50% { transform: rotate(2deg); }
+        }
+
+        .stat-mini {
+            font-size: 0.65rem;
+            padding: 0.15rem 0.4rem;
+            border-radius: 0.25rem;
+            font-weight: 800;
+        }
+
+        .counter-card {
+            background: linear-gradient(135deg, rgba(139, 0, 0, 0.3), rgba(60, 0, 0, 0.2));
+            border: 1px solid rgba(200, 50, 50, 0.3);
+            border-radius: 1rem;
+        }
+    </style>
+</head>
+<body>
+{% set active_page = 'abattoir' %}
+
+{% include "_site_header.html" %}
+
+<main class="max-w-6xl mx-auto px-4 py-8">
+
+    <!-- HERO ABATTOIR -->
+    <section class="text-center mb-10">
+        <div class="blood-drip max-w-xs mx-auto mb-6"></div>
+        <h1 class="font-creepy text-4xl md:text-5xl lg:text-6xl text-red-500 mb-3" style="text-shadow: 0 0 40px rgba(200,0,0,0.5);">
+            L'ABATTOIR
+        </h1>
+        <p class="text-red-300/60 font-bold text-lg">Ici reposent les cochons qui n'ont pas survécu au Derby...</p>
+        <p class="text-red-400/40 text-sm mt-2 font-semibold">Mais ils ne sont pas partis pour rien. 🍖</p>
+        <div class="blood-drip max-w-xs mx-auto mt-6"></div>
+    </section>
+
+    <!-- COMPTEURS -->
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-10">
+        <div class="counter-card p-5 text-center">
+            <p class="font-creepy text-4xl text-red-400">{{ total_dead }}</p>
+            <p class="text-red-300/50 text-sm font-bold mt-1">Cochons transformés</p>
+        </div>
+        <div class="counter-card p-5 text-center">
+            {% if top_product %}
+            <p class="font-creepy text-4xl text-red-400">{{ top_product }}</p>
+            <p class="text-red-300/50 text-sm font-bold mt-1">Produit star</p>
+            {% else %}
+            <p class="font-creepy text-4xl text-red-400/30">—</p>
+            <p class="text-red-300/50 text-sm font-bold mt-1">Aucun produit... pour l'instant</p>
+            {% endif %}
+        </div>
+        <div class="counter-card p-5 text-center">
+            {% if last_victim %}
+            <p class="font-creepy text-4xl text-red-400">{{ last_victim.name }}</p>
+            <p class="text-red-300/50 text-sm font-bold mt-1">Dernière victime</p>
+            {% else %}
+            <p class="font-creepy text-4xl text-red-400/30">—</p>
+            <p class="text-red-300/50 text-sm font-bold mt-1">L'abattoir attend...</p>
+            {% endif %}
+        </div>
+    </div>
+
+    {% if dead_pigs %}
+    <!-- MENU DU JOUR -->
+    {% if last_victim %}
+    <div class="card p-6 mb-8 text-center border-red-900/40">
+        <h2 class="font-creepy text-3xl text-red-400 mb-3">🔪 Menu du Jour 🔪</h2>
+        <div class="hanging inline-block">
+            <span class="text-6xl">{{ last_victim.charcuterie_emoji or '🍖' }}</span>
+        </div>
+        <p class="text-white font-bold text-xl mt-3">
+            {{ last_victim.charcuterie_type or 'Produit mystère' }}
+            <span class="text-red-400/60">« {{ last_victim.name }} »</span>
+        </p>
+        <p class="text-white/30 text-sm mt-2 font-semibold">
+            Ancien cochon de <strong class="text-red-300/70">{{ last_victim.owner.username if last_victim.owner else '???' }}</strong>
+            — Niv. {{ last_victim.level }} — {{ last_victim.races_won }} victoire{{ 's' if last_victim.races_won != 1 else '' }}
+        </p>
+        <p class="text-red-400/40 text-xs mt-2 italic">
+            {{ last_victim.death_date.strftime('%d/%m/%Y à %H:%M') if last_victim.death_date else '' }}
+        </p>
+    </div>
+    {% endif %}
+
+    <!-- ÉTAL DE CHARCUTERIE -->
+    <h2 class="font-creepy text-3xl text-red-400 mb-6 text-center">
+        🥩 L'Étal de Charcuterie 🥩
+    </h2>
+    <p class="text-center text-red-300/40 text-sm font-semibold mb-6">
+        Chaque produit était autrefois un fier cochon de course. Groin groin... *silence*
+    </p>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {% for pig in dead_pigs %}
+        <div class="meat-card p-5">
+            <div class="flex items-start justify-between mb-3">
+                <div class="hanging">
+                    <span class="text-4xl">{{ pig.charcuterie_emoji or '🍖' }}</span>
+                </div>
+                <div class="text-right">
+                    <span class="text-xs px-2 py-1 rounded-full bg-red-900/50 text-red-300 font-bold">
+                        Niv. {{ pig.level }}
+                    </span>
+                </div>
+            </div>
+
+            <h3 class="text-white font-bold text-lg">{{ pig.charcuterie_type or 'Charcuterie' }}</h3>
+            <p class="text-red-400/70 text-sm font-bold">
+                Anciennement « {{ pig.name }} » {{ pig_display(pig, 'text-sm', 18) }}
+            </p>
+            <p class="text-white/30 text-xs font-semibold mt-1">
+                Éleveur : {{ pig.owner.username if pig.owner else '???' }}
+            </p>
+
+            <!-- Mini stats au moment de la mort -->
+            <div class="flex gap-1 mt-3 flex-wrap">
+                <span class="stat-mini bg-blue-500/20 text-blue-300">VIT {{ "%.0f"|format(pig.vitesse) }}</span>
+                <span class="stat-mini bg-green-500/20 text-green-300">END {{ "%.0f"|format(pig.endurance) }}</span>
+                <span class="stat-mini bg-yellow-500/20 text-yellow-300">AGI {{ "%.0f"|format(pig.agilite) }}</span>
+                <span class="stat-mini bg-red-500/20 text-red-300">FOR {{ "%.0f"|format(pig.force) }}</span>
+                <span class="stat-mini bg-purple-500/20 text-purple-300">INT {{ "%.0f"|format(pig.intelligence) }}</span>
+                <span class="stat-mini bg-pink-500/20 text-pink-300">MOR {{ "%.0f"|format(pig.moral) }}</span>
+            </div>
+
+            <div class="mt-3 pt-3 border-t border-red-900/30">
+                <p class="text-white/20 text-xs">
+                    🏁 {{ pig.races_entered }} courses — 🏆 {{ pig.races_won }} victoires
+                </p>
+                <p class="text-red-400/30 text-xs mt-1">
+                    ☠️ {{ pig.death_date.strftime('%d/%m/%Y') if pig.death_date else '???' }}
+                </p>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    {% else %}
+    <!-- ABATTOIR VIDE -->
+    <div class="card p-16 text-center border-red-900/30">
+        <span class="text-7xl block mb-4">🔪</span>
+        <h2 class="font-creepy text-3xl text-red-400 mb-3">L'abattoir est vide...</h2>
+        <p class="text-red-300/40 text-lg font-semibold mb-2">Aucun cochon n'a encore été transformé.</p>
+        <p class="text-red-400/30 text-sm font-semibold">
+            Mais ça ne saurait tarder. Le Challenge de la Mort attend les plus téméraires...
+        </p>
+        <div class="mt-6">
+            <a href="/mon-cochon" class="inline-block bg-red-900/30 text-red-400 font-bold px-6 py-3 rounded-xl hover:bg-red-900/50 transition-colors text-sm">
+                🎰 Tenter le Challenge de la Mort
+            </a>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- CITATIONS -->
+    <div class="mt-12 text-center space-y-3">
+        <p class="text-red-400/20 text-sm italic font-semibold">"On ne fait pas de jambon sans casser des cochons." — Proverbe du Derby</p>
+        <p class="text-red-400/20 text-sm italic font-semibold">"Tout cochon est un futur saucisson qui s'ignore." — Maître Boucher</p>
+        <p class="text-red-400/20 text-sm italic font-semibold">"Le courage, c'est de savoir que l'abattoir existe et de courir quand même." — Groin d'Or, légende</p>
+    </div>
+
+</main>
+
+<footer class="text-center py-8 text-red-900/40 text-sm font-semibold">
+    🔪 L'Abattoir du Derby des Groins — Frais du jour, tous les jours
+</footer>
+
+{% include '_footer.html' %}
+</body>
+</html>

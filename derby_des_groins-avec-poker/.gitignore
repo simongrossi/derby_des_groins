@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+*.pyo
+instance/
+*.db
+.env
+.venv/
+venv/
+error.txt
+.gemini/
+test-results/
+tmp-*.png

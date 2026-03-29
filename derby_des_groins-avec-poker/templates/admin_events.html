@@ -1,0 +1,42 @@
+{% extends "admin_base.html" %}
+{% block title %}🎭 Evenements — Admin{% endblock %}
+
+{% block content %}
+<h1 class="font-title text-3xl text-white mb-1">🎭 Evenements mondiaux</h1>
+<p class="text-white/40 font-semibold text-sm mb-6">Actions affectant tous les joueurs ou cochons d'un coup.</p>
+
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+    <form method="POST" action="{{ url_for('admin.admin_trigger_event') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="event_type" value="food_drop">
+        <button type="submit" class="card p-6 w-full text-left hover:border-indigo-500/30 transition-all group"
+                onclick="return confirm('Distribuer de la nourriture a tous ?');">
+            <span class="text-3xl block mb-3">📦</span>
+            <h3 class="font-title text-lg text-white mb-1 group-hover:text-indigo-300 transition-colors">Parachutage de Vivres</h3>
+            <p class="text-white/40 text-xs font-semibold">+30 Energie & Faim pour TOUT le monde</p>
+        </button>
+    </form>
+
+    <form method="POST" action="{{ url_for('admin.admin_trigger_event') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="event_type" value="vet_visit">
+        <button type="submit" class="card p-6 w-full text-left hover:border-green-500/30 transition-all group"
+                onclick="return confirm('Soigner tous les cochons blesses ?');">
+            <span class="text-3xl block mb-3">🏥</span>
+            <h3 class="font-title text-lg text-white mb-1 group-hover:text-green-300 transition-colors">Passage du Veterinaire</h3>
+            <p class="text-white/40 text-xs font-semibold">Soigne immediatement tous les groins blesses</p>
+        </button>
+    </form>
+
+    <form method="POST" action="{{ url_for('admin.admin_trigger_event') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="event_type" value="bonus_bg">
+        <button type="submit" class="card p-6 w-full text-left hover:border-yellow-500/30 transition-all group"
+                onclick="return confirm('Offrir 50 BitGroins a tous ?');">
+            <span class="text-3xl block mb-3">💰</span>
+            <h3 class="font-title text-lg text-white mb-1 group-hover:text-yellow-300 transition-colors">Prime Exceptionnelle</h3>
+            <p class="text-white/40 text-xs font-semibold">Offre 50 BitGroins a tous les dresseurs</p>
+        </button>
+    </form>
+</div>
+{% endblock %}
