@@ -15,6 +15,10 @@ from extensions import db, limiter
 from models import (
     GameConfig, User, Pig, BalanceTransaction, GrainMarket, Trophy,
     CerealItem, TrainingItem, SchoolLessonItem, PigAvatar,
+<<<<<<< Updated upstream
+=======
+    PokerTable, PokerPlayer, PokerHandHistory,
+>>>>>>> Stashed changes
 )
 from data import PIG_ORIGINS, CEREALS, TRAININGS, SCHOOL_LESSONS
 from helpers import init_default_config, ensure_next_race, get_first_injured_pig
@@ -240,6 +244,12 @@ def migrate_db():
         'CREATE INDEX IF NOT EXISTS ix_participant_race_pig ON participant(race_id, pig_id)',
         'CREATE INDEX IF NOT EXISTS ix_balance_tx_user ON balance_transaction(user_id)',
         'CREATE INDEX IF NOT EXISTS ix_course_plan_user_sched ON course_plan(user_id, scheduled_at)',
+<<<<<<< Updated upstream
+=======
+        'CREATE INDEX IF NOT EXISTS ix_poker_player_table ON poker_player(table_id)',
+        'CREATE INDEX IF NOT EXISTS ix_poker_player_user ON poker_player(user_id)',
+        'CREATE INDEX IF NOT EXISTS ix_poker_hand_table ON poker_hand_history(table_id)',
+>>>>>>> Stashed changes
     ]
     with db.engine.connect() as conn:
         for statement in table_migrations:

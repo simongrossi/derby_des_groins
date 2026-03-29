@@ -1,0 +1,832 @@
+{% include '_site_header.html' %}
+{% include '_flash.html' %}
+
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Derby des Groins — Cochon Poker</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @keyframes card-flip {
+      0%   { transform: rotateY(90deg) scale(0.8); opacity: 0; }
+      100% { transform: rotateY(0deg) scale(1); opacity: 1; }
+    }
+    @keyframes chip-drop {
+      0%   { transform: translateY(-20px); opacity: 0; }
+      60%  { transform: translateY(4px); }
+      100% { transform: translateY(0); opacity: 1; }
+    }
+    @keyframes winner-pulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(250,204,21,0.7); }
+      50%       { box-shadow: 0 0 0 16px rgba(250,204,21,0); }
+    }
+    @keyframes oink-pop {
+      0%   { transform: scale(0); opacity: 0; }
+      70%  { transform: scale(1.3); }
+      100% { transform: scale(1); opacity: 1; }
+    }
+    @keyframes float-up {
+      0%   { transform: translateY(0); opacity: 1; }
+      100% { transform: translateY(-60px); opacity: 0; }
+    }
+    .card-anim { animation: card-flip 0.4s ease-out; }
+    .chip-anim { animation: chip-drop 0.35s ease-out; }
+    .winner-anim { animation: winner-pulse 1.2s infinite; }
+    .oink-pop { animation: oink-pop 0.5s ease-out; }
+
+    /* Dos de carte cochon dans Fiat Multipla */
+    .card-back {
+      background:
+        radial-gradient(ellipse at 50% 40%, rgba(220,50,50,0.9) 0%, rgba(160,20,20,0.95) 70%),
+        repeating-linear-gradient(45deg, rgba(0,0,0,0.08) 0, rgba(0,0,0,0.08) 1px, transparent 0, transparent 50%);
+      background-size: cover, 8px 8px;
+    }
+
+    .poker-table {
+      background:
+        radial-gradient(ellipse at 50% 50%, rgba(22,101,52,0.98) 0%, rgba(14,72,36,1) 70%),
+        repeating-linear-gradient(-45deg, rgba(0,0,0,0.03) 0, rgba(0,0,0,0.03) 1px, transparent 0, transparent 8px);
+      border: 8px solid rgba(101,67,33,0.8);
+      box-shadow: inset 0 0 40px rgba(0,0,0,0.4), 0 8px 32px rgba(0,0,0,0.6);
+    }
+
+    .player-seat {
+      transition: all 0.3s ease;
+    }
+    .player-seat.is-active {
+      box-shadow: 0 0 0 3px rgba(250,204,21,0.9), 0 0 20px rgba(250,204,21,0.4);
+      animation: winner-pulse 1.2s infinite;
+    }
+    .player-seat.is-spectator {
+      opacity: 0.4;
+    }
+    .player-seat.is-folded {
+      opacity: 0.5;
+      filter: grayscale(0.7);
+    }
+
+    /* Jetons stylisés */
+    .chip {
+      width: 28px; height: 28px;
+      border-radius: 50%;
+      border: 3px dashed rgba(255,255,255,0.6);
+      display: inline-flex; align-items: center; justify-content: center;
+      font-size: 10px; font-weight: 900;
+    }
+    .chip-gold { background: radial-gradient(circle, #fde68a, #d97706); }
+    .chip-red  { background: radial-gradient(circle, #fca5a5, #dc2626); }
+    .chip-blue { background: radial-gradient(circle, #93c5fd, #2563eb); }
+    .chip-green { background: radial-gradient(circle, #86efac, #16a34a); }
+
+    /* Overlay vote */
+    #vote-overlay, #rules-overlay {
+      backdrop-filter: blur(8px);
+    }
+
+    /* Card rendering */
+    .playing-card {
+      width: 56px; height: 80px;
+      border-radius: 8px;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      font-weight: 900;
+      border: 2px solid rgba(255,255,255,0.2);
+      position: relative;
+      user-select: none;
+    }
+    .playing-card.red  { background: white; color: #dc2626; border-color: rgba(220,38,38,0.3); }
+    .playing-card.black { background: white; color: #1e293b; border-color: rgba(30,41,59,0.3); }
+    .playing-card.hidden { }
+    .playing-card .rank-top { position: absolute; top: 4px; left: 6px; font-size: 12px; line-height: 1; }
+    .playing-card .rank-bot { position: absolute; bottom: 4px; right: 6px; font-size: 12px; line-height: 1; transform: rotate(180deg); }
+    .playing-card .suit-center { font-size: 22px; }
+
+    /* Fiat Multipla cochon sur dos de carte */
+    .pig-car-back {
+      background: linear-gradient(135deg, #7f1d1d 0%, #991b1b 50%, #7f1d1d 100%);
+      position: relative;
+      overflow: hidden;
+    }
+    .pig-car-back::before {
+      content: '🐷\A🚗';
+      white-space: pre;
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      line-height: 1.2;
+      text-align: center;
+    }
+  </style>
+</head>
+<body class="min-h-screen bg-[radial-gradient(circle_at_top,rgba(15,40,15,0.98),rgba(5,10,5,1)_70%)] text-white">
+
+  <!-- ══════════════════════════════════════════════
+       OVERLAY RÈGLES DU JEU
+  ══════════════════════════════════════════════ -->
+  <div id="rules-overlay" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+    <div class="relative max-w-2xl w-full max-h-[90vh] overflow-y-auto rounded-3xl border border-yellow-400/30 bg-gradient-to-b from-green-950 to-black p-8 shadow-2xl">
+      <button onclick="document.getElementById('rules-overlay').classList.add('hidden')"
+              class="absolute top-4 right-4 text-white/50 hover:text-white text-2xl">✕</button>
+      <h2 class="text-3xl font-black text-yellow-300 mb-2">🐷 Règles du Cochon Poker</h2>
+      <p class="text-white/60 text-sm mb-6">Texas Hold'em — Version Porcherie Officielle</p>
+
+      <div class="space-y-4 text-sm text-white/80 leading-relaxed">
+        <div class="rounded-2xl border border-yellow-400/20 bg-yellow-400/5 p-4">
+          <h3 class="font-black text-yellow-300 mb-2">💰 Buy-In & Jetons</h3>
+          <ul class="space-y-1 list-disc list-inside">
+            <li>Buy-in disponibles : <strong>10, 20, 50 ou 100 BitGroins</strong></li>
+            <li>Le montant est fixé par <strong>vote à l'unanimité</strong> avant le début</li>
+            <li><strong>Impossible de réapprovisionner</strong> en cours de partie — tu joues avec ce que t'as, cochon !</li>
+            <li>Minimum <strong>3 joueurs</strong> pour lancer une partie</li>
+            <li>Un joueur retardataire peut rejoindre en cours de partie (il paie le buy-in)</li>
+          </ul>
+        </div>
+
+        <div class="rounded-2xl border border-green-400/20 bg-green-400/5 p-4">
+          <h3 class="font-black text-green-300 mb-2">🃏 Déroulement d'une main</h3>
+          <ol class="space-y-1 list-decimal list-inside">
+            <li><strong>Blinds :</strong> petite et grande blind posées automatiquement</li>
+            <li><strong>Pré-flop :</strong> 2 cartes distribuées à chaque cochon</li>
+            <li><strong>Flop :</strong> 3 cartes communes révélées</li>
+            <li><strong>Turn :</strong> 1 carte commune révélée</li>
+            <li><strong>River :</strong> 1 dernière carte commune révélée</li>
+            <li><strong>Showdown :</strong> meilleure main sur 5 cartes (les 2 cartes privées + les 5 communes) remporte le pot</li>
+          </ol>
+        </div>
+
+        <div class="rounded-2xl border border-pink-400/20 bg-pink-400/5 p-4">
+          <h3 class="font-black text-pink-300 mb-2">🎯 Actions disponibles</h3>
+          <ul class="space-y-1 list-disc list-inside">
+            <li><strong>Check</strong> — Passer sans miser (si personne n'a misé)</li>
+            <li><strong>Call</strong> — Suivre la mise en cours</li>
+            <li><strong>Raise</strong> — Relancer (au moins 2× la big blind)</li>
+            <li><strong>All-in</strong> — Tout miser d'un coup (comme un cochon enragé)</li>
+            <li><strong>Fold</strong> — Se coucher et regretter ses choix de vie</li>
+          </ul>
+        </div>
+
+        <div class="rounded-2xl border border-purple-400/20 bg-purple-400/5 p-4">
+          <h3 class="font-black text-purple-300 mb-2">🏆 Hiérarchie des mains (de la + forte à la - forte)</h3>
+          <ol class="space-y-1 list-decimal list-inside text-xs">
+            <li>Quinte Flush Royale Porcine 👑🐷</li>
+            <li>Carré de Cochons 🐷🐷🐷🐷</li>
+            <li>Full Groin 🐷🍖</li>
+            <li>Couleur Lard 🥓</li>
+            <li>Quinte Truffe 🐽</li>
+            <li>Brelan de Groineurs 🐷🐷🐷</li>
+            <li>Double Paire Bacon 🥓🥓</li>
+            <li>Paire de Gorets 🐷🐷</li>
+            <li>Carte Haute (pauvre cochon) 😢</li>
+          </ol>
+        </div>
+
+        <div class="rounded-2xl border border-red-400/20 bg-red-400/5 p-4">
+          <h3 class="font-black text-red-300 mb-2">⚠️ Quitter & Spectateur</h3>
+          <ul class="space-y-1 list-disc list-inside">
+            <li>Si tu quittes en cours de partie, tu <strong>récupères tes jetons restants</strong> (crédités sur ton compte)</li>
+            <li>Si tu tombes à <strong>0 BitGroin</strong>, tu deviens spectateur de la partie en cours</li>
+            <li>Les spectateurs peuvent regarder mais ne peuvent plus jouer cette partie</li>
+          </ul>
+        </div>
+
+        <div class="rounded-2xl border border-orange-400/20 bg-orange-400/5 p-4">
+          <h3 class="font-black text-orange-300 mb-2">🐗 Couleurs des cartes (version porcine)</h3>
+          <div class="grid grid-cols-2 gap-2 text-xs">
+            <span>🐷 Groin = ♠ Pique</span>
+            <span>🐽 Truffe = ♥ Cœur</span>
+            <span>🥓 Lard = ♦ Carreau</span>
+            <span>🍖 Saucisse = ♣ Trèfle</span>
+          </div>
+        </div>
+      </div>
+
+      <button onclick="document.getElementById('rules-overlay').classList.add('hidden')"
+              class="mt-6 w-full rounded-2xl bg-green-600 hover:bg-green-500 py-3 font-black text-lg transition-colors">
+        J'ai compris, je vais tout perdre 🐷
+      </button>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════
+       OVERLAY VOTE BUY-IN
+  ══════════════════════════════════════════════ -->
+  <div id="vote-overlay" class="hidden fixed inset-0 z-40 flex items-center justify-center bg-black/80 p-4">
+    <div class="relative max-w-lg w-full rounded-3xl border border-yellow-400/40 bg-gradient-to-b from-amber-950 to-black p-8 shadow-2xl">
+      <h2 class="text-2xl font-black text-yellow-300 mb-1">🗳️ Vote du Buy-In</h2>
+      <p class="text-white/60 text-sm mb-2">L'unanimité est requise. Les cochons doivent s'entendre !</p>
+      <button onclick="document.getElementById('rules-overlay').classList.remove('hidden');document.getElementById('vote-overlay').classList.add('hidden')"
+              class="text-xs text-yellow-400/70 hover:text-yellow-300 underline mb-6 block">
+        📖 Lire les règles du jeu avant de voter
+      </button>
+
+      <div class="grid grid-cols-2 gap-3 mb-6" id="vote-buttons">
+        {% for opt in buy_in_options %}
+        <button onclick="castVote({{ opt }})"
+                id="vote-btn-{{ opt }}"
+                class="vote-btn rounded-2xl border border-yellow-400/20 bg-yellow-400/10 hover:bg-yellow-400/25 py-5 text-center transition-all font-black text-xl">
+          {{ opt }} 🪙
+          <div class="text-xs font-normal text-white/50 mt-1" id="vote-count-{{ opt }}"></div>
+        </button>
+        {% endfor %}
+      </div>
+
+      <div id="vote-status" class="rounded-2xl bg-white/5 border border-white/10 p-3 text-sm text-center text-white/70 mb-4">
+        En attente des votes des autres cochons…
+      </div>
+
+      <div id="vote-result" class="hidden rounded-2xl bg-green-500/20 border border-green-400/30 p-4 text-center">
+        <p class="text-green-300 font-black text-lg" id="vote-result-text"></p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════
+       CORPS PRINCIPAL
+  ══════════════════════════════════════════════ -->
+  <main class="max-w-7xl mx-auto px-4 py-6 space-y-6">
+
+    <!-- Header -->
+    <div class="flex flex-wrap items-start justify-between gap-4">
+      <div>
+        <p class="text-sm uppercase tracking-[0.35em] text-green-300/50">Porcherie Royale</p>
+        <h1 class="text-4xl font-black text-green-100">🐷 Cochon Poker</h1>
+        <p class="mt-1 text-sm text-white/50">Texas Hold'em — Édition Fange & Bacons</p>
+      </div>
+      <div class="flex gap-3 items-center flex-wrap">
+        <div class="rounded-2xl border border-yellow-400/20 bg-yellow-400/10 px-5 py-3 text-right">
+          <div class="text-xs uppercase tracking-[0.25em] text-yellow-100/55">Magot</div>
+          <div class="text-2xl font-black text-yellow-300">{{ '%.0f'|format(user.balance) }} 🪙</div>
+        </div>
+        <button onclick="document.getElementById('rules-overlay').classList.remove('hidden')"
+                class="rounded-2xl border border-white/10 bg-white/5 hover:bg-white/10 px-4 py-3 text-sm font-bold transition-all">
+          📖 Règles
+        </button>
+      </div>
+    </div>
+
+    <!-- Message porcin du jour -->
+    <div class="rounded-2xl border border-green-400/15 bg-green-400/5 px-5 py-3 text-sm text-green-200/70 italic">
+      {{ groin_msg }}
+    </div>
+
+    <!-- ═══════════════════════════════════
+         LOBBY (pas encore de partie)
+    ═══════════════════════════════════ -->
+    <div id="section-lobby">
+
+      <!-- Zone d'inscription -->
+      <div class="grid gap-6 md:grid-cols-2">
+        <div class="rounded-3xl border border-green-400/20 bg-black/30 p-6">
+          <h2 class="text-xl font-black text-green-200 mb-3">🐷 Rejoindre la table</h2>
+
+          <div id="lobby-status" class="mb-4 rounded-2xl bg-white/5 border border-white/10 p-4 text-sm text-white/60">
+            Aucune partie en cours. Sois le premier cochon à s'asseoir !
+          </div>
+
+          <div id="join-btn-area">
+            <button id="btn-join"
+                    onclick="joinTable()"
+                    class="w-full rounded-2xl bg-green-600 hover:bg-green-500 active:scale-95 py-4 font-black text-lg transition-all shadow-lg shadow-green-900/40">
+              🐷 S'inscrire à la prochaine partie
+            </button>
+          </div>
+
+          <div id="vote-open-area" class="hidden mt-3">
+            <button onclick="openVote()"
+                    class="w-full rounded-2xl bg-amber-600 hover:bg-amber-500 active:scale-95 py-4 font-black text-lg transition-all">
+              🗳️ Voter pour le buy-in
+            </button>
+          </div>
+
+          <div id="start-btn-area" class="hidden mt-3">
+            <button onclick="startGame()"
+                    class="w-full rounded-2xl bg-pink-600 hover:bg-pink-500 active:scale-95 py-4 font-black text-lg transition-all shadow-lg shadow-pink-900/40">
+              🚀 Lancer la partie !
+            </button>
+          </div>
+        </div>
+
+        <!-- Liste des joueurs en attente -->
+        <div class="rounded-3xl border border-green-400/20 bg-black/30 p-6">
+          <h2 class="text-xl font-black text-green-200 mb-3">👥 Cochons inscrits</h2>
+          <div id="players-waiting-list" class="space-y-2">
+            <p class="text-white/40 text-sm italic">La table est vide… pour l'instant.</p>
+          </div>
+          <div class="mt-4 text-xs text-white/30" id="min-players-hint">
+            Minimum {{ min_players }} joueurs pour lancer la partie.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════
+         TABLE DE JEU (partie en cours)
+    ═══════════════════════════════════ -->
+    <div id="section-game" class="hidden">
+
+      <!-- Table ovale verte -->
+      <div class="poker-table rounded-[50%] md:rounded-[40%] p-8 md:p-12 min-h-[320px] flex flex-col items-center justify-center relative mb-6">
+
+        <!-- Pot central -->
+        <div class="text-center mb-4">
+          <div class="text-xs uppercase tracking-widest text-green-200/50 mb-1">Pot</div>
+          <div class="text-4xl font-black text-yellow-300 chip-anim" id="pot-display">0 🪙</div>
+          <div class="text-xs text-white/40 mt-1" id="phase-display">—</div>
+        </div>
+
+        <!-- Cartes communes -->
+        <div class="flex gap-2 flex-wrap justify-center" id="community-cards">
+          <!-- Injecté par JS -->
+        </div>
+
+        <!-- Message groin -->
+        <div class="mt-4 text-xs text-green-200/50 italic text-center max-w-xs" id="table-groin-msg"></div>
+      </div>
+
+      <!-- Joueurs autour de la table -->
+      <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 mb-6" id="players-grid">
+        <!-- Injecté par JS -->
+      </div>
+
+      <!-- Mes cartes + actions -->
+      <div class="rounded-3xl border border-green-400/25 bg-black/40 p-6" id="my-hand-section">
+        <div class="flex flex-wrap items-center justify-between gap-4 mb-4">
+          <div>
+            <div class="text-sm text-white/50">Mes cartes</div>
+            <div class="flex gap-3 mt-2" id="my-hole-cards">
+              <!-- Injecté par JS -->
+            </div>
+          </div>
+          <div class="text-right">
+            <div class="text-xs text-white/40">Mes jetons</div>
+            <div class="text-2xl font-black text-yellow-300" id="my-chips-display">—</div>
+          </div>
+        </div>
+
+        <!-- Actions -->
+        <div id="action-panel" class="hidden">
+          <div class="text-sm text-yellow-300 font-black mb-3 flex items-center gap-2">
+            <span class="inline-block w-2 h-2 rounded-full bg-yellow-400 animate-pulse"></span>
+            C'est ton tour, cochon !
+          </div>
+          <div class="rounded-2xl bg-white/5 p-3 text-xs text-white/50 mb-3 italic" id="groin-taunt"></div>
+          <div class="flex flex-wrap gap-3">
+            <button id="btn-fold"  onclick="doAction('fold')"
+                    class="rounded-xl bg-red-800/60 hover:bg-red-700 px-5 py-3 font-black transition-all">
+              🏳️ Se coucher
+            </button>
+            <button id="btn-check" onclick="doAction('check')"
+                    class="rounded-xl bg-slate-700/60 hover:bg-slate-600 px-5 py-3 font-black transition-all hidden">
+              ✋ Check
+            </button>
+            <button id="btn-call"  onclick="doAction('call')"
+                    class="rounded-xl bg-blue-700/60 hover:bg-blue-600 px-5 py-3 font-black transition-all hidden">
+              📞 Suivre
+            </button>
+            <button id="btn-raise" onclick="showRaise()"
+                    class="rounded-xl bg-amber-700/60 hover:bg-amber-600 px-5 py-3 font-black transition-all hidden">
+              📈 Relancer
+            </button>
+            <button id="btn-allin" onclick="doAction('allin')"
+                    class="rounded-xl bg-pink-700/60 hover:bg-pink-500 px-5 py-3 font-black transition-all">
+              💥 All-in !
+            </button>
+          </div>
+
+          <!-- Formulaire de relance -->
+          <div id="raise-form" class="hidden mt-3 flex gap-3 items-center flex-wrap">
+            <input type="number" id="raise-amount"
+                   class="rounded-xl bg-white/10 border border-white/20 px-4 py-2 text-white w-32 text-sm"
+                   placeholder="Montant">
+            <button onclick="doRaise()"
+                    class="rounded-xl bg-amber-500 hover:bg-amber-400 px-5 py-2 font-black text-sm transition-all">
+              Confirmer 🐷
+            </button>
+            <button onclick="document.getElementById('raise-form').classList.add('hidden')"
+                    class="text-white/40 hover:text-white text-sm px-3 py-2">Annuler</button>
+          </div>
+        </div>
+
+        <!-- Spectateur -->
+        <div id="spectator-msg" class="hidden rounded-2xl bg-white/5 border border-white/10 p-4 text-center text-white/50 text-sm">
+          👁️ Tu es spectateur de cette partie. Plus de jetons, plus de rêves. Regarde les autres perdre avec dignité.
+        </div>
+
+        <!-- Waiting for turn -->
+        <div id="waiting-msg" class="hidden rounded-2xl bg-white/5 border border-white/10 p-4 text-center text-white/50 text-sm">
+          ⏳ En attente de ton tour… Le cochon devant toi réfléchit encore.
+        </div>
+
+        <!-- Late join -->
+        <div id="late-join-msg" class="hidden rounded-2xl bg-amber-500/10 border border-amber-400/20 p-4 text-center text-amber-200 text-sm">
+          🕐 Tu as rejoint en cours de partie ! Tu participeras à la prochaine main.
+        </div>
+      </div>
+
+      <!-- Résultat dernière main -->
+      <div id="last-hand-result" class="hidden rounded-3xl border border-yellow-400/30 bg-yellow-400/5 p-6 text-center">
+        <div class="text-2xl font-black text-yellow-300" id="result-title"></div>
+        <div class="text-white/60 text-sm mt-2" id="result-detail"></div>
+      </div>
+
+      <!-- Bouton quitter -->
+      <div class="flex justify-end mt-4">
+        <button onclick="leaveTable()"
+                class="rounded-2xl border border-red-500/30 bg-red-500/10 hover:bg-red-500/25 px-6 py-3 text-sm font-bold text-red-300 transition-all">
+          🚪 Quitter la table (récupérer mes jetons)
+        </button>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════
+         PARTIE TERMINÉE
+    ═══════════════════════════════════ -->
+    <div id="section-finished" class="hidden text-center rounded-3xl border border-yellow-400/20 bg-black/30 p-10">
+      <div class="text-6xl mb-4">🏆</div>
+      <h2 class="text-3xl font-black text-yellow-300 mb-2">Partie terminée !</h2>
+      <p class="text-white/60 mb-6" id="finished-msg">Le cochon le plus rusé a emporté le lard.</p>
+      <button onclick="location.reload()"
+              class="rounded-2xl bg-green-600 hover:bg-green-500 px-8 py-4 font-black text-lg transition-all">
+        🐷 Nouvelle partie
+      </button>
+    </div>
+
+  </main>
+
+  <script>
+    // ══════════════════════════════════════════════════
+    // État global JS
+    // ══════════════════════════════════════════════════
+    let lastStatus = null;
+    let lastPhase = null;
+    let lastActionSeat = null;
+    let pollInterval = null;
+    let isMyTurn = false;
+
+    const csrf = document.querySelector('meta[name="csrf-token"]') || null;
+
+    async function apiFetch(url, method = 'GET', body = null) {
+      const opts = { method, headers: { 'Content-Type': 'application/json' } };
+      if (csrf) opts.headers['X-CSRFToken'] = csrf.content;
+      if (body) opts.body = JSON.stringify(body);
+      const r = await fetch(url, opts);
+      return r.json();
+    }
+
+    // ── Rejoindre la table ─────────────────────────────
+    async function joinTable() {
+      const btn = document.getElementById('btn-join');
+      btn.disabled = true;
+      btn.textContent = '🐷 Inscription…';
+      const data = await apiFetch('/poker/join', 'POST');
+      if (data.ok) {
+        showNotif(data.message, 'green');
+        pollState();
+      } else {
+        showNotif(data.error, 'red');
+        btn.disabled = false;
+        btn.textContent = '🐷 S\'inscrire à la prochaine partie';
+      }
+    }
+
+    // ── Ouvrir overlay vote ────────────────────────────
+    function openVote() {
+      document.getElementById('vote-overlay').classList.remove('hidden');
+    }
+
+    // ── Voter pour le buy-in ───────────────────────────
+    async function castVote(amount) {
+      // Highlight bouton sélectionné
+      document.querySelectorAll('.vote-btn').forEach(b => b.classList.remove('ring-2', 'ring-yellow-400', 'bg-yellow-400/40'));
+      document.getElementById('vote-btn-' + amount)?.classList.add('ring-2', 'ring-yellow-400', 'bg-yellow-400/40');
+
+      const data = await apiFetch('/poker/vote', 'POST', { buy_in: amount });
+      const statusEl = document.getElementById('vote-status');
+      if (data.ok) {
+        if (data.unanimous) {
+          statusEl.textContent = '✅ Unanimité ! ' + data.message;
+          statusEl.className = 'rounded-2xl bg-green-500/20 border border-green-400/30 p-3 text-sm text-center text-green-300 mb-4';
+          document.getElementById('vote-result').classList.remove('hidden');
+          document.getElementById('vote-result-text').textContent = data.message;
+          document.getElementById('start-btn-area').classList.remove('hidden');
+          setTimeout(() => document.getElementById('vote-overlay').classList.add('hidden'), 1500);
+        } else {
+          statusEl.textContent = data.message;
+          // Afficher le décompte des votes
+          if (data.votes) {
+            for (const [val, cnt] of Object.entries(data.votes)) {
+              const el = document.getElementById('vote-count-' + val);
+              if (el) el.textContent = cnt + ' vote(s)';
+            }
+          }
+        }
+      } else {
+        showNotif(data.error, 'red');
+      }
+    }
+
+    // ── Lancer la partie ───────────────────────────────
+    async function startGame() {
+      const btn = document.querySelector('#start-btn-area button');
+      btn.disabled = true; btn.textContent = '🐷 Lancement…';
+      const data = await apiFetch('/poker/start', 'POST');
+      if (data.ok) {
+        showNotif(data.message, 'green');
+        pollState();
+      } else {
+        showNotif(data.error, 'red');
+        btn.disabled = false; btn.textContent = '🚀 Lancer la partie !';
+      }
+    }
+
+    // ── Actions de jeu ─────────────────────────────────
+    async function doAction(action) {
+      const data = await apiFetch('/poker/action', 'POST', { action });
+      if (!data.ok) { showNotif(data.error || 'Erreur', 'red'); return; }
+      renderState(data);
+    }
+
+    function showRaise() {
+      document.getElementById('raise-form').classList.remove('hidden');
+      document.getElementById('raise-amount').focus();
+    }
+
+    async function doRaise() {
+      const amt = parseInt(document.getElementById('raise-amount').value);
+      if (!amt || amt <= 0) { showNotif('Montant invalide !', 'red'); return; }
+      const data = await apiFetch('/poker/action', 'POST', { action: 'raise', amount: amt });
+      if (!data.ok) { showNotif(data.error || 'Erreur relance', 'red'); return; }
+      document.getElementById('raise-form').classList.add('hidden');
+      renderState(data);
+    }
+
+    // ── Quitter la table ───────────────────────────────
+    async function leaveTable() {
+      if (!confirm('🐷 Vraiment partir ? Tu récupères tes jetons restants.')) return;
+      const data = await apiFetch('/poker/leave', 'POST');
+      if (data.ok) {
+        showNotif(data.message, 'yellow');
+        setTimeout(() => location.reload(), 1500);
+      } else {
+        showNotif(data.error, 'red');
+      }
+    }
+
+    // ══════════════════════════════════════════════════
+    // Rendu de l'état du jeu
+    // ══════════════════════════════════════════════════
+
+    function renderCard(card, faceDown = false) {
+      if (faceDown || card.rank === '?') {
+        return `<div class="playing-card hidden pig-car-back card-anim" title="Carte cachée"></div>`;
+      }
+      const redSuits = ['🐽', '🥓'];
+      const colorClass = redSuits.includes(card.suit) ? 'red' : 'black';
+      return `<div class="playing-card ${colorClass} card-anim shadow-lg">
+        <span class="rank-top">${card.rank}${card.suit}</span>
+        <span class="suit-center">${card.suit}</span>
+        <span class="rank-bot">${card.rank}${card.suit}</span>
+      </div>`;
+    }
+
+    function renderState(state) {
+      if (!state.ok) return;
+
+      const status = state.status;
+      const sLobby   = document.getElementById('section-lobby');
+      const sGame    = document.getElementById('section-game');
+      const sFinish  = document.getElementById('section-finished');
+
+      // Afficher la bonne section
+      if (status === 'finished') {
+        sLobby.classList.add('hidden');
+        sGame.classList.add('hidden');
+        sFinish.classList.remove('hidden');
+        document.getElementById('finished-msg').textContent =
+          state.state?.last_winners?.length
+          ? `🏆 ${state.state.last_winners.join(' & ')} remporte(nt) le lard final !`
+          : 'Le dernier cochon debout a emporté la mise.';
+        return;
+      }
+
+      if (status === 'playing') {
+        sLobby.classList.add('hidden');
+        sGame.classList.remove('hidden');
+        sFinish.classList.add('hidden');
+      } else {
+        // lobby / voting
+        sLobby.classList.remove('hidden');
+        sGame.classList.add('hidden');
+        sFinish.classList.add('hidden');
+      }
+
+      // ── Lobby / vote ──────────────────────────────
+      updateLobbySection(state);
+
+      if (status !== 'playing') return;
+
+      // ── Table ─────────────────────────────────────
+      document.getElementById('pot-display').textContent = state.pot + ' 🪙';
+      const phaseLabels = {
+        preflop: '🃏 Pré-flop', flop: '🎴 Flop', turn: '🔄 Turn',
+        river: '🌊 River', showdown: '👁️ Showdown'
+      };
+      document.getElementById('phase-display').textContent = phaseLabels[state.phase] || state.phase;
+
+      // Cartes communes
+      const commEl = document.getElementById('community-cards');
+      commEl.innerHTML = '';
+      const shown = state.community || [];
+      const placeholders = 5 - shown.length;
+      shown.forEach(c => commEl.innerHTML += renderCard(c));
+      for (let i = 0; i < placeholders; i++) {
+        commEl.innerHTML += `<div class="playing-card hidden pig-car-back opacity-20"></div>`;
+      }
+
+      // Message groin
+      document.getElementById('table-groin-msg').textContent = state.state?.groin_msg || '';
+
+      // ── Joueurs ───────────────────────────────────
+      const grid = document.getElementById('players-grid');
+      grid.innerHTML = '';
+      state.players.forEach(p => {
+        const isActive = p.seat === state.action_seat && !p.has_folded && !p.is_spectator;
+        const classes = [
+          'player-seat rounded-2xl border p-4 text-center',
+          isActive ? 'is-active border-yellow-400/60 bg-yellow-400/10' : 'border-white/10 bg-white/5',
+          p.is_spectator ? 'is-spectator' : '',
+          p.has_folded ? 'is-folded' : '',
+          p.is_me ? 'ring-2 ring-green-400/50' : '',
+        ].join(' ');
+
+        const dealerBadge = p.seat === state.dealer_seat ? '<span class="text-xs bg-white/20 rounded px-1 ml-1">D</span>' : '';
+        const holeHtml = p.hole
+          ? p.hole.map(c => renderCard(c, !p.is_me && c.rank === '?')).join('')
+          : '';
+        const statusBadge = p.is_spectator ? '<span class="text-xs text-white/40">👁️ Spectateur</span>' :
+                            p.has_folded ? '<span class="text-xs text-red-400">🏳️ Couché</span>' :
+                            isActive ? '<span class="text-xs text-yellow-300 font-bold animate-pulse">⏳ À lui de jouer</span>' : '';
+
+        grid.innerHTML += `
+          <div class="${classes}">
+            <div class="font-black text-sm truncate">${p.username}${dealerBadge}</div>
+            <div class="text-xs text-white/50 mt-1">${p.chips} 🪙 | Mise: ${p.current_bet}</div>
+            <div class="flex justify-center gap-1 mt-2">${holeHtml}</div>
+            <div class="mt-2">${statusBadge}</div>
+          </div>
+        `;
+      });
+
+      // ── Mes cartes & actions ──────────────────────
+      const myHole = document.getElementById('my-hole-cards');
+      myHole.innerHTML = (state.my_hole || []).map(c => renderCard(c)).join('');
+
+      document.getElementById('my-chips-display').textContent = state.my_chips + ' 🪙';
+
+      const actionPanel   = document.getElementById('action-panel');
+      const spectatorMsg  = document.getElementById('spectator-msg');
+      const waitingMsg    = document.getElementById('waiting-msg');
+      const lateJoinMsg   = document.getElementById('late-join-msg');
+
+      actionPanel.classList.add('hidden');
+      spectatorMsg.classList.add('hidden');
+      waitingMsg.classList.add('hidden');
+      lateJoinMsg.classList.add('hidden');
+
+      isMyTurn = state.my_seat && state.action_seat === state.my_seat && !state.my_folded && !state.my_spectator;
+
+      if (state.my_spectator) {
+        spectatorMsg.classList.remove('hidden');
+      } else if (!state.my_seat) {
+        // late join
+        lateJoinMsg.classList.remove('hidden');
+      } else if (isMyTurn) {
+        actionPanel.classList.remove('hidden');
+        document.getElementById('groin-taunt').textContent = state.groin_taunt || '';
+        const toCal = state.current_bet - state.my_bet;
+        // Check/Call/Raise visibility
+        document.getElementById('btn-check').classList.toggle('hidden', toCal > 0);
+        document.getElementById('btn-call').classList.toggle('hidden', toCal <= 0);
+        if (toCal > 0) {
+          document.getElementById('btn-call').textContent = `📞 Suivre (${toCal} 🪙)`;
+        }
+        document.getElementById('btn-raise').classList.remove('hidden');
+        // Montant min pour la relance
+        const minRaise = state.current_bet + Math.max(1, Math.floor(state.buy_in * 0.2));
+        document.getElementById('raise-amount').min = minRaise;
+        document.getElementById('raise-amount').placeholder = `Min ${minRaise}`;
+      } else if (!state.my_folded) {
+        waitingMsg.classList.remove('hidden');
+      }
+
+      // Dernier résultat de main
+      const lastResult = document.getElementById('last-hand-result');
+      if (state.state?.last_winners && lastStatus === 'playing' && state.phase === 'preflop') {
+        lastResult.classList.remove('hidden');
+        document.getElementById('result-title').textContent =
+          `🏆 ${state.state.last_winners.join(' & ')} gagne(nt) ${state.state.last_pot} 🪙 !`;
+        setTimeout(() => lastResult.classList.add('hidden'), 5000);
+      }
+
+      lastStatus = status;
+      lastPhase = state.phase;
+      lastActionSeat = state.action_seat;
+    }
+
+    function updateLobbySection(state) {
+      const lobbyStatus = document.getElementById('lobby-status');
+      const joinArea    = document.getElementById('join-btn-area');
+      const voteArea    = document.getElementById('vote-open-area');
+      const startArea   = document.getElementById('start-btn-area');
+      const playersList = document.getElementById('players-waiting-list');
+
+      const myJoined = state.my_seat !== null;
+      const count = state.player_count;
+
+      if (state.status === 'playing') {
+        lobbyStatus.textContent = `🎲 Partie en cours (main #${state.hand_number || 1})`;
+        joinArea.classList.toggle('hidden', myJoined);
+        voteArea.classList.add('hidden');
+        startArea.classList.add('hidden');
+        return;
+      }
+
+      if (state.status === 'lobby' || state.status === 'voting') {
+        lobbyStatus.textContent = `🐷 ${count} cochon(s) inscrit(s). Minimum ${state.min_players} pour démarrer.`;
+        joinArea.classList.toggle('hidden', myJoined);
+        voteArea.classList.toggle('hidden', !myJoined || count < state.min_players);
+        startArea.classList.add('hidden');
+
+        // Mise à jour votes overlay
+        if (state.status === 'voting') {
+          for (const [val, cnt] of Object.entries(state.votes || {})) {
+            const el = document.getElementById('vote-count-' + val);
+            if (el) el.textContent = cnt > 0 ? cnt + ' vote(s)' : '';
+          }
+        }
+      }
+
+      // Joueurs inscrits
+      if (state.players?.length) {
+        playersList.innerHTML = state.players.map(p => `
+          <div class="flex items-center justify-between rounded-xl bg-white/5 px-3 py-2">
+            <span class="font-bold text-sm">${p.username} ${p.seat === state.dealer_seat ? '🎲' : ''}</span>
+            <span class="text-xs text-white/40">${p.vote ? p.vote + ' 🪙' : 'Pas voté'}</span>
+          </div>
+        `).join('');
+      }
+    }
+
+    // ══════════════════════════════════════════════════
+    // Polling
+    // ══════════════════════════════════════════════════
+    async function pollState() {
+      try {
+        const data = await apiFetch('/poker/state');
+        if (data.ok && data.table_id) {
+          renderState(data);
+          // Adapter la fréquence : plus rapide si c'est mon tour
+          const freq = isMyTurn ? 2000 : 3500;
+          if (pollInterval) clearTimeout(pollInterval);
+          pollInterval = setTimeout(pollState, freq);
+        } else {
+          // Pas de table active → lobby vide
+          renderState({ ok: true, status: 'lobby', players: [], player_count: 0,
+                        my_seat: null, my_chips: 0, my_hole: [], my_folded: false,
+                        my_spectator: false, community: [], pot: 0, current_bet: 0,
+                        buy_in_options: {{ buy_in_options | tojson }},
+                        min_players: {{ min_players }}, votes: {}, state: {} });
+          pollInterval = setTimeout(pollState, 4000);
+        }
+      } catch(e) {
+        pollInterval = setTimeout(pollState, 5000);
+      }
+    }
+
+    // ══════════════════════════════════════════════════
+    // Notifications flottantes
+    // ══════════════════════════════════════════════════
+    function showNotif(msg, color = 'green') {
+      const colors = {
+        green: 'bg-green-600', red: 'bg-red-600', yellow: 'bg-yellow-500'
+      };
+      const n = document.createElement('div');
+      n.className = `fixed bottom-6 right-6 z-[999] px-5 py-3 rounded-2xl shadow-2xl font-bold text-white ${colors[color] || 'bg-gray-700'} transition-all`;
+      n.textContent = msg;
+      n.style.animation = 'float-up 3s ease-out forwards';
+      document.body.appendChild(n);
+      setTimeout(() => n.remove(), 3000);
+    }
+
+    // ══════════════════════════════════════════════════
+    // Init
+    // ══════════════════════════════════════════════════
+    pollState();
+  </script>
+</body>
+</html>
