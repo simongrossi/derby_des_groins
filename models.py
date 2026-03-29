@@ -942,8 +942,6 @@ class PigAvatar(db.Model):
     filename = db.Column(db.String(100), nullable=False, unique=True)
     format = db.Column(db.String(10), nullable=False, default='png')
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-<<<<<<< Updated upstream
-=======
 
 
 # ──────────────────────────────────────────────────────────
@@ -1019,4 +1017,3 @@ class PokerHandHistory(db.Model):
     hand_results = db.Column(db.Text, default='{}')
     community_json = db.Column(db.Text, default='[]')
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
->>>>>>> Stashed changes
