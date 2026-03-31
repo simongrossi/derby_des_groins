@@ -1,0 +1,398 @@
+{% include '_site_header.html' %}
+
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Derby des Groins — Chasse aux Truffes</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    /* ── Plateau terrain ── */
+    #grid {
+      background:
+        radial-gradient(ellipse at 30% 40%, rgba(34,80,20,0.12) 0%, transparent 60%),
+        radial-gradient(ellipse at 70% 70%, rgba(90,60,20,0.10) 0%, transparent 50%),
+        linear-gradient(145deg, rgba(30,20,10,0.6), rgba(20,14,8,0.8));
+      border: 1.5px solid rgba(120,90,40,0.25);
+      border-radius: 1rem;
+      padding: 6px;
+      width: min(100%, 700px);
+      gap: 2px;
+      box-shadow:
+        inset 0 1px 30px rgba(0,0,0,0.35),
+        0 4px 24px rgba(0,0,0,0.4);
+      margin: 0 auto;
+    }
+
+    /* ── Cellules ── */
+    .cell-btn {
+      aspect-ratio: 1;
+      border-radius: 5px;
+      border: 1px solid rgba(255,255,255,0.06);
+      background:
+        radial-gradient(circle at 50% 40%, rgba(255,255,255,0.07) 0%, transparent 70%),
+        rgba(255,255,255,0.035);
+      cursor: pointer;
+      transition: all 0.18s ease;
+      position: relative;
+      overflow: hidden;
+      min-width: 0;
+      touch-action: manipulation;
+    }
+    .cell-btn::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      opacity: 0;
+      transition: opacity 0.18s ease;
+      background: radial-gradient(circle, rgba(245,200,80,0.25) 0%, transparent 70%);
+    }
+    .cell-btn:not(:disabled):hover {
+      border-color: rgba(245,200,80,0.3);
+      background:
+        radial-gradient(circle at 50% 40%, rgba(245,200,80,0.15) 0%, transparent 60%),
+        rgba(245,200,80,0.06);
+      transform: scale(1.06);
+      z-index: 2;
+      box-shadow: 0 0 10px rgba(245,200,80,0.2);
+    }
+    .cell-btn:not(:disabled):hover::before { opacity: 1; }
+
+    /* ── Feedback tones ── */
+    .cell-found {
+      background: radial-gradient(circle, rgba(52,211,153,0.6) 0%, rgba(16,185,129,0.25) 70%) !important;
+      border-color: rgba(52,211,153,0.5) !important;
+      box-shadow: 0 0 14px rgba(52,211,153,0.4), inset 0 0 8px rgba(52,211,153,0.2);
+      animation: pulse-found 0.6s ease-out;
+    }
+    .cell-scorched {
+      background: radial-gradient(circle, rgba(192,90,255,0.6) 0%, rgba(147,51,234,0.2) 70%) !important;
+      border-color: rgba(192,90,255,0.5) !important;
+      box-shadow: 0 0 14px rgba(192,90,255,0.4), inset 0 0 8px rgba(192,90,255,0.15);
+      animation: pop-in 0.3s ease-out;
+    }
+    .cell-hot {
+      background: radial-gradient(circle, rgba(248,113,113,0.5) 0%, rgba(239,68,68,0.15) 70%) !important;
+      border-color: rgba(248,113,113,0.35) !important;
+      box-shadow: 0 0 10px rgba(248,113,113,0.25);
+      animation: pop-in 0.3s ease-out;
+    }
+    .cell-warm {
+      background: radial-gradient(circle, rgba(251,191,36,0.4) 0%, rgba(245,158,11,0.12) 70%) !important;
+      border-color: rgba(251,191,36,0.3) !important;
+      box-shadow: 0 0 8px rgba(251,191,36,0.2);
+      animation: pop-in 0.3s ease-out;
+    }
+    .cell-cold {
+      background: radial-gradient(circle, rgba(125,211,252,0.3) 0%, rgba(56,189,248,0.08) 70%) !important;
+      border-color: rgba(125,211,252,0.2) !important;
+      box-shadow: 0 0 6px rgba(125,211,252,0.15);
+      animation: pop-in 0.3s ease-out;
+    }
+
+    @keyframes pulse-found {
+      0%   { transform: scale(1); box-shadow: 0 0 0 rgba(52,211,153,0); }
+      50%  { transform: scale(1.4); box-shadow: 0 0 25px rgba(52,211,153,0.6); }
+      100% { transform: scale(1); box-shadow: 0 0 14px rgba(52,211,153,0.4); }
+    }
+    @keyframes pop-in {
+      0%   { transform: scale(0.7); opacity: 0.5; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+
+    /* ── Radar animation ── */
+    .radar-pulse {
+      animation: radar-ping 1.2s ease-out;
+    }
+    @keyframes radar-ping {
+      0%   { transform: scale(0.95); opacity: 0; }
+      30%  { opacity: 1; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+
+    /* ── Disabled cells ── */
+    .cell-btn:disabled { cursor: default; }
+    .cell-btn:disabled:not(.cell-found):not(.cell-hot):not(.cell-warm):not(.cell-cold) {
+      opacity: 0.3;
+    }
+
+    @media (max-width: 640px) {
+      #grid {
+        padding: 4px;
+        gap: 1px;
+      }
+
+      .cell-btn {
+        border-radius: 3px;
+      }
+    }
+  </style>
+</head>
+<body class="min-h-screen bg-[radial-gradient(circle_at_top,rgba(50,34,20,0.98),rgba(18,10,7,1)_58%)] text-white">
+  <main class="max-w-6xl mx-auto px-3 py-6 space-y-4 sm:px-4 sm:py-8 sm:space-y-6">
+    <!-- ── Header bar ── -->
+    <div class="flex flex-col gap-4 rounded-3xl border border-amber-200/10 bg-white/5 px-4 py-4 shadow-2xl shadow-amber-950/20 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+      <div class="min-w-0">
+        <div class="flex min-w-0 flex-col items-start gap-1 sm:flex-row sm:items-center sm:gap-4">
+          <h1 class="text-2xl font-black text-amber-100 sm:text-3xl">🍄 Chasse aux Truffes</h1>
+          <span class="hidden sm:inline text-sm text-white/50">—</span>
+          <p class="hidden sm:inline text-sm text-white/50">Flairer la bonne case en {{ max_clicks }} clics max</p>
+        </div>
+      </div>
+      <div class="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:items-center">
+        <div class="rounded-2xl border border-yellow-300/20 bg-yellow-300/10 px-4 py-2 text-center sm:min-w-[8rem]">
+          <div class="text-[10px] uppercase tracking-[0.25em] text-yellow-100/55">Prime</div>
+          <div class="text-xl font-black text-yellow-300">+{{ reward }} 🪙</div>
+        </div>
+        <button id="new-game" class="w-full rounded-2xl border border-amber-300/20 bg-amber-300/10 px-5 py-3 text-sm font-black text-amber-100 transition hover:bg-amber-300/20 hover:scale-105 sm:w-auto">Nouvelle partie</button>
+      </div>
+    </div>
+
+    <!-- ── Main layout: grid + sidebar ── -->
+    <div class="grid gap-4 sm:gap-6 lg:grid-cols-[minmax(0,1fr)_280px]">
+      <!-- Plateau -->
+      <section class="min-w-0 rounded-3xl border border-white/10 bg-black/15 p-2 sm:p-4">
+        <div id="grid" class="grid" style="grid-template-columns: repeat({{ grid_size }}, minmax(0, 1fr));"></div>
+      </section>
+
+      <!-- Sidebar info -->
+      <aside class="space-y-3 sm:space-y-4">
+        <!-- Radar -->
+        <section class="rounded-3xl border border-white/10 bg-black/15 p-4 sm:p-5">
+          <p class="text-xs uppercase tracking-[0.25em] text-white/40">Radar à groin</p>
+          <div id="status" class="mt-2 text-xl font-black text-amber-100 sm:text-2xl">En attente…</div>
+          <p id="status-detail" class="mt-2 text-sm text-white/60">Clique une case pour commencer à fouiller.</p>
+        </section>
+
+        <!-- Stats -->
+        <section class="rounded-3xl border border-white/10 bg-black/15 p-4 sm:p-5">
+          <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p class="text-xs uppercase tracking-[0.25em] text-white/40">Clics restants</p>
+              <div id="clicks-left" class="mt-2 text-2xl font-black text-white sm:text-3xl">{{ max_clicks }}</div>
+            </div>
+            <div class="sm:text-right">
+              <p class="text-xs uppercase tracking-[0.25em] text-white/40">Solde</p>
+              <div id="balance" class="mt-2 text-2xl font-black text-yellow-300 sm:text-3xl">{{ '%.2f'|format(user.balance) }}</div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Légende visuelle -->
+        <section class="rounded-3xl border border-white/10 bg-black/15 p-4 sm:p-5">
+          <h2 class="text-sm font-black text-white/80 uppercase tracking-wide">Légende</h2>
+          <div class="mt-3 space-y-2 text-sm">
+            <div class="flex items-center gap-2"><span class="inline-block h-3 w-3 rounded-full bg-sky-400/60"></span><span class="text-white/70"><strong class="text-sky-200">Froid</strong> — distance &gt; 10</span></div>
+            <div class="flex items-center gap-2"><span class="inline-block h-3 w-3 rounded-full bg-amber-400/60"></span><span class="text-white/70"><strong class="text-amber-200">Tiède</strong> — 6 à 10</span></div>
+            <div class="flex items-center gap-2"><span class="inline-block h-3 w-3 rounded-full bg-red-400/60"></span><span class="text-white/70"><strong class="text-red-300">Brûlant</strong> — 2 à 5</span></div>
+            <div class="flex items-center gap-2"><span class="inline-block h-3 w-3 rounded-full bg-purple-400/60"></span><span class="text-white/70"><strong class="text-purple-300">Cramé</strong> — 1 case</span></div>
+            <div class="flex items-center gap-2"><span class="inline-block h-3 w-3 rounded-full bg-emerald-400/60"></span><span class="text-white/70"><strong class="text-emerald-300">Trouvé</strong> — jackpot !</span></div>
+          </div>
+        </section>
+
+        <!-- Règles -->
+        <section class="rounded-3xl border border-white/10 bg-black/15 p-4 text-sm text-white/60 sm:p-5">
+          <h2 class="text-sm font-black text-white/80 uppercase tracking-wide">Règles</h2>
+          <ul class="mt-3 space-y-1.5 list-disc pl-4">
+            <li>Une truffe cachée au hasard sur le plateau.</li>
+            <li>{{ max_clicks }} tentatives maximum.</li>
+            <li>Le radar indique ta proximité.</li>
+            <li>Trouvée = <strong class="text-yellow-300">+{{ reward }} 🪙</strong></li>
+          </ul>
+        </section>
+      </aside>
+    </div>
+  </main>
+
+  <script>
+    const GRID_SIZE = {{ grid_size }};
+    const MAX_CLICKS = {{ max_clicks }};
+    const WIN_REWARD = {{ reward }};
+    const ALREADY_PLAYED = {{ 'true' if already_played else 'false' }};
+    const grid = document.getElementById('grid');
+    const status = document.getElementById('status');
+    const statusDetail = document.getElementById('status-detail');
+    const clicksLeftNode = document.getElementById('clicks-left');
+    const balanceNode = document.getElementById('balance');
+    const newGameButton = document.getElementById('new-game');
+
+    let hiddenX = 0;
+    let hiddenY = 0;
+    let clicksLeft = MAX_CLICKS;
+    let finished = false;
+    let gameStarted = false;
+
+    function randomCell() {
+      hiddenX = Math.floor(Math.random() * GRID_SIZE);
+      hiddenY = Math.floor(Math.random() * GRID_SIZE);
+    }
+
+    function distanceLabel(distance) {
+      if (distance === 0) return { title: 'Trouvé !', detail: `La truffe est à toi. +${WIN_REWARD} 🪙.`, tone: 'found' };
+      if (distance === 1) return { title: 'Cramé !', detail: 'La truffe est à portée de groin !', tone: 'scorched' };
+      if (distance <= 5) return { title: 'Brûlant', detail: 'Tu renifles presque la truffe.', tone: 'hot' };
+      if (distance <= 10) return { title: 'Tiède', detail: 'Le groin capte quelque chose.', tone: 'warm' };
+      return { title: 'Froid', detail: 'Rien. Juste de la terre humide.', tone: 'cold' };
+    }
+
+    async function reportWin(clicksUsed) {
+      const response = await fetch('{{ url_for('truffes.truffes_win') }}', {
+        method: 'POST',
+        headers: { 
+            'Content-Type': 'application/json',
+            'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+        },
+        body: JSON.stringify({ clicks: clicksUsed }),
+      });
+      const payload = await response.json();
+      if (payload.ok) {
+        balanceNode.textContent = Number(payload.new_balance).toFixed(2);
+      }
+    }
+
+    function setTone(tone) {
+      status.className = 'mt-2 text-2xl font-black';
+      if (tone === 'found') status.classList.add('text-emerald-300');
+      else if (tone === 'scorched') status.classList.add('text-purple-300');
+      else if (tone === 'hot') status.classList.add('text-red-300');
+      else if (tone === 'warm') status.classList.add('text-amber-200');
+      else status.classList.add('text-sky-200');
+    }
+
+    function revealCell(button, tone) {
+      button.disabled = true;
+      if (tone === 'found') button.classList.add('cell-found');
+      else if (tone === 'scorched') button.classList.add('cell-scorched');
+      else if (tone === 'hot') button.classList.add('cell-hot');
+      else if (tone === 'warm') button.classList.add('cell-warm');
+      else button.classList.add('cell-cold');
+    }
+
+    async function startGame() {
+      const res = await fetch('{{ url_for("truffes.truffes_play") }}', {
+        method: 'POST',
+        headers: { 
+            'Content-Type': 'application/json',
+            'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+        },
+      });
+      const data = await res.json();
+      if (!data.ok) {
+        showAlreadyPlayed();
+        return false;
+      }
+      gameStarted = true;
+      return true;
+    }
+
+    async function handleCellClick(event) {
+      const button = event.currentTarget;
+      if (finished) return;
+      if (!gameStarted) {
+        const ok = await startGame();
+        if (!ok) return;
+      }
+      const x = Number(button.dataset.x);
+      const y = Number(button.dataset.y);
+      const distance = Math.abs(hiddenX - x) + Math.abs(hiddenY - y);
+      const verdict = distanceLabel(distance);
+      clicksLeft -= 1;
+      clicksLeftNode.textContent = clicksLeft;
+      status.textContent = verdict.title;
+      statusDetail.textContent = verdict.detail;
+      setTone(verdict.tone);
+      revealCell(button, verdict.tone);
+      /* radar animation */
+      status.classList.remove('radar-pulse');
+      void status.offsetWidth;
+      status.classList.add('radar-pulse');
+
+      if (distance === 0) {
+        finished = true;
+        button.textContent = '🍄';
+        button.style.fontSize = '0.7em';
+        button.style.display = 'flex';
+        button.style.alignItems = 'center';
+        button.style.justifyContent = 'center';
+        /* disable remaining cells */
+        grid.querySelectorAll('.cell-btn:not(:disabled)').forEach(btn => { btn.disabled = true; });
+        reportWin(MAX_CLICKS - clicksLeft);
+        return;
+      }
+
+      if (clicksLeft <= 0) {
+        finished = true;
+        status.textContent = 'Perdu';
+        statusDetail.textContent = `La truffe était en (${hiddenX + 1}, ${hiddenY + 1}).`;
+        setTone('cold');
+        /* reveal the truffle location */
+        const truffleBtn = grid.querySelector(`[data-x="${hiddenX}"][data-y="${hiddenY}"]`);
+        if (truffleBtn) {
+          truffleBtn.classList.add('cell-found');
+          truffleBtn.textContent = '🍄';
+          truffleBtn.style.fontSize = '0.6em';
+          truffleBtn.style.display = 'flex';
+          truffleBtn.style.alignItems = 'center';
+          truffleBtn.style.justifyContent = 'center';
+        }
+        /* fade remaining cells */
+        grid.querySelectorAll('.cell-btn:not(:disabled)').forEach(btn => { btn.disabled = true; });
+      }
+    }
+
+    function buildGrid() {
+      grid.innerHTML = '';
+      for (let y = 0; y < GRID_SIZE; y += 1) {
+        for (let x = 0; x < GRID_SIZE; x += 1) {
+          const button = document.createElement('button');
+          button.type = 'button';
+          button.dataset.x = x;
+          button.dataset.y = y;
+          button.className = 'cell-btn';
+          button.addEventListener('click', handleCellClick);
+          grid.appendChild(button);
+        }
+      }
+    }
+
+    function showAlreadyPlayed() {
+      finished = true;
+      gameStarted = false;
+      status.textContent = 'Déjà joué !';
+      statusDetail.textContent = 'Reviens demain pour une nouvelle chasse.';
+      status.className = 'mt-2 text-2xl font-black text-amber-200';
+      clicksLeftNode.textContent = '0';
+      newGameButton.disabled = true;
+      newGameButton.classList.add('opacity-40', 'cursor-not-allowed');
+      grid.querySelectorAll('.cell-btn').forEach(btn => { btn.disabled = true; });
+    }
+
+    function resetGame() {
+      clicksLeft = MAX_CLICKS;
+      finished = false;
+      gameStarted = false;
+      randomCell();
+      clicksLeftNode.textContent = clicksLeft;
+      status.textContent = 'En attente…';
+      statusDetail.textContent = 'Clique une case pour commencer à fouiller.';
+      status.className = 'mt-2 text-2xl font-black text-amber-100';
+      buildGrid();
+    }
+
+    newGameButton.addEventListener('click', () => {
+      if (ALREADY_PLAYED) return;
+      resetGame();
+    });
+
+    if (ALREADY_PLAYED) {
+      buildGrid();
+      showAlreadyPlayed();
+    } else {
+      resetGame();
+    }
+  </script>
+{% include '_footer.html' %}
+</body>
+</html>

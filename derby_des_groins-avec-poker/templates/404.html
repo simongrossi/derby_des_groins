@@ -1,0 +1,41 @@
+{% include '_site_header.html' %}
+
+<main class="container py-5 text-center">
+    <div class="error-page py-5">
+        <div class="display-1 mb-4">404</div>
+        <div class="error-icon mb-4" style="font-size: 5rem;">🐷</div>
+        <h1 class="h2 mb-3">Groin perdu ?</h1>
+        <p class="lead text-muted mb-5">
+            Ce petit cochon s'est égaré. La page que vous cherchez n'existe pas ou a été déplacée.
+        </p>
+        <div class="d-flex justify-content-center gap-3">
+            <a href="{{ url_for('main.index') }}" class="btn btn-primary px-4 py-2 rounded-pill">
+                <i class="fas fa-home me-2"></i>Retour à l'accueil
+            </a>
+            <button onclick="history.back()" class="btn btn-outline-secondary px-4 py-2 rounded-pill">
+                Retour en arrière
+            </button>
+        </div>
+    </div>
+</main>
+
+<style>
+    .error-page {
+        max-width: 600px;
+        margin: 0 auto;
+        animation: fadeIn 0.8s ease-out;
+    }
+    .display-1 {
+        font-weight: 900;
+        background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        opacity: 0.2;
+    }
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(20px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+</style>
+
+{% include '_site_footer.html' %}

@@ -1,0 +1,972 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Derby des Groins — Circuit Live</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; overflow: hidden; background: #080d1a; color: white; font-family: system-ui, sans-serif; }
+
+    /* ── Circuit container ── */
+    #circuit-wrap {
+      position: fixed; inset: 0; z-index: 1;
+      display: flex;
+    }
+    #svg-area {
+      flex: 1; min-width: 0;
+      display: flex; align-items: center; justify-content: center;
+      background: radial-gradient(ellipse at 60% 40%, rgba(22,57,96,0.35), transparent 70%),
+                  #080d1a;
+    }
+    #stats-panel {
+      width: 300px; flex-shrink: 0;
+      background: linear-gradient(180deg, rgba(15,10,30,0.98), rgba(8,6,18,0.99));
+      border-left: 1px solid rgba(255,255,255,0.06);
+      overflow-y: auto;
+      padding: 1rem;
+    }
+
+    /* Mobile : layout vertical, panel en bas */
+    @media (max-width: 767px) {
+      #circuit-wrap { flex-direction: column; }
+      #svg-area { flex: 1; min-height: 0; }
+      #stats-panel {
+        width: 100%;
+        height: 40vh;
+        border-left: none;
+        border-top: 1px solid rgba(255,255,255,0.06);
+      }
+    }
+
+    /* ── Track path styling ── */
+    .track-bg   { fill: none; stroke: rgba(255,255,255,0.06); stroke-linecap: round; }
+    .track-main { fill: none; stroke-linecap: round; }
+
+    /* ── Terrain segment colors ── */
+    .seg-PLAT     { stroke: #b45309; }
+    .seg-MONTEE   { stroke: #991b1b; }
+    .seg-DESCENTE { stroke: #047857; }
+    .seg-BOUE     { stroke: #713f12; }
+    .seg-VIRAGE   { stroke: #7e22ce; }
+
+    /* ── Pig marker ── */
+    .pig-marker { transition: transform 0.45s cubic-bezier(0.25, 0.46, 0.45, 0.94); }
+    .pig-label  { font-size: 10px; fill: white; text-anchor: middle; dominant-baseline: hanging; opacity: 0.7; }
+
+    /* ── Countdown overlay ── */
+    #countdown-overlay {
+      position: fixed; inset: 0; z-index: 50;
+      display: flex; align-items: center; justify-content: center;
+      background: rgba(0,0,0,0.85);
+      pointer-events: none;
+    }
+    #countdown-text {
+      font-size: clamp(4rem, 20vw, 12rem); font-weight: 900;
+      background: linear-gradient(135deg, #fbbf24, #f97316);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      animation: countdown-pop 0.6s ease-out;
+    }
+    @keyframes countdown-pop {
+      0%   { transform: scale(2); opacity: 0; }
+      50%  { transform: scale(0.95); opacity: 1; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+
+    /* ── Victory overlay ── */
+    #victory-overlay {
+      position: fixed; inset: 0; z-index: 60;
+      display: none; align-items: center; justify-content: center;
+      background: rgba(0,0,0,0.8);
+    }
+    #victory-overlay.active { display: flex; }
+    .victory-card {
+      text-align: center;
+      animation: victory-in 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    @keyframes victory-in {
+      0%   { transform: scale(0.3) rotate(-10deg); opacity: 0; }
+      100% { transform: scale(1) rotate(0); opacity: 1; }
+    }
+
+    /* ── Pre-race lobby ── */
+    #lobby-overlay {
+      position: fixed; inset: 0; z-index: 40;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      background: radial-gradient(ellipse at center, rgba(39,13,49,0.97), rgba(8,6,18,0.99));
+    }
+
+    /* ── Toast events ── */
+    .race-toast {
+      position: fixed; top: 1rem; left: 50%; transform: translateX(-50%); z-index: 70;
+      padding: 0.5rem 1.5rem; border-radius: 1rem;
+      background: rgba(0,0,0,0.8); border: 1px solid rgba(255,255,255,0.15);
+      font-weight: 700; font-size: 0.85rem;
+      animation: toast-in 0.4s ease-out, toast-out 0.3s ease-in 2.5s forwards;
+    }
+    @keyframes toast-in  { from { opacity: 0; transform: translateX(-50%) translateY(-20px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
+    @keyframes toast-out { to { opacity: 0; transform: translateX(-50%) translateY(-20px); } }
+
+    /* ── Stat card ── */
+    .pig-stat-card {
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 0.75rem;
+      padding: 0.6rem 0.75rem;
+      margin-bottom: 0.5rem;
+      background: rgba(255,255,255,0.02);
+      transition: border-color 0.3s;
+    }
+    .pig-stat-card.leading { border-color: rgba(251,191,36,0.4); background: rgba(251,191,36,0.06); }
+    .pig-stat-card.finished { border-color: rgba(34,197,94,0.4); background: rgba(34,197,94,0.06); }
+    .pig-stat-card.stumbled { border-color: rgba(239,68,68,0.4); animation: stumble-flash 0.5s; }
+    @keyframes stumble-flash { 0%,100% { background: rgba(255,255,255,0.02); } 50% { background: rgba(239,68,68,0.15); } }
+
+    .stat-mini-bar { height: 3px; border-radius: 2px; transition: width 0.4s ease; }
+    .stat-mini-bar-bg { background: rgba(255,255,255,0.06); }
+
+    /* ── Toolbar ── */
+    #toolbar {
+      position: fixed; bottom: 1rem; left: 50%; transform: translateX(-50%); z-index: 30;
+      display: flex; gap: 0.5rem; padding: 0.5rem; border-radius: 1rem;
+      background: rgba(0,0,0,0.7); border: 1px solid rgba(255,255,255,0.1);
+      backdrop-filter: blur(12px);
+    }
+    .tb-btn {
+      padding: 0.4rem 0.8rem; border-radius: 0.5rem; font-size: 0.75rem; font-weight: 700;
+      border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.05);
+      color: rgba(255,255,255,0.7); cursor: pointer; transition: all 0.15s;
+    }
+    .tb-btn:hover { background: rgba(255,255,255,0.12); color: white; }
+    .tb-btn.active { background: rgba(251,191,36,0.2); border-color: rgba(251,191,36,0.4); color: #fbbf24; }
+
+    /* ── Terrain legend markers on track ── */
+    .terrain-icon { font-size: 14px; dominant-baseline: middle; text-anchor: middle; }
+  </style>
+</head>
+<body>
+  <!-- ════════════════════════════════════════════════════════ -->
+  <!-- LOBBY OVERLAY (pre-race)                               -->
+  <!-- ════════════════════════════════════════════════════════ -->
+  <div id="lobby-overlay" style="display:none;">
+    <div class="text-center space-y-6 max-w-xl px-4">
+      <p class="text-sm uppercase tracking-[0.35em] text-amber-200/60">Prochaine course</p>
+      <h1 class="text-5xl font-black text-amber-100">🏁 Course #<span id="lobby-race-id">—</span></h1>
+      <div id="lobby-countdown" class="text-7xl font-black text-amber-300" style="font-variant-numeric:tabular-nums;">—</div>
+      <p class="text-xs text-white/40">Le circuit s'affiche automatiquement au depart</p>
+      <!-- Participant preview -->
+      <div id="lobby-participants" class="grid grid-cols-2 gap-2 mt-6 text-left"></div>
+      <!-- Segment preview mini-bar -->
+      <div id="lobby-segments" class="flex h-4 overflow-hidden rounded-full border border-white/10 mt-4"></div>
+      <!-- Bets spectator -->
+      <div id="lobby-bets" class="mt-4 text-left space-y-1"></div>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════════════════════ -->
+  <!-- COUNTDOWN OVERLAY (3-2-1)                              -->
+  <!-- ════════════════════════════════════════════════════════ -->
+  <div id="countdown-overlay" style="display:none;">
+    <div id="countdown-text">3</div>
+  </div>
+
+  <!-- ════════════════════════════════════════════════════════ -->
+  <!-- IDLE OVERLAY (no active race)                          -->
+  <!-- ════════════════════════════════════════════════════════ -->
+  <div id="idle-overlay" style="position:fixed;inset:0;z-index:35;display:flex;flex-direction:column;align-items:center;justify-content:center;background:radial-gradient(ellipse at center,rgba(15,10,30,0.97),rgba(8,6,18,0.99));">
+    <div class="text-center space-y-6 max-w-lg px-4">
+      <div style="font-size:5rem;line-height:1;">🐷</div>
+      <h1 class="text-4xl font-black text-white/80">Aucune course en cours</h1>
+      <p class="text-sm text-white/40 max-w-md mx-auto">Le circuit s'activera automatiquement quand la prochaine course approche. Restez sur cette page — l'overlay apparaitra a T-50 secondes.</p>
+      <div id="idle-next-info" class="mt-4 text-sm text-white/30"></div>
+      <div class="flex flex-wrap gap-3 justify-center mt-6">
+        <a href="/live" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl border border-cyan-400/20 bg-cyan-400/10 text-cyan-200 text-sm font-bold hover:bg-cyan-400/20 transition">🏁 Retour au Live</a>
+        <button onclick="window.parent.postMessage('close-circuit','*')" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl border border-white/10 bg-white/5 text-white/60 text-sm font-bold hover:bg-white/10 transition">✕ Fermer</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════════════════════ -->
+  <!-- CIRCUIT (SVG + Stats panel)                            -->
+  <!-- ════════════════════════════════════════════════════════ -->
+  <div id="circuit-wrap" style="display:none;">
+    <div id="svg-area">
+      <svg id="circuit-svg" viewBox="0 0 900 600" preserveAspectRatio="xMidYMid meet"
+           style="width:95%; height:95%; max-width:900px; max-height:600px;">
+        <!-- Track background -->
+        <g id="track-group">
+          <path id="track-bg-path" class="track-bg" stroke-width="48"/>
+          <!-- Colored terrain segments drawn dynamically -->
+          <g id="track-segments-g"></g>
+          <!-- Terrain icons -->
+          <g id="terrain-icons-g"></g>
+          <!-- Start / finish line -->
+          <line id="start-line" stroke="#fde047" stroke-width="3" stroke-dasharray="6,4" opacity="0.6"/>
+          <line id="finish-line" stroke="#fde047" stroke-width="3" stroke-dasharray="6,4" opacity="0.8"/>
+          <!-- Pig markers group -->
+          <g id="pigs-g"></g>
+        </g>
+      </svg>
+      <!-- Race info overlay -->
+      <div style="position:absolute; top:1rem; left:1rem; font-size:0.7rem; color:rgba(255,255,255,0.4);">
+        <span id="info-race">—</span> · <span id="info-turn">Tour 0</span> · <span id="info-profile">—</span>
+      </div>
+    </div>
+    <div id="stats-panel">
+      <div class="text-xs uppercase tracking-[0.3em] text-white/30 mb-3">Participants</div>
+      <div id="stats-cards"></div>
+      <div class="mt-4 text-xs uppercase tracking-[0.3em] text-white/30 mb-2">Paris en cours</div>
+      <div id="stats-bets" class="text-xs text-white/50 space-y-1"></div>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════════════════════ -->
+  <!-- VICTORY OVERLAY                                        -->
+  <!-- ════════════════════════════════════════════════════════ -->
+  <div id="victory-overlay">
+    <div class="victory-card space-y-4">
+      <div id="victory-emoji" style="font-size:6rem;"></div>
+      <div class="text-4xl font-black text-amber-200" id="victory-name"></div>
+      <div class="text-sm text-white/50" id="victory-details"></div>
+      <div id="victory-podium" class="mt-6 space-y-1 text-sm"></div>
+      <button onclick="closeCircuit()" class="mt-6 tb-btn" style="font-size:0.85rem; padding:0.6rem 1.5rem;">Fermer</button>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════════════════════ -->
+  <!-- TOOLBAR                                                -->
+  <!-- ════════════════════════════════════════════════════════ -->
+  <div id="toolbar" style="display:none;">
+    <button class="tb-btn" id="btn-cam" onclick="toggleCamera()">🎥 Caméra</button>
+    <button class="tb-btn" id="btn-speed" onclick="cycleSpeed()">⏩ x1</button>
+    <button class="tb-btn" id="btn-pause" onclick="togglePause()">⏸ Pause</button>
+    <button class="tb-btn" id="btn-close" onclick="closeCircuit()">✕ Fermer</button>
+  </div>
+
+<script>
+// ════════════════════════════════════════════════════════════════════
+//  GLOBAL STATE
+// ════════════════════════════════════════════════════════════════════
+const TERRAIN_COLORS = {
+  PLAT:     '#b45309',
+  MONTEE:   '#991b1b',
+  DESCENTE: '#047857',
+  BOUE:     '#713f12',
+  VIRAGE:   '#7e22ce',
+};
+const TERRAIN_EMOJI = {
+  PLAT: '🏃', MONTEE: '⛰️', DESCENTE: '🎿', BOUE: '💩', VIRAGE: '🔄',
+};
+const PIG_COLORS = [
+  '#f87171','#fb923c','#facc15','#4ade80','#22d3ee','#818cf8','#e879f9','#f472b6',
+  '#a3e635','#fca5a5','#fdba74','#fde68a',
+];
+
+let replayData = null;      // Full replay JSON
+let participants = [];       // From pre-race or replay
+let segments = [];           // Track segments
+let totalLength = 0;
+let turnIndex = 0;
+let isPlaying = false;
+let isPaused = false;
+let playInterval = null;
+let speedMultiplier = 1;
+let cameraFollow = false;
+let lastFinishedRaceId = null;
+let currentPhase = 'idle';   // idle | pre_race | countdown | racing | finished
+let currentRaceId = null;
+let pollTimer = null;
+let pathElement = null;      // The SVG <path> element for getPointAtLength
+let pathLength = 0;
+
+// ════════════════════════════════════════════════════════════════════
+//  CIRCUIT GEOMETRY — generates an oval racetrack path
+// ════════════════════════════════════════════════════════════════════
+function buildTrackPath(svgW, svgH, padding) {
+  // Stadium shape: two semicircles connected by straights
+  const cx = svgW / 2, cy = svgH / 2;
+  const rx = (svgW - padding * 2) / 2;
+  const ry = (svgH - padding * 2) / 2;
+
+  // We create an elliptical path (clockwise)
+  // Using two arcs to form a full ellipse
+  const d = `M ${cx - rx} ${cy}
+             A ${rx} ${ry} 0 1 1 ${cx + rx} ${cy}
+             A ${rx} ${ry} 0 1 1 ${cx - rx} ${cy} Z`;
+  return d;
+}
+
+function initTrackSVG() {
+  const svg = document.getElementById('circuit-svg');
+  const trackGroup = document.getElementById('track-group');
+  const bgPath = document.getElementById('track-bg-path');
+  const segG = document.getElementById('track-segments-g');
+  const iconsG = document.getElementById('terrain-icons-g');
+
+  const W = 900, H = 600, PAD = 80;
+  const d = buildTrackPath(W, H, PAD);
+
+  // Background track
+  bgPath.setAttribute('d', d);
+
+  // Create a hidden reference path for measurements
+  const refPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+  refPath.setAttribute('d', d);
+  refPath.style.visibility = 'hidden';
+  svg.appendChild(refPath);
+  pathElement = refPath;
+  pathLength = refPath.getTotalLength();
+
+  // Draw colored terrain segments
+  segG.innerHTML = '';
+  iconsG.innerHTML = '';
+  totalLength = segments.reduce((sum, s) => sum + s.length, 0) || 1;
+  let cumulative = 0;
+
+  segments.forEach((seg, i) => {
+    const startRatio = cumulative / totalLength;
+    const endRatio = (cumulative + seg.length) / totalLength;
+    const midRatio = (startRatio + endRatio) / 2;
+    cumulative += seg.length;
+
+    // Draw segment as a colored sub-path using dash-offset trick
+    const segPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    segPath.setAttribute('d', d);
+    segPath.setAttribute('stroke-width', '42');
+    segPath.setAttribute('fill', 'none');
+    segPath.setAttribute('stroke-linecap', 'butt');
+    segPath.setAttribute('stroke', TERRAIN_COLORS[seg.type] || TERRAIN_COLORS.PLAT);
+    segPath.setAttribute('opacity', '0.7');
+
+    const segLen = (endRatio - startRatio) * pathLength;
+    const segStart = startRatio * pathLength;
+    // dasharray: segLen visible, then rest invisible
+    segPath.setAttribute('stroke-dasharray', `${segLen} ${pathLength - segLen}`);
+    segPath.setAttribute('stroke-dashoffset', `-${segStart}`);
+    segG.appendChild(segPath);
+
+    // Terrain icon at midpoint
+    const midPt = refPath.getPointAtLength(midRatio * pathLength);
+    const icon = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    icon.setAttribute('x', midPt.x);
+    icon.setAttribute('y', midPt.y);
+    icon.setAttribute('class', 'terrain-icon');
+    icon.textContent = TERRAIN_EMOJI[seg.type] || '';
+    iconsG.appendChild(icon);
+  });
+
+  // Start / finish lines
+  const startPt = refPath.getPointAtLength(0);
+  const startPt2 = refPath.getPointAtLength(pathLength * 0.002);
+  const angle = Math.atan2(startPt2.y - startPt.y, startPt2.x - startPt.x) + Math.PI / 2;
+  const lineLen = 28;
+
+  const setLine = (el, pt) => {
+    el.setAttribute('x1', pt.x + Math.cos(angle) * lineLen);
+    el.setAttribute('y1', pt.y + Math.sin(angle) * lineLen);
+    el.setAttribute('x2', pt.x - Math.cos(angle) * lineLen);
+    el.setAttribute('y2', pt.y - Math.sin(angle) * lineLen);
+  };
+  setLine(document.getElementById('start-line'), startPt);
+  setLine(document.getElementById('finish-line'), refPath.getPointAtLength(pathLength * 0.995));
+}
+
+// ════════════════════════════════════════════════════════════════════
+//  PIG MARKERS
+// ════════════════════════════════════════════════════════════════════
+/* Returns HTML string for a pig visual (avatar image or emoji fallback) */
+function pigVisualHTML(pig, size = 24) {
+  if (pig.avatar_url) {
+    return `<img src="${pig.avatar_url}" alt="${pig.name || ''}" width="${size}" height="${size}" style="image-rendering:pixelated;width:${size}px;height:${size}px;border-radius:4px;display:inline-block;vertical-align:middle;">`;
+  }
+  return `<span style="font-size:${Math.round(size * 0.8)}px;line-height:1;">${pig.emoji || '🐷'}</span>`;
+}
+
+function createPigMarkers(pigsData) {
+  const g = document.getElementById('pigs-g');
+  g.innerHTML = '';
+  pigsData.forEach((pig, i) => {
+    const group = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    group.setAttribute('class', 'pig-marker');
+    group.setAttribute('id', `pig-${pig.id}`);
+
+    if (pig.avatar_url) {
+      const img = document.createElementNS('http://www.w3.org/2000/svg', 'image');
+      img.setAttributeNS('http://www.w3.org/1999/xlink', 'href', pig.avatar_url);
+      img.setAttribute('width', '28');
+      img.setAttribute('height', '28');
+      img.setAttribute('x', '-14');
+      img.setAttribute('y', '-14');
+      img.setAttribute('style', 'image-rendering: pixelated;');
+      group.appendChild(img);
+    } else {
+      const emoji = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      emoji.setAttribute('font-size', '22');
+      emoji.setAttribute('text-anchor', 'middle');
+      emoji.setAttribute('dominant-baseline', 'central');
+      emoji.textContent = pig.emoji || '🐷';
+      group.appendChild(emoji);
+    }
+
+    const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    label.setAttribute('class', 'pig-label');
+    label.setAttribute('dy', '18');
+    label.textContent = pig.name ? pig.name.substring(0, 10) : '';
+
+    group.appendChild(label);
+    g.appendChild(group);
+
+    // Start at position 0
+    const pt = pathElement.getPointAtLength(0);
+    group.setAttribute('transform', `translate(${pt.x}, ${pt.y})`);
+  });
+}
+
+function updatePigPositions(turnData) {
+  if (!turnData || !turnData.pigs) return;
+  const leaderId = [...turnData.pigs].sort((a, b) => b.distance - a.distance)[0]?.id;
+
+  turnData.pigs.forEach((pig, i) => {
+    const el = document.getElementById(`pig-${pig.id}`);
+    if (!el) return;
+
+    const ratio = Math.min(1, pig.distance / totalLength);
+    const pt = pathElement.getPointAtLength(ratio * pathLength);
+
+    // Slight vertical offset so pigs don't overlap
+    const offset = (i - turnData.pigs.length / 2) * 3;
+    el.setAttribute('transform', `translate(${pt.x}, ${pt.y + offset})`);
+  });
+
+  // Camera follow
+  if (cameraFollow && leaderId) {
+    const leaderPig = turnData.pigs.find(p => p.id === leaderId);
+    if (leaderPig) {
+      const ratio = Math.min(1, leaderPig.distance / totalLength);
+      const pt = pathElement.getPointAtLength(ratio * pathLength);
+      const svg = document.getElementById('circuit-svg');
+      const vbW = 400, vbH = 280;
+      svg.setAttribute('viewBox',
+        `${pt.x - vbW/2} ${pt.y - vbH/2} ${vbW} ${vbH}`);
+    }
+  }
+}
+
+// ════════════════════════════════════════════════════════════════════
+//  STATS PANEL
+// ════════════════════════════════════════════════════════════════════
+function initStatsCards(pigsData) {
+  const container = document.getElementById('stats-cards');
+  container.innerHTML = '';
+  pigsData.forEach((pig, i) => {
+    const color = PIG_COLORS[i % PIG_COLORS.length];
+    const card = document.createElement('div');
+    card.className = 'pig-stat-card';
+    card.id = `stat-${pig.id}`;
+    card.innerHTML = `
+      <div class="flex items-center gap-2 mb-1">
+        ${pigVisualHTML(pig, 20)}
+        <span class="text-xs font-bold truncate" style="color:${color};">${pig.name || '???'}</span>
+        <span class="ml-auto text-[10px] text-white/30" id="stat-pos-${pig.id}">#—</span>
+      </div>
+      <div class="flex items-center gap-2 text-[10px] text-white/40 mb-1">
+        <span id="stat-phase-${pig.id}">—</span>
+        <span id="stat-terrain-${pig.id}">—</span>
+        <span class="ml-auto" id="stat-event-${pig.id}"></span>
+      </div>
+      <div class="grid grid-cols-2 gap-x-3 gap-y-1">
+        <div>
+          <div class="text-[9px] text-white/30">Vitesse</div>
+          <div class="stat-mini-bar-bg rounded-full overflow-hidden"><div class="stat-mini-bar" id="stat-speed-${pig.id}" style="width:0%;background:linear-gradient(90deg,#22d3ee,#818cf8);"></div></div>
+        </div>
+        <div>
+          <div class="text-[9px] text-white/30">Fatigue</div>
+          <div class="stat-mini-bar-bg rounded-full overflow-hidden"><div class="stat-mini-bar" id="stat-fatigue-${pig.id}" style="width:0%;background:linear-gradient(90deg,#f97316,#ef4444);"></div></div>
+        </div>
+      </div>
+      <div class="text-[10px] mt-1 text-white/20" id="stat-extra-${pig.id}"></div>
+    `;
+    container.appendChild(card);
+  });
+}
+
+function updateStatsCards(turnData) {
+  if (!turnData || !turnData.pigs) return;
+
+  // Compute positions
+  const sorted = [...turnData.pigs].sort((a, b) => b.distance - a.distance);
+  const posMap = {};
+  sorted.forEach((p, i) => posMap[p.id] = i + 1);
+
+  turnData.pigs.forEach(pig => {
+    const card = document.getElementById(`stat-${pig.id}`);
+    if (!card) return;
+
+    const pos = posMap[pig.id];
+    card.classList.toggle('leading', pos === 1 && !pig.is_finished);
+    card.classList.toggle('finished', pig.is_finished);
+    if (pig.stumbled) {
+      card.classList.add('stumbled');
+      setTimeout(() => card.classList.remove('stumbled'), 600);
+    }
+
+    const posEl = document.getElementById(`stat-pos-${pig.id}`);
+    if (posEl) posEl.textContent = pig.is_finished ? '✅' : `#${pos}`;
+
+    const phaseEl = document.getElementById(`stat-phase-${pig.id}`);
+    if (phaseEl) {
+      const phaseLabels = { phase_1: '🟢 Départ', phase_2: '🟡 Milieu', phase_3: '🔴 Sprint' };
+      phaseEl.textContent = phaseLabels[pig.phase] || pig.phase;
+    }
+
+    const terrainEl = document.getElementById(`stat-terrain-${pig.id}`);
+    if (terrainEl) terrainEl.textContent = `${TERRAIN_EMOJI[pig.segment_type] || ''} ${pig.segment_type}`;
+
+    const eventEl = document.getElementById(`stat-event-${pig.id}`);
+    if (eventEl) {
+      const events = {
+        sprint: '⚡ SPRINT', drafting: '🌀 Aspiration',
+        tired: '😤 Fatigué', stumble: '💥 Trébuchement',
+        finished: '🏁 Terminé',
+      };
+      eventEl.textContent = pig.is_finished ? '🏁' : (events[pig.visual_event] || '');
+      eventEl.style.color = pig.visual_event === 'sprint' ? '#facc15' :
+                            pig.visual_event === 'stumble' ? '#f87171' :
+                            pig.visual_event === 'drafting' ? '#22d3ee' : '';
+    }
+
+    // Speed bar (max ~25 units typical)
+    const speedBar = document.getElementById(`stat-speed-${pig.id}`);
+    if (speedBar) speedBar.style.width = `${Math.min(100, (pig.vitesse_actuelle / 25) * 100)}%`;
+
+    // Fatigue bar
+    const fatBar = document.getElementById(`stat-fatigue-${pig.id}`);
+    if (fatBar) fatBar.style.width = `${Math.min(100, pig.fatigue * 2)}%`;
+
+    // Extra info
+    const extraEl = document.getElementById(`stat-extra-${pig.id}`);
+    if (extraEl) {
+      const parts = [];
+      if (pig.has_draft) parts.push('🌀 aspiration');
+      if (pig.strategy > 70) parts.push(`⚔️ strat:${pig.strategy}`);
+      else if (pig.strategy < 30) parts.push(`🛡️ strat:${pig.strategy}`);
+      parts.push(`${pig.vitesse_actuelle.toFixed(1)} m/t`);
+      extraEl.textContent = parts.join(' · ');
+    }
+  });
+}
+
+// ════════════════════════════════════════════════════════════════════
+//  TOASTS
+// ════════════════════════════════════════════════════════════════════
+function showToast(text) {
+  const el = document.createElement('div');
+  el.className = 'race-toast';
+  el.textContent = text;
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 3000);
+}
+
+// ════════════════════════════════════════════════════════════════════
+//  BETS DISPLAY
+// ════════════════════════════════════════════════════════════════════
+async function loadBets(raceId, containerId) {
+  try {
+    const resp = await fetch(`/api/race/${raceId}/bets-spectator`);
+    const data = await resp.json();
+    const container = document.getElementById(containerId);
+    if (!container || !data.bets || data.bets.length === 0) {
+      if (container) container.innerHTML = '<div class="text-xs text-white/30">Aucun pari placé</div>';
+      return;
+    }
+    container.innerHTML = data.bets.map(b =>
+      `<div class="flex gap-2 text-xs text-white/50">
+        <span class="text-white/70 font-bold">${b.username}</span>
+        <span>→ ${b.pig_name}</span>
+        <span class="text-amber-300">${b.amount}G</span>
+        <span class="text-white/30">(x${b.odds || '?'})</span>
+      </div>`
+    ).join('');
+  } catch (e) {
+    console.warn('Failed to load bets:', e);
+  }
+}
+
+// ════════════════════════════════════════════════════════════════════
+//  LOBBY (pre-race phase)
+// ════════════════════════════════════════════════════════════════════
+async function showLobby(raceId, secondsToStart) {
+  const overlay = document.getElementById('lobby-overlay');
+  overlay.style.display = 'flex';
+
+  document.getElementById('lobby-race-id').textContent = raceId;
+
+  // Load pre-race data
+  try {
+    const resp = await fetch(`/api/race/${raceId}/pre-race`);
+    const data = await resp.json();
+
+    // Participants
+    const pContainer = document.getElementById('lobby-participants');
+    pContainer.innerHTML = (data.participants || []).map(p =>
+      `<div class="flex items-center gap-2 px-3 py-2 rounded-lg border border-white/6 bg-white/3">
+        ${p.avatar_url ? `<img src="${p.avatar_url}" width="24" height="24" style="image-rendering:pixelated;border-radius:4px;">` : `<span style="font-size:1.3rem;">${p.emoji}</span>`}
+        <div class="min-w-0">
+          <div class="text-xs font-bold truncate">${p.name}</div>
+          <div class="text-[10px] text-white/30">${p.owner_name || 'NPC'} · x${p.odds ? p.odds.toFixed(1) : '?'}</div>
+        </div>
+      </div>`
+    ).join('');
+
+    // Segments preview
+    segments = data.segments || [];
+    const segContainer = document.getElementById('lobby-segments');
+    const total = segments.reduce((s, seg) => s + seg.length, 0) || 1;
+    segContainer.innerHTML = segments.map(seg =>
+      `<div style="flex:${seg.length / total}; background:${TERRAIN_COLORS[seg.type] || TERRAIN_COLORS.PLAT}; opacity:0.7;"
+            title="${seg.type} (${seg.length}m)"></div>`
+    ).join('');
+
+    participants = data.participants || [];
+  } catch (e) {
+    console.warn('Failed to load pre-race data:', e);
+  }
+
+  // Load bets
+  loadBets(raceId, 'lobby-bets');
+
+  // Countdown timer
+  updateLobbyCountdown(secondsToStart);
+}
+
+function updateLobbyCountdown(seconds) {
+  const el = document.getElementById('lobby-countdown');
+  if (seconds <= 0) {
+    el.textContent = '🏁 DÉPART!';
+    return;
+  }
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  el.textContent = m > 0 ? `${m}:${String(s).padStart(2,'0')}` : `${s}s`;
+}
+
+function hideLobby() {
+  document.getElementById('lobby-overlay').style.display = 'none';
+}
+
+// ════════════════════════════════════════════════════════════════════
+//  DRAMATIC COUNTDOWN (10-9-8...3-2-1-GO)
+// ════════════════════════════════════════════════════════════════════
+function showDramaticCountdown(seconds, onComplete) {
+  hideLobby();
+  const overlay = document.getElementById('countdown-overlay');
+  const textEl = document.getElementById('countdown-text');
+  overlay.style.display = 'flex';
+
+  let current = Math.min(10, seconds);
+  const tick = () => {
+    if (current <= 0) {
+      textEl.textContent = 'GO!';
+      textEl.style.animation = 'none';
+      void textEl.offsetWidth;
+      textEl.style.animation = 'countdown-pop 0.6s ease-out';
+      setTimeout(() => {
+        overlay.style.display = 'none';
+        if (onComplete) onComplete();
+      }, 800);
+      return;
+    }
+    textEl.textContent = current;
+    textEl.style.animation = 'none';
+    void textEl.offsetWidth;
+    textEl.style.animation = 'countdown-pop 0.6s ease-out';
+    current--;
+    setTimeout(tick, 1000);
+  };
+  tick();
+}
+
+// ════════════════════════════════════════════════════════════════════
+//  RACE ANIMATION PLAYBACK
+// ════════════════════════════════════════════════════════════════════
+function startAnimation(replay) {
+  replayData = replay;
+  segments = replay.segments || [];
+
+  // Fallback: if no segments in replay (old format), generate default ones
+  if (segments.length === 0) {
+    const types = ['PLAT','MONTEE','BOUE','VIRAGE','DESCENTE','PLAT'];
+    segments = types.map(t => ({ type: t, length: 100 }));
+  }
+
+  totalLength = segments.reduce((s, seg) => s + seg.length, 0) || 1;
+
+  // Also compute totalLength from actual max distance in replay if segments total is 0
+  if (replay.turns && replay.turns.length > 0) {
+    const lastTurn = replay.turns[replay.turns.length - 1];
+    const maxDist = Math.max(...lastTurn.pigs.map(p => p.distance));
+    if (maxDist > totalLength) totalLength = maxDist * 1.02;
+  }
+
+  turnIndex = 0;
+
+  // Init circuit
+  initTrackSVG();
+
+  // Extract pig list from first turn
+  const firstTurn = replay.turns[0];
+  const pigsData = firstTurn.pigs.map(p => ({
+    id: p.id, name: p.name, emoji: '🐷',
+  }));
+
+  // Enrich with participant_meta if available
+  if (replay.participant_meta) {
+    pigsData.forEach(pig => {
+      const meta = replay.participant_meta[String(pig.id)];
+      if (meta) {
+        pig.emoji = meta.emoji || '🐷';
+        pig.avatar_url = meta.avatar_url || null;
+      }
+    });
+  }
+
+  createPigMarkers(pigsData);
+  initStatsCards(pigsData);
+
+  // Show circuit
+  document.getElementById('circuit-wrap').style.display = 'flex';
+  document.getElementById('toolbar').style.display = 'flex';
+  document.getElementById('info-race').textContent = `Course #${replay.race_id || '?'}`;
+  document.getElementById('info-profile').textContent = replay.track_profile || '';
+
+  // Load bets
+  if (replay.race_id) loadBets(replay.race_id, 'stats-bets');
+
+  // Start playback
+  isPlaying = true;
+  isPaused = false;
+  playTick();
+}
+
+function playTick() {
+  if (!isPlaying || isPaused) return;
+  if (!replayData || turnIndex >= replayData.turns.length) {
+    finishAnimation();
+    return;
+  }
+
+  const turn = replayData.turns[turnIndex];
+  updatePigPositions(turn);
+  updateStatsCards(turn);
+  document.getElementById('info-turn').textContent = `Tour ${turn.turn}`;
+
+  // Emit toasts for special events
+  turn.pigs.forEach(pig => {
+    if (pig.visual_event === 'stumble') showToast(`💥 ${pig.name} trébuche !`);
+    if (pig.visual_event === 'sprint' && turnIndex > 0) {
+      const prev = replayData.turns[turnIndex - 1]?.pigs?.find(p => p.id === pig.id);
+      if (prev && prev.visual_event !== 'sprint') showToast(`⚡ ${pig.name} — SPRINT !`);
+    }
+    if (pig.is_finished) {
+      const prev = replayData.turns[Math.max(0, turnIndex - 1)]?.pigs?.find(p => p.id === pig.id);
+      if (prev && !prev.is_finished) showToast(`🏁 ${pig.name} franchit la ligne !`);
+    }
+  });
+
+  turnIndex++;
+  const delay = Math.max(80, 500 / speedMultiplier);
+  playInterval = setTimeout(playTick, delay);
+}
+
+function finishAnimation() {
+  isPlaying = false;
+  // Show victory
+  if (!replayData) return;
+  const lastTurn = replayData.turns[replayData.turns.length - 1];
+  const sorted = [...lastTurn.pigs].sort((a, b) => b.distance - a.distance);
+  const winner = sorted[0];
+
+  const winnerMeta = replayData.participant_meta?.[String(winner.id)];
+  const victoryEmojiEl = document.getElementById('victory-emoji');
+  if (winnerMeta?.avatar_url) {
+    victoryEmojiEl.innerHTML = `<img src="${winnerMeta.avatar_url}" width="96" height="96" style="image-rendering:pixelated;border-radius:8px;">`;
+  } else {
+    victoryEmojiEl.textContent = winnerMeta?.emoji || '🐷';
+  }
+  document.getElementById('victory-name').textContent = `${winner.name} GAGNE !`;
+  document.getElementById('victory-details').textContent =
+    `Course #${replayData.race_id || '?'} · ${replayData.finished_at || ''}`;
+
+  const podium = document.getElementById('victory-podium');
+  podium.innerHTML = sorted.slice(0, 5).map((p, i) => {
+    const medals = ['🥇','🥈','🥉','4️⃣','5️⃣'];
+    const meta = replayData.participant_meta?.[String(p.id)];
+    return `<div class="flex items-center gap-2 text-white/70">
+      <span>${medals[i]}</span>
+      ${meta?.avatar_url ? `<img src="${meta.avatar_url}" width="20" height="20" style="image-rendering:pixelated;border-radius:3px;">` : `<span>${meta?.emoji || '🐷'}</span>`}
+      <span class="font-bold">${p.name}</span>
+    </div>`;
+  }).join('');
+
+  document.getElementById('victory-overlay').classList.add('active');
+}
+
+// ════════════════════════════════════════════════════════════════════
+//  TOOLBAR CONTROLS
+// ════════════════════════════════════════════════════════════════════
+function toggleCamera() {
+  cameraFollow = !cameraFollow;
+  document.getElementById('btn-cam').classList.toggle('active', cameraFollow);
+  if (!cameraFollow) {
+    document.getElementById('circuit-svg').setAttribute('viewBox', '0 0 900 600');
+  }
+}
+
+function cycleSpeed() {
+  const speeds = [1, 2, 4, 0.5];
+  const idx = speeds.indexOf(speedMultiplier);
+  speedMultiplier = speeds[(idx + 1) % speeds.length];
+  document.getElementById('btn-speed').textContent = `⏩ x${speedMultiplier}`;
+}
+
+function togglePause() {
+  isPaused = !isPaused;
+  document.getElementById('btn-pause').textContent = isPaused ? '▶ Play' : '⏸ Pause';
+  if (!isPaused && isPlaying) playTick();
+}
+
+function closeCircuit() {
+  isPlaying = false;
+  clearTimeout(playInterval);
+  document.getElementById('circuit-wrap').style.display = 'none';
+  document.getElementById('toolbar').style.display = 'none';
+  document.getElementById('victory-overlay').classList.remove('active');
+  // Reset camera
+  cameraFollow = false;
+  document.getElementById('btn-cam').classList.remove('active');
+  document.getElementById('circuit-svg').setAttribute('viewBox', '0 0 900 600');
+}
+
+// ════════════════════════════════════════════════════════════════════
+//  MAIN POLLING STATE MACHINE
+// ════════════════════════════════════════════════════════════════════
+async function pollLiveState() {
+  try {
+    const resp = await fetch('/api/race/live-state');
+    const state = await resp.json();
+
+    const prevPhase = currentPhase;
+    currentPhase = state.phase;
+    currentRaceId = state.race_id;
+
+    switch (state.phase) {
+      case 'idle':
+        // Show idle overlay with info
+        document.getElementById('idle-overlay').style.display = 'flex';
+        if (prevPhase === 'pre_race') hideLobby();
+        // Show next race info if available
+        if (state.seconds_to_start && state.seconds_to_start > 0) {
+          const m = Math.floor(state.seconds_to_start / 60);
+          const s = Math.floor(state.seconds_to_start % 60);
+          document.getElementById('idle-next-info').textContent =
+            `⏱️ Prochaine course dans ${m > 0 ? m + ' min ' : ''}${s}s`;
+        } else {
+          document.getElementById('idle-next-info').textContent = '📅 Aucune course programmee pour le moment';
+        }
+        break;
+
+      case 'pre_race':
+        document.getElementById('idle-overlay').style.display = 'none';
+        if (prevPhase !== 'pre_race') {
+          showLobby(state.race_id, state.seconds_to_start);
+        } else {
+          updateLobbyCountdown(state.seconds_to_start);
+        }
+        break;
+
+      case 'countdown':
+        document.getElementById('idle-overlay').style.display = 'none';
+        if (prevPhase !== 'countdown') {
+          showDramaticCountdown(state.seconds_to_start, null);
+        }
+        break;
+
+      case 'racing':
+        document.getElementById('idle-overlay').style.display = 'none';
+        // Race is executing server-side — wait for finished
+        if (prevPhase === 'countdown' || prevPhase === 'pre_race') {
+          hideLobby();
+          document.getElementById('countdown-overlay').style.display = 'none';
+        }
+        break;
+
+      case 'finished':
+        // Should not happen in live-state (open races never return 'finished')
+        break;
+    }
+
+    // Check if a new race just finished — launch replay!
+    if (state.finished_race_id && state.finished_race_id !== lastFinishedRaceId) {
+      // Only auto-launch if we were tracking this race
+      if (lastFinishedRaceId !== null || prevPhase === 'racing' || prevPhase === 'countdown') {
+        lastFinishedRaceId = state.finished_race_id;
+        hideLobby();
+        document.getElementById('countdown-overlay').style.display = 'none';
+
+        // Small delay to let replay_json be committed
+        setTimeout(async () => {
+          try {
+            const replayResp = await fetch(`/api/race/${state.finished_race_id}/replay`);
+            const replay = await replayResp.json();
+            if (replay.turns) {
+              showDramaticCountdown(3, () => startAnimation(replay));
+            }
+          } catch (e) {
+            console.warn('Failed to load replay:', e);
+          }
+        }, 1500);
+      } else {
+        // First load — just record the current finished race ID
+        lastFinishedRaceId = state.finished_race_id;
+      }
+    }
+
+  } catch (e) {
+    console.warn('Poll error:', e);
+  }
+}
+
+// ════════════════════════════════════════════════════════════════════
+//  INIT
+// ════════════════════════════════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', () => {
+  // Start polling
+  pollLiveState();
+  pollTimer = setInterval(pollLiveState, 3000);
+
+  // Also try to load latest replay immediately for manual viewing
+  fetch('/api/race/latest/replay')
+    .then(r => r.json())
+    .then(replay => {
+      if (replay.turns && replay.turns.length > 0) {
+        // Store for manual trigger but don't auto-play on load
+        window._latestReplay = replay;
+      }
+    })
+    .catch(e => console.warn('[circuit] Erreur chargement replay initial', e));
+
+  window.addEventListener('beforeunload', () => {
+    if (pollTimer) clearInterval(pollTimer);
+    if (playInterval) clearTimeout(playInterval);
+  });
+});
+
+// Allow external trigger (from race_live.html via postMessage)
+window.addEventListener('message', (event) => {
+  if (event.data?.type === 'play-replay' && event.data.replay) {
+    showDramaticCountdown(3, () => startAnimation(event.data.replay));
+  }
+});
+</script>
+</body>
+</html>

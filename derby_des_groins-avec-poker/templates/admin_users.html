@@ -1,0 +1,172 @@
+{% extends "admin_base.html" %}
+{% from '_pig_avatar.html' import pig_display %}
+{% block title %}👥 Joueurs — Admin{% endblock %}
+
+{% block content %}
+<div class="flex items-center justify-between mb-6">
+    <div>
+        <h1 class="font-title text-3xl text-white">👥 Gestion des Joueurs ({{ users|length }})</h1>
+        <p class="text-white/40 font-semibold text-sm">Comptes, mots de passe, roles, liens magiques.</p>
+    </div>
+</div>
+
+<!-- SEARCH -->
+<div class="mb-4">
+    <input type="text" id="user-search" placeholder="Rechercher un joueur..."
+           class="input-admin w-full max-w-md" oninput="filterUsers(this.value)">
+</div>
+
+<div class="space-y-3" id="user-list">
+    {% for u in users %}
+    <div class="card p-5 user-card" data-username="{{ u.username|lower }}">
+        <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+            <!-- INFO -->
+            <div class="flex items-center gap-4">
+                {% set u_pig = u.pigs | selectattr('is_alive') | first %}
+                {% if u_pig %}{{ pig_display(u_pig, 'text-2xl', 32) }}{% else %}<span class="text-2xl">💀</span>{% endif %}
+                <div>
+                    <div class="flex items-center gap-2">
+                        <p class="text-white font-bold text-base">{{ u.username }}</p>
+                        {% if u.is_admin %}
+                        <span class="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded bg-fuchsia-500/20 border border-fuchsia-500/30 text-fuchsia-300">Admin</span>
+                        {% endif %}
+                    </div>
+                    <p class="text-white/40 text-xs font-semibold">
+                        {% if u_pig %}{{ u_pig.name }} — Niv. {{ u_pig.level }}{% else %}Pas de cochon vivant{% endif %}
+                        · Inscrit {{ u.created_at.strftime('%d/%m/%Y') if u.created_at else 'N/A' }}
+                        {% if u.email %} · {{ u.email }}{% endif %}
+                    </p>
+                    <p class="text-white/30 text-xs font-semibold mt-0.5">
+                        💰 {{ "%.0f"|format(u.balance) }} 🪙
+                        · {{ u.pigs|selectattr('is_alive')|list|length }} cochon(s) vivant(s)
+                    </p>
+                </div>
+            </div>
+
+            <!-- ACTIONS -->
+            <div class="flex flex-wrap gap-2">
+                <!-- Toggle Admin -->
+                <form method="POST" action="{{ url_for('admin.admin_toggle_user_admin', user_id=u.id) }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    {% if u.id != user.id %}
+                    <button type="submit" class="{{ 'btn-warning' if u.is_admin else 'btn-admin' }} text-xs px-3 py-2"
+                            onclick="return confirm('{{ 'Retirer les droits admin ?' if u.is_admin else 'Donner les droits admin ?' }}');">
+                        {{ '⬇️ Retirer admin' if u.is_admin else '⬆️ Promouvoir admin' }}
+                    </button>
+                    {% else %}
+                    <span class="text-white/20 text-xs font-bold px-3 py-2">Vous</span>
+                    {% endif %}
+                </form>
+
+                <!-- Reset Password -->
+                <button onclick="openPasswordModal({{ u.id }}, '{{ u.username }}')" class="btn-admin text-xs px-3 py-2">
+                    🔑 Mot de passe
+                </button>
+
+                <!-- Magic Link -->
+                <form method="POST" action="{{ url_for('admin.admin_magic_link', user_id=u.id) }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn-success text-xs px-3 py-2">
+                        🔗 Lien magique
+                    </button>
+                </form>
+
+                <!-- Edit Balance -->
+                <button onclick="openBalanceModal({{ u.id }}, '{{ u.username }}', {{ u.balance }})" class="btn-admin text-xs px-3 py-2">
+                    💰 Solde
+                </button>
+            </div>
+        </div>
+
+        <!-- MAGIC LINK DISPLAY (if just generated) -->
+        {% if magic_links and magic_links.get(u.id) %}
+        <div class="mt-3 bg-green-500/10 border border-green-500/20 rounded-xl p-3">
+            <p class="text-green-400 text-xs font-bold mb-1">🔗 Lien magique genere (expire dans 24h) :</p>
+            <div class="flex items-center gap-2">
+                <input type="text" value="{{ magic_links[u.id] }}" readonly
+                       class="input-admin flex-1 text-xs text-green-300" id="magic-link-{{ u.id }}">
+                <button onclick="navigator.clipboard.writeText(document.getElementById('magic-link-{{ u.id }}').value); this.textContent='✅'" class="btn-success text-xs px-3 py-2">
+                    📋 Copier
+                </button>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+    {% endfor %}
+</div>
+
+<!-- PASSWORD MODAL -->
+<div id="password-modal" class="hidden fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-sm">
+    <div class="card p-6 w-full max-w-md mx-4">
+        <h3 class="font-title text-xl text-white mb-4">🔑 Changer le mot de passe</h3>
+        <p class="text-white/50 text-sm font-semibold mb-4">Joueur : <span id="pw-username" class="text-white"></span></p>
+        <form method="POST" action="{{ url_for('admin.admin_reset_password') }}" id="pw-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="user_id" id="pw-user-id">
+            <div class="mb-4">
+                <label class="text-white/60 text-xs font-bold block mb-1">Nouveau mot de passe</label>
+                <input type="text" name="new_password" required minlength="4"
+                       class="input-admin w-full" placeholder="Minimum 4 caracteres">
+            </div>
+            <div class="flex gap-3">
+                <button type="submit" class="btn-admin flex-1">Confirmer</button>
+                <button type="button" onclick="closePasswordModal()" class="btn-danger flex-1">Annuler</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- BALANCE MODAL -->
+<div id="balance-modal" class="hidden fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-sm">
+    <div class="card p-6 w-full max-w-md mx-4">
+        <h3 class="font-title text-xl text-white mb-4">💰 Modifier le solde</h3>
+        <p class="text-white/50 text-sm font-semibold mb-2">Joueur : <span id="bal-username" class="text-white"></span></p>
+        <p class="text-yellow-400 text-sm font-bold mb-4">Solde actuel : <span id="bal-current"></span> 🪙</p>
+        <form method="POST" action="{{ url_for('admin.admin_adjust_balance') }}" id="bal-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="user_id" id="bal-user-id">
+            <div class="mb-3">
+                <label class="text-white/60 text-xs font-bold block mb-1">Montant (positif = crediter, negatif = debiter)</label>
+                <input type="number" name="amount" required step="0.01"
+                       class="input-admin w-full" placeholder="Ex: 50 ou -20">
+            </div>
+            <div class="mb-4">
+                <label class="text-white/60 text-xs font-bold block mb-1">Raison</label>
+                <input type="text" name="reason" class="input-admin w-full" placeholder="Ajustement admin" value="Ajustement admin">
+            </div>
+            <div class="flex gap-3">
+                <button type="submit" class="btn-admin flex-1">Confirmer</button>
+                <button type="button" onclick="closeBalanceModal()" class="btn-danger flex-1">Annuler</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_script %}
+<script>
+function filterUsers(q) {
+    q = q.toLowerCase();
+    document.querySelectorAll('.user-card').forEach(el => {
+        el.style.display = el.dataset.username.includes(q) ? '' : 'none';
+    });
+}
+function openPasswordModal(userId, username) {
+    document.getElementById('pw-user-id').value = userId;
+    document.getElementById('pw-username').textContent = username;
+    document.getElementById('password-modal').classList.remove('hidden');
+}
+function closePasswordModal() {
+    document.getElementById('password-modal').classList.add('hidden');
+}
+function openBalanceModal(userId, username, balance) {
+    document.getElementById('bal-user-id').value = userId;
+    document.getElementById('bal-username').textContent = username;
+    document.getElementById('bal-current').textContent = Math.round(balance);
+    document.getElementById('balance-modal').classList.remove('hidden');
+}
+function closeBalanceModal() {
+    document.getElementById('balance-modal').classList.add('hidden');
+}
+</script>
+{% endblock %}

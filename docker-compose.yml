@@ -1,0 +1,42 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: derby
+      POSTGRES_USER: derby
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-derby_secret}
+    volumes:
+      - derby_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U derby -d derby"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  web:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "${PORT:-5001}:5001"
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://derby:${POSTGRES_PASSWORD:-derby_secret}@db:5432/derby
+      SECRET_KEY: ${SECRET_KEY:-change-me-in-production}
+      FLASK_ENV: ${FLASK_ENV:-production}
+      FLASK_DEBUG: "false"
+      DERBY_TIMEZONE: ${DERBY_TIMEZONE:-Europe/Paris}
+      DERBY_FORCE_SCHEDULER: "1"
+      # Mettre à "true" seulement si le site est servi en HTTPS (reverse proxy avec SSL)
+      SECURE_COOKIES: ${SECURE_COOKIES:-false}
+    volumes:
+      - derby_avatars:/app/static/avatars
+    env_file:
+      - path: .env
+        required: false
+
+volumes:
+  derby_pgdata:
+  derby_avatars:

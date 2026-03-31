@@ -1,0 +1,132 @@
+{% extends "admin_base.html" %}
+{% block title %}Avatars{% endblock %}
+
+{% block extra_style %}
+    .avatar-card {
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid rgba(255, 255, 255, 0.06);
+        border-radius: 1rem;
+        transition: background 0.2s;
+    }
+    .avatar-card:hover { background: rgba(255, 255, 255, 0.06); }
+    .avatar-preview {
+        image-rendering: pixelated;
+        border-radius: 0.5rem;
+        background: rgba(255, 255, 255, 0.05);
+    }
+    .upload-zone {
+        background: rgba(255, 255, 255, 0.03);
+        border: 2px dashed rgba(255, 255, 255, 0.1);
+        border-radius: 1rem;
+        transition: border-color 0.2s;
+    }
+    .upload-zone:hover { border-color: rgba(139, 92, 246, 0.4); }
+    .tab-btn { cursor: pointer; padding: 0.4rem 1rem; border-radius: 0.5rem; font-size: 0.8rem; font-weight: 800; transition: all 0.2s; }
+    .tab-btn.active { background: rgba(139, 92, 246, 0.3); color: #c4b5fd; }
+    .tab-btn:not(.active) { background: rgba(255, 255, 255, 0.05); color: rgba(255, 255, 255, 0.4); }
+{% endblock %}
+
+{% block content %}
+<div class="flex items-center justify-between mb-4">
+    <h1 class="font-title text-2xl text-white/90">Avatars cochons</h1>
+    <span class="text-white/30 text-sm font-bold">{{ avatars|length }} avatar{{ 's' if avatars|length != 1 }}</span>
+</div>
+
+<!-- Formulaire d'ajout -->
+<div class="upload-zone p-5 mb-6">
+    <h2 class="font-bold text-white/70 text-sm mb-3">Ajouter un avatar</h2>
+
+    <div class="flex gap-2 mb-4">
+        <button type="button" class="tab-btn active" onclick="switchTab('file')" id="tab-file">Fichier PNG/SVG</button>
+        <button type="button" class="tab-btn" onclick="switchTab('code')" id="tab-code">Code SVG</button>
+    </div>
+
+    <!-- Upload fichier -->
+    <form method="POST" action="{{ url_for('admin.admin_avatar_upload') }}" enctype="multipart/form-data" id="form-file">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="flex flex-wrap gap-3 items-end">
+            <div class="flex-1 min-w-[150px]">
+                <label class="text-[10px] text-white/40 font-bold block mb-1">Nom</label>
+                <input type="text" name="name" required placeholder="Ex: Cochon Pirate" class="input-admin w-full">
+            </div>
+            <div class="flex-1 min-w-[200px]">
+                <label class="text-[10px] text-white/40 font-bold block mb-1">Fichier (PNG ou SVG, max 256 Ko)</label>
+                <input type="file" name="avatar_file" accept=".png,.svg" required
+                       class="text-xs text-white/60 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-violet-500/20 file:text-violet-300 file:font-bold file:cursor-pointer hover:file:bg-violet-500/30 w-full">
+            </div>
+            <button type="submit" class="btn-admin">Ajouter</button>
+        </div>
+    </form>
+
+    <!-- Code SVG -->
+    <form method="POST" action="{{ url_for('admin.admin_avatar_upload') }}" id="form-code" class="hidden">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="flex flex-col gap-3">
+            <div>
+                <label class="text-[10px] text-white/40 font-bold block mb-1">Nom</label>
+                <input type="text" name="name" required placeholder="Ex: Cochon Astronaute" class="input-admin w-full">
+            </div>
+            <div>
+                <label class="text-[10px] text-white/40 font-bold block mb-1">Code SVG</label>
+                <textarea name="svg_code" required rows="6" placeholder='<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">&#10;  ...&#10;</svg>'
+                          class="input-admin w-full font-mono text-xs" style="resize: vertical;"></textarea>
+            </div>
+            <button type="submit" class="btn-admin self-start">Ajouter</button>
+        </div>
+    </form>
+</div>
+
+<!-- Flash messages -->
+{% with messages = get_flashed_messages(with_categories=true) %}
+{% if messages %}
+<div class="mb-4 space-y-2">
+    {% for cat, msg in messages %}
+    <div class="px-4 py-2 rounded-xl text-sm font-bold
+                {{ 'bg-green-500/15 text-green-300' if cat == 'success' else 'bg-red-500/15 text-red-300' }}">
+        {{ msg }}
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+{% endwith %}
+
+<!-- Galerie d'avatars -->
+{% if avatars %}
+<div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
+    {% for av in avatars %}
+    <div class="avatar-card p-3 flex flex-col items-center gap-2">
+        <img src="/static/avatars/{{ av.filename }}" alt="{{ av.name }}"
+             width="64" height="64" class="avatar-preview">
+        <p class="text-white/70 text-xs font-bold text-center truncate w-full">{{ av.name }}</p>
+        <p class="text-white/20 text-[10px]">{{ av.format|upper }} #{{ av.id }}</p>
+        <div class="flex gap-3">
+            <a href="{{ url_for('admin.admin_avatar_edit', avatar_id=av.id) }}"
+               class="text-violet-400/50 hover:text-violet-400 text-[10px] font-bold transition-colors">Editer</a>
+            <form method="POST" action="{{ url_for('admin.admin_avatar_delete', avatar_id=av.id) }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="text-red-400/40 hover:text-red-400 text-[10px] font-bold transition-colors"
+                        onclick="return confirm('Supprimer cet avatar ?')">
+                    Supprimer
+                </button>
+            </form>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="text-center py-12 text-white/20">
+    <p class="text-4xl mb-2">🖼️</p>
+    <p class="font-bold">Aucun avatar pour le moment</p>
+    <p class="text-xs mt-1">Ajoutez des images pixel art 64x64 ci-dessus</p>
+</div>
+{% endif %}
+
+<script>
+function switchTab(tab) {
+    document.getElementById('form-file').classList.toggle('hidden', tab !== 'file');
+    document.getElementById('form-code').classList.toggle('hidden', tab !== 'code');
+    document.getElementById('tab-file').classList.toggle('active', tab === 'file');
+    document.getElementById('tab-code').classList.toggle('active', tab === 'code');
+}
+</script>
+{% endblock %}

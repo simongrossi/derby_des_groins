@@ -1,0 +1,93 @@
+{% extends "admin_base.html" %}
+{% block title %}📊 Dashboard Admin{% endblock %}
+
+{% block content %}
+<h1 class="font-title text-3xl text-white mb-1">📊 Dashboard</h1>
+<p class="text-white/40 font-semibold text-sm mb-6">Vue d'ensemble du Derby des Groins.</p>
+
+<!-- STATS RAPIDES -->
+<div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
+    <div class="card p-4 text-center">
+        <p class="text-white/40 text-xs font-bold uppercase tracking-wider">Joueurs</p>
+        <p class="font-title text-3xl text-white mt-1">{{ stats.total_users }}</p>
+    </div>
+    <div class="card p-4 text-center">
+        <p class="text-white/40 text-xs font-bold uppercase tracking-wider">Cochons vivants</p>
+        <p class="font-title text-3xl text-green-400 mt-1">{{ stats.alive_pigs }}</p>
+    </div>
+    <div class="card p-4 text-center">
+        <p class="text-white/40 text-xs font-bold uppercase tracking-wider">Courses terminees</p>
+        <p class="font-title text-3xl text-indigo-400 mt-1">{{ stats.finished_races }}</p>
+    </div>
+    <div class="card p-4 text-center">
+        <p class="text-white/40 text-xs font-bold uppercase tracking-wider">Blesses</p>
+        <p class="font-title text-3xl text-yellow-400 mt-1">{{ stats.injured_pigs }}</p>
+    </div>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+    <!-- ÉCONOMIE -->
+    <div class="card p-6">
+        <h2 class="font-title text-xl text-white mb-4">💰 Economie</h2>
+        <div class="space-y-3">
+            <div class="flex items-center justify-between">
+                <span class="text-white/50 text-sm font-bold">BitGroins en circulation</span>
+                <span class="text-yellow-400 font-bold">{{ "%.0f"|format(stats.total_balance) }} 🪙</span>
+            </div>
+            <div class="flex items-center justify-between">
+                <span class="text-white/50 text-sm font-bold">Balance moyenne / joueur</span>
+                <span class="text-white font-bold">{{ "%.1f"|format(stats.avg_balance) }} 🪙</span>
+            </div>
+            <div class="flex items-center justify-between">
+                <span class="text-white/50 text-sm font-bold">Paris en attente</span>
+                <span class="text-indigo-400 font-bold">{{ stats.pending_bets }}</span>
+            </div>
+            <div class="flex items-center justify-between">
+                <span class="text-white/50 text-sm font-bold">Admins actifs</span>
+                <span class="text-fuchsia-400 font-bold">{{ stats.admin_count }}</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- DERNIÈRES COURSES -->
+    <div class="card p-6">
+        <h2 class="font-title text-xl text-white mb-4">📜 Dernieres courses</h2>
+        {% if recent_races %}
+        <div class="space-y-2 max-h-64 overflow-y-auto">
+            {% for race in recent_races %}
+            <div class="result-card p-3 flex items-center justify-between">
+                <div>
+                    <span class="text-green-400 font-bold text-sm">Course #{{ race.id }}</span>
+                    <span class="text-white/30 text-xs ml-2">{{ race.finished_at.strftime('%d/%m %H:%M') if race.finished_at }}</span>
+                </div>
+                <div class="text-right">
+                    <span class="text-white font-bold text-sm">🥇 {{ race.winner_name }}</span>
+                    <span class="text-white/40 text-xs ml-1">x{{ race.winner_odds }}</span>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p class="text-white/20 text-sm italic">Aucune course terminee.</p>
+        {% endif %}
+    </div>
+</div>
+
+<!-- ACTIONS RAPIDES -->
+<div class="card p-6">
+    <h2 class="font-title text-xl text-white mb-4">⚡ Actions rapides</h2>
+    <div class="flex flex-wrap gap-3">
+        <form method="POST" action="{{ url_for('admin.admin_force_race') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="btn-danger" onclick="return confirm('Lancer une course immediatement ?');">
+                🏁 Forcer une course
+            </button>
+        </form>
+        <a href="{{ url_for('admin.admin_economy') }}" class="btn-admin">💰 Regler l'economie</a>
+        <a href="{{ url_for('admin.admin_races') }}#npcs" class="btn-admin">🐽 Gerer les PNJ</a>
+        <a href="{{ url_for('admin.admin_users') }}" class="btn-admin">👥 Gerer les joueurs</a>
+        <a href="{{ url_for('admin.admin_data') }}" class="btn-admin">🗃️ Donnees de jeu</a>
+        <a href="{{ url_for('admin.admin_notifications') }}" class="btn-admin">📧 Config SMTP</a>
+    </div>
+</div>
+{% endblock %}

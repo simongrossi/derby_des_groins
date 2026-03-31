@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="fr" class="bg-gray-950 text-white min-h-screen">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Le Bon Groin - Petites Annonces</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Creepster&family=Rubik:wght@400;500;700;900&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Rubik', sans-serif; }
+        .font-title { font-family: 'Creepster', cursive; }
+        .listing-card {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(250, 204, 21, 0.2);
+            backdrop-filter: blur(12px);
+            transition: all 0.3s ease;
+        }
+        .listing-card:hover {
+            border-color: rgba(250, 204, 21, 0.6);
+            transform: translateY(-4px);
+            box-shadow: 0 10px 30px rgba(250, 204, 21, 0.15);
+        }
+        .btn-buy {
+            background: linear-gradient(to right, #eab308, #ca8a04);
+            box-shadow: 0 4px 15px rgba(234, 179, 8, 0.3);
+            transition: all 0.2s;
+        }
+        .btn-buy:hover {
+            transform: scale(1.02);
+            box-shadow: 0 6px 20px rgba(234, 179, 8, 0.5);
+        }
+    </style>
+</head>
+<body style="background: linear-gradient(135deg, #1c1917 0%, #292524 100%);" class="">
+
+    {% include '_site_header.html' %}
+
+    <main class="max-w-6xl mx-auto px-4 pt-10">
+        <!-- Back Link -->
+        <a href="/galerie-lard-chande" class="inline-flex items-center gap-2 text-white/60 hover:text-white transition-colors mb-8 font-bold text-sm bg-black/20 px-4 py-2 border border-white/5 rounded-xl">
+            ← Retour à la Galerie
+        </a>
+
+        <header class="text-center mb-16 relative">
+            <h1 class="font-title text-3xl md:text-4xl lg:text-6xl text-transparent bg-clip-text bg-gradient-to-r from-yellow-200 to-yellow-500 mb-4 drop-shadow-[0_0_20px_rgba(250,204,21,0.5)]">
+                Le Bon Groin
+            </h1>
+            <p class="text-2xl text-yellow-500/90 font-bold mb-4 italic">"Petites annonces entre gorets"</p>
+            <p class="text-white/60 font-medium max-w-2xl mx-auto">Vendez vos anciens équipements aux autres éleveurs, ou trouvez la perle rare sur le marché d'occasion.</p>
+        </header>
+
+        {% include '_flash.html' %}
+
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            
+            <!-- LISTINGS SECTION -->
+            <div class="col-span-1 lg:col-span-2 space-y-4">
+                <h2 class="text-2xl font-bold text-yellow-400 mb-6 flex items-center gap-3">
+                    <span>🔥</span> Dernières annonces
+                </h2>
+
+                {% for listing in listings %}
+                <div class="listing-card rounded-2xl p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+                    <div class="flex-grow">
+                        <div class="flex items-center gap-3 mb-2">
+                            <h3 class="font-title text-2xl text-white">{{ listing.inventory_item.item.nom }}</h3>
+                            <span class="bg-black/40 px-2 py-1 rounded text-[10px] text-white/40 uppercase tracking-widest border border-white/10 font-bold">
+                                Vendu par {{ listing.seller.username }}
+                            </span>
+                        </div>
+                        <p class="text-sm text-white/50 mb-3">{{ listing.inventory_item.item.description }}</p>
+                        <p class="text-xs font-bold text-yellow-500/50">Mise en ligne le {{ listing.date_mise_en_vente.strftime('%d/%m/%Y à %H:%M') }}</p>
+                    </div>
+
+                    <div class="flex flex-col md:items-end w-full md:w-auto mt-4 md:mt-0">
+                        <div class="font-bold text-3xl text-yellow-400 font-mono mb-4">{{ "%.2f"|format(listing.prix_demande) }} <span class="text-lg">🪙</span></div>
+                        
+                        {% if listing.seller_id == user.id %}
+                        <span class="text-sm font-bold text-white/30 uppercase tracking-widest bg-black/20 px-4 py-2 rounded-xl border border-white/5">Votre annonce</span>
+                        {% else %}
+                        <form action="{{ url_for('galerie.buy_marketplace', listing_id=listing.id) }}" method="POST" class="w-full md:w-auto">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit" class="btn-buy w-full md:w-auto px-6 py-3 rounded-xl justify-center font-bold text-white text-sm uppercase tracking-wider flex items-center gap-2">
+                                <span>Acheter</span>
+                            </button>
+                        </form>
+                        {% endif %}
+                    </div>
+                </div>
+                {% else %}
+                <div class="text-center py-20 bg-black/20 rounded-3xl border border-white/5">
+                    <span class="text-6xl mb-4 block">🐪</span>
+                    <p class="text-white/50 font-bold text-lg">C'est le désert dans la grange... Aucune annonce pour le moment.</p>
+                </div>
+                {% endfor %}
+            </div>
+
+            <!-- SELL SECTION -->
+            <div class="col-span-1">
+                <div class="listing-card rounded-3xl p-6 sticky top-24">
+                    <h2 class="text-xl font-bold text-white mb-6 flex items-center gap-3 border-b border-white/10 pb-4">
+                        <span>📦</span> Déposer une annonce
+                    </h2>
+
+                    <form action="{{ url_for('galerie.sell_marketplace') }}" method="POST" class="space-y-4">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <div>
+                            <label class="block text-sm font-bold text-white/70 mb-2 uppercase tracking-wide">Objet à vendre</label>
+                            {% if inventory_items %}
+                            <select name="item_id" class="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-yellow-500/50 transition-colors">
+                                {% for inv in inventory_items %}
+                                <option value="{{ inv.item.id }}">{{ inv.item.nom }} (x{{ inv.quantity }})</option>
+                                {% endfor %}
+                            </select>
+                            {% else %}
+                            <div class="bg-black/50 border border-red-500/20 rounded-xl px-4 py-3 text-red-200/70 text-sm">
+                                Votre inventaire est vide. Allez faire du shopping dans les boutiques PNJ !
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-bold text-white/70 mb-2 uppercase tracking-wide">Prix demandé (Glands)</label>
+                            <input type="number" name="prix" step="1" min="1" required {% if not inventory_items %}disabled{% endif %} class="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-yellow-500/50 transition-colors placeholder:text-white/20 font-mono text-xl" placeholder="ex: 150">
+                        </div>
+
+                        <button type="submit" {% if not inventory_items %}disabled{% endif %} class="w-full py-4 rounded-xl font-bold text-white uppercase tracking-wider transition-all mt-4 {% if inventory_items %}bg-gradient-to-r from-gray-700 to-gray-600 hover:from-white/20 hover:to-white/10 border border-white/20{% else %}bg-black/50 text-white/20 border border-white/5 cursor-not-allowed{% endif %}">
+                            Publier l'annonce
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+        </div>
+    </main>
+{% include '_footer.html' %}
+</body>
+</html>

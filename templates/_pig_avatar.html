@@ -1,0 +1,10 @@
+{% macro pig_display(pig, size_class="text-3xl", img_size=48) %}
+{% if pig.avatar_url %}
+<img src="{{ pig.avatar_url }}" alt="{{ pig.name }}"
+     width="{{ img_size }}" height="{{ img_size }}"
+     class="inline-block rounded-lg"
+     style="image-rendering: pixelated; width: {{ img_size }}px; height: {{ img_size }}px;">
+{% else %}
+<span class="{{ size_class }}">{{ pig.emoji }}</span>
+{% endif %}
+{% endmacro %}

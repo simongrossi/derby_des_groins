@@ -1,0 +1,918 @@
+{% include '_site_header.html' %}
+
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Derby des Groins &mdash; La L&eacute;gende du GROSMOP</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Nunito', sans-serif; }
+    h1, h2, .font-title { font-family: 'Lilita One', cursive; }
+
+    /* ── Calendrier Porc-Look ── */
+    #calendar {
+      display: grid;
+      grid-template-columns: 54px repeat(5, 1fr);
+      grid-template-rows: 38px repeat(10, 1fr);
+      gap: 2px;
+      position: relative;
+      overflow: hidden;
+      width: 100%;
+      background:
+        radial-gradient(ellipse at 25% 35%, rgba(139,92,246,0.1) 0%, transparent 60%),
+        radial-gradient(ellipse at 75% 70%, rgba(236,72,153,0.08) 0%, transparent 50%),
+        linear-gradient(145deg, rgba(15,10,30,0.97), rgba(25,15,45,0.95));
+      border: 1.5px solid rgba(139,92,246,0.2);
+      border-radius: 1rem;
+      padding: 6px;
+      box-shadow:
+        inset 0 1px 30px rgba(0,0,0,0.4),
+        0 4px 24px rgba(0,0,0,0.5);
+      min-height: 480px;
+      user-select: none;
+    }
+
+    .cal-header {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 0;
+      font-weight: 700;
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: rgba(196,181,253,0.7);
+    }
+
+    .cal-hour {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      padding-right: 6px;
+      min-width: 0;
+      font-size: 0.65rem;
+      color: rgba(148,163,184,0.5);
+      font-weight: 600;
+    }
+
+    .cal-day-label {
+      display: inline-block;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .cal-day-label--short { display: none; }
+
+    .cal-slot {
+      border-radius: 4px;
+      border: 1px solid rgba(255,255,255,0.03);
+      background:
+        radial-gradient(circle at 50% 40%, rgba(255,255,255,0.03) 0%, transparent 70%),
+        rgba(255,255,255,0.015);
+      transition: background 0.15s ease;
+      position: relative;
+    }
+    .cal-slot:hover {
+      background: rgba(139,92,246,0.06);
+      border-color: rgba(139,92,246,0.12);
+    }
+
+    /* ── Notification GROSMOP ── */
+    #meeting {
+      position: absolute;
+      z-index: 10;
+      width: calc((100% - 54px - 12px) / 5 - 4px);
+      padding: 6px 10px;
+      border-radius: 8px;
+      background: linear-gradient(135deg, #7c3aed, #6d28d9);
+      border: 2px solid rgba(255,255,255,0.25);
+      color: #fff;
+      font-size: 0.72rem;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      box-shadow: 0 3px 16px rgba(124,58,237,0.5);
+      pointer-events: auto;
+      opacity: 0;
+      transition: opacity 0.15s ease;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    #meeting-text {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    #meeting.visible { opacity: 1; }
+    #meeting.frozen {
+      background: linear-gradient(135deg, #f59e0b, #d97706);
+      border-color: rgba(255,255,255,0.5);
+      box-shadow: 0 0 24px rgba(245,158,11,0.7), 0 0 48px rgba(245,158,11,0.3);
+      animation: pulse-freeze 0.2s ease-in-out infinite alternate;
+    }
+
+    @keyframes pulse-freeze {
+      from { transform: scale(1); }
+      to   { transform: scale(1.06); }
+    }
+
+    /* ── VRAI TRAVAIL ── */
+    .vrai-travail {
+      position: absolute;
+      z-index: 5;
+      padding: 4px 8px;
+      border-radius: 6px;
+      background: linear-gradient(135deg, #22c55e, #16a34a);
+      border: 2px solid rgba(255,255,255,0.2);
+      color: #fff;
+      font-size: 0.6rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      cursor: pointer;
+      box-shadow: 0 2px 12px rgba(34,197,94,0.4);
+      animation: pop-in 0.25s ease-out;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    @keyframes pop-in {
+      from { transform: scale(0); opacity: 0; }
+      to   { transform: scale(1); opacity: 1; }
+    }
+
+    /* ── Catch flash ── */
+    .catch-flash {
+      position: absolute;
+      z-index: 20;
+      border-radius: 50%;
+      pointer-events: none;
+      animation: catch-ring 0.5s ease-out forwards;
+    }
+    @keyframes catch-ring {
+      from { transform: scale(0.5); opacity: 0.8; box-shadow: 0 0 30px rgba(245,158,11,0.8); }
+      to   { transform: scale(2.5); opacity: 0; box-shadow: 0 0 60px rgba(245,158,11,0); }
+    }
+
+    /* ── Notification Teams ── */
+    .teams-notif {
+      position: relative;
+      background: linear-gradient(135deg, rgba(88,28,135,0.9), rgba(59,7,100,0.9));
+      border: 1px solid rgba(168,85,247,0.3);
+      border-radius: 0.75rem;
+      padding: 12px 14px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      line-height: 1.4;
+      color: #e9d5ff;
+      box-shadow: 0 4px 20px rgba(88,28,135,0.4);
+      min-height: 52px;
+      transition: opacity 0.2s ease;
+    }
+    .teams-notif::before {
+      content: '';
+      position: absolute;
+      top: -8px;
+      left: 24px;
+      width: 0; height: 0;
+      border-left: 8px solid transparent;
+      border-right: 8px solid transparent;
+      border-bottom: 8px solid rgba(88,28,135,0.9);
+    }
+    .teams-notif-header {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.6rem;
+      color: rgba(196,181,253,0.6);
+      margin-bottom: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    /* ── Overlay ── */
+    #overlay {
+      position: absolute;
+      inset: 0;
+      z-index: 30;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0,0,0,0.75);
+      backdrop-filter: blur(8px);
+      border-radius: 1rem;
+      text-align: center;
+      gap: 8px;
+      padding: 20px;
+    }
+    #overlay.hidden { display: none; }
+
+    /* ── Animations utilitaires ── */
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      25% { transform: translateX(-6px); }
+      75% { transform: translateX(6px); }
+    }
+    .shake { animation: shake 0.3s ease-in-out; }
+
+    @keyframes error-glitch {
+      0% { opacity: 1; }
+      20% { opacity: 0.3; transform: translateX(2px); }
+      40% { opacity: 1; transform: translateX(-2px); }
+      60% { opacity: 0.5; }
+      80% { opacity: 1; transform: translateX(1px); }
+      100% { opacity: 1; transform: translateX(0); }
+    }
+
+    @media (max-width: 640px) {
+      #calendar {
+        grid-template-columns: 42px repeat(5, minmax(0, 1fr));
+        grid-template-rows: 30px repeat(10, 1fr);
+        min-height: 420px;
+        padding: 4px;
+      }
+
+      .cal-header {
+        font-size: 0.55rem;
+        letter-spacing: 0.03em;
+      }
+
+      .cal-hour {
+        padding-right: 4px;
+        font-size: 0.55rem;
+      }
+
+      .cal-day-label--full { display: none; }
+      .cal-day-label--short { display: inline; }
+
+      #meeting {
+        width: calc((100% - 42px - 8px) / 5 - 2px);
+        padding: 4px 6px;
+        font-size: 0.58rem;
+        gap: 4px;
+      }
+
+      .vrai-travail {
+        padding: 2px 4px;
+        font-size: 0.48rem;
+      }
+
+      .teams-notif {
+        padding: 10px 12px;
+        font-size: 0.74rem;
+      }
+
+      #overlay {
+        padding: 16px;
+      }
+    }
+  </style>
+</head>
+<body class="min-h-screen text-white" style="background: radial-gradient(ellipse at 30% 20%, rgba(30,10,60,1) 0%, rgba(8,5,20,1) 70%);">
+
+  <main class="max-w-5xl mx-auto px-3 py-6 sm:px-4 sm:py-8">
+
+    <!-- Titre -->
+    <div class="text-center mb-6">
+      <h1 class="text-2xl sm:text-3xl md:text-4xl text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-pink-400 to-orange-400 drop-shadow-lg">
+        La L&eacute;gende du GROSMOP
+      </h1>
+      <p class="text-purple-300/60 text-sm mt-1">Le Chef de Porc-jet veut caler un GROSMOP &mdash; Attrape-le si tu peux !</p>
+    </div>
+
+    <div class="grid gap-4 sm:gap-6 items-start lg:grid-cols-[minmax(0,1fr)_270px]">
+
+      <!-- CALENDRIER PORC-LOOK -->
+      <div class="relative min-w-0">
+        <div id="calendar">
+          <!-- G&eacute;n&eacute;r&eacute; en JS -->
+        </div>
+
+        <!-- Notification GROSMOP -->
+        <div id="meeting">
+          <span id="meeting-icon">🐷</span>
+          <span id="meeting-text">GROSMOP</span>
+        </div>
+
+        <!-- Overlay -->
+        <div id="overlay">
+          <div id="overlay-content"></div>
+        </div>
+      </div>
+
+      <!-- SIDEBAR -->
+      <aside class="space-y-3 sm:space-y-4">
+
+        <!-- Chef de Porc-jet -->
+        <section class="rounded-xl p-4" style="background: rgba(88,28,135,0.15); border: 1px solid rgba(139,92,246,0.15);">
+          <div class="text-center mb-1">
+            <span class="text-4xl" id="boss-face">🐷</span>
+          </div>
+          <div class="text-center text-sm text-orange-400 mb-0.5 font-title">Chef de Porc-jet</div>
+          <div class="text-center text-[0.6rem] text-purple-300/40 mb-2 italic">PDG (Porc Directeur G&eacute;n&eacute;ral) adjoint</div>
+          <div class="teams-notif" id="boss-bubble">
+            <div class="teams-notif-header">
+              <span>&#x1F4E2;</span> Porc-Look Notification
+            </div>
+            <div id="boss-text">Les gorets, faut qu'on s'aligne !</div>
+          </div>
+        </section>
+
+        <!-- Timer -->
+        <section class="rounded-xl p-4 text-center" style="background: rgba(88,28,135,0.1); border: 1px solid rgba(139,92,246,0.1);">
+          <div class="text-xs text-purple-300/40 uppercase tracking-wide font-bold mb-1">Temps</div>
+          <div class="text-4xl font-title" id="timer-display">{{ game_duration }}</div>
+        </section>
+
+        <!-- Score -->
+        <section class="rounded-xl p-4 text-center" style="background: rgba(88,28,135,0.1); border: 1px solid rgba(139,92,246,0.1);">
+          <div class="text-xs text-purple-300/40 uppercase tracking-wide font-bold mb-1">GROSMOPs attrap&eacute;s</div>
+          <div class="text-2xl font-title"><span id="score-display">0</span> / {{ required_catches }}</div>
+        </section>
+
+        <!-- Parties restantes -->
+        <section class="rounded-xl p-4 text-center" style="background: rgba(88,28,135,0.1); border: 1px solid rgba(139,92,246,0.1);">
+          <div class="text-xs text-purple-300/40 uppercase tracking-wide font-bold mb-1">Parties du jour</div>
+          <div class="text-2xl font-title"><span id="remaining-display">{{ plays_remaining }}</span> / {{ max_plays }}</div>
+        </section>
+
+        <!-- Solde -->
+        <section class="rounded-xl p-4 text-center" style="background: rgba(88,28,135,0.1); border: 1px solid rgba(139,92,246,0.1);">
+          <div class="text-xs text-purple-300/40 uppercase tracking-wide font-bold mb-1">Solde</div>
+          <div class="text-lg font-bold text-yellow-400" id="balance-display">{{ "%.2f"|format(user.balance or 0) }} <span class="text-xs text-purple-300/40">BitGroins</span></div>
+        </section>
+
+        <!-- R&egrave;gles -->
+        <section class="rounded-xl p-3" style="background: rgba(88,28,135,0.05); border: 1px solid rgba(139,92,246,0.08);">
+          <div class="text-xs text-purple-300/40 uppercase tracking-wide font-bold mb-2">Manuel Porc-Look</div>
+          <ul class="text-xs text-purple-300/30 space-y-1">
+            <li>&#x2022; Le COMOP fuit ta souris !</li>
+            <li>&#x2022; Quand il se fige (dor&eacute;), clique vite !</li>
+            <li>&#x2022; &Eacute;vite les cases <span class="text-green-400 font-bold">VRAI TRAVAIL</span></li>
+            <li>&#x2022; Attrape <strong>{{ required_catches }}</strong> COMOPs en <strong>{{ game_duration }}s</strong></li>
+            <li>&#x2022; R&eacute;compense : <strong class="text-yellow-400">{{ reward }} truffes</strong></li>
+          </ul>
+        </section>
+
+      </aside>
+    </div>
+  </main>
+
+<script>
+(function() {
+  /* ── Config ── */
+  const GAME_DURATION    = {{ game_duration }};
+  const REQUIRED_CATCHES = {{ required_catches }};
+  const REWARD           = {{ reward }};
+  let   ALREADY_PLAYED   = {{ 'true' if already_played else 'false' }};
+  let   remainingPlays   = {{ plays_remaining }};
+  const FLEE_DISTANCE    = 60;
+
+  const DAYS  = [
+    { full: 'Lundi', short: 'Lun.' },
+    { full: 'Mardi', short: 'Mar.' },
+    { full: 'Mercredi', short: 'Mer.' },
+    { full: 'Jeudi', short: 'Jeu.' },
+    { full: 'Vendredi', short: 'Ven.' }
+  ];
+  const HOURS = ['8h', '9h', '10h', '11h', '12h', '13h', '14h', '15h', '16h', '17h'];
+  const COLS  = 5;
+  const ROWS  = 10;
+
+  /* ── Noms de r&eacute;unions (le graal) ── */
+  const MEETING_NAMES = [
+    { icon: '🧠', name: 'Groin-storming' },
+    { icon: '🤝', name: 'Point de Syn-Goret' },
+    { icon: '📊', name: 'Co-Porc' },
+    { icon: '🏃', name: 'Stand-up de la Bauge' },
+    { icon: '🥓', name: 'Bilan Lard-do' },
+    { icon: '🐷', name: 'COMOP' },
+    { icon: '🐷', name: 'COMOP' },
+    { icon: '🐷', name: 'COMOP' },
+    { icon: '📋', name: 'Pr\u00e9-COMOP du COMOP' },
+    { icon: '🎯', name: 'Porc-folio Review' }
+  ];
+
+  /* ── Phrases du Chef de Porc-jet ── */
+  const BOSS_FLEE_PHRASES = [
+    "D\u00e9sol\u00e9 l'\u00e9quipe, on d\u00e9cale le COMOP. J'ai un point urgent avec le Porc-folio Manager.",
+    "COMOP annul\u00e9 : la salle \u00abL'Auge 3\u00bb est d\u00e9j\u00e0 prise par la compta.",
+    "Je suis sous le purin ce matin, on remet le COMOP \u00e0 Q3 ?",
+    "Faut qu'on s'aligne d'abord. On annule le COMOP et on fait un Pr\u00e9-COMOP pour pr\u00e9parer le vrai COMOP.",
+    "J'ai poney\u2026 enfin, j'ai roulade dans la boue. On reporte !",
+    "Oubliez le COMOP, la direction veut qu'on passe en m\u00e9thode Agi-Lard.",
+    "Ah non, j'ai un impr\u00e9vu, on d\u00e9cale ! Faut qu'on soit plus Agi-Lards sur ce coup.",
+    "Je suis sous le purin l\u00e0, on fait \u00e7a ASAP (As Swine As Possible) !",
+    "Finalement la direction veut qu'on tranche dans le lard la semaine pro.",
+    "Oubliez ce que j'ai dit, on se fait un call en m\u00e2chant des truffes ?",
+    "D\u00e9sol\u00e9, j'ai mon cours de queue-en-tire-bouchon, je repousse d'une heure.",
+    "On annule ! Tout est bon dans la r\u00e9union, mais l\u00e0 j'ai pas le time.",
+    "Le PDG (Porc Directeur G\u00e9n\u00e9ral) veut un point avant le point. On d\u00e9cale.",
+    "Mon Porc-Look a bug\u00e9, je renvoie l'invite depuis mon Groin-Phone.",
+    "Circle back apr\u00e8s la p\u00e2t\u00e9e, promis les gorets !"
+  ];
+
+  const BOSS_PENALTY_PHRASES = [
+    "H\u00e9 ! T'avais pas bloqu\u00e9 ton temps pour notre point ?! Tu nous fais un travail de cochon l\u00e0 ! \u22125 truffes sur ton bonus !",
+    "Le vrai travail ? On fait \u00e7a HORS R\u00c9UNION maintenant ?! Le Manage-Porc est furieux !",
+    "TRAVAIL D\u00c9TECT\u00c9 ! Le Chef de Porc-jet fronce le groin. INADMISSIBLE.",
+    "Faire son vrai travail pendant les heures de r\u00e9union ?! C'est pas Agi-Lard \u00e7a !"
+  ];
+
+  const BOSS_WIN_PHRASES = [
+    "Impossible\u2026 Tu as attrap\u00e9 TOUS les COMOPs ?! Mais\u2026 ils n'existent pas vraiment !",
+    "Mon agenda Porc-Look\u2026 il est\u2026 vide ?! Le PDG va me virer !"
+  ];
+
+  const BOSS_LOSE_PHRASES = [
+    "Parfait, on se recale la semaine prochaine dans L'Auge 3 !",
+    "Je savais que t'allais pas y arriver. Allez, bisous les gorets !"
+  ];
+
+  /* ── DOM ── */
+  const calendarEl     = document.getElementById('calendar');
+  const meetingEl      = document.getElementById('meeting');
+  const meetingIcon    = document.getElementById('meeting-icon');
+  const meetingText    = document.getElementById('meeting-text');
+  const overlayEl      = document.getElementById('overlay');
+  const overlayContent = document.getElementById('overlay-content');
+  const timerDisplay   = document.getElementById('timer-display');
+  const scoreDisplay   = document.getElementById('score-display');
+  const bossBubble     = document.getElementById('boss-bubble');
+  const bossText       = document.getElementById('boss-text');
+  const bossFace       = document.getElementById('boss-face');
+  const balanceDisplay = document.getElementById('balance-display');
+  const remainingDisplay = document.getElementById('remaining-display');
+  const csrfTokenMeta = document.querySelector('meta[name="csrf-token"]');
+
+  /* ── State ── */
+  let gameRunning = false;
+  let score = 0;
+  let timeLeft = GAME_DURATION;
+  let timerInterval = null;
+  let isFrozen = false;
+  let freezeTimer = null;
+  let nextFreezeTimer = null;
+  let vraiTravailTimers = [];
+  let slots = [];
+  let meetingSlot = null;
+
+  /* ── Helpers ── */
+  function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+  function randInt(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
+  function getSlot(col, row) { return slots.find(s => s.col === col && s.row === row); }
+
+  async function postGameJson(url, payload = null) {
+    const headers = {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json'
+    };
+    const csrfToken = csrfTokenMeta ? csrfTokenMeta.getAttribute('content') : '';
+    if (csrfToken) headers['X-CSRFToken'] = csrfToken;
+
+    const options = {
+      method: 'POST',
+      headers
+    };
+    if (payload !== null) {
+      options.body = JSON.stringify(payload);
+    }
+
+    const response = await fetch(url, options);
+    let data = {};
+    try {
+      data = await response.json();
+    } catch (error) {
+      data = {
+        ok: false,
+        error: response.ok ? 'Réponse invalide du serveur' : 'Action refusée par le serveur'
+      };
+    }
+
+    if (!response.ok && typeof data.ok === 'undefined') {
+      data.ok = false;
+    }
+
+    return data;
+  }
+
+  function positionFloatingElement(el, col, row) {
+    const target = getSlot(col, row);
+    if (!target) return;
+
+    const calRect = calendarEl.getBoundingClientRect();
+    const slotRect = target.el.getBoundingClientRect();
+
+    el.style.left = (slotRect.left - calRect.left) + 'px';
+    el.style.top = (slotRect.top - calRect.top) + 'px';
+    el.style.width = slotRect.width + 'px';
+    el.style.height = slotRect.height + 'px';
+  }
+
+  function repositionFloatingElements() {
+    if (meetingSlot) {
+      positionMeeting(meetingSlot.col, meetingSlot.row);
+    }
+
+    calendarEl.querySelectorAll('.vrai-travail').forEach((el) => {
+      const col = Number(el.dataset.col);
+      const row = Number(el.dataset.row);
+      if (!Number.isNaN(col) && !Number.isNaN(row)) {
+        positionFloatingElement(el, col, row);
+      }
+    });
+  }
+
+  let resizeFrame = null;
+  function scheduleResponsiveLayout() {
+    if (resizeFrame) cancelAnimationFrame(resizeFrame);
+    resizeFrame = requestAnimationFrame(() => {
+      resizeFrame = null;
+      repositionFloatingElements();
+    });
+  }
+
+  /* ── Build calendar ── */
+  function buildCalendar() {
+    calendarEl.innerHTML = '';
+    const corner = document.createElement('div');
+    corner.className = 'cal-header';
+    corner.innerHTML = '<span style="font-size:0.6rem;opacity:0.4">&#x1F4C5;</span>';
+    calendarEl.appendChild(corner);
+
+    DAYS.forEach(d => {
+      const h = document.createElement('div');
+      h.className = 'cal-header';
+      h.innerHTML = '<span class="cal-day-label cal-day-label--full">' + d.full + '</span>' +
+        '<span class="cal-day-label cal-day-label--short">' + d.short + '</span>';
+      calendarEl.appendChild(h);
+    });
+
+    slots = [];
+    for (let r = 0; r < ROWS; r++) {
+      const hl = document.createElement('div');
+      hl.className = 'cal-hour';
+      hl.textContent = HOURS[r];
+      calendarEl.appendChild(hl);
+
+      for (let c = 0; c < COLS; c++) {
+        const cell = document.createElement('div');
+        cell.className = 'cal-slot';
+        cell.dataset.col = c;
+        cell.dataset.row = r;
+        calendarEl.appendChild(cell);
+        slots.push({ col: c, row: r, el: cell });
+      }
+    }
+  }
+
+  /* ── Position meeting ── */
+  function positionMeeting(col, row) {
+    const target = getSlot(col, row);
+    if (!target) return;
+    meetingSlot = { col, row };
+    positionFloatingElement(meetingEl, col, row);
+  }
+
+  /* ── Place meeting randomly ── */
+  function placeMeeting() {
+    let col, row;
+    do {
+      col = randInt(0, COLS - 1);
+      row = randInt(0, ROWS - 1);
+    } while (meetingSlot && col === meetingSlot.col && row === meetingSlot.row);
+
+    const m = pick(MEETING_NAMES);
+    meetingIcon.textContent = m.icon;
+    meetingText.textContent = m.name;
+    positionMeeting(col, row);
+    meetingEl.classList.add('visible');
+    meetingEl.classList.remove('frozen');
+  }
+
+  /* ── Flee ── */
+  function fleeMeeting() {
+    if (!gameRunning || isFrozen) return;
+    placeMeeting();
+    showBossPhrase(pick(BOSS_FLEE_PHRASES));
+  }
+
+  function showBossPhrase(text) {
+    bossBubble.style.opacity = '0';
+    setTimeout(() => {
+      bossText.textContent = text;
+      bossBubble.style.opacity = '1';
+    }, 80);
+  }
+
+  /* ── Freeze cycle ── */
+  function scheduleFreezes() {
+    const delay = randInt(3000, 5500);
+    nextFreezeTimer = setTimeout(() => {
+      if (!gameRunning) return;
+      isFrozen = true;
+      meetingEl.classList.add('frozen');
+
+      freezeTimer = setTimeout(() => {
+        isFrozen = false;
+        meetingEl.classList.remove('frozen');
+        if (gameRunning) {
+          fleeMeeting();
+          scheduleFreezes();
+        }
+      }, 550);
+    }, delay);
+  }
+
+  /* ── VRAI TRAVAIL ── */
+  function spawnVraiTravail() {
+    if (!gameRunning) return;
+    const existing = calendarEl.querySelectorAll('.vrai-travail');
+    if (existing.length >= 2) { scheduleNextVraiTravail(); return; }
+
+    let col, row;
+    do {
+      col = randInt(0, COLS - 1);
+      row = randInt(0, ROWS - 1);
+    } while (meetingSlot && col === meetingSlot.col && row === meetingSlot.row);
+
+    const target = getSlot(col, row);
+    if (!target) return;
+
+    const vt = document.createElement('div');
+    vt.className = 'vrai-travail';
+    vt.textContent = 'VRAI TRAVAIL';
+    vt.dataset.col = col;
+    vt.dataset.row = row;
+    vt.style.display = 'flex';
+    vt.style.alignItems = 'center';
+    vt.style.justifyContent = 'center';
+    positionFloatingElement(vt, col, row);
+
+    vt.addEventListener('click', (e) => {
+      e.stopPropagation();
+      penaltyClick(vt);
+    });
+
+    calendarEl.appendChild(vt);
+
+    const removeTimer = setTimeout(() => {
+      if (vt.parentNode) vt.remove();
+    }, 3000);
+    vraiTravailTimers.push(removeTimer);
+
+    scheduleNextVraiTravail();
+  }
+
+  function scheduleNextVraiTravail() {
+    const delay = randInt(4000, 7000);
+    const t = setTimeout(() => { if (gameRunning) spawnVraiTravail(); }, delay);
+    vraiTravailTimers.push(t);
+  }
+
+  function penaltyClick(vtEl) {
+    if (!gameRunning) return;
+    vtEl.remove();
+    showBossPhrase(pick(BOSS_PENALTY_PHRASES));
+    bossFace.textContent = '🤬';
+    setTimeout(() => { bossFace.textContent = '🐷'; }, 1500);
+    calendarEl.classList.add('shake');
+    setTimeout(() => calendarEl.classList.remove('shake'), 300);
+
+    timeLeft = Math.max(0, timeLeft - 2);
+    timerDisplay.textContent = timeLeft;
+    timerDisplay.classList.add('text-red-400');
+    setTimeout(() => timerDisplay.classList.remove('text-red-400'), 600);
+  }
+
+  /* ── Mouse proximity ── */
+  function onMouseMove(e) {
+    if (!gameRunning || isFrozen) return;
+
+    const mRect = meetingEl.getBoundingClientRect();
+    const mx = mRect.left + mRect.width / 2;
+    const my = mRect.top  + mRect.height / 2;
+    const dx = e.clientX - mx;
+    const dy = e.clientY - my;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+
+    if (dist < FLEE_DISTANCE) {
+      fleeMeeting();
+    }
+  }
+
+  /* ── Click meeting ── */
+  function onMeetingClick(e) {
+    e.stopPropagation();
+    if (!gameRunning || !isFrozen) return;
+
+    score++;
+    scoreDisplay.textContent = score;
+
+    // Flash visuel
+    const rect    = meetingEl.getBoundingClientRect();
+    const calRect = calendarEl.getBoundingClientRect();
+    const flash = document.createElement('div');
+    flash.className = 'catch-flash';
+    flash.style.left   = (rect.left - calRect.left + rect.width / 2 - 20) + 'px';
+    flash.style.top    = (rect.top  - calRect.top  + rect.height / 2 - 20) + 'px';
+    flash.style.width  = '40px';
+    flash.style.height = '40px';
+    flash.style.background = 'rgba(245,158,11,0.4)';
+    calendarEl.appendChild(flash);
+    setTimeout(() => flash.remove(), 500);
+
+    isFrozen = false;
+    meetingEl.classList.remove('frozen');
+    clearTimeout(freezeTimer);
+
+    if (score >= REQUIRED_CATCHES) {
+      winGame();
+    } else {
+      placeMeeting();
+      scheduleFreezes();
+    }
+  }
+
+  /* ── Timer ── */
+  function tickTimer() {
+    timeLeft--;
+    timerDisplay.textContent = timeLeft;
+    if (timeLeft <= 5) timerDisplay.classList.add('text-red-400');
+    if (timeLeft <= 0) loseGame();
+  }
+
+  /* ── Start ── */
+  async function startGame() {
+    try {
+      const data = await postGameJson('/agenda/play');
+      if (!data.ok) {
+        showOverlay('<p class="text-red-400 text-lg font-bold">' + (data.error || 'Erreur') + '</p>', false);
+        return;
+      }
+      remainingPlays = data.remaining ?? (remainingPlays - 1);
+      if (remainingDisplay) {
+        remainingDisplay.textContent = remainingPlays;
+      }
+    } catch (err) {
+      showOverlay('<p class="text-red-400 text-lg font-bold">Erreur de connexion</p>', false);
+      return;
+    }
+
+    overlayEl.classList.add('hidden');
+    gameRunning = true;
+    score = 0;
+    timeLeft = GAME_DURATION;
+    isFrozen = false;
+    scoreDisplay.textContent = '0';
+    timerDisplay.textContent = timeLeft;
+    timerDisplay.classList.remove('text-red-400');
+
+    placeMeeting();
+    timerInterval = setInterval(tickTimer, 1000);
+    scheduleFreezes();
+    scheduleNextVraiTravail();
+
+    showBossPhrase("Les gorets, faut qu'on s'aligne, calons une date dans nos auges !");
+  }
+
+  /* ── Win (la chute : Erreur 404) ── */
+  async function winGame() {
+    gameRunning = false;
+    clearInterval(timerInterval);
+    clearTimeout(freezeTimer);
+    clearTimeout(nextFreezeTimer);
+    vraiTravailTimers.forEach(t => clearTimeout(t));
+    meetingEl.classList.remove('visible');
+    calendarEl.querySelectorAll('.vrai-travail').forEach(v => v.remove());
+
+    showBossPhrase(pick(BOSS_WIN_PHRASES));
+    bossFace.textContent = '😱';
+
+    // D'abord l'&eacute;cran noir glitch
+    showOverlay('<div style="animation: error-glitch 0.8s ease-in-out; font-family: monospace; color: #ef4444; font-size: 1.1rem;">Connexion au COMOP en cours...</div>', false);
+
+    try {
+      const data = await postGameJson('/agenda/win', { catches: score });
+
+      // Apr&egrave;s 1.5s, la r&eacute;v&eacute;lation
+      setTimeout(() => {
+        if (!data.ok) {
+          showOverlay('<p class="text-red-400 text-lg font-bold">' + (data.error || 'Le GROSMOP a englouti la r&eacute;compense.') + '</p>', remainingPlays > 0);
+          return;
+        }
+        if (typeof data.new_balance === 'number') {
+          balanceDisplay.innerHTML = data.new_balance.toFixed(2) + ' <span class="text-xs text-purple-300/40">BitGroins</span>';
+        }
+        showOverlay(`
+          <div style="font-family: monospace;" class="space-y-3">
+            <div class="text-red-500 text-5xl mb-2">&#x26A0;</div>
+            <p class="text-red-400 font-bold text-xl">Erreur 404 : Illusion de Management</p>
+            <p class="text-purple-200 text-sm max-w-sm">
+              F&eacute;licitations, tu as cliqu&eacute; sur le COMOP !<br>
+              Malheureusement, c'&eacute;tait un mirage.<br>
+              <strong>Un COMOP n'a jamais r&eacute;ellement exist&eacute;.</strong>
+            </p>
+            <div class="border-t border-purple-500/20 pt-3 mt-2">
+              <p class="text-yellow-400 font-bold text-lg">+${REWARD} truffes</p>
+              <p class="text-purple-300/50 text-xs">D&eacute;dommagement psychologique</p>
+            </div>
+            <div class="border-t border-purple-500/20 pt-3 mt-1">
+              <p class="text-purple-300 text-sm">Titre d&eacute;bloqu&eacute; :</p>
+              <p class="text-orange-400 font-bold">&#x1F947; Ceinture Noire de Porc-Look</p>
+            </div>
+            <p class="text-purple-300/30 text-xs mt-3">${remainingPlays > 0 ? 'Il te reste ' + remainingPlays + ' partie(s) aujourd\'hui !' : 'Reviens demain pour une nouvelle illusion manag&eacute;riale.'}</p>
+          </div>
+        `, remainingPlays > 0);
+      }, 1800);
+
+    } catch (err) {
+      showOverlay('<p class="text-red-400">Erreur de connexion au serveur Porc-Look</p>', false);
+    }
+  }
+
+  /* ── Lose ── */
+  function loseGame() {
+    gameRunning = false;
+    clearInterval(timerInterval);
+    clearTimeout(freezeTimer);
+    clearTimeout(nextFreezeTimer);
+    vraiTravailTimers.forEach(t => clearTimeout(t));
+    meetingEl.classList.remove('visible');
+    calendarEl.querySelectorAll('.vrai-travail').forEach(v => v.remove());
+
+    showBossPhrase(pick(BOSS_LOSE_PHRASES));
+    bossFace.textContent = '😏';
+
+    showOverlay(`
+      <div class="text-5xl mb-3">&#x23F0;</div>
+      <p class="text-2xl font-title text-red-400 mb-2">Temps &eacute;coul&eacute; !</p>
+      <p class="text-purple-200 mb-1">${score} / ${REQUIRED_CATCHES} GROSMOPs attrap&eacute;s</p>
+      <p class="text-purple-300/50 text-sm italic">"${pick(BOSS_LOSE_PHRASES)}"</p>
+      <p class="text-purple-300/30 text-xs mt-3">${remainingPlays > 0 ? 'Il te reste ' + remainingPlays + ' partie(s) ! Retente ta chance.' : 'Reviens demain pour r&eacute;essayer d\'attraper le GROSMOP fant&ocirc;me.'}</p>
+    `, remainingPlays > 0);
+  }
+
+  /* ── Overlay ── */
+  function showOverlay(html, showStart) {
+    overlayContent.innerHTML = html;
+    if (showStart) {
+      overlayContent.innerHTML += `
+        <button id="start-btn"
+          class="mt-4 px-7 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700
+                 text-white font-bold rounded-xl shadow-lg transition-all hover:scale-105 text-lg">
+          Rejoindre le GROSMOP
+        </button>`;
+      setTimeout(() => {
+        const btn = document.getElementById('start-btn');
+        if (btn) btn.addEventListener('click', startGame);
+      }, 50);
+    }
+    overlayEl.classList.remove('hidden');
+  }
+
+  /* ── Init ── */
+  function init() {
+    buildCalendar();
+    calendarEl.appendChild(meetingEl);
+    scheduleResponsiveLayout();
+
+    document.addEventListener('mousemove', onMouseMove);
+    meetingEl.addEventListener('click', onMeetingClick);
+    window.addEventListener('resize', scheduleResponsiveLayout);
+
+    if (ALREADY_PLAYED) {
+      showOverlay(`
+        <div class="text-5xl mb-3">&#x1F4C5;</div>
+        <p class="text-xl font-title text-purple-300 mb-2">D&eacute;j&agrave; jou&eacute; aujourd'hui !</p>
+        <p class="text-purple-300/40 text-sm">Tu as utilis&eacute; tes 2 parties du jour.<br>Le Chef de Porc-jet a &eacute;puis&eacute; son quota de GROSMOPs annul&eacute;s.<br>Reviens demain !</p>
+      `, false);
+    } else {
+      showOverlay(`
+        <div class="text-5xl mb-3">&#x1F4E7;</div>
+        <p class="text-xl font-title text-orange-400 mb-1">Nouvelle invitation Porc-Look</p>
+        <p class="text-purple-300/60 text-sm mb-1 max-w-xs">
+          Le Chef de Porc-jet t'a invit&eacute; au GROSMOP.<br>
+          Attrape-le avant qu'il ne l'annule... encore.
+        </p>
+        <p class="text-purple-300/30 text-xs mb-2">&#x26A0; Attention : un GROSMOP n'a peut-&ecirc;tre jamais exist&eacute;.</p>
+      `, true);
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', init);
+})();
+</script>
+
+  {% include '_footer.html' %}
+</body>
+</html>

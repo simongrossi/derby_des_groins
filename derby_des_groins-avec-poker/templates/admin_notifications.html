@@ -1,0 +1,132 @@
+{% extends "admin_base.html" %}
+{% block title %}📧 Notifications — Admin{% endblock %}
+
+{% block content %}
+<h1 class="font-title text-3xl text-white mb-1">📧 Configuration SMTP</h1>
+<p class="text-white/40 font-semibold text-sm mb-6">Configure le serveur email pour les notifications et les liens magiques.</p>
+
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <!-- CONFIG SMTP -->
+    <div class="card p-6">
+        <h2 class="font-title text-xl text-white mb-4">🔧 Parametres SMTP</h2>
+        <form method="POST" action="{{ url_for('admin.admin_save_smtp') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="space-y-4">
+                <div>
+                    <label class="text-white/60 text-xs font-bold block mb-1">Serveur SMTP</label>
+                    <input type="text" name="smtp_host" value="{{ smtp.host }}"
+                           class="input-admin w-full" placeholder="smtp.gmail.com">
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="text-white/60 text-xs font-bold block mb-1">Port</label>
+                        <input type="number" name="smtp_port" value="{{ smtp.port }}"
+                               class="input-admin w-full" placeholder="587">
+                    </div>
+                    <div>
+                        <label class="text-white/60 text-xs font-bold block mb-1">Securite</label>
+                        <select name="smtp_security" class="input-admin w-full">
+                            <option value="tls" {{ 'selected' if smtp.security == 'tls' }}>STARTTLS (587)</option>
+                            <option value="ssl" {{ 'selected' if smtp.security == 'ssl' }}>SSL/TLS (465)</option>
+                            <option value="none" {{ 'selected' if smtp.security == 'none' }}>Aucune (25)</option>
+                        </select>
+                    </div>
+                </div>
+                <div>
+                    <label class="text-white/60 text-xs font-bold block mb-1">Utilisateur / Login</label>
+                    <input type="text" name="smtp_user" value="{{ smtp.user }}"
+                           class="input-admin w-full" placeholder="user@example.com">
+                </div>
+                <div>
+                    <label class="text-white/60 text-xs font-bold block mb-1">Mot de passe</label>
+                    <input type="password" name="smtp_password" value=""
+                           class="input-admin w-full" placeholder="{{ '••••••••' if smtp.password else 'Mot de passe SMTP' }}">
+                    {% if smtp.password %}
+                    <p class="text-white/30 text-[10px] mt-1">Un mot de passe est deja configure. Laissez vide pour le conserver.</p>
+                    {% endif %}
+                </div>
+                <div>
+                    <label class="text-white/60 text-xs font-bold block mb-1">Adresse expediteur (From)</label>
+                    <input type="email" name="smtp_from" value="{{ smtp.from_addr }}"
+                           class="input-admin w-full" placeholder="derby@example.com">
+                </div>
+                <div>
+                    <label class="text-white/60 text-xs font-bold block mb-1">Nom expediteur</label>
+                    <input type="text" name="smtp_from_name" value="{{ smtp.from_name }}"
+                           class="input-admin w-full" placeholder="Derby des Groins">
+                </div>
+
+                <div class="flex items-center gap-3 bg-white/5 rounded-xl p-3">
+                    <input type="checkbox" name="smtp_enabled" id="smtp_enabled"
+                           {{ 'checked' if smtp.enabled }} class="w-4 h-4 accent-indigo-500">
+                    <label for="smtp_enabled" class="text-white/70 text-sm font-bold cursor-pointer">
+                        Activer l'envoi d'emails
+                    </label>
+                </div>
+
+                <button type="submit" class="btn-admin w-full">💾 Sauvegarder la config SMTP</button>
+            </div>
+        </form>
+    </div>
+
+    <!-- TEST + STATUS -->
+    <div class="space-y-6">
+        <!-- STATUS -->
+        <div class="card p-6">
+            <h2 class="font-title text-xl text-white mb-4">📡 Statut</h2>
+            <div class="space-y-3">
+                <div class="flex items-center justify-between">
+                    <span class="text-white/50 text-sm font-bold">Envoi d'emails</span>
+                    {% if smtp.enabled %}
+                    <span class="text-green-400 text-sm font-bold flex items-center gap-1">
+                        <span class="w-2 h-2 rounded-full bg-green-400 inline-block"></span> Active
+                    </span>
+                    {% else %}
+                    <span class="text-red-400 text-sm font-bold flex items-center gap-1">
+                        <span class="w-2 h-2 rounded-full bg-red-400 inline-block"></span> Desactive
+                    </span>
+                    {% endif %}
+                </div>
+                <div class="flex items-center justify-between">
+                    <span class="text-white/50 text-sm font-bold">Serveur</span>
+                    <span class="text-white/70 text-sm font-bold">{{ smtp.host or 'Non configure' }}:{{ smtp.port or '—' }}</span>
+                </div>
+                <div class="flex items-center justify-between">
+                    <span class="text-white/50 text-sm font-bold">Expediteur</span>
+                    <span class="text-white/70 text-sm font-bold">{{ smtp.from_addr or 'Non configure' }}</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- TEST -->
+        <div class="card p-6">
+            <h2 class="font-title text-xl text-white mb-4">🧪 Envoyer un email de test</h2>
+            <form method="POST" action="{{ url_for('admin.admin_test_smtp') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="mb-4">
+                    <label class="text-white/60 text-xs font-bold block mb-1">Adresse destinataire</label>
+                    <input type="email" name="test_email" required
+                           class="input-admin w-full" placeholder="ton@email.com">
+                </div>
+                <button type="submit" class="btn-success w-full" {{ 'disabled' if not smtp.enabled }}>
+                    📤 Envoyer un test
+                </button>
+                {% if not smtp.enabled %}
+                <p class="text-yellow-400/60 text-xs font-bold mt-2 text-center">Active l'envoi d'emails d'abord.</p>
+                {% endif %}
+            </form>
+        </div>
+
+        <!-- INFO -->
+        <div class="card p-6">
+            <h2 class="font-title text-xl text-white mb-3">💡 Guide rapide</h2>
+            <div class="space-y-2 text-white/40 text-xs font-semibold leading-relaxed">
+                <p><strong class="text-white/60">Gmail :</strong> smtp.gmail.com, port 587, STARTTLS. Utiliser un "mot de passe d'application" (pas le mdp principal).</p>
+                <p><strong class="text-white/60">Outlook :</strong> smtp-mail.outlook.com, port 587, STARTTLS.</p>
+                <p><strong class="text-white/60">OVH :</strong> ssl0.ovh.net, port 465, SSL/TLS.</p>
+                <p><strong class="text-white/60">Mailgun/SendGrid :</strong> Consulte leur doc pour les parametres SMTP.</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
