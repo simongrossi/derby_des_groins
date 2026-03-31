@@ -3,13 +3,12 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Derby des Groins — Replay live</title>
+  <title>Derby des Groins — Replay de course</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     .lane-stripes {
       background-image: repeating-linear-gradient(to bottom, transparent 0, transparent 48px, rgba(255,255,255,0.12) 48px, rgba(255,255,255,0.12) 50px);
     }
-    /* ── Track surface ── */
     .track-surface {
       background:
         linear-gradient(180deg, rgba(115,59,34,0.85) 0%, rgba(92,46,28,0.9) 40%, rgba(72,36,20,0.95) 100%);
@@ -23,13 +22,11 @@
         repeating-linear-gradient(90deg, transparent 0, transparent 60px, rgba(255,255,255,0.03) 60px, rgba(255,255,255,0.03) 62px);
       pointer-events: none;
     }
-    /* ── Finish line ── */
     .finish-line {
       background: repeating-linear-gradient(to bottom, #fde047 0, #fde047 8px, transparent 8px, transparent 16px);
       width: 4px;
       opacity: 0.7;
     }
-    /* ── Runner card ── */
     .runner-card {
       backdrop-filter: blur(8px);
       transition: all 0.5s ease-out;
@@ -42,14 +39,12 @@
     .runner-card:hover .pig-emoji {
       transform: scale(1.2);
     }
-    /* ── Event flash ── */
     @keyframes event-flash {
       0%   { opacity: 0; transform: translateY(4px); }
       20%  { opacity: 1; transform: translateY(0); }
       100% { opacity: 1; }
     }
     .event-badge { animation: event-flash 0.4s ease-out; }
-    /* ── Progress bar shimmer ── */
     .progress-shimmer {
       background-size: 200% 100%;
       animation: shimmer 2s linear infinite;
@@ -58,7 +53,6 @@
       0%   { background-position: 200% 0; }
       100% { background-position: -200% 0; }
     }
-    /* ── Speed lines ── */
     @keyframes speed-lines {
       0%   { transform: translateX(0); opacity: 0.3; }
       100% { transform: translateX(-20px); opacity: 0; }
@@ -66,7 +60,6 @@
     .speed-line {
       animation: speed-lines 0.6s linear infinite;
     }
-    /* ── Strategy curve editor ── */
     .strat-svg { background: rgba(0,0,0,0.25); border-radius: 0.5rem; border: 1px solid rgba(255,255,255,0.08); }
     .strat-point {
       cursor: grab;
@@ -79,15 +72,12 @@
     .strat-line { pointer-events: none; }
     .strat-zone { fill: rgba(255,255,255,0.03); }
     .strat-zone-label { font-size: 8px; fill: rgba(255,255,255,0.25); text-anchor: middle; }
-    /* ── Live stat bars ── */
     .stat-bar { height: 4px; border-radius: 2px; transition: width 0.4s ease; }
     .stat-bar-bg { background: rgba(255,255,255,0.08); }
     .stat-energy { background: linear-gradient(90deg, #22c55e, #86efac); }
     .stat-fatigue { background: linear-gradient(90deg, #f97316, #ef4444); }
     .stat-label { font-size: 9px; line-height: 1; }
-    /* ── Specialization badges ── */
     .spec-badge { font-size: 9px; padding: 1px 5px; border-radius: 6px; font-weight: 700; }
-    /* ── Stat editor ── */
     .stat-btn { width: 18px; height: 18px; border-radius: 4px; font-size: 11px; font-weight: 900; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; border: 1px solid rgba(255,255,255,0.15); background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.6); transition: all 0.15s; }
     .stat-btn:hover { background: rgba(255,255,255,0.15); color: white; }
     .stat-btn:disabled { opacity: 0.2; cursor: default; }
@@ -106,8 +96,8 @@
         <div class="flex flex-wrap items-start justify-between gap-4">
           <div>
             <p class="text-sm uppercase tracking-[0.35em] text-cyan-200/45">Replay</p>
-            <h1 class="mt-2 text-3xl md:text-4xl font-black text-cyan-100">🏁 Course en direct</h1>
-            <p class="mt-3 max-w-2xl text-sm text-white/70">Visualise la dernière course terminée tour par tour, avec les accélérations, les glissades et les fins de course.</p>
+            <h1 class="mt-2 text-3xl md:text-4xl font-black text-cyan-100">📼 Replay de course</h1>
+            <p class="mt-3 max-w-2xl text-sm text-white/70">Revis les exploits des groins tour par tour sur la dernière course terminée.</p>
           </div>
           <div class="rounded-2xl border border-cyan-300/20 bg-cyan-300/10 px-5 py-4 text-right">
             <div class="text-xs uppercase tracking-[0.25em] text-cyan-100/55">Course</div>
@@ -124,7 +114,6 @@
             <div class="flex flex-wrap gap-2 text-xs font-bold">
               <button id="play-pause" class="rounded-xl border border-cyan-300/20 bg-cyan-300/10 px-4 py-2 text-cyan-100 transition hover:bg-cyan-300/20">Pause</button>
               <button id="restart" class="rounded-xl border border-white/10 bg-white/10 px-4 py-2 text-white transition hover:bg-white/20">Recommencer</button>
-              <button id="circuit-btn" class="rounded-xl border border-amber-300/20 bg-amber-300/10 px-4 py-2 text-amber-100 transition hover:bg-amber-300/20">🏟️ Circuit Live</button>
               <button id="demo-btn" class="rounded-xl border border-emerald-300/20 bg-emerald-300/10 px-4 py-2 text-emerald-100 transition hover:bg-emerald-300/20">🎮 Démo</button>
             </div>
           </div>
@@ -134,7 +123,6 @@
               <span id="turn-label">Tour 0</span>
               <span id="finished-at">—</span>
             </div>
-            <!-- Track segments bar -->
             <div id="track-segments" class="mb-3 flex h-6 overflow-hidden rounded-full border border-white/10"></div>
             <div class="track-surface relative h-[18rem] md:h-[28rem] overflow-hidden rounded-2xl border border-white/10 p-4">
               <div class="lane-stripes pointer-events-none absolute inset-0 opacity-20"></div>
@@ -173,7 +161,6 @@
           </ul>
         </section>
 
-        <!-- Strategy editor (demo only) -->
         <section id="strategy-editor" class="hidden rounded-3xl border border-emerald-300/15 bg-white/5 p-5">
           <div class="flex items-center justify-between gap-2">
             <h2 class="text-sm font-black text-emerald-200 uppercase tracking-wide">Stratégie (démo)</h2>
@@ -228,7 +215,6 @@
     let totalDistance = 0;
     let laneEls = new Map();
 
-    /* Returns HTML for a pig visual (avatar image or emoji fallback) */
     function pigVisualHTML(pig, size = 24) {
       const avatarUrl = pig.avatar_url || replay?.participant_meta?.[pig.id]?.avatar_url;
       if (avatarUrl) {
@@ -403,7 +389,6 @@
     function renderTrackSegments(segments) {
       const container = document.getElementById('track-segments');
       if (!segments || !segments.length) {
-        /* Generate random segments for demo/old-format replays */
         const allTypes = ['PLAT', 'MONTEE', 'VIRAGE', 'DESCENTE', 'BOUE'];
         segments = [];
         let remaining = totalDistance;
@@ -433,14 +418,12 @@
     }
 
     function enrichReplay(payload) {
-      /* Normalize turns and derive missing fields */
       const turns = payload.turns || [];
       turns.forEach(turn => {
         turn.pigs.forEach(pig => {
           if (!pig.visual_event) pig.visual_event = deriveVisualEvent(pig);
         });
       });
-      /* Compute totalDistance from max distance in last turn if no segments */
       if (!payload.segments || !payload.segments.length) {
         const lastTurn = turns[turns.length - 1];
         if (lastTurn) {
@@ -452,14 +435,6 @@
       }
     }
 
-    /* ── Pig Specializations ── */
-    /* Each spec: 27 pts total, ONE stat at 8, ONE at 4, THREE at 5.
-       Weakness is on a DIFFERENT terrain per spec for rock-paper-scissors dynamics:
-       sprinteur(vit:8) weak on DESCENTE(end:4) — fast but tires on descents
-       grimpeur(gri:8) weak on VIRAGE(agi:4) — climber but clumsy in turns
-       endurant(end:8) weak on BOUE(for:4) — stamina but not strong in mud
-       agile(agi:8) weak on MONTEE(gri:4) — nimble but hates hills
-       costaud(for:8) weak on PLAT(vit:4) — powerful but slow on open ground */
     const SPEC_TYPES = {
       sprinteur: { label: '⚡ Sprinteur', desc: 'Rapide sur le plat, fatigue vite', color: '#facc15',
         base: { vitesse: 8, endurance: 4, grimpe: 5, agilite: 5, force: 5 } },
@@ -473,20 +448,9 @@
         base: { vitesse: 4, endurance: 5, grimpe: 5, agilite: 5, force: 8 } },
     };
     const STAT_NAMES = { vitesse: '⚡ Vit', endurance: '🫁 End', grimpe: '⛰️ Gri', agilite: '🌀 Agi', force: '💪 For' };
-    const STAT_POOL = 27; /* total stat points per pig */
-    const NUM_SEGMENTS = 10; /* fixed number of circuit segments */
+    const STAT_POOL = 27;
+    const NUM_SEGMENTS = 10;
 
-    /* Terrain modifiers — each terrain has ONE key stat.
-       1:1 mapping so each spec shines on exactly one terrain:
-         sprinteur(vitesse)→PLAT, grimpeur(grimpe)→MONTEE,
-         agile(agilite)→VIRAGE, costaud(force)→BOUE,
-         endurant(endurance)→DESCENTE (controlled endurance descent)
-       Formula: speed *= baseMult * (1 + (keyStat - 5) * STAT_SCALE)
-       BaseMults are close together so no terrain is inherently "better" */
-    const STAT_SCALE = 0.07; /* each stat point = ±7% speed on its terrain */
-    /* Terrain character: fatigueMult adds strategic depth (save energy for hills).
-       FatigueMults are SYMMETRIC per spec: each spec's strong terrain has a
-       DIFFERENT fatigueMult, averaging to 1.0 across all terrains. */
     const TERRAIN_EFFECTS = {
       PLAT:     { statKey: 'vitesse',   baseMult: 0.90, fatigueMult: 0.9 },
       MONTEE:   { statKey: 'grimpe',    baseMult: 0.90, fatigueMult: 1.3 },
@@ -495,7 +459,6 @@
       BOUE:     { statKey: 'force',     baseMult: 0.90, fatigueMult: 1.2 },
     };
 
-    /* ── Strategy Editor ── */
     const DEMO_PIGS = [
       { id: 1, name: 'Rillette Express', emoji: '🐷', color: '#f472b6', spec: 'sprinteur' },
       { id: 2, name: 'Boudin Turbo', emoji: '🐽', color: '#60a5fa', spec: 'endurant' },
@@ -505,11 +468,8 @@
     ];
     const DEMO_OWNERS = ['Alice', 'Bob', 'Charlie', 'Diane', 'Émile'];
 
-    /* strategies[pigId] = array of NUM_SEGMENTS intensity values (0-100) */
     const strategies = {};
-    /* pigStats[pigId] = { vitesse, endurance, grimpe, agilite, force } */
     const pigStats = {};
-    /* demoSegmentTypes: the terrain type of each of the 10 segments (regenerated each demo) */
     let demoSegmentTypes = [];
     DEMO_PIGS.forEach(p => {
       strategies[p.id] = Array.from({ length: NUM_SEGMENTS }, () => 40 + Math.random() * 40);
@@ -523,7 +483,6 @@
       const W = 320, H = 70, PAD = 14;
       const segW = (W - 2 * PAD) / (N - 1);
 
-      /* Segment terrain icons row (shared across all pigs) */
       const terrainRow = document.createElement('div');
       terrainRow.className = 'flex justify-between text-[9px] text-white/40 mb-1 px-1';
       const segIcons = { PLAT: '🛣️', MONTEE: '⛰️', DESCENTE: '🛷', VIRAGE: '🌀', BOUE: '🟤' };
@@ -539,21 +498,17 @@
       DEMO_PIGS.forEach(pig => {
         const wrapper = document.createElement('div');
         wrapper.className = 'rounded-xl border border-white/5 bg-black/15 p-2';
-
-        /* Specialization label */
         const specInfo = SPEC_TYPES[pig.spec];
         const specRow = document.createElement('div');
         specRow.className = 'flex items-center gap-2 mb-1';
         specRow.innerHTML = `${pigVisualHTML(pig, 16)}<span class="spec-badge" style="background:${specInfo.color}22;color:${specInfo.color};border:1px solid ${specInfo.color}33">${specInfo.label}</span><span class="text-[9px] text-white/25">${pig.name}</span>`;
         wrapper.appendChild(specRow);
 
-        /* SVG curve with N draggable points */
         const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
         svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
         svg.setAttribute('class', 'strat-svg w-full');
         svg.style.height = '56px';
 
-        /* Segment zone backgrounds */
         for (let i = 0; i < N; i++) {
           const x = i === 0 ? 0 : PAD + (i - 0.5) * segW;
           const w = i === 0 || i === N - 1 ? PAD + segW / 2 : segW;
@@ -565,7 +520,6 @@
           svg.appendChild(rect);
         }
 
-        /* Polyline + area */
         const polyline = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
         polyline.setAttribute('class', 'strat-line');
         polyline.setAttribute('stroke', pig.color);
@@ -581,7 +535,6 @@
         svg.appendChild(area);
 
         const vals = strategies[pig.id];
-        /* Ensure we have N values */
         while (vals.length < N) vals.push(50);
         if (vals.length > N) vals.length = N;
         const circleEls = [];
@@ -648,7 +601,6 @@
         updateLines();
         wrapper.appendChild(svg);
 
-        /* Stat point editor */
         const statsRow = document.createElement('div');
         statsRow.className = 'mt-2 space-y-1';
         const stats = pigStats[pig.id];
@@ -716,7 +668,6 @@
       document.getElementById('strategy-editor').classList.add('hidden');
     }
 
-    /* Find which segment index (0..N-1) a pig is on given its distance */
     function getSegmentIndex(segments, distance) {
       let cumul = 0;
       for (let i = 0; i < segments.length; i++) {
@@ -728,7 +679,6 @@
 
     function generateDemoReplay() {
       const pigs = DEMO_PIGS.map(p => ({ id: p.id, name: p.name, emoji: p.emoji, spec: p.spec }));
-      /* Shuffle pig processing order to avoid array-position bias */
       for (let i = pigs.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
         [pigs[i], pigs[j]] = [pigs[j], pigs[i]];
@@ -736,19 +686,13 @@
       const TOTAL = 600;
       const MAX_TURNS = 100;
       const turns = [];
-
-      /* Generate exactly NUM_SEGMENTS segments with balanced terrain:
-         each of 5 types appears at least once, then 5 more are random.
-         This ensures no spec is starved of their terrain. */
       const segTypes = ['PLAT', 'MONTEE', 'VIRAGE', 'DESCENTE', 'BOUE'];
       const demoSegments = [];
       demoSegmentTypes = [];
-      /* 5 guaranteed + 5 random, then shuffle */
       const terrainList = [...segTypes];
       for (let i = 0; i < NUM_SEGMENTS - 5; i++) {
         terrainList.push(segTypes[Math.floor(Math.random() * segTypes.length)]);
       }
-      /* Fisher-Yates shuffle */
       for (let i = terrainList.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
         [terrainList[i], terrainList[j]] = [terrainList[j], terrainList[i]];
@@ -759,21 +703,17 @@
         demoSegments.push({ type: terrainList[i], length: len });
         demoSegmentTypes.push(terrainList[i]);
       }
-      /* Normalize to exactly TOTAL */
       const rawTotal = demoSegments.reduce((s, seg) => s + seg.length, 0);
       demoSegments.forEach(seg => { seg.length = Math.round(seg.length / rawTotal * TOTAL); });
-      /* Fix rounding */
       const diff = TOTAL - demoSegments.reduce((s, seg) => s + seg.length, 0);
       demoSegments[demoSegments.length - 1].length += diff;
 
-      /* Running state per pig */
       const state = pigs.map(() => ({
         distance: 0, fatigue: 0, energy: 100,
         finished: false, finishTurn: null,
       }));
 
       for (let t = 1; t <= MAX_TURNS; t++) {
-        /* Rank by distance for drafting/leader detection */
         const ranked = pigs.map((p, i) => ({ i, dist: state[i].distance }))
           .sort((a, b) => b.dist - a.dist);
 
@@ -787,99 +727,58 @@
               is_leader: false, current_terrain: null,
             };
           }
-
           const stats = pigStats[pig.id];
           const segIdx = getSegmentIndex(demoSegments, s.distance);
           const terrain = demoSegments[segIdx].type;
           const terrainFx = TERRAIN_EFFECTS[terrain] || TERRAIN_EFFECTS.PLAT;
-
-          /* Strategy intensity for current segment */
           const strat = strategies[pig.id];
           const intensity = strat[Math.min(segIdx, strat.length - 1)] || 50;
-
-          /* ── Speed calculation ── */
           const BASE_SPEED = 8;
-
-          /* Terrain modifier: baseMult × (1 + (keyStat - 5) × STAT_SCALE)
-             stat 3 → ×0.76, stat 5 → ×1.0, stat 8 → ×1.36 */
           const keyStat = stats[terrainFx.statKey] || 5;
           const terrainMult = terrainFx.baseMult * (1 + (keyStat - 5) * STAT_SCALE);
-
-          /* Intensity multiplier (0.70 - 1.20) */
           const intensityMult = 0.70 + (intensity / 100) * 0.50;
-
-          /* Energy penalty: below 25 = significant slowdown */
           const energyPenalty = s.energy < 25 ? 0.55 + (s.energy / 25) * 0.45 : 1.0;
-
-          /* Fatigue debuff: kicks in at 40, harsh above 70
-             fatigue 40→1.0, 70→0.80, 100→0.60 */
           let fatigueDebuff = 1.0;
           if (s.fatigue > 40) fatigueDebuff = 1 - (s.fatigue - 40) / 150;
-
           let speed = BASE_SPEED * terrainMult * intensityMult * energyPenalty * fatigueDebuff;
-
-          /* Drafting: 2-15m behind = 10% speed boost */
           const rank = ranked.findIndex(r => r.i === i);
           let hasDraft = false;
           if (rank > 0) {
             const gap = ranked[rank - 1].dist - s.distance;
-            if (gap > 2 && gap < 15) {
-              hasDraft = true;
-              speed *= 1.10;
-            }
+            if (gap > 2 && gap < 15) { hasDraft = true; speed *= 1.10; }
           }
-
-          /* Leader penalty: 8% headwind + extra fatigue (from turn 1) */
           const isLeader = rank === 0;
           if (isLeader) speed *= 0.92;
-
-          /* Random variation: Flamme Rouge "card draw" (±2m) */
           speed += (Math.random() - 0.4) * 2.5;
           speed = Math.max(1, speed);
-
-          /* Stumble: more likely on technical terrain with low agility */
           const stumbleBase = (terrain === 'VIRAGE' || terrain === 'BOUE') ? 0.06 : 0.02;
           const stumbleChance = stumbleBase * Math.max(0.2, 1 - stats.agilite / 12);
           const stumbled = Math.random() < stumbleChance;
           if (stumbled) speed *= 0.35;
-
           const newDist = Math.min(TOTAL, s.distance + speed);
-
-          /* ── Fatigue ── same for all specs (no endurance bonus).
-             Differentiation comes ONLY from terrain stat speed. */
           let fatigueGain = (intensity / 100) * 2.5 * terrainFx.fatigueMult;
           if (isLeader) fatigueGain += 1.8;
           if (hasDraft) fatigueGain -= 2.2;
           if (intensity < 20) fatigueGain -= 0.8;
           const newFatigue = Math.max(0, Math.min(100, s.fatigue + fatigueGain));
-
-          /* ── Energy ── same for all specs */
           let energyDelta = -(intensity / 100) * 1.8;
           if (intensity < 20) energyDelta += 0.7;
           if (hasDraft) energyDelta += 0.5;
           const newEnergy = Math.max(0, Math.min(100, s.energy + energyDelta));
-
-          /* Update state */
-          s.distance = newDist;
-          s.fatigue = newFatigue;
-          s.energy = newEnergy;
+          s.distance = newDist; s.fatigue = newFatigue; s.energy = newEnergy;
           if (newDist >= TOTAL && !s.finished) { s.finished = true; s.finishTurn = t; }
-
           return {
             id: pig.id, name: pig.name, emoji: pig.emoji,
             distance: parseFloat(newDist.toFixed(1)),
             fatigue: parseFloat(newFatigue.toFixed(1)),
             energy: parseFloat(newEnergy.toFixed(1)),
             is_finished: s.finished, stumbled, has_draft: hasDraft,
-            is_leader: isLeader,
-            current_terrain: terrain,
+            is_leader: isLeader, current_terrain: terrain,
           };
         });
         turns.push({ turn: t, pigs: pigStates });
         if (state.every(s => s.finished)) break;
       }
-
-      /* Determine winner from finish order */
       const finishOrder = pigs.map((pig, i) => ({ pig, i, turn: state[i].finishTurn || MAX_TURNS + 1, dist: state[i].distance }))
         .sort((a, b) => a.turn - b.turn || b.dist - a.dist);
       const participantMeta = {};
@@ -887,16 +786,7 @@
         const pos = finishOrder.findIndex(f => f.i === i) + 1;
         participantMeta[pig.id] = { emoji: pig.emoji, owner: DEMO_OWNERS[i], finish_position: pos, spec: pig.spec };
       });
-
-      return {
-        turns,
-        segments: demoSegments,
-        participant_meta: participantMeta,
-        track_profile: segTypes[Math.floor(Math.random() * 5)],
-        race_id: 'DEMO',
-        winner_name: finishOrder[0].pig.name,
-        finished_at: null,
-      };
+      return { turns, segments: demoSegments, participant_meta: participantMeta, track_profile: segTypes[Math.floor(Math.random() * 5)], race_id: 'DEMO', winner_name: finishOrder[0].pig.name, finished_at: null };
     }
 
     async function loadReplay() {
@@ -904,7 +794,6 @@
         const response = await fetch('/api/race/latest/replay');
         const payload = await response.json();
         if (!response.ok) throw new Error(payload.error || 'Impossible de charger le replay.');
-
         replay = payload;
         enrichReplay(replay);
         hideStrategyEditor();
@@ -915,7 +804,6 @@
         winnerPillNode.textContent = payload.winner_name ? `🏆 ${payload.winner_name}` : 'En course';
         restartPlayback();
       } catch (error) {
-        /* Fallback: load demo replay */
         loadDemo();
       }
     }
@@ -945,75 +833,6 @@
     document.getElementById('strat-apply').addEventListener('click', loadDemo);
 
     loadReplay();
-
-    // ════════════════════════════════════════════════════════════════
-    //  CIRCUIT LIVE — Full-screen overlay + auto-trigger
-    // ════════════════════════════════════════════════════════════════
-    const circuitOverlay = document.createElement('div');
-    circuitOverlay.id = 'circuit-live-overlay';
-    circuitOverlay.style.cssText = 'position:fixed;inset:0;z-index:10000;display:none;';
-    circuitOverlay.innerHTML = '<iframe id="circuit-iframe" src="" style="width:100%;height:100%;border:none;"></iframe>';
-    document.body.appendChild(circuitOverlay);
-
-    let _circuitLastFinished = null;
-    let _circuitPhase = 'idle';
-
-    function openCircuit() {
-      const iframe = document.getElementById('circuit-iframe');
-      iframe.src = '/circuit';
-      circuitOverlay.style.display = 'block';
-    }
-
-    function closeCircuitOverlay() {
-      circuitOverlay.style.display = 'none';
-      const iframe = document.getElementById('circuit-iframe');
-      iframe.src = '';
-    }
-
-    // Close on Escape
-    document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape' && circuitOverlay.style.display === 'block') {
-        closeCircuitOverlay();
-      }
-    });
-
-    // Manual button
-    document.getElementById('circuit-btn').addEventListener('click', openCircuit);
-
-    // Polling to auto-open circuit when a race is about to start
-    async function pollForCircuit() {
-      try {
-        const resp = await fetch('/api/race/live-state');
-        const state = await resp.json();
-        const prev = _circuitPhase;
-        _circuitPhase = state.phase;
-
-        // Auto-open when entering pre_race phase
-        if (state.phase === 'pre_race' && prev === 'idle') {
-          openCircuit();
-        }
-
-        // Track finished race ID
-        if (state.finished_race_id) {
-          if (_circuitLastFinished === null) {
-            _circuitLastFinished = state.finished_race_id;
-          } else if (state.finished_race_id !== _circuitLastFinished) {
-            _circuitLastFinished = state.finished_race_id;
-            // Reload the main replay too
-            setTimeout(loadReplay, 2000);
-          }
-        }
-      } catch (e) { console.warn('[live] Erreur poll circuit', e); }
-    }
-
-    const _circuitPollTimer = setInterval(pollForCircuit, 4000);
-    // Initial poll
-    setTimeout(pollForCircuit, 1000);
-
-    window.addEventListener('beforeunload', () => {
-      clearInterval(_circuitPollTimer);
-      if (timer) clearInterval(timer);
-    });
   </script>
 {% include '_footer.html' %}
 </body>
