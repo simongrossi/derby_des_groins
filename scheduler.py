@@ -79,4 +79,8 @@ def should_autostart_scheduler(app):
         return False
     if os.environ.get('DERBY_FORCE_SCHEDULER') == '1':
         return True
-    return os.environ.get('WERKZEUG_RUN_MAIN') == 'true'
+    # En mode debug, on ne démarre que dans le processus principal de Werkzeug (évite le double lancement)
+    if app.debug:
+        return os.environ.get('WERKZEUG_RUN_MAIN') == 'true'
+    # Hors mode debug (prod/exécution directe), on démarre systématiquement
+    return True
