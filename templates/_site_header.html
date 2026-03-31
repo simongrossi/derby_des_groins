@@ -119,13 +119,22 @@
                 <a href="/truffes" class="{{ nav_base }} {{ nav_active if active_page == 'truffes' else nav_idle }}">🍄 Truffes</a>
                 <a href="/poker" class="{{ nav_base }} {{ nav_active if active_page == 'poker' else nav_idle }}">🐷 Cochon Poker</a>
                 <a href="/agenda" class="{{ nav_base }} {{ nav_active if active_page == 'agenda' else nav_idle }}">📅 Whack-a-Réu</a>
-                <a href="/live" class="{{ nav_base }} {{ nav_active if active_page == 'live' else nav_idle }}">🏁 Live</a>
+                <a href="/circuit" class="{{ nav_base }} {{ nav_active if active_page == 'circuit' else nav_idle }}">🏟️ Circuit Live</a>
+                <a href="/live" class="{{ nav_base }} {{ nav_active if active_page == 'live' else nav_idle }}">📼 Replay</a>
             </nav>
             {% endif %}
 
         </div>
     </div>
 </header>
+
+<!-- Global Overlay for live circuit -->
+<div id="global-circuit-overlay" class="fixed inset-0 z-[10000] hidden bg-black">
+    <iframe id="global-circuit-iframe" src="" class="w-full h-full border-none"></iframe>
+    <button onclick="closeGlobalCircuit()" class="absolute top-4 right-4 z-[10001] bg-black/50 hover:bg-black/80 text-white p-2 rounded-full border border-white/20 transition-all">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+    </button>
+</div>
 
 <!-- Backdrop mobile nav -->
 <div id="nav-backdrop" class="fixed inset-0 z-[99] bg-black/60 backdrop-blur-sm hidden" aria-hidden="true"></div>
@@ -161,12 +170,53 @@
         nav.classList.contains('hidden') ? openNav() : closeNav();
     });
 
-    // Clic sur le backdrop ferme le menu
     backdrop.addEventListener('click', closeNav);
 
-    // Ferme le menu si on passe en desktop
     window.addEventListener('resize', function () {
         if (window.innerWidth >= 1024) closeNav();
+    });
+
+    // ── Circuit Live Auto-Overlay ──
+    var overlay = document.getElementById('global-circuit-overlay');
+    var iframe = document.getElementById('global-circuit-iframe');
+    var isOverlayOpen = false;
+
+    window.closeGlobalCircuit = function() {
+        overlay.classList.add('hidden');
+        iframe.src = '';
+        isOverlayOpen = false;
+    };
+
+    function pollCircuitState() {
+        fetch('/api/race/live-state')
+            .then(r => r.json())
+            .then(state => {
+                // Phases qui déclenchent l'overlay obligatoire
+                if ((state.phase === 'pre_race' || state.phase === 'countdown' || state.phase === 'racing') && !isOverlayOpen) {
+                    iframe.src = '/circuit';
+                    overlay.classList.remove('hidden');
+                    isOverlayOpen = true;
+                }
+                // Fermeture auto si on repasse en idle et que c'était ouvert par l'auto-poll
+                else if (state.phase === 'idle' && isOverlayOpen) {
+                    // On laisse un petit délai pour voir le podium si besoin
+                    setTimeout(function() {
+                        if (isOverlayOpen) closeGlobalCircuit();
+                    }, 10000);
+                }
+            })
+            .catch(e => console.warn('[Header] Poll error', e));
+    }
+
+    {% if user %}
+    setInterval(pollCircuitState, 5000);
+    // Premier check immédiat
+    setTimeout(pollCircuitState, 1000);
+    {% endif %}
+
+    // Support de la touche Echap
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && isOverlayOpen) closeGlobalCircuit();
     });
 }());
 </script>
