@@ -30,9 +30,10 @@ def start_scheduler(app):
         return
 
     scheduler = BackgroundScheduler(timezone=APP_TIMEZONE)
+    # On reduit a 5 secondes pour une reaction plus rapide au depart des courses
     scheduler.add_job(
         lambda: run_scheduler_job(app, 'race_tick', lambda: (run_race_if_needed(), ensure_next_race())),
-        IntervalTrigger(seconds=15, timezone=APP_TIMEZONE),
+        IntervalTrigger(seconds=5, timezone=APP_TIMEZONE),
         id='race-tick',
         replace_existing=True,
         max_instances=1,
@@ -64,7 +65,7 @@ def start_scheduler(app):
     )
     scheduler.start()
     atexit.register(lambda: scheduler.shutdown(wait=False) if scheduler and scheduler.running else None)
-    app.logger.info("Background scheduler started")
+    app.logger.info("Background scheduler started (race interval: 5s)")
 
 
 def stop_scheduler():
@@ -79,8 +80,6 @@ def should_autostart_scheduler(app):
         return False
     if os.environ.get('DERBY_FORCE_SCHEDULER') == '1':
         return True
-    # En mode debug, on ne démarre que dans le processus principal de Werkzeug (évite le double lancement)
     if app.debug:
         return os.environ.get('WERKZEUG_RUN_MAIN') == 'true'
-    # Hors mode debug (prod/exécution directe), on démarre systématiquement
     return True
