@@ -73,33 +73,6 @@
             </div>
 
             {% if user %}
-            <!-- ── Ligne 2 (mobile uniquement) : balance compacte ── -->
-            <div class="sm:hidden flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-pink-200/12 bg-[linear-gradient(135deg,rgba(244,114,182,0.08),rgba(255,255,255,0.035))] px-4 py-2.5">
-                <div class="flex min-w-0 flex-1 flex-wrap items-center gap-3">
-                    <div>
-                        <p class="text-[10px] uppercase tracking-[0.15em] text-pink-100/35 font-bold">BitGroins</p>
-                        <div class="flex items-center gap-1.5">
-                            <span class="font-title text-lg leading-none text-yellow-400">{{ "%.0f"|format(user.balance) }}</span>
-                            <span class="text-xs text-pink-100/45">🪙</span>
-                        </div>
-                    </div>
-                    <div class="h-6 w-px bg-pink-100/10"></div>
-                    <div>
-                        <p class="text-[10px] uppercase tracking-[0.15em] text-pink-100/35 font-bold">Tickets</p>
-                        <div class="flex items-center gap-1.5">
-                            <span class="font-title text-lg leading-none text-pink-400">{{ user.bacon_tickets }}</span>
-                            <span class="text-xs text-pink-100/45">🎟️</span>
-                        </div>
-                    </div>
-                </div>
-                <div class="flex w-full items-center justify-end gap-1.5">
-                    {% if user.is_admin %}
-                    <a href="/admin" class="text-xs font-bold text-fuchsia-300 px-2.5 py-1.5 rounded-lg bg-fuchsia-400/10 border border-fuchsia-400/20">🔧</a>
-                    {% endif %}
-                    <a href="/logout" class="text-xs font-bold text-red-300 px-2.5 py-1.5 rounded-lg bg-red-400/10 border border-red-400/20">Quitter</a>
-                </div>
-            </div>
-
             <!-- ── Nav : collapsible mobile, toujours visible lg+ ── -->
             <nav id="main-nav" class="hidden flex-col items-stretch gap-2 rounded-2xl border border-pink-200/10 bg-[linear-gradient(180deg,rgba(39,13,49,0.96),rgba(28,11,41,0.94))] p-3 shadow-2xl max-h-[70vh] overflow-y-auto sm:flex-row sm:flex-wrap sm:items-center lg:flex lg:rounded-none lg:border-0 lg:bg-transparent lg:p-0 lg:shadow-none lg:max-h-none lg:overflow-visible">
                 <a href="/courses" class="{{ nav_base }} {{ nav_active if active_page == 'courses' else nav_idle }}">📅 Courses</a>
@@ -187,19 +160,23 @@
         isOverlayOpen = false;
     };
 
+    // Ecouteur de messages venant de l'iframe du circuit
+    window.addEventListener('message', function(event) {
+        if (event.data === 'close-global-circuit') {
+            closeGlobalCircuit();
+        }
+    });
+
     function pollCircuitState() {
         fetch('/api/race/live-state')
             .then(r => r.json())
             .then(state => {
-                // Phases qui déclenchent l'overlay obligatoire
                 if ((state.phase === 'pre_race' || state.phase === 'countdown' || state.phase === 'racing') && !isOverlayOpen) {
                     iframe.src = '/circuit';
                     overlay.classList.remove('hidden');
                     isOverlayOpen = true;
                 }
-                // Fermeture auto si on repasse en idle et que c'était ouvert par l'auto-poll
                 else if (state.phase === 'idle' && isOverlayOpen) {
-                    // On laisse un petit délai pour voir le podium si besoin
                     setTimeout(function() {
                         if (isOverlayOpen) closeGlobalCircuit();
                     }, 10000);
@@ -210,11 +187,9 @@
 
     {% if user %}
     setInterval(pollCircuitState, 5000);
-    // Premier check immédiat
     setTimeout(pollCircuitState, 1000);
     {% endif %}
 
-    // Support de la touche Echap
     document.addEventListener('keydown', function(e) {
         if (e.key === 'Escape' && isOverlayOpen) closeGlobalCircuit();
     });
