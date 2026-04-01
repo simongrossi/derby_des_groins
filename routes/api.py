@@ -1,9 +1,9 @@
 from flask import Blueprint, render_template, request, redirect, url_for, session, jsonify
-from datetime import datetime
+from datetime import datetime, timedelta
 import json as _json
 
 from extensions import db, limiter
-from models import User, Pig, Race, Participant, Bet
+from models import User, Pig, Race, Participant, Bet, UserNotification
 from data import SCHOOL_COOLDOWN_MINUTES, MIN_INJURY_RISK, DEFAULT_PIG_WEIGHT_KG
 from helpers import (
     get_user_active_pigs, calculate_pig_power,
@@ -294,6 +294,84 @@ def api_race_live_state():
         'finished_race_id': finished_race_id,
         'server_time': now.isoformat(),
     })
+
+
+@api_bp.route('/api/notifications/poll')
+@limiter.limit("60 per minute")
+def api_notifications_poll():
+    if 'user_id' not in session:
+        return jsonify({'events': [], 'last_id': 0})
+
+    user = User.query.get(session['user_id'])
+    if not user:
+        session.pop('user_id', None)
+        return jsonify({'events': [], 'last_id': 0})
+
+    since_id = request.args.get('since_id', type=int, default=0) or 0
+    now = datetime.utcnow()
+
+    notif_rows = (
+        UserNotification.query
+        .filter(UserNotification.user_id == user.id, UserNotification.id > since_id)
+        .order_by(UserNotification.id.asc())
+        .limit(20)
+        .all()
+    )
+    events = [
+        {
+            'id': n.id,
+            'category': n.category or 'info',
+            'title': n.title,
+            'message': n.message,
+            'created_at': n.created_at.isoformat() if n.created_at else None,
+        }
+        for n in notif_rows
+    ]
+    last_id = notif_rows[-1].id if notif_rows else since_id
+
+    # Alertes critiques vétérinaire (toasts calculées en direct)
+    injured_pigs = (
+        Pig.query
+        .filter_by(user_id=user.id, is_alive=True, is_injured=True)
+        .order_by(Pig.vet_deadline.asc())
+        .all()
+    )
+    for pig in injured_pigs:
+        if not pig.vet_deadline:
+            continue
+        seconds_left = int((pig.vet_deadline - now).total_seconds())
+        if 0 < seconds_left <= 120:
+            events.append({
+                'id': f"vet-urgent:{pig.id}:{int(pig.vet_deadline.timestamp())}",
+                'category': 'error',
+                'title': 'Urgence vétérinaire',
+                'message': f"{pig.name} doit être soigné dans {seconds_left}s !",
+                'created_at': now.isoformat(),
+            })
+
+    # Si un cochon vient d'être perdu par blessure, on remonte l'alerte en toast.
+    recently_dead = (
+        Pig.query
+        .filter(
+            Pig.user_id == user.id,
+            Pig.is_alive == False,
+            Pig.death_cause == 'blessure',
+            Pig.death_date >= now - timedelta(minutes=5),
+        )
+        .order_by(Pig.death_date.desc())
+        .limit(3)
+        .all()
+    )
+    for pig in recently_dead:
+        events.append({
+            'id': f"vet-dead:{pig.id}:{int(pig.death_date.timestamp()) if pig.death_date else 0}",
+            'category': 'error',
+            'title': 'Trop tard...',
+            'message': f"{pig.name} n'a pas survécu à sa blessure.",
+            'created_at': pig.death_date.isoformat() if pig.death_date else now.isoformat(),
+        })
+
+    return jsonify({'events': events, 'last_id': last_id})
 
 
 @api_bp.route('/api/race/<int:race_id>/pre-race')

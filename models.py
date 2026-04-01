@@ -736,6 +736,19 @@ class Auction(db.Model):
     status = db.Column(db.String(20), default='active')
 
 
+class UserNotification(db.Model):
+    __tablename__ = 'user_notification'
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
+    category = db.Column(db.String(20), nullable=False, default='info')
+    title = db.Column(db.String(120), nullable=False)
+    message = db.Column(db.String(280), nullable=False)
+    event_key = db.Column(db.String(120), nullable=True, index=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+
+    user = db.relationship('User', backref=db.backref('notifications', lazy=True))
+
 # ══════════════════════════════════════════════════════════════════════════════
 # Tables de données de jeu (éditables via l'admin sans redémarrage)
 # ══════════════════════════════════════════════════════════════════════════════

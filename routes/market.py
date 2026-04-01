@@ -11,6 +11,7 @@ from helpers import (
     get_prix_moyen_groin, apply_row_lock, get_user_active_pigs,
 )
 from services.game_settings_service import get_game_settings
+from services.notification_service import push_user_notification
 
 market_bp = Blueprint('market', __name__)
 
@@ -116,6 +117,13 @@ def bid():
                 details=f"Ton offre sur {auction.pig_name} a ete depassee.",
                 reference_type='auction',
                 reference_id=auction.id,
+            )
+            push_user_notification(
+                user_id=previous_user.id,
+                title="Marché aux Groins",
+                message=f"{auction.pig_name} a été surenchéri. Ta mise ({previous_bid_amount:.0f} 🪙) a été remboursée.",
+                category='warning',
+                event_key=f"auction_outbid:{auction.id}:{int(bid_amount)}:{user.id}",
             )
 
     db.session.commit()
