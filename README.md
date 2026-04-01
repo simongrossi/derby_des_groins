@@ -240,7 +240,7 @@ Le projet suit une architecture **Flask Blueprints** modulaire, découpée par d
 
 ```
 derby_des_groins/
-├── app.py                  # Factory create_app(), Flask-Session init, migrations, seeds
+├── app.py                  # Factory create_app(), Flask-Session init, commandes CLI (seed)
 ├── extensions.py           # SQLAlchemy db, timezone partagés
 ├── models.py               # 19 modèles SQLAlchemy (User, Pig, Race, Bet, GrainMarket…)
 ├── data.py                 # Constantes de jeu (céréales, entraînements, raretés…)
@@ -329,7 +329,7 @@ derby_des_groins/
 | `services/` | Couche métier | 8 modules : finance, cochon, courses, enchères, boutiques, economie |
 | `scheduler.py` | Tâches de fond | Résolution courses, enchères, deadlines véto, historique marché |
 | `routes/` | 15 Blueprints | Chaque domaine a son fichier avec ses routes |
-| `app.py` | Point d'entrée | Factory `create_app()`, migrations, seed utilisateurs |
+| `app.py` | Point d'entrée | Factory `create_app()`, commandes CLI (`flask seed-db`) |
 
 ## ⚙️ Stack technique
 

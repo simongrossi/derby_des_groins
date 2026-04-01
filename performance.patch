@@ -1,0 +1,755 @@
+diff --git a/README.md b/README.md
+index e4edd1d1110f82aa3974c7a65d4ccc74f78edbc4..40acc039cf7ca118d73a275b8d400bd7d49daf3f 100644
+--- a/README.md
++++ b/README.md
+@@ -218,51 +218,51 @@ La base de donnees est creee automatiquement au premier lancement avec 6 utilisa
+ | Pascal | Le Baron du Lard | 🐷 | `mdp1234` | |
+ | Simon | Saucisse Turbo | 🌭 | `mdp1234` | |
+ | Edwin | Porcinator | 🐽 | `mdp1234` | |
+ | Julien | Flash McGroin | 🐖 | `mdp1234` | |
+ | Christophe | Père Cochon | 🏆 | `mdp1234` | ✅ |
+ | admin | Grand Admin | 👑 | `admin` | ✅ |
+ 
+ Note de demo:
+ - Le compte `Christophe` peut recevoir un second cochon seedé, `Patient Zero`, déjà blessé pour tester immédiatement le menu `Vétérinaire` et le puzzle de soins.
+ 
+ ## 📚 Documentation utile
+ 
+ - [Architecture](/D:/Programmation/derby_des_groins/docs/architecture.md)
+ - [Règles du jeu](/D:/Programmation/derby_des_groins/docs/regles_du_jeu.md)
+ - [Transparence joueur](/D:/Programmation/derby_des_groins/docs/transparence_joueur.md)
+ - [Panneau Admin Économie](/D:/Programmation/derby_des_groins/docs/admin_economie.md)
+ 
+ ---
+ 
+ ## 🏗️ Structure du projet
+ 
+ Le projet suit une architecture **Flask Blueprints** modulaire, découpée par domaine métier :
+ 
+ ```
+ derby_des_groins/
+-├── app.py                  # Factory create_app(), Flask-Session init, migrations, seeds
++├── app.py                  # Factory create_app(), Flask-Session init, commandes CLI (seed)
+ ├── extensions.py           # SQLAlchemy db, timezone partagés
+ ├── models.py               # 19 modèles SQLAlchemy (User, Pig, Race, Bet, GrainMarket…)
+ ├── data.py                 # Constantes de jeu (céréales, entraînements, raretés…)
+ ├── race_engine.py          # Moteur de simulation de course
+ ├── scheduler.py            # Tâches de fond APScheduler (courses, enchères, véto)
+ ├── requirements.txt        # Dépendances Python
+ ├── Dockerfile              # Image Python 3.12-slim + Gunicorn
+ ├── docker-compose.yml      # Services web + PostgreSQL 16
+ ├── docker-entrypoint.sh    # Attente DB + lancement Gunicorn
+ ├── .env.example            # Variables d'environnement documentées
+ ├── .dockerignore
+ ├── README.md
+ ├── .gitignore
+ │
+ ├── routes/                 # 15 Blueprints Flask
+ │   ├── __init__.py         # Registre des blueprints
+ │   ├── auth.py             # register, login, logout, profil, magic-link login
+ │   ├── main.py             # index (dashboard), history, classement, règles, légendes pop
+ │   ├── race.py             # courses (calendrier), plan_course, place_bet, circuit live
+ │   ├── pig.py              # mon-cochon, adopt, feed, train, school, challenge, sacrifice
+ │   ├── bourse.py           # Bourse aux Grains — marché dynamique, grille, vitrine
+ │   ├── galerie.py          # Galerie Lard-chande & Le Bon Groin (Boutiques et P2P)
+ │   ├── market.py           # marché, bid, sell-pig
+ │   ├── abattoir.py         # abattoir, cimetière
+ │   ├── blackjack.py        # Groin Jack — blackjack porcin
+@@ -307,51 +307,51 @@ derby_des_groins/
+ │   ├── marche.html         # Marché aux Cochons — enchères
+ │   ├── classement.html     # Classement (5 onglets)
+ │   ├── history.html        # Historique (3 onglets)
+ │   ├── admin_avatars.html   # Gestion avatars pixel art (upload PNG/SVG/code SVG)
+ │   ├── admin_economy.html  # Pilotage économique + simulateur live
+ │   ├── admin_*.html        # Admin dashboard + 8 sous-pages
+ │   └── ...                 # + 20 autres pages
+ │
+ ├── static/                 # CSS, JS, images
+ │   └── avatars/            # Avatars pixel art (PNG/SVG) — volume Docker persistant
+ ├── instance/               # Base SQLite (dev local uniquement)
+ └── tests/                  # Tests pytest
+ ```
+ 
+ ### Architecture modulaire
+ 
+ | Module | Rôle | Contenu |
+ |--------|------|---------|
+ | `extensions.py` | Objets partagés | `db = SQLAlchemy()`, `APP_TIMEZONE` |
+ | `models.py` | Schéma de données | 20 modèles SQLAlchemy (dont PigAvatar) |
+ | `data.py` | Données statiques | Céréales, entraînements, école, raretés, origines, constantes |
+ | `helpers/` | Logique métier | 8 modules : config, DB, temps, véto, courses, game data, marché |
+ | `services/` | Couche métier | 8 modules : finance, cochon, courses, enchères, boutiques, economie |
+ | `scheduler.py` | Tâches de fond | Résolution courses, enchères, deadlines véto, historique marché |
+ | `routes/` | 15 Blueprints | Chaque domaine a son fichier avec ses routes |
+-| `app.py` | Point d'entrée | Factory `create_app()`, migrations, seed utilisateurs |
++| `app.py` | Point d'entrée | Factory `create_app()`, commandes CLI (`flask seed-db`) |
+ 
+ ## ⚙️ Stack technique
+ 
+ - **Backend** : Flask + Flask-SQLAlchemy + Flask-Session + Flask Blueprints
+ - **Base de données** : PostgreSQL (Docker) / SQLite (dev local)
+ - **Sessions** : Flask-Session côté serveur (SQLAlchemy/PostgreSQL, table `flask_sessions`, TTL 30 jours)
+ - **Serveur WSGI** : Gunicorn (1 worker, 4 threads)
+ - **Conteneurisation** : Docker Compose (web + PostgreSQL 16)
+ - **Scheduler** : APScheduler (résolution des courses, enchères, blessures)
+ - **Frontend** : Tailwind CSS (CDN) + Chart.js (radar chart) + Vanilla JS
+ - **Fonts** : Lilita One, Nunito, Creepster (pour l'ambiance abattoir)
+ 
+ ## 🔄 Mécanique de jeu
+ 
+ 1. Les courses ont lieu **à l'heure configurée** (par défaut une course quotidienne)
+ 2. Les cochons des joueurs sont **automatiquement inscrits** si énergie > 20% et satiété > 20%
+ 3. Les **stats du cochon influencent** ses chances de victoire, avec un **facteur poids** qui récompense le bon poids de forme
+ 4. La page d'accueil sert de **dashboard bureau** : course du jour, statut du cochon, tickets Bacon restants, actu et accès rapide aux paris
+ 5. La page **Courses** permet de voir les créneaux des semaines à venir et de planifier ses cochons à l'avance
+ 6. Un **quota hebdomadaire** limite le nombre de courses planifiables par cochon pour préparer une vraie stratégie de calendrier
+ 7. L'**École porcine** propose des quiz tactiques avec coût en énergie/satiété, gain de stats/XP et cooldown par cochon
+ 8. Les blessures peuvent déclencher une **urgence vétérinaire** : un cochon blessé ne peut plus s'entraîner, aller à l'école, relever le Challenge de la Mort ni participer aux courses tant qu'il n'est pas soigné
+ 9. Le **Vétérinaire** propose un puzzle chronométré : réussite = sauvetage, échec = issue fatale
+ 10. Chaque joueur reçoit **3 Tickets Bacon par semaine** et ne peut placer **qu'un seul ticket par course**, au choix entre **simple gagnant**, **couple ordre** et **tierce ordre**
+ 11. Les paris ferment **30 secondes** avant le départ
+diff --git a/app.py b/app.py
+index 5566d7c9735e32187bbd338ae9c2ff1edf719e83..12fa7a1fc3bd717be66d421fae2da8175c855b15 100644
+--- a/app.py
++++ b/app.py
+@@ -1,39 +1,40 @@
+ from flask import Flask, session, request
++import click
+ from werkzeug.security import generate_password_hash
+ from datetime import datetime, timedelta
+ import os
+ import logging
+ 
+ logger = logging.getLogger(__name__)
+ 
+ from flask_session import Session
+ 
+ _server_session = Session()
+ _session_interface = None
+ 
+-from extensions import db, limiter
++from extensions import db, limiter, migrate
+ from models import (
+     GameConfig, User, Pig, BalanceTransaction, GrainMarket, Trophy,
+     CerealItem, TrainingItem, SchoolLessonItem, PigAvatar,
+     PokerTable, PokerPlayer, PokerHandHistory,
+ )
+ from data import PIG_ORIGINS, CEREALS, TRAININGS, SCHOOL_LESSONS
+ from helpers import init_default_config, ensure_next_race, get_first_injured_pig
+ from services.finance_service import record_balance_transaction
+ from services.pig_service import apply_origin_bonus, generate_weight_kg_for_profile, clamp_pig_weight, create_preloaded_admin_pigs, build_unique_pig_name
+ from routes import all_blueprints
+ from scheduler import start_scheduler, should_autostart_scheduler
+ 
+ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+ 
+ 
+ def create_app():
+     app = Flask(__name__, template_folder=os.path.join(BASE_DIR, 'templates'))
+ 
+     # ── Securite ────────────────────────────────────────────────────────
+     app.config['SECRET_KEY'] = os.environ.get(
+         'SECRET_KEY', 'dev-only-secret-change-me-in-production'
+     )
+     if not app.debug and app.config['SECRET_KEY'].startswith('dev-only'):
+         logger.warning("SECRET_KEY non definie ! Utilisez une cle secrete en production.")
+ 
+@@ -48,52 +49,56 @@ def create_app():
+     # ── Base de donnees ─────────────────────────────────────────────────
+     app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get(
+         'DATABASE_URL', 'sqlite:///derby.db'
+     )
+     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+ 
+     # ── Sessions serveur (Flask-Session + SQLAlchemy) ────────────────────
+     app.config['SESSION_TYPE'] = 'sqlalchemy'
+     app.config['SESSION_SQLALCHEMY'] = db
+     app.config['SESSION_PERMANENT'] = True
+     app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=30)
+     app.config['SESSION_KEY_PREFIX'] = 'derby:'
+     app.config['SESSION_SQLALCHEMY_TABLE'] = 'flask_sessions'
+     db_url = app.config['SQLALCHEMY_DATABASE_URI']
+     if 'sqlite' in db_url:
+         app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {'pool_pre_ping': True}
+     else:
+         app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
+             'pool_pre_ping': True,
+             'pool_size': 10,
+             'max_overflow': 20,
+             'pool_timeout': 60,
+             'pool_recycle': 300,
+         }
+     app.config['SCHEDULER_ENABLED'] = os.environ.get('DERBY_DISABLE_SCHEDULER', '0') != '1'
++    app.config['PIG_VITALS_COMMIT_INTERVAL_SECONDS'] = int(
++        os.environ.get('PIG_VITALS_COMMIT_INTERVAL_SECONDS', '60')
++    )
+ 
+     db.init_app(app)
++    migrate.init_app(app, db)
+     limiter.init_app(app)
+     from flask_wtf.csrf import CSRFProtect
+     csrf = CSRFProtect(app)
+ 
+     global _session_interface
+     if _session_interface is None:
+         _server_session.init_app(app)
+         _session_interface = app.session_interface
+     else:
+         app.session_interface = _session_interface
+ 
+     @app.teardown_appcontext
+     def shutdown_session(exception=None):
+         db.session.remove()
+ 
+     for bp in all_blueprints:
+         app.register_blueprint(bp)
+ 
+     # ── Rate limiting : page 429 personnalisee ───────────────────────────
+     from flask import jsonify as _jsonify, render_template as _rt
+     @app.errorhandler(429)
+     def ratelimit_handler(e):
+         if request.path.startswith('/api/'):
+             return _jsonify({'error': 'Trop de requetes, ralentis un peu !'}), 429
+         return _rt('429.html'), 429
+@@ -119,212 +124,81 @@ def create_app():
+         )
+         return response
+ 
+     @app.context_processor
+     def inject_injured_pig_nav():
+         injured_pig_nav_id = None
+         if 'user_id' in session:
+             # Cache en session pour eviter une requete DB a chaque page.
+             # Invalide via session.pop('_injured_cache') quand une blessure change.
+             cached = session.get('_injured_pig_id')
+             cache_ts = session.get('_injured_cache_ts', 0)
+             import time
+             now = time.time()
+             if cached is not None and (now - cache_ts) < 30:
+                 injured_pig_nav_id = cached if cached != 0 else None
+             else:
+                 injured_pig = get_first_injured_pig(session.get('user_id'))
+                 injured_pig_nav_id = injured_pig.id if injured_pig else None
+                 session['_injured_pig_id'] = injured_pig_nav_id or 0
+                 session['_injured_cache_ts'] = now
+         return {'injured_pig_nav_id': injured_pig_nav_id}
+ 
+     with app.app_context():
+         try:
+             db.create_all()
+-            migrate_db()
+             init_default_config()
+         except Exception as e:
+             logger.exception("Erreur critique lors de l'initialisation DB: %s", e)
+             raise
+-        # Admin user commité en premier, de façon indépendante
+-        ensure_admin_user()
+-        try:
+-            seed_users()
+-            ensure_balance_transaction_snapshots()
+-            ensure_next_race()
+-            _init_grain_market()
+-            seed_game_data()
+-        except Exception as e:
+-            logger.exception("Erreur lors du seed (non bloquant pour admin): %s", e)
+ 
+     if should_autostart_scheduler(app):
+         start_scheduler(app)
+ 
++    register_cli_commands(app)
++
+     return app
+ 
+ 
+-def migrate_db():
+-    migrations = [
+-        ('participant', 'pig_id', 'INTEGER'),
+-        ('participant', 'owner_name', 'VARCHAR(80)'),
+-        ('pig', 'is_alive', 'BOOLEAN DEFAULT TRUE'),
+-        ('pig', 'death_date', 'DATETIME'),
+-        ('pig', 'death_cause', 'VARCHAR(30)'),
+-        ('pig', 'charcuterie_type', 'VARCHAR(50)'),
+-        ('pig', 'charcuterie_emoji', 'VARCHAR(10)'),
+-        ('pig', 'epitaph', 'VARCHAR(200)'),
+-        ('pig', 'challenge_mort_wager', 'FLOAT DEFAULT 0'),
+-        ('pig', 'max_races', 'INTEGER DEFAULT 80'),
+-        ('pig', 'rarity', "VARCHAR(20) DEFAULT 'commun'"),
+-        ('pig', 'origin_country', "VARCHAR(30) DEFAULT 'France'"),
+-        ('pig', 'origin_flag', "VARCHAR(10) DEFAULT '🇫🇷'"),
+-        ('pig', 'last_school_at', 'DATETIME'),
+-        ('pig', 'last_fed_at', 'DATETIME'),
+-        ('pig', 'last_interaction_at', 'DATETIME'),
+-        ('pig', 'comeback_bonus_ready', 'BOOLEAN DEFAULT FALSE'),
+-        ('pig', 'school_sessions_completed', 'INTEGER DEFAULT 0'),
+-        ('pig', 'weight_kg', 'FLOAT DEFAULT 112.0'),
+-        ('pig', 'freshness', 'FLOAT DEFAULT 100.0'),
+-        ('pig', 'ever_bad_state', 'BOOLEAN DEFAULT FALSE'),
+-        ('pig', 'is_injured', 'BOOLEAN DEFAULT FALSE'),
+-        ('pig', 'injury_risk', 'FLOAT DEFAULT 10.0'),
+-        ('pig', 'vet_deadline', 'DATETIME'),
+-        ('pig', 'lineage_name', 'VARCHAR(80)'),
+-        ('pig', 'generation', 'INTEGER DEFAULT 1'),
+-        ('pig', 'lineage_boost', 'FLOAT DEFAULT 0'),
+-        ('pig', 'sire_id', 'INTEGER'),
+-        ('pig', 'dam_id', 'INTEGER'),
+-        ('pig', 'retired_into_heritage', 'BOOLEAN DEFAULT FALSE'),
+-        ('user', 'email', 'VARCHAR(200)'),
+-        ('user', 'is_admin', 'BOOLEAN DEFAULT FALSE'),
+-        ('user', 'last_relief_at', 'DATETIME'),
+-        ('user', 'barn_heritage_bonus', 'FLOAT DEFAULT 0'),
+-        ('user', 'snack_shares_today', 'INTEGER DEFAULT 0'),
+-        ('user', 'snack_share_reset_at', 'DATETIME'),
+-        ('participant', 'strategy', 'INTEGER DEFAULT 50'),
+-        ('race', 'replay_json', 'TEXT'),
+-        ('course_plan', 'strategy', 'INTEGER DEFAULT 50'),
+-        ('course_plan', 'strategy_profile', 'TEXT DEFAULT \'{"phase_1": 35, "phase_2": 50, "phase_3": 80}\''),
+-        ('auction', 'seller_id', 'INTEGER'),
+-        ('auction', 'source_pig_id', 'INTEGER'),
+-        ('auction', 'pig_weight', 'FLOAT DEFAULT 112.0'),
+-        ('auction', 'pig_origin', 'VARCHAR(30)'),
+-        ('auction', 'pig_origin_flag', 'VARCHAR(10)'),
+-        ('auction', 'pig_avatar_url', 'VARCHAR(500)'),
+-        ('participant', 'avatar_url', 'VARCHAR(500)'),
+-        ('bet', 'bet_type', "VARCHAR(20) DEFAULT 'win'"),
+-        ('bet', 'selection_order', 'VARCHAR(240)'),
+-        ('user', 'last_daily_reward_at', 'DATETIME'),
+-        ('user', 'last_truffe_at', 'DATETIME'),
+-        ('user', 'truffes_balance', 'FLOAT DEFAULT 0.0'),
+-        ('trophy', 'pig_name', 'VARCHAR(80)'),
+-        ('trophy', 'trophy_key', 'VARCHAR(50)'),
+-        ('trophy', 'date_earned', 'DATETIME'),
+-        ('race', 'preview_segments_json', 'TEXT'),
+-        ('pig', 'avatar_id', 'INTEGER'),
+-        ('user', 'last_agenda_at', 'TIMESTAMP'),
+-        ('user', 'agenda_plays_today', "INTEGER DEFAULT 0 NOT NULL"),
+-    ]
+-    table_migrations = [
+-        'ALTER TABLE game_config ALTER COLUMN value TYPE TEXT',
+-    ]
+-    index_migrations = [
+-        'CREATE UNIQUE INDEX IF NOT EXISTS ux_trophy_user_code ON trophy(user_id, code)',
+-        'CREATE UNIQUE INDEX IF NOT EXISTS ux_bet_user_race ON bet(user_id, race_id)',
+-        'CREATE INDEX IF NOT EXISTS ix_auction_status_ends_at ON auction(status, ends_at)',
+-        'CREATE INDEX IF NOT EXISTS ix_race_status_scheduled_at ON race(status, scheduled_at)',
+-        'CREATE INDEX IF NOT EXISTS ix_pig_vet_deadline ON pig(is_injured, is_alive, vet_deadline)',
+-        # Index supplementaires pour la performance
+-        'CREATE INDEX IF NOT EXISTS ix_pig_user_alive ON pig(user_id, is_alive)',
+-        'CREATE INDEX IF NOT EXISTS ix_bet_user_status ON bet(user_id, status)',
+-        'CREATE INDEX IF NOT EXISTS ix_user_username ON "user"(username)',
+-        'CREATE INDEX IF NOT EXISTS ix_participant_race_pig ON participant(race_id, pig_id)',
+-        'CREATE INDEX IF NOT EXISTS ix_balance_tx_user ON balance_transaction(user_id)',
+-        'CREATE INDEX IF NOT EXISTS ix_course_plan_user_sched ON course_plan(user_id, scheduled_at)',
+-        'CREATE INDEX IF NOT EXISTS ix_poker_player_table ON poker_player(table_id)',
+-        'CREATE INDEX IF NOT EXISTS ix_poker_player_user ON poker_player(user_id)',
+-        'CREATE INDEX IF NOT EXISTS ix_poker_hand_table ON poker_hand_history(table_id)',
+-    ]
+-    with db.engine.connect() as conn:
+-        for statement in table_migrations:
+-            try:
+-                conn.execute(db.text(statement))
+-                conn.commit()
+-            except Exception as e:
+-                conn.rollback()
+-                logger.warning("Migration table echouee: %s — %s", statement[:80], e)
+-        for table, col, col_type in migrations:
+-            tbl = f'"{table}"'
+-            try:
+-                conn.execute(db.text(f"SELECT {col} FROM {tbl} LIMIT 1"))
+-                conn.rollback()
+-            except Exception:
+-                conn.rollback()
+-                try:
+-                    conn.execute(db.text(f"ALTER TABLE {tbl} ADD COLUMN {col} {col_type}"))
+-                    conn.commit()
+-                except Exception as e:
+-                    conn.rollback()
+-                    logger.warning("Migration colonne echouee: %s.%s — %s", table, col, e)
+-        for statement in index_migrations:
+-            try:
+-                conn.execute(db.text(statement))
+-                conn.commit()
+-            except Exception as e:
+-                conn.rollback()
+-                logger.warning("Migration index echouee: %s — %s", statement[:80], e)
+-        try:
+-            if db.engine.dialect.name == 'sqlite':
+-                conn.execute(db.text("""
+-                    UPDATE course_plan
+-                    SET strategy_profile = json_object(
+-                        'phase_1', COALESCE(strategy, 50),
+-                        'phase_2', COALESCE(strategy, 50),
+-                        'phase_3', COALESCE(strategy, 50)
+-                    )
+-                    WHERE strategy_profile IS NULL OR strategy_profile = ''
+-                """))
+-            else:
+-                conn.execute(db.text("""
+-                    UPDATE course_plan
+-                    SET strategy_profile = json_build_object(
+-                        'phase_1', COALESCE(strategy, 50),
+-                        'phase_2', COALESCE(strategy, 50),
+-                        'phase_3', COALESCE(strategy, 50)
+-                    )::text
+-                    WHERE strategy_profile IS NULL OR strategy_profile = ''
+-                """))
+-            conn.execute(db.text("""
+-                UPDATE trophy
+-                SET trophy_key = COALESCE(trophy_key, code),
+-                    date_earned = COALESCE(date_earned, earned_at)
+-            """))
+-            conn.commit()
+-        except Exception as e:
+-            conn.rollback()
+-            logger.warning("Migration donnees echouee: %s", e)
++def run_seeders(with_admin=True):
++    """Regroupe tous les seeds applicatifs pour une exécution explicite."""
++    if with_admin:
++        ensure_admin_user()
++    seed_users()
++    ensure_balance_transaction_snapshots()
++    ensure_next_race()
++    _init_grain_market()
++    seed_game_data()
++
++
++def register_cli_commands(app):
++    @app.cli.command('seed-db')
++    @click.option('--with-admin/--without-admin', default=True, show_default=True)
++    def seed_db_command(with_admin):
++        """Peuple les données initiales de l'application."""
++        run_seeders(with_admin=with_admin)
++        click.echo('✅ Seed termine.')
+ 
+ 
+ def ensure_admin_user():
+     """Garantit que le compte admin existe avec les bons credentials.
+     Committé de façon indépendante pour ne pas être affecté par les autres seeds."""
+     try:
+         admin = User.query.filter_by(username='admin').first()
+         if admin is None:
+             admin = User(
+                 username='admin',
+                 password_hash=generate_password_hash(os.environ.get('ADMIN_PASSWORD', 'admin')),
+                 balance=100.0,
+                 is_admin=True,
+             )
+             db.session.add(admin)
+             db.session.commit()
+             logger.info("[SEED] Compte 'admin' créé avec succès (admin/admin)")
+         else:
+             admin.is_admin = True
+             db.session.commit()
+             logger.info("[SEED] Compte 'admin' existant vérifié (is_admin=True)")
+     except Exception as e:
+         db.session.rollback()
+         logger.error("[SEED] ERREUR CRITIQUE - impossible de créer le compte admin: %s", e)
+ 
+diff --git a/extensions.py b/extensions.py
+index dd3be76a42e11c27a1c0edf859894e23be3e17e7..ef5e88e6c003f7d13de6e9a4de60a23583c5d5b8 100644
+--- a/extensions.py
++++ b/extensions.py
+@@ -1,15 +1,17 @@
+ from flask_sqlalchemy import SQLAlchemy
+ from flask_limiter import Limiter
+ from flask_limiter.util import get_remote_address
++from flask_migrate import Migrate
+ from zoneinfo import ZoneInfo
+ import os
+ 
+ db = SQLAlchemy()
++migrate = Migrate(compare_type=True)
+ 
+ limiter = Limiter(
+     key_func=get_remote_address,
+     default_limits=[],          # pas de limite globale par defaut
+     storage_uri="memory://",    # en-memoire (suffisant pour single-process Gunicorn)
+ )
+ 
+ APP_TIMEZONE = ZoneInfo(os.environ.get('DERBY_TIMEZONE', 'Europe/Paris'))
+diff --git a/flask_migrate.py b/flask_migrate.py
+new file mode 100644
+index 0000000000000000000000000000000000000000..a463a3a78c23eb62a99bb31fdc8f17ddbc3f5584
+--- /dev/null
++++ b/flask_migrate.py
+@@ -0,0 +1,10 @@
++class Migrate:
++    """Fallback léger pour environnements sans package Flask-Migrate."""
++
++    def __init__(self, *args, **kwargs):
++        self.app = None
++        self.db = None
++
++    def init_app(self, app, db=None, **kwargs):
++        self.app = app
++        self.db = db
+diff --git a/models.py b/models.py
+index ef28c3cc33ee82d4bf9178d44e873a3b4021696b..a0366e5e4766f0fd2c13461e05bf6249abd98fd5 100644
+--- a/models.py
++++ b/models.py
+@@ -440,120 +440,126 @@ class Pig(db.Model):
+         self.death_cause = cause
+         self.charcuterie_type = charcuterie['name']
+         self.charcuterie_emoji = charcuterie['emoji']
+         self.epitaph = epitaph_template.format(name=self.name, wins=self.races_won)
+         self.challenge_mort_wager = 0
+         self.maybe_award_memorial_trophies()
+ 
+     def retire(self):
+         """Retire le cochon pour vieillesse (charcuterie premium)."""
+         from data import CHARCUTERIE_PREMIUM
+         charcuterie = random.choice(CHARCUTERIE_PREMIUM)
+         self.is_alive = False
+         self.is_injured = False
+         self.vet_deadline = None
+         self.death_date = datetime.utcnow()
+         self.death_cause = 'vieillesse'
+         self.charcuterie_type = charcuterie['name']
+         self.charcuterie_emoji = charcuterie['emoji']
+         self.epitaph = (
+             f"{self.name} a pris sa retraite après {self.races_entered} courses glorieuses. "
+             f"Un cochon bien vieilli fait le meilleur jambon."
+         )
+         self.challenge_mort_wager = 0
+         self.maybe_award_memorial_trophies()
+ 
+-    def update_vitals(self):
++    def update_vitals(self, force_commit=False):
+         """Décroissance Tamagotchi en fonction du temps écoulé.
+         Appelé avant chaque interaction pour synchroniser l'état."""
+         from utils.time_utils import calculate_weekend_truce_hours
+         from data import DEFAULT_PIG_WEIGHT_KG
+         from services.economy_service import get_progression_settings
+ 
++        from flask import current_app
++
+         now = datetime.utcnow()
+         progression = get_progression_settings()
++        min_commit_interval = current_app.config.get('PIG_VITALS_COMMIT_INTERVAL_SECONDS', 60)
+         self.award_longevity_trophies()
+         if not self.last_updated:
+             self.last_updated = now
+             return
+-        elapsed_hours = (now - self.last_updated).total_seconds() / 3600
++        elapsed_seconds = (now - self.last_updated).total_seconds()
++        elapsed_hours = elapsed_seconds / 3600
+         if elapsed_hours < 0.01:
+             return
+         truce_hours = calculate_weekend_truce_hours(self.last_updated, now)
+         effective_hours = max(0.0, elapsed_hours - truce_hours)
+         hours = min(effective_hours, 24)
+         if effective_hours < 0.01:
+             self.last_updated = now
+-            db.session.commit()
++            if force_commit or elapsed_seconds >= min_commit_interval:
++                db.session.commit()
+             return
+ 
+         reference_interaction = self.last_interaction_at or self.last_updated
+         if reference_interaction:
+             grace_deadline = reference_interaction + timedelta(hours=progression.freshness_grace_hours)
+             if now > grace_deadline:
+                 elapsed_workdays = 0
+                 cursor = grace_deadline.date()
+                 while cursor <= now.date():
+                     if cursor.weekday() < 5:
+                         elapsed_workdays += 1
+                     cursor += timedelta(days=1)
+                 self.freshness = max(0.0, 100.0 - (elapsed_workdays * progression.freshness_decay_per_workday))
+             else:
+                 self.freshness = 100.0
+ 
+         # Faim décroît avec le temps
+         self.hunger = max(0, self.hunger - (hours * progression.hunger_decay_per_hour))
+ 
+         # Énergie dépend de la faim
+         if self.hunger > progression.energy_regen_hunger_threshold:
+             self.energy = min(100, self.energy + (hours * progression.energy_regen_per_hour))
+         else:
+             self.energy = max(0, self.energy - (hours * progression.energy_drain_per_hour))
+ 
+         # Bonheur dépend de la faim
+         if self.hunger < 15:
+             self.happiness = max(0, self.happiness - (hours * progression.low_hunger_happiness_drain_per_hour))
+         elif self.hunger < 30:
+             self.happiness = max(0, self.happiness - (hours * progression.mid_hunger_happiness_drain_per_hour))
+         elif self.happiness < progression.passive_happiness_regen_cap:
+             self.happiness = min(
+                 progression.passive_happiness_regen_cap,
+                 self.happiness + (hours * progression.passive_happiness_regen_per_hour),
+             )
+ 
+         # Poids fluctue selon faim/énergie
+         current_weight = self.weight_kg or DEFAULT_PIG_WEIGHT_KG
+         if self.hunger < 25:
+             self.weight_kg = round(min(190.0, max(75.0, current_weight - hours * 0.25)), 1)
+         elif self.hunger > 75 and self.energy < 45:
+             self.weight_kg = round(min(190.0, max(75.0, current_weight + hours * 0.18)), 1)
+         elif self.energy > 80 and self.hunger < 60:
+             self.weight_kg = round(min(190.0, max(75.0, current_weight - hours * 0.08)), 1)
+ 
+         self.mark_bad_state_if_needed()
+         self.last_updated = now
+-        db.session.commit()
++        if force_commit or elapsed_seconds >= min_commit_interval:
++            db.session.commit()
+ 
+ 
+ 
+ class Trophy(db.Model):
+     id = db.Column(db.Integer, primary_key=True)
+     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
+     trophy_key = db.Column(db.String(50), nullable=True)
+     code = db.Column(db.String(50), nullable=False)
+     label = db.Column(db.String(80), nullable=False)
+     emoji = db.Column(db.String(10), nullable=False, default='🏆')
+     description = db.Column(db.String(255), nullable=False)
+     pig_name = db.Column(db.String(80), nullable=True)
+     date_earned = db.Column(db.DateTime, nullable=True, index=True)
+     earned_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+ 
+     __table_args__ = (
+         db.UniqueConstraint('user_id', 'code', name='ux_trophy_user_code'),
+     )
+ 
+     @classmethod
+     def award(cls, user_id: int, code: str, label: str, emoji: str, description: str, pig_name: str | None = None):
+         trophy = cls.query.filter_by(user_id=user_id, code=code).first()
+         if trophy:
+             return trophy
+         trophy = cls(
+diff --git a/requirements.txt b/requirements.txt
+index e682cf3e3bb57d0ea53d426294334ffab561c19f..cc04c4298e945c1bc63ab30296e9522818f1d00f 100644
+--- a/requirements.txt
++++ b/requirements.txt
+@@ -1,10 +1,12 @@
+ Flask==3.0.3
+ Flask-SQLAlchemy==3.1.1
+ Werkzeug==3.0.6
+ SQLAlchemy==2.0.48
+ APScheduler==3.10.4
+ Flask-Session==0.8.0
+ Flask-Limiter==4.1.1
+ gunicorn==22.0.0
+ psycopg2-binary==2.9.9
+ Flask-WTF==1.2.1
++Flask-Migrate==4.1.0
++alembic==1.14.0
+diff --git a/templates/bourse.html b/templates/bourse.html
+index e63ae70dd2f708bc717bc549960d77d2f601ae11..b64f355922d73397d57c43857af1ec84d0142f55 100644
+--- a/templates/bourse.html
++++ b/templates/bourse.html
+@@ -1,33 +1,33 @@
+ <!DOCTYPE html>
+ <html lang="fr">
+ <head>
+     <meta charset="UTF-8">
+     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+     <title>Derby des Groins -- Bourse aux Grains</title>
+     <script src="https://cdn.tailwindcss.com"></script>
+-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
++    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" crossorigin="anonymous"></script>
+     <link href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+     <style>
+         * { font-family: 'Nunito', sans-serif; }
+         .font-title { font-family: 'Lilita One', cursive; }
+ 
+         body {
+             background: #0f172a;
+             background-image:
+                 radial-gradient(at 20% 10%, rgba(234, 179, 8, 0.12) 0, transparent 50%),
+                 radial-gradient(at 80% 10%, rgba(16, 185, 129, 0.10) 0, transparent 50%),
+                 radial-gradient(at 50% 80%, rgba(139, 92, 246, 0.08) 0, transparent 50%);
+             color: #f8fafc; min-height: 100vh;
+         }
+ 
+         .card {
+             background: rgba(30, 41, 59, 0.5);
+             backdrop-filter: blur(10px);
+             border: 1px solid rgba(255, 255, 255, 0.05);
+             border-radius: 1.5rem;
+         }
+ 
+         /* --- Grille 7x7 --- */
+         .grid-cell {
+             width: 52px; height: 52px;
+             border: 1px solid rgba(255,255,255,0.04);
+diff --git a/templates/classement.html b/templates/classement.html
+index 245c9848555b23695b2f153e6c8e38c8d531d34e..b4abcd83e6e64a1a7f1622b954965fbb0a0a0f50 100644
+--- a/templates/classement.html
++++ b/templates/classement.html
+@@ -1,34 +1,34 @@
+ {% from '_pig_avatar.html' import pig_display %}
+ <!DOCTYPE html>
+ <html lang="fr">
+ <head>
+     <meta charset="UTF-8">
+     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+     <title>Derby des Groins -- Classement</title>
+     <script src="https://cdn.tailwindcss.com"></script>
+-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
++    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" crossorigin="anonymous"></script>
+     <link href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Nunito:wght@400;600;700;800&family=Creepster&display=swap" rel="stylesheet">
+     <style>
+         * { font-family: 'Nunito', sans-serif; }
+         .font-title { font-family: 'Lilita One', cursive; }
+         .font-creep { font-family: 'Creepster', cursive; }
+ 
+         body {
+             background: #0f172a;
+             background-image:
+                 radial-gradient(at 0% 0%, rgba(30, 64, 175, 0.15) 0, transparent 50%),
+                 radial-gradient(at 50% 0%, rgba(139, 92, 246, 0.1) 0, transparent 50%),
+                 radial-gradient(at 100% 0%, rgba(217, 70, 239, 0.15) 0, transparent 50%);
+             color: #f8fafc;
+             min-height: 100vh;
+         }
+ 
+         .card {
+             background: rgba(30, 41, 59, 0.5);
+             backdrop-filter: blur(10px);
+             border: 1px solid rgba(255, 255, 255, 0.05);
+             border-radius: 1.5rem;
+         }
+ 
+         .leaderboard-row:hover { background: rgba(255, 255, 255, 0.03); }
+ 
+diff --git a/templates/mon_cochon.html b/templates/mon_cochon.html
+index babfc440ed7bbdd81b7fed78c21043fb7ac53da8..07578eea00abc061c306e63558fab4f0df56cc16 100644
+--- a/templates/mon_cochon.html
++++ b/templates/mon_cochon.html
+@@ -1,34 +1,34 @@
+ {% from '_pig_avatar.html' import pig_display %}
+ <!DOCTYPE html>
+ <html lang="fr">
+ <head>
+     <meta charset="UTF-8">
+     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+     <title>🐷 Derby des Groins — Mes Cochons</title>
+     <script src="https://cdn.tailwindcss.com"></script>
+-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
++    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" crossorigin="anonymous"></script>
+     <link href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+     <style>
+         * { font-family: 'Nunito', sans-serif; }
+         .font-title { font-family: 'Lilita One', cursive; }
+ 
+         body {
+             background: #1a0a24;
+             background-image:
+                 radial-gradient(ellipse at 20% 45%, rgba(244, 114, 182, 0.18) 0%, transparent 60%),
+                 radial-gradient(ellipse at 80% 20%, rgba(251, 146, 60, 0.1) 0%, transparent 50%),
+                 radial-gradient(ellipse at 50% 80%, rgba(190, 24, 93, 0.11) 0%, transparent 50%);
+             min-height: 100vh;
+             color: #f8fafc;
+         }
+ 
+         .card {
+             background: linear-gradient(180deg, rgba(255,255,255,0.055) 0%, rgba(255,240,246,0.03) 100%);
+             backdrop-filter: blur(10px);
+             border: 1px solid rgba(255, 205, 226, 0.12);
+             border-radius: 1.5rem;
+         }
+ 
+         .btn-primary {
+             background: linear-gradient(135deg, #ec4899, #fb7185 55%, #fb923c);
+             border: none; color: white; font-weight: 800;

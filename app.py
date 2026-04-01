@@ -1,4 +1,5 @@
 from flask import Flask, session, request
+import click
 from werkzeug.security import generate_password_hash
 from datetime import datetime, timedelta
 import os
@@ -11,7 +12,7 @@ from flask_session import Session
 _server_session = Session()
 _session_interface = None
 
-from extensions import db, limiter
+from extensions import db, limiter, migrate
 from models import (
     GameConfig, User, Pig, BalanceTransaction, GrainMarket, Trophy,
     CerealItem, TrainingItem, SchoolLessonItem, PigAvatar,
@@ -70,8 +71,12 @@ def create_app():
             'pool_recycle': 300,
         }
     app.config['SCHEDULER_ENABLED'] = os.environ.get('DERBY_DISABLE_SCHEDULER', '0') != '1'
+    app.config['PIG_VITALS_COMMIT_INTERVAL_SECONDS'] = int(
+        os.environ.get('PIG_VITALS_COMMIT_INTERVAL_SECONDS', '60')
+    )
 
     db.init_app(app)
+    migrate.init_app(app, db)
     limiter.init_app(app)
     from flask_wtf.csrf import CSRFProtect
     csrf = CSRFProtect(app)
@@ -141,168 +146,37 @@ def create_app():
     with app.app_context():
         try:
             db.create_all()
-            migrate_db()
             init_default_config()
         except Exception as e:
             logger.exception("Erreur critique lors de l'initialisation DB: %s", e)
             raise
-        # Admin user commité en premier, de façon indépendante
-        ensure_admin_user()
-        try:
-            seed_users()
-            ensure_balance_transaction_snapshots()
-            ensure_next_race()
-            _init_grain_market()
-            seed_game_data()
-        except Exception as e:
-            logger.exception("Erreur lors du seed (non bloquant pour admin): %s", e)
 
     if should_autostart_scheduler(app):
         start_scheduler(app)
 
+    register_cli_commands(app)
+
     return app
 
 
-def migrate_db():
-    migrations = [
-        ('participant', 'pig_id', 'INTEGER'),
-        ('participant', 'owner_name', 'VARCHAR(80)'),
-        ('pig', 'is_alive', 'BOOLEAN DEFAULT TRUE'),
-        ('pig', 'death_date', 'DATETIME'),
-        ('pig', 'death_cause', 'VARCHAR(30)'),
-        ('pig', 'charcuterie_type', 'VARCHAR(50)'),
-        ('pig', 'charcuterie_emoji', 'VARCHAR(10)'),
-        ('pig', 'epitaph', 'VARCHAR(200)'),
-        ('pig', 'challenge_mort_wager', 'FLOAT DEFAULT 0'),
-        ('pig', 'max_races', 'INTEGER DEFAULT 80'),
-        ('pig', 'rarity', "VARCHAR(20) DEFAULT 'commun'"),
-        ('pig', 'origin_country', "VARCHAR(30) DEFAULT 'France'"),
-        ('pig', 'origin_flag', "VARCHAR(10) DEFAULT '🇫🇷'"),
-        ('pig', 'last_school_at', 'DATETIME'),
-        ('pig', 'last_fed_at', 'DATETIME'),
-        ('pig', 'last_interaction_at', 'DATETIME'),
-        ('pig', 'comeback_bonus_ready', 'BOOLEAN DEFAULT FALSE'),
-        ('pig', 'school_sessions_completed', 'INTEGER DEFAULT 0'),
-        ('pig', 'weight_kg', 'FLOAT DEFAULT 112.0'),
-        ('pig', 'freshness', 'FLOAT DEFAULT 100.0'),
-        ('pig', 'ever_bad_state', 'BOOLEAN DEFAULT FALSE'),
-        ('pig', 'is_injured', 'BOOLEAN DEFAULT FALSE'),
-        ('pig', 'injury_risk', 'FLOAT DEFAULT 10.0'),
-        ('pig', 'vet_deadline', 'DATETIME'),
-        ('pig', 'lineage_name', 'VARCHAR(80)'),
-        ('pig', 'generation', 'INTEGER DEFAULT 1'),
-        ('pig', 'lineage_boost', 'FLOAT DEFAULT 0'),
-        ('pig', 'sire_id', 'INTEGER'),
-        ('pig', 'dam_id', 'INTEGER'),
-        ('pig', 'retired_into_heritage', 'BOOLEAN DEFAULT FALSE'),
-        ('user', 'email', 'VARCHAR(200)'),
-        ('user', 'is_admin', 'BOOLEAN DEFAULT FALSE'),
-        ('user', 'last_relief_at', 'DATETIME'),
-        ('user', 'barn_heritage_bonus', 'FLOAT DEFAULT 0'),
-        ('user', 'snack_shares_today', 'INTEGER DEFAULT 0'),
-        ('user', 'snack_share_reset_at', 'DATETIME'),
-        ('participant', 'strategy', 'INTEGER DEFAULT 50'),
-        ('race', 'replay_json', 'TEXT'),
-        ('course_plan', 'strategy', 'INTEGER DEFAULT 50'),
-        ('course_plan', 'strategy_profile', 'TEXT DEFAULT \'{"phase_1": 35, "phase_2": 50, "phase_3": 80}\''),
-        ('auction', 'seller_id', 'INTEGER'),
-        ('auction', 'source_pig_id', 'INTEGER'),
-        ('auction', 'pig_weight', 'FLOAT DEFAULT 112.0'),
-        ('auction', 'pig_origin', 'VARCHAR(30)'),
-        ('auction', 'pig_origin_flag', 'VARCHAR(10)'),
-        ('auction', 'pig_avatar_url', 'VARCHAR(500)'),
-        ('participant', 'avatar_url', 'VARCHAR(500)'),
-        ('bet', 'bet_type', "VARCHAR(20) DEFAULT 'win'"),
-        ('bet', 'selection_order', 'VARCHAR(240)'),
-        ('user', 'last_daily_reward_at', 'DATETIME'),
-        ('user', 'last_truffe_at', 'DATETIME'),
-        ('user', 'truffes_balance', 'FLOAT DEFAULT 0.0'),
-        ('trophy', 'pig_name', 'VARCHAR(80)'),
-        ('trophy', 'trophy_key', 'VARCHAR(50)'),
-        ('trophy', 'date_earned', 'DATETIME'),
-        ('race', 'preview_segments_json', 'TEXT'),
-        ('pig', 'avatar_id', 'INTEGER'),
-        ('user', 'last_agenda_at', 'TIMESTAMP'),
-        ('user', 'agenda_plays_today', "INTEGER DEFAULT 0 NOT NULL"),
-    ]
-    table_migrations = [
-        'ALTER TABLE game_config ALTER COLUMN value TYPE TEXT',
-    ]
-    index_migrations = [
-        'CREATE UNIQUE INDEX IF NOT EXISTS ux_trophy_user_code ON trophy(user_id, code)',
-        'CREATE UNIQUE INDEX IF NOT EXISTS ux_bet_user_race ON bet(user_id, race_id)',
-        'CREATE INDEX IF NOT EXISTS ix_auction_status_ends_at ON auction(status, ends_at)',
-        'CREATE INDEX IF NOT EXISTS ix_race_status_scheduled_at ON race(status, scheduled_at)',
-        'CREATE INDEX IF NOT EXISTS ix_pig_vet_deadline ON pig(is_injured, is_alive, vet_deadline)',
-        # Index supplementaires pour la performance
-        'CREATE INDEX IF NOT EXISTS ix_pig_user_alive ON pig(user_id, is_alive)',
-        'CREATE INDEX IF NOT EXISTS ix_bet_user_status ON bet(user_id, status)',
-        'CREATE INDEX IF NOT EXISTS ix_user_username ON "user"(username)',
-        'CREATE INDEX IF NOT EXISTS ix_participant_race_pig ON participant(race_id, pig_id)',
-        'CREATE INDEX IF NOT EXISTS ix_balance_tx_user ON balance_transaction(user_id)',
-        'CREATE INDEX IF NOT EXISTS ix_course_plan_user_sched ON course_plan(user_id, scheduled_at)',
-        'CREATE INDEX IF NOT EXISTS ix_poker_player_table ON poker_player(table_id)',
-        'CREATE INDEX IF NOT EXISTS ix_poker_player_user ON poker_player(user_id)',
-        'CREATE INDEX IF NOT EXISTS ix_poker_hand_table ON poker_hand_history(table_id)',
-    ]
-    with db.engine.connect() as conn:
-        for statement in table_migrations:
-            try:
-                conn.execute(db.text(statement))
-                conn.commit()
-            except Exception as e:
-                conn.rollback()
-                logger.warning("Migration table echouee: %s — %s", statement[:80], e)
-        for table, col, col_type in migrations:
-            tbl = f'"{table}"'
-            try:
-                conn.execute(db.text(f"SELECT {col} FROM {tbl} LIMIT 1"))
-                conn.rollback()
-            except Exception:
-                conn.rollback()
-                try:
-                    conn.execute(db.text(f"ALTER TABLE {tbl} ADD COLUMN {col} {col_type}"))
-                    conn.commit()
-                except Exception as e:
-                    conn.rollback()
-                    logger.warning("Migration colonne echouee: %s.%s — %s", table, col, e)
-        for statement in index_migrations:
-            try:
-                conn.execute(db.text(statement))
-                conn.commit()
-            except Exception as e:
-                conn.rollback()
-                logger.warning("Migration index echouee: %s — %s", statement[:80], e)
-        try:
-            if db.engine.dialect.name == 'sqlite':
-                conn.execute(db.text("""
-                    UPDATE course_plan
-                    SET strategy_profile = json_object(
-                        'phase_1', COALESCE(strategy, 50),
-                        'phase_2', COALESCE(strategy, 50),
-                        'phase_3', COALESCE(strategy, 50)
-                    )
-                    WHERE strategy_profile IS NULL OR strategy_profile = ''
-                """))
-            else:
-                conn.execute(db.text("""
-                    UPDATE course_plan
-                    SET strategy_profile = json_build_object(
-                        'phase_1', COALESCE(strategy, 50),
-                        'phase_2', COALESCE(strategy, 50),
-                        'phase_3', COALESCE(strategy, 50)
-                    )::text
-                    WHERE strategy_profile IS NULL OR strategy_profile = ''
-                """))
-            conn.execute(db.text("""
-                UPDATE trophy
-                SET trophy_key = COALESCE(trophy_key, code),
-                    date_earned = COALESCE(date_earned, earned_at)
-            """))
-            conn.commit()
-        except Exception as e:
-            conn.rollback()
-            logger.warning("Migration donnees echouee: %s", e)
+def run_seeders(with_admin=True):
+    """Regroupe tous les seeds applicatifs pour une exécution explicite."""
+    if with_admin:
+        ensure_admin_user()
+    seed_users()
+    ensure_balance_transaction_snapshots()
+    ensure_next_race()
+    _init_grain_market()
+    seed_game_data()
+
+
+def register_cli_commands(app):
+    @app.cli.command('seed-db')
+    @click.option('--with-admin/--without-admin', default=True, show_default=True)
+    def seed_db_command(with_admin):
+        """Peuple les données initiales de l'application."""
+        run_seeders(with_admin=with_admin)
+        click.echo('✅ Seed termine.')
 
 
 def ensure_admin_user():

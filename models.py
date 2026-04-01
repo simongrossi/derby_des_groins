@@ -463,20 +463,24 @@ class Pig(db.Model):
         self.challenge_mort_wager = 0
         self.maybe_award_memorial_trophies()
 
-    def update_vitals(self):
+    def update_vitals(self, force_commit=False):
         """Décroissance Tamagotchi en fonction du temps écoulé.
         Appelé avant chaque interaction pour synchroniser l'état."""
         from utils.time_utils import calculate_weekend_truce_hours
         from data import DEFAULT_PIG_WEIGHT_KG
         from services.economy_service import get_progression_settings
 
+        from flask import current_app
+
         now = datetime.utcnow()
         progression = get_progression_settings()
+        min_commit_interval = current_app.config.get('PIG_VITALS_COMMIT_INTERVAL_SECONDS', 60)
         self.award_longevity_trophies()
         if not self.last_updated:
             self.last_updated = now
             return
-        elapsed_hours = (now - self.last_updated).total_seconds() / 3600
+        elapsed_seconds = (now - self.last_updated).total_seconds()
+        elapsed_hours = elapsed_seconds / 3600
         if elapsed_hours < 0.01:
             return
         truce_hours = calculate_weekend_truce_hours(self.last_updated, now)
@@ -484,7 +488,8 @@ class Pig(db.Model):
         hours = min(effective_hours, 24)
         if effective_hours < 0.01:
             self.last_updated = now
-            db.session.commit()
+            if force_commit or elapsed_seconds >= min_commit_interval:
+                db.session.commit()
             return
 
         reference_interaction = self.last_interaction_at or self.last_updated
@@ -532,7 +537,8 @@ class Pig(db.Model):
 
         self.mark_bad_state_if_needed()
         self.last_updated = now
-        db.session.commit()
+        if force_commit or elapsed_seconds >= min_commit_interval:
+            db.session.commit()
 
 
 
