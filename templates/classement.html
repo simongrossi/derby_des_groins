@@ -109,11 +109,11 @@
 
     <!-- ===== ONGLETS ===== -->
     <div class="flex flex-wrap gap-2 mb-6">
-        <button class="tab-btn active card px-4 py-3 text-sm font-bold border border-white/10 cursor-pointer" data-tab="general">🏆 General</button>
-        <button class="tab-btn card px-4 py-3 text-sm font-bold border border-white/10 cursor-pointer text-white/50" data-tab="abattoir">🔪 Abattoir & Cimetiere</button>
-        <button class="tab-btn card px-4 py-3 text-sm font-bold border border-white/10 cursor-pointer text-white/50" data-tab="paris">🎟️ Paris & Fortune</button>
-        <button class="tab-btn card px-4 py-3 text-sm font-bold border border-white/10 cursor-pointer text-white/50" data-tab="elevage">🐷 Elevage & Ecole</button>
-        <button class="tab-btn card px-4 py-3 text-sm font-bold border border-white/10 cursor-pointer text-white/50" data-tab="honte">💩 Mur de la Honte</button>
+        <button type="button" class="tab-btn active card px-4 py-3 text-sm font-bold border border-white/10 cursor-pointer" data-tab="general">🏆 General</button>
+        <button type="button" class="tab-btn card px-4 py-3 text-sm font-bold border border-white/10 cursor-pointer text-white/50" data-tab="abattoir">🔪 Abattoir & Cimetiere</button>
+        <button type="button" class="tab-btn card px-4 py-3 text-sm font-bold border border-white/10 cursor-pointer text-white/50" data-tab="paris">🎟️ Paris & Fortune</button>
+        <button type="button" class="tab-btn card px-4 py-3 text-sm font-bold border border-white/10 cursor-pointer text-white/50" data-tab="elevage">🐷 Elevage & Ecole</button>
+        <button type="button" class="tab-btn card px-4 py-3 text-sm font-bold border border-white/10 cursor-pointer text-white/50" data-tab="honte">💩 Mur de la Honte</button>
     </div>
 
     <!-- ==================== TAB: GENERAL ==================== -->
@@ -604,15 +604,29 @@
 
 <script>
     // ===== TABS =====
-    document.querySelectorAll('.tab-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-            document.querySelectorAll('.tab-btn').forEach(b => { b.classList.remove('active'); b.classList.add('text-white/50'); });
-            document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    function activateClassementTab(tabName) {
+        const panel = document.getElementById('tab-' + tabName);
+        if (!panel) return;
+        document.querySelectorAll('.tab-btn').forEach(b => { b.classList.remove('active'); b.classList.add('text-white/50'); });
+        document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+        const btn = document.querySelector('.tab-btn[data-tab="' + tabName + '"]');
+        if (btn) {
             btn.classList.add('active');
             btn.classList.remove('text-white/50');
-            document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+        }
+        panel.classList.add('active');
+        history.replaceState(null, '', '#tab=' + tabName);
+    }
+
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            activateClassementTab(btn.dataset.tab);
         });
     });
+
+    const hashTab = (window.location.hash || '').replace('#tab=', '');
+    if (hashTab) activateClassementTab(hashTab);
 
     // ===== CHART DATA =====
     const chartLabels = {{ chart_data.labels | tojson }};

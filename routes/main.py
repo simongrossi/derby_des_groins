@@ -490,13 +490,31 @@ def history():
         target_user = current_user
     
     all_users = User.query.order_by(User.username).all()
-    
+
     bets = Bet.query.filter_by(user_id=target_user.id).order_by(Bet.placed_at.desc()).all()
-    transactions = BalanceTransaction.query.filter_by(user_id=target_user.id).order_by(BalanceTransaction.created_at.desc(), BalanceTransaction.id.desc()).all()
-    
-    global_transactions = []
+
+    tx_filter_raw = request.args.get('tx_u', 'all' if current_user.is_admin else str(current_user.id))
+    tx_filter_user = None
+
+    tx_query = BalanceTransaction.query.order_by(BalanceTransaction.created_at.desc(), BalanceTransaction.id.desc())
     if current_user.is_admin:
-        global_transactions = BalanceTransaction.query.order_by(BalanceTransaction.created_at.desc(), BalanceTransaction.id.desc()).all()
+        if tx_filter_raw != 'all':
+            try:
+                tx_filter_id = int(tx_filter_raw)
+            except (TypeError, ValueError):
+                tx_filter_id = current_user.id
+            tx_filter_user = User.query.get(tx_filter_id)
+            if tx_filter_user:
+                tx_query = tx_query.filter_by(user_id=tx_filter_user.id)
+            else:
+                tx_filter_raw = 'all'
+                tx_filter_user = None
+    else:
+        tx_filter_raw = str(current_user.id)
+        tx_filter_user = current_user
+        tx_query = tx_query.filter_by(user_id=current_user.id)
+
+    transactions = tx_query.all()
 
     race_history = get_race_history_entries()
 
@@ -516,7 +534,8 @@ def history():
         lost_bets=lost_bets,
         settled_bets=settled_bets,
         transactions=transactions,
-        global_transactions=global_transactions,
+        tx_filter_raw=tx_filter_raw,
+        tx_filter_user=tx_filter_user,
         race_history=race_history,
         bet_types=get_configured_bet_types(),
         credited_amount=credited_amount,
