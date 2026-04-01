@@ -65,6 +65,18 @@
             vertical-align: top;
         }
         .table-shell tr:last-child td { border-bottom: none; }
+        .tx-sort-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            font: inherit;
+            color: inherit;
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            padding: 0;
+        }
+        .tx-sort-btn:hover { color: rgba(255, 255, 255, 0.9); }
     </style>
 </head>
 <body>
@@ -232,22 +244,45 @@
                 <h2 class="font-title text-3xl text-white">💰 Journal BitGroins</h2>
                 <p class="text-white/45 font-semibold mt-1">Chaque credit, debit, remboursement ou prime reste visible pour reconstituer ton solde.</p>
             </div>
-            
-            <form method="GET" action="/history" class="flex items-center gap-3">
-                <label for="u_filter" class="text-xs font-bold text-white/40 uppercase tracking-wider">Inspecter un eleveur :</label>
-                <select name="u" id="u_filter" onchange="this.form.submit()"
-                        class="bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-white font-bold text-sm focus:outline-none focus:border-cyan-500/50">
-                    {% for u in all_users %}
-                    <option value="{{ u.id }}" {% if u.id == target_user.id %}selected{% endif %}>{{ u.username }}</option>
-                    {% endfor %}
-                </select>
+
+            <form method="GET" action="/history" class="flex flex-wrap items-center gap-3 rounded-2xl border border-cyan-400/15 bg-cyan-500/5 px-3 py-2">
+                <input type="hidden" name="u" value="{{ target_user.id }}">
+                <label for="tx_u_filter" class="text-xs font-bold text-cyan-100/70 uppercase tracking-wider">Filtre journal :</label>
+                <div class="relative">
+                    <select name="tx_u" id="tx_u_filter" onchange="this.form.submit()"
+                            class="appearance-none min-w-[220px] bg-white/5 border border-white/10 rounded-xl pl-4 pr-10 py-2 text-white font-bold text-sm focus:outline-none focus:border-cyan-500/60">
+                        {% if user.is_admin %}
+                        <option value="all" {% if tx_filter_raw == 'all' %}selected{% endif %}>👥 Tous les utilisateurs</option>
+                        {% endif %}
+                        {% for u in all_users %}
+                        <option value="{{ u.id }}" {% if tx_filter_raw == (u.id|string) %}selected{% endif %}>{{ u.username }}</option>
+                        {% endfor %}
+                    </select>
+                    <span class="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-white/50">▾</span>
+                </div>
+                {% if user.is_admin and tx_filter_raw != 'all' %}
+                <a href="/history?u={{ target_user.id }}#bitgroins"
+                   class="inline-flex items-center gap-1 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-bold text-white/70 hover:bg-white/10 transition-colors">
+                    Réinitialiser
+                </a>
+                {% endif %}
             </form>
         </div>
 
         <div class="card p-5 lg:p-6 space-y-4">
             <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                    <h3 class="text-white text-xl font-extrabold">{% if target_user.id == user.id %}Mon journal{% else %}Journal de {{ target_user.username }}{% endif %} 🪙 BitGroins</h3>
+                    <h3 class="text-white text-xl font-extrabold">
+                        {% if user.is_admin and tx_filter_raw == 'all' %}
+                        Journal global des utilisateurs 🪙 BitGroins
+                        {% elif tx_filter_user %}
+                        Journal de {{ tx_filter_user.username }} 🪙 BitGroins
+                        {% elif target_user.id == user.id %}
+                        Mon journal 🪙 BitGroins
+                        {% else %}
+                        Journal de {{ target_user.username }} 🪙 BitGroins
+                        {% endif %}
+                    </h3>
                     <p class="text-white/45 text-sm font-semibold mt-1">Les mouvements sont horodates et incluent le solde apres transaction.</p>
                 </div>
                 <span class="pill bg-cyan-400/12 text-cyan-200 border border-cyan-400/20">{{ transactions | length }} mouvement(s)</span>
@@ -255,20 +290,26 @@
 
             {% if transactions %}
             <div class="table-shell overflow-x-auto">
-                <table>
+                <table id="bitgroins-table">
                     <thead>
                         <tr>
-                            <th>Date</th>
-                            <th>Mouvement</th>
+                            <th><button type="button" class="tx-sort-btn" data-sort-key="date">Date ↕</button></th>
+                            {% if user.is_admin %}
+                            <th><button type="button" class="tx-sort-btn" data-sort-key="user">Utilisateur ↕</button></th>
+                            {% endif %}
+                            <th><button type="button" class="tx-sort-btn" data-sort-key="amount">Mouvement ↕</button></th>
                             <th>Detail</th>
-                            <th>Solde apres</th>
+                            <th><button type="button" class="tx-sort-btn" data-sort-key="balance">Solde apres ↕</button></th>
                         </tr>
                     </thead>
-                    <tbody>
+                    <tbody id="bitgroins-table-body">
                         {% for tx in transactions %}
                         {% set amount_color = 'text-emerald-300' if tx.amount > 0 else ('text-rose-300' if tx.amount < 0 else 'text-cyan-200') %}
-                        <tr>
+                        <tr data-date="{{ tx.created_at.timestamp() }}" data-user="{{ (tx.user.username if tx.user else 'Utilisateur supprime')|lower }}" data-amount="{{ tx.amount }}" data-balance="{{ tx.balance_after or 0 }}">
                             <td class="text-white/70 text-sm font-bold whitespace-nowrap">{{ tx.created_at.strftime('%d/%m/%Y %H:%M') }}</td>
+                            {% if user.is_admin %}
+                            <td class="text-white font-bold whitespace-nowrap">{{ tx.user.username if tx.user else 'Utilisateur supprime' }}</td>
+                            {% endif %}
                             <td>
                                 <p class="font-extrabold {{ amount_color }}">
                                     {% if tx.amount > 0 %}+{% endif %}{{ "%.2f"|format(tx.amount) }} 🪙
@@ -297,62 +338,6 @@
             {% endif %}
         </div>
 
-        {% if user.is_admin %}
-        <div class="card p-5 lg:p-6 space-y-4">
-            <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                    <h3 class="text-white text-xl font-extrabold">Vue admin - flux global des utilisateurs</h3>
-                    <p class="text-white/45 text-sm font-semibold mt-1">Pratique pour remonter un litige, une suspicion de triche ou une incoherence de solde.</p>
-                </div>
-                <span class="pill bg-indigo-400/12 text-indigo-200 border border-indigo-400/20">{{ global_transactions | length }} entree(s)</span>
-            </div>
-
-            {% if global_transactions %}
-            <div class="table-shell overflow-x-auto">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Date</th>
-                            <th>Utilisateur</th>
-                            <th>Mouvement</th>
-                            <th>Detail</th>
-                            <th>Solde apres</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for tx in global_transactions %}
-                        {% set amount_color = 'text-emerald-300' if tx.amount > 0 else ('text-rose-300' if tx.amount < 0 else 'text-cyan-200') %}
-                        <tr>
-                            <td class="text-white/70 text-sm font-bold whitespace-nowrap">{{ tx.created_at.strftime('%d/%m/%Y %H:%M') }}</td>
-                            <td class="text-white font-bold">{{ tx.user.username if tx.user else 'Utilisateur supprime' }}</td>
-                            <td>
-                                <p class="font-extrabold {{ amount_color }}">
-                                    {% if tx.amount > 0 %}+{% endif %}{{ "%.2f"|format(tx.amount) }} 🪙
-                                </p>
-                                <p class="text-white/35 text-xs font-semibold mt-1">{{ tx.reason_label }}</p>
-                            </td>
-                            <td>
-                                <p class="text-white font-bold">{{ tx.details or 'Aucun detail complementaire' }}</p>
-                                <p class="text-white/35 text-xs font-semibold mt-1">
-                                    Avant {{ "%.2f"|format(tx.balance_before or 0) }} 🪙
-                                    {% if tx.reference_type and tx.reference_id %}
-                                    • {{ tx.reference_type }} #{{ tx.reference_id }}
-                                    {% endif %}
-                                </p>
-                            </td>
-                            <td class="text-white font-extrabold whitespace-nowrap">{{ "%.2f"|format(tx.balance_after or 0) }} 🪙</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-            {% else %}
-            <div class="soft-card p-8 text-center">
-                <p class="text-white/50 font-bold">Aucun flux global enregistre.</p>
-            </div>
-            {% endif %}
-        </div>
-        {% endif %}
     </section>
 
     <section id="paris" class="space-y-4">
@@ -462,6 +447,40 @@
   // Activate from URL hash or default to courses
   const hash = window.location.hash.replace('#', '');
   activate(sections[hash] ? hash : 'courses');
+
+  const sortButtons = document.querySelectorAll('.tx-sort-btn');
+  const txBody = document.getElementById('bitgroins-table-body');
+  if (txBody && sortButtons.length) {
+    const state = { key: 'date', dir: 'desc' };
+    const parseVal = (row, key) => {
+      if (key === 'user') return (row.dataset.user || '').toLowerCase();
+      const n = Number(row.dataset[key] || 0);
+      return Number.isNaN(n) ? 0 : n;
+    };
+    const sortRows = (key, dir) => {
+      const rows = Array.from(txBody.querySelectorAll('tr'));
+      rows.sort((a, b) => {
+        const va = parseVal(a, key);
+        const vb = parseVal(b, key);
+        if (typeof va === 'string') {
+          const cmp = va.localeCompare(vb, 'fr');
+          return dir === 'asc' ? cmp : -cmp;
+        }
+        return dir === 'asc' ? va - vb : vb - va;
+      });
+      rows.forEach(r => txBody.appendChild(r));
+    };
+
+    sortButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const key = btn.dataset.sortKey;
+        const nextDir = (state.key === key && state.dir === 'asc') ? 'desc' : 'asc';
+        state.key = key;
+        state.dir = nextDir;
+        sortRows(key, nextDir);
+      });
+    });
+  }
 })();
 </script>
 {% include '_footer.html' %}
