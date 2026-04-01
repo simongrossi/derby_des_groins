@@ -321,20 +321,18 @@ def place_bet():
         odds_at_bet=odds_at_bet,
         status='pending'
     )
-    try:
-        if not user.pay(
-            amount,
-            reason_code='bet_stake',
-            reason_label='Mise de pari',
-            details=f"Ticket {bet_types[bet_type]['label'].lower()} sur la course #{race_id}: {bet_label}.",
-            reference_type='race',
-            reference_id=race_id,
-        ):
-            flash("Pas assez de BitGroins pour valider ce ticket.", "error")
-            return redirect(url_for('race.paris'))
-        db.session.add(bet)
-        db.session.commit()
-
+    if not user.pay(
+        amount,
+        reason_code='bet_stake',
+        reason_label='Mise de pari',
+        details=f"Ticket {bet_types[bet_type]['label'].lower()} sur la course #{race_id}: {bet_label}.",
+        reference_type='race',
+        reference_id=race_id,
+    ):
+        flash("Pas assez de BitGroins pour valider ce ticket.", "error")
+        return redirect(url_for('race.paris'))
+    db.session.add(bet)
+    db.session.commit()
 
     flash(f"{bet_types[bet_type]['icon']} Ticket {bet_types[bet_type]['label'].lower()} validé sur {bet_label}.", "success")
     return redirect(url_for('race.paris'))
