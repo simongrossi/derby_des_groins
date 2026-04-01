@@ -13,13 +13,28 @@ MAX_CLICKS = 7
 GRID_SIZE = 20
 
 
+def _get_truffe_config():
+    from helpers import get_config
+    try:
+        return int(get_config('truffe_daily_limit', '1'))
+    except (ValueError, TypeError):
+        return 1
+
+
 def _already_played_today(user):
-    """Return True if the user already played the truffle hunt today. Admins: never blocked."""
+    """Note: This function now also resets the daily counter if the day has changed."""
     if getattr(user, 'is_admin', False):
         return False
     if not user.last_truffe_at:
         return False
-    return user.last_truffe_at.date() >= date.today()
+    
+    limit = _get_truffe_config()
+    today = date.today()
+    if user.last_truffe_at.date() < today:
+        user.truffe_plays_today = 0
+        db.session.commit()
+    
+    return user.truffe_plays_today >= limit
 
 
 @truffes_bp.route('/truffes')
@@ -30,6 +45,8 @@ def truffes():
 
     user = User.query.get(user_id)
     already_played = _already_played_today(user)
+    limit = _get_truffe_config()
+    
     return render_template(
         'truffes.html',
         user=user,
@@ -38,13 +55,15 @@ def truffes():
         max_clicks=MAX_CLICKS,
         grid_size=GRID_SIZE,
         already_played=already_played,
+        limit=limit,
+        remaining=max(0, limit - user.truffe_plays_today) if not getattr(user, 'is_admin', False) else limit
     )
 
 
 @truffes_bp.route('/truffes/play', methods=['POST'])
 @limiter.limit("10 per minute")
 def truffes_play():
-    """Called when the user starts a game (first click). Marks the day as used."""
+    """Called when the user starts a game (first click). Increments the daily counter."""
     user_id = session.get('user_id')
     if not user_id:
         return jsonify({'ok': False, 'error': 'Non connecté'}), 401
@@ -54,9 +73,10 @@ def truffes_play():
         return jsonify({'ok': False, 'error': 'Utilisateur introuvable'}), 404
 
     if _already_played_today(user):
-        return jsonify({'ok': False, 'error': 'Déjà joué aujourd\'hui'}), 429
+        return jsonify({'ok': False, 'error': 'Limite quotidienne atteinte'}), 429
 
     user.last_truffe_at = datetime.utcnow()
+    user.truffe_plays_today += 1
     db.session.commit()
     return jsonify({'ok': True})
 

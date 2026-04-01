@@ -230,11 +230,25 @@
                             <input class="input-admin w-full mt-2" type="number" min="1" step="1" name="max_bet_race" value="{{ settings.max_bet_race }}">
                         </label>
                         <label class="text-white/65 text-sm font-bold col-span-2">
+                            Tickets max / course
+                            <input class="input-admin w-full mt-2" type="number" min="1" step="1" name="bets_per_race_limit" value="{{ settings.bets_per_race_limit }}">
+                        </label>
+                        <label class="text-white/65 text-sm font-bold col-span-2">
                             Cap de payout par ticket
                             <input class="input-admin w-full mt-2" type="number" min="0" step="1" name="max_payout_race" value="{{ settings.max_payout_race }}">
                             <span class="text-white/30 text-xs font-semibold mt-2 block">0 = pas de cap. La limite coupe les jackpots extrêmes même si la cote calculée est plus haute.</span>
                         </label>
                     </div>
+                </div>
+            </div>
+
+            <div class="card p-5 mt-6">
+                <h3 class="font-title text-lg text-white mb-4">🍄 Activités</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <label class="text-white/65 text-sm font-bold">
+                        Limites truffes / jour
+                        <input class="input-admin w-full mt-2" type="number" min="1" step="1" name="truffe_daily_limit" value="{{ settings.truffe_daily_limit }}">
+                    </label>
                 </div>
             </div>
 

@@ -54,6 +54,8 @@ class EconomySettings:
     min_bet_race: float
     max_bet_race: float
     max_payout_race: float
+    truffe_daily_limit: int
+    bets_per_race_limit: int
     bet_types: dict[str, dict]
 
 
@@ -155,6 +157,8 @@ def _normalize_settings(
     min_bet_race,
     max_bet_race,
     max_payout_race,
+    truffe_daily_limit,
+    bets_per_race_limit,
     bet_types,
 ):
     min_bet = _coerce_float(min_bet_race, DEFAULT_MIN_BET_RACE, minimum=1.0)
@@ -180,6 +184,8 @@ def _normalize_settings(
         min_bet_race=min_bet,
         max_bet_race=max_bet,
         max_payout_race=payout_cap,
+        truffe_daily_limit=_coerce_int(truffe_daily_limit, 1, minimum=1, maximum=50),
+        bets_per_race_limit=_coerce_int(bets_per_race_limit, 1, minimum=1, maximum=20),
         bet_types=_normalize_bet_types(bet_types),
     )
 
@@ -202,6 +208,8 @@ def get_economy_settings():
         min_bet_race=get_config('economy_min_bet_race', str(DEFAULT_MIN_BET_RACE)),
         max_bet_race=get_config('economy_max_bet_race', str(DEFAULT_MAX_BET_RACE)),
         max_payout_race=get_config('economy_max_payout_race', str(DEFAULT_MAX_PAYOUT_RACE)),
+        truffe_daily_limit=get_config('truffe_daily_limit', '1'),
+        bets_per_race_limit=get_config('bets_per_race_limit', '1'),
         bet_types=_load_json_config('economy_bet_type_overrides', {}),
     )
 
@@ -234,6 +242,8 @@ def build_economy_settings_from_form(form, current_settings=None):
         min_bet_race=form.get('min_bet_race', settings.min_bet_race),
         max_bet_race=form.get('max_bet_race', settings.max_bet_race),
         max_payout_race=form.get('max_payout_race', settings.max_payout_race),
+        truffe_daily_limit=form.get('truffe_daily_limit', settings.truffe_daily_limit),
+        bets_per_race_limit=form.get('bets_per_race_limit', settings.bets_per_race_limit),
         bet_types=raw_bet_overrides,
     )
 
@@ -256,6 +266,8 @@ def save_economy_settings(settings):
         'economy_min_bet_race': settings.min_bet_race,
         'economy_max_bet_race': settings.max_bet_race,
         'economy_max_payout_race': settings.max_payout_race,
+        'truffe_daily_limit': settings.truffe_daily_limit,
+        'bets_per_race_limit': settings.bets_per_race_limit,
         'economy_bet_type_overrides': _serialize_json({
             key: {'house_edge': meta['house_edge']}
             for key, meta in settings.bet_types.items()

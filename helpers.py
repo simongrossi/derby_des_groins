@@ -28,6 +28,7 @@ from data import (
     BOURSE_GRAIN_LAYOUT, CEREALS,
 )
 from race_engine import CourseManager
+from services.finance_service import credit_user_balance
 
 
 # ─── HELPERS CONFIG ─────────────────────────────────────────────────────────
@@ -54,6 +55,8 @@ def init_default_config():
         'market_duration': '120',
         'min_real_participants': '2',
         'empty_race_mode': 'fill',
+        'truffe_daily_limit': '1',
+        'bets_per_race_limit': '1',
     }
     for k, v in defaults.items():
         if not GameConfig.query.filter_by(key=k).first():
@@ -258,7 +261,20 @@ def run_race_if_needed():
         final_pigs = sorted(manager.participants, key=lambda x: (x.finish_time or 9999, -x.distance))
         p_by_id = {p.id: p for p in participants}
         order = [p_by_id[fp.id] for fp in final_pigs if fp.id in p_by_id]
-        for i, p in enumerate(order): p.finish_position = i + 1
+        for i, p in enumerate(order):
+            p.finish_position = i + 1
+            # Récompense pour les 3 premiers (proprietaires reels)
+            reward = RACE_POSITION_REWARDS.get(p.finish_position, 0)
+            if p.pig_id and reward > 0:
+                pig = Pig.query.get(p.pig_id)
+                if pig and pig.user_id:
+                    credit_user_balance(
+                        pig.user_id, reward,
+                        reason_code='race_reward',
+                        reason_label=f'Prime de course ({p.finish_position}e place)',
+                        details=f'Place {p.finish_position} sur la course #{race.id} pour {p.name}',
+                        reference_type='race', reference_id=race.id
+                    )
         race.winner_name = order[0].name; race.winner_odds = order[0].odds; race.finished_at = now; race.status = 'finished'
         db.session.commit()
     if due_races: ensure_next_race()
@@ -322,8 +338,3 @@ def get_seconds_until(dt):
 def get_prix_moyen_groin(): return 42.0
 def is_market_open(): return True
 def get_next_market_time(): return datetime.now() + timedelta(hours=1)
-def get_race_history_entries(): return []
-def record_balance_transaction(*args, **kwargs): pass
-def credit_user_balance(uid, amt, **kwargs):
-    u = User.query.get(uid)
-    if u: u.balance += amt; db.session.commit()

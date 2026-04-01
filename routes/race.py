@@ -287,9 +287,18 @@ def place_bet():
             flash("Les paris complexes (3+ cochons) necessitent que ton cochon participe a la course.", "warning")
             return redirect(url_for('race.paris'))
 
-    existing = apply_row_lock(Bet.query.filter_by(user_id=user.id, race_id=race_id)).first()
-    if existing:
-        flash("Tu as déjà un ticket sur cette course.", "warning")
+    from helpers import get_config
+    try:
+        max_bets = int(get_config('bets_per_race_limit', '1'))
+    except (ValueError, TypeError):
+        max_bets = 1
+
+    existing_count = Bet.query.filter_by(user_id=user.id, race_id=race_id).count()
+    if existing_count >= max_bets:
+        if max_bets <= 1:
+            flash("Tu as déjà un ticket sur cette course.", "warning")
+        else:
+            flash(f"Tu as déjà atteint la limite de {max_bets} ticket(s) sur cette course.", "warning")
         return redirect(url_for('race.paris'))
 
     raw_odds = calculate_bet_odds(participants_by_id, selection_ids, bet_type)
@@ -325,10 +334,7 @@ def place_bet():
             return redirect(url_for('race.paris'))
         db.session.add(bet)
         db.session.commit()
-    except IntegrityError:
-        db.session.rollback()
-        flash("Tu as déjà un ticket sur cette course.", "warning")
-        return redirect(url_for('race.paris'))
+
 
     flash(f"{bet_types[bet_type]['icon']} Ticket {bet_types[bet_type]['label'].lower()} validé sur {bet_label}.", "success")
     return redirect(url_for('race.paris'))
