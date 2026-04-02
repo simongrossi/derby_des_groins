@@ -93,19 +93,19 @@
 {% set total_staked = bets | sum(attribute='amount') %}
 
 <main class="max-w-7xl mx-auto px-4 py-8 space-y-8">
-    <section class="card p-6 lg:p-8">
-        <div class="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-            <div>
-                <p class="text-xs uppercase tracking-[0.35em] text-yellow-300/70 font-extrabold">Audit du derby</p>
-                <h1 class="font-title text-3xl md:text-4xl text-white mt-3">Historique & Tracabilite</h1>
-                <p class="text-white/55 font-semibold mt-3 max-w-3xl">
+    <section class="card px-5 py-5 lg:px-8 lg:py-6">
+        <div class="flex flex-col gap-4 lg:grid lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center lg:gap-6">
+            <div class="min-w-0">
+                <p class="text-[11px] uppercase tracking-[0.32em] text-yellow-300/70 font-extrabold">Audit du derby</p>
+                <h1 class="font-title text-3xl md:text-4xl text-white mt-2">Historique & Tracabilite</h1>
+                <p class="text-white/55 font-semibold mt-2 max-w-2xl">
                     Retrouve toutes les courses terminees, tes tickets, et le journal des credits/debits BitGroins.
                     {% if user.is_admin %}
                     En tant qu'admin, tu vois aussi le flux global des utilisateurs.
                     {% endif %}
                 </p>
             </div>
-            <nav class="flex flex-wrap gap-2" id="history-tabs">
+            <nav class="flex flex-wrap gap-2 lg:justify-end" id="history-tabs">
                 <button data-tab="courses" class="hist-tab pill bg-yellow-400/15 text-yellow-300 border border-yellow-400/20 ring-2 ring-yellow-400/40">🏁 Courses</button>
                 <button data-tab="bitgroins" class="hist-tab pill bg-cyan-400/12 text-cyan-200 border border-cyan-400/20">💰 Journal BitGroins</button>
                 <button data-tab="paris" class="hist-tab pill bg-pink-400/12 text-pink-200 border border-pink-400/20">🎯 Mes Paris</button>
