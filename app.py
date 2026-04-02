@@ -21,6 +21,7 @@ from models import (
 from data import PIG_ORIGINS, CEREALS, TRAININGS, SCHOOL_LESSONS
 from helpers import init_default_config, ensure_next_race, get_first_injured_pig
 from services.finance_service import record_balance_transaction
+from services.auth_log_service import purge_old_auth_events
 from services.pig_service import apply_origin_bonus, generate_weight_kg_for_profile, clamp_pig_weight, create_preloaded_admin_pigs, build_unique_pig_name
 from routes import all_blueprints
 from scheduler import start_scheduler, should_autostart_scheduler
@@ -74,6 +75,7 @@ def create_app():
     app.config['PIG_VITALS_COMMIT_INTERVAL_SECONDS'] = int(
         os.environ.get('PIG_VITALS_COMMIT_INTERVAL_SECONDS', '60')
     )
+    app.config['AUTH_LOG_RETENTION_DAYS'] = int(os.environ.get('AUTH_LOG_RETENTION_DAYS', '180'))
 
     db.init_app(app)
     migrate.init_app(app, db)
@@ -177,6 +179,14 @@ def register_cli_commands(app):
         """Peuple les données initiales de l'application."""
         run_seeders(with_admin=with_admin)
         click.echo('✅ Seed termine.')
+
+    @app.cli.command('purge-auth-logs')
+    @click.option('--days', default=None, type=int, help='Override retention days for this run.')
+    def purge_auth_logs_command(days):
+        """Supprime les événements d'authentification anciens."""
+        retention_days = int(days or app.config.get('AUTH_LOG_RETENTION_DAYS', 180))
+        deleted_count = purge_old_auth_events(retention_days)
+        click.echo(f'🧹 Auth logs purgés: {deleted_count} (rétention: {retention_days} jours)')
 
 
 def ensure_admin_user():
