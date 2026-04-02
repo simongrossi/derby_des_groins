@@ -47,6 +47,7 @@ def _get_state():
     if not state:
         state = _new_game_state()
         session['cochon_pendu_game'] = state
+        session.modified = True
     return state
 
 
@@ -75,7 +76,10 @@ def cochon_pendu():
     if not user_id:
         return redirect(url_for('auth.login'))
 
-    session['cochon_pendu_game'] = _new_game_state()
+    current_state = session.get('cochon_pendu_game')
+    if not current_state or current_state.get('status') in ('won', 'lost'):
+        session['cochon_pendu_game'] = _new_game_state()
+        session.modified = True
 
     user = User.query.get(user_id)
     return render_template(
@@ -146,6 +150,7 @@ def cochon_pendu_guess():
         state['penalty_applied'] = True
 
     session['cochon_pendu_game'] = state
+    session.modified = True
     db.session.commit()
     db.session.refresh(user)
 
