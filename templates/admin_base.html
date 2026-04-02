@@ -186,6 +186,9 @@
                 </a>
 
                 <div class="sidebar-section">Systeme</div>
+                <a href="{{ url_for('admin.admin_auth_logs') }}" class="sidebar-link {{ 'active' if admin_tab == 'auth_logs' }}">
+                    <span class="text-base w-6 text-center">🔐</span> Logs connexions
+                </a>
                 <a href="{{ url_for('admin.admin_notifications') }}" class="sidebar-link {{ 'active' if admin_tab == 'notifications' }}">
                     <span class="text-base w-6 text-center">📧</span> Notifications
                 </a>
@@ -226,6 +229,9 @@
             </a>
             <a href="{{ url_for('admin.admin_notifications') }}" class="flex flex-col items-center gap-0.5 px-2 py-1 rounded-lg text-[10px] font-bold {{ 'text-indigo-400' if admin_tab == 'notifications' else 'text-white/40' }}">
                 <span class="text-lg">📧</span>SMTP
+            </a>
+            <a href="{{ url_for('admin.admin_auth_logs') }}" class="flex flex-col items-center gap-0.5 px-2 py-1 rounded-lg text-[10px] font-bold {{ 'text-indigo-400' if admin_tab == 'auth_logs' else 'text-white/40' }}">
+                <span class="text-lg">🔐</span>Logs
             </a>
             <a href="{{ url_for('admin.admin_avatars') }}" class="flex flex-col items-center gap-0.5 px-2 py-1 rounded-lg text-[10px] font-bold {{ 'text-indigo-400' if admin_tab == 'avatars' else 'text-white/40' }}">
                 <span class="text-lg">🖼️</span>Avatars
