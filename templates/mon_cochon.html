@@ -166,13 +166,28 @@
             <p class="text-white/35 text-xs font-bold mt-2">Quand ton solde tombe trop bas, le jeu verse automatiquement une petite prime d'urgence pour t'éviter le soft-lock.</p>
         </div>
         {% endif %}
+        {% if pigs_data|length > 1 %}
+        <div class="flex flex-wrap items-center justify-center gap-3 mb-8">
+            {% for pd in pigs_data %}
+            <button onclick="switchPig('{{ pd.pig.id }}')" id="btn-select-pig-{{ pd.pig.id }}"
+                    class="pig-tab-btn flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold transition-all border border-pink-500/30 bg-pink-500/10 text-pink-200 hover:bg-pink-500/20 hover:-translate-y-1">
+                <span class="text-xl">{{ pd.pig.emoji }}</span>
+                <span>{{ pd.pig.name }}</span>
+                {% if pd.pig.is_injured %}
+                <span class="text-red-500 text-xs animate-pulse" title="Blessé">🚨</span>
+                {% endif %}
+            </button>
+            {% endfor %}
+        </div>
+        {% endif %}
+
         {% for pd in pigs_data %}
         {% set pig = pd.pig %}
         {% set injury_risk = pig.injury_risk or 10.0 %}
         {% set weight_profile = pd.weight_profile %}
         {% set freshness = pd.freshness_bonus %}
         {% set performance_flags = pd.performance_flags %}
-        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8 p-1 relative">
+        <div id="pig-wrapper-{{ pd.pig.id }}" class="pig-wrapper {% if loop.index0 > 0 %}hidden{% endif %} grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8 p-1 relative">
             
             <!-- LEFT COLUMN: Main ID Card -->
             <div class="xl:col-span-1">
@@ -758,6 +773,31 @@
         document.getElementById('avatar-input-' + pigId).value = avatarId;
     }
 
+    // Gestion du basculement entre les cochons de la porcherie
+    function switchPig(pigId) {
+        document.querySelectorAll('.pig-wrapper').forEach(el => {
+            el.classList.add('hidden');
+        });
+
+        const targetWrapper = document.getElementById('pig-wrapper-' + pigId);
+        if (targetWrapper) {
+            targetWrapper.classList.remove('hidden');
+        }
+
+        document.querySelectorAll('.pig-tab-btn').forEach(btn => {
+            btn.classList.remove('bg-pink-500/40', 'border-pink-400');
+            btn.classList.add('bg-pink-500/10', 'border-pink-500/30');
+        });
+
+        const activeBtn = document.getElementById('btn-select-pig-' + pigId);
+        if (activeBtn) {
+            activeBtn.classList.remove('bg-pink-500/10', 'border-pink-500/30');
+            activeBtn.classList.add('bg-pink-500/40', 'border-pink-400');
+        }
+
+        localStorage.setItem('derby_selected_pig', pigId);
+    }
+
     const _vetTimers = [];
 
     function startVetCountdowns() {
@@ -783,6 +823,19 @@
             }, 1000));
         });
     }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const savedPigId = localStorage.getItem('derby_selected_pig');
+        if (savedPigId && document.getElementById('pig-wrapper-' + savedPigId)) {
+            switchPig(savedPigId);
+        } else {
+            const firstBtn = document.querySelector('.pig-tab-btn');
+            if (firstBtn) {
+                firstBtn.classList.remove('bg-pink-500/10', 'border-pink-500/30');
+                firstBtn.classList.add('bg-pink-500/40', 'border-pink-400');
+            }
+        }
+    });
 
     startVetCountdowns();
     window.addEventListener('beforeunload', () => _vetTimers.forEach(clearInterval));
