@@ -1,0 +1,234 @@
+<style>
+html[data-theme="light"] {
+    color-scheme: light;
+    --theme-page-bg:
+        radial-gradient(circle at 12% 18%, rgba(251, 113, 133, 0.14), transparent 30%),
+        radial-gradient(circle at 82% 8%, rgba(253, 186, 116, 0.18), transparent 26%),
+        radial-gradient(circle at 50% 100%, rgba(244, 114, 182, 0.10), transparent 32%),
+        linear-gradient(180deg, #fffdfd 0%, #fff4f8 100%);
+    --theme-surface: rgba(255, 255, 255, 0.82);
+    --theme-surface-strong: rgba(255, 255, 255, 0.92);
+    --theme-surface-soft: rgba(255, 247, 251, 0.84);
+    --theme-stroke: rgba(214, 170, 191, 0.45);
+    --theme-stroke-strong: rgba(214, 170, 191, 0.65);
+    --theme-text: #4b3143;
+    --theme-text-soft: rgba(75, 49, 67, 0.72);
+    --theme-text-faint: rgba(75, 49, 67, 0.52);
+    --theme-shadow: 0 20px 60px rgba(214, 132, 173, 0.12);
+}
+
+html[data-theme="light"] body {
+    background: #fff7fb !important;
+    background-image: var(--theme-page-bg) !important;
+    color: var(--theme-text);
+}
+
+html[data-theme="light"] #site-header {
+    background: linear-gradient(180deg, rgba(255, 252, 253, 0.96) 0%, rgba(255, 243, 248, 0.94) 100%) !important;
+    border-color: rgba(214, 170, 191, 0.34) !important;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 18px 48px rgba(214, 132, 173, 0.12) !important;
+}
+
+html[data-theme="light"] #site-footer {
+    background: linear-gradient(180deg, rgba(255, 247, 251, 0.94) 0%, rgba(255, 238, 245, 0.98) 100%) !important;
+    border-color: rgba(214, 170, 191, 0.28) !important;
+}
+
+html[data-theme="light"] .card,
+html[data-theme="light"] .soft,
+html[data-theme="light"] .user-row,
+html[data-theme="light"] .result-card,
+html[data-theme="light"] .input-admin,
+html[data-theme="light"] .form-input,
+html[data-theme="light"] .nav-group-panel,
+html[data-theme="light"] #chat-sidebar,
+html[data-theme="light"] #chat-sidebar > div,
+html[data-theme="light"] .sidebar-link.active,
+html[data-theme="light"] .poker-panel,
+html[data-theme="light"] [class*="bg-white/"],
+html[data-theme="light"] main [class*="bg-black/"] {
+    background-color: var(--theme-surface) !important;
+    border-color: var(--theme-stroke) !important;
+    box-shadow: var(--theme-shadow);
+}
+
+html[data-theme="light"] .soft,
+html[data-theme="light"] .nav-group-panel,
+html[data-theme="light"] #chat-sidebar,
+html[data-theme="light"] #chat-sidebar > div,
+html[data-theme="light"] .input-admin,
+html[data-theme="light"] .form-input,
+html[data-theme="light"] main [class*="bg-black/"] {
+    background-color: var(--theme-surface-strong) !important;
+}
+
+html[data-theme="light"] [class*="border-white/"],
+html[data-theme="light"] [class*="border-pink-200/"],
+html[data-theme="light"] [class*="border-pink-100/"] {
+    border-color: var(--theme-stroke) !important;
+}
+
+html[data-theme="light"] .btn-secondary,
+html[data-theme="light"] .sidebar-link,
+html[data-theme="light"] [class*="bg-pink-200/"],
+html[data-theme="light"] [class*="bg-indigo-500/10"],
+html[data-theme="light"] [class*="bg-indigo-500/20"],
+html[data-theme="light"] [class*="bg-red-400/10"],
+html[data-theme="light"] [class*="bg-fuchsia-400/10"] {
+    background-color: var(--theme-surface-soft) !important;
+    border-color: var(--theme-stroke-strong) !important;
+}
+
+html[data-theme="light"] .text-white,
+html[data-theme="light"] .text-white\/95,
+html[data-theme="light"] .text-white\/90,
+html[data-theme="light"] .text-white\/85,
+html[data-theme="light"] .text-white\/80 {
+    color: var(--theme-text) !important;
+}
+
+html[data-theme="light"] .text-white\/70,
+html[data-theme="light"] .text-white\/65,
+html[data-theme="light"] .text-white\/60,
+html[data-theme="light"] .text-white\/55,
+html[data-theme="light"] .text-white\/50,
+html[data-theme="light"] .text-white\/45,
+html[data-theme="light"] .text-pink-100\/45,
+html[data-theme="light"] .text-pink-100\/35,
+html[data-theme="light"] .text-pink-100\/30 {
+    color: var(--theme-text-soft) !important;
+}
+
+html[data-theme="light"] .text-white\/40,
+html[data-theme="light"] .text-white\/35,
+html[data-theme="light"] .text-white\/30,
+html[data-theme="light"] .text-white\/25,
+html[data-theme="light"] .text-white\/20,
+html[data-theme="light"] .text-pink-100\/20 {
+    color: var(--theme-text-faint) !important;
+}
+
+html[data-theme="light"] [class*="text-white/["] {
+    color: var(--theme-text-soft) !important;
+}
+
+html[data-theme="light"] [class*="text-pink-100/["] {
+    color: var(--theme-text-faint) !important;
+}
+
+html[data-theme="light"] .text-pink-200,
+html[data-theme="light"] .text-pink-100,
+html[data-theme="light"] .text-indigo-100,
+html[data-theme="light"] .text-indigo-50 {
+    color: #7f4f6c !important;
+}
+
+html[data-theme="light"] .sidebar-link:hover {
+    background: rgba(255, 241, 247, 0.95) !important;
+    color: var(--theme-text) !important;
+}
+
+html[data-theme="light"] .sidebar-link.active {
+    background: linear-gradient(135deg, rgba(250, 214, 229, 0.92), rgba(244, 225, 255, 0.9)) !important;
+    color: #7c3a64 !important;
+}
+
+html[data-theme="light"] .sidebar-section {
+    color: rgba(127, 79, 108, 0.42) !important;
+}
+
+html[data-theme="light"] .input-admin,
+html[data-theme="light"] .form-input,
+html[data-theme="light"] input:not([type="checkbox"]):not([type="radio"]),
+html[data-theme="light"] select,
+html[data-theme="light"] textarea {
+    color: var(--theme-text) !important;
+    border-color: var(--theme-stroke-strong) !important;
+}
+
+html[data-theme="light"] .input-admin::placeholder,
+html[data-theme="light"] .form-input::placeholder,
+html[data-theme="light"] input::placeholder,
+html[data-theme="light"] textarea::placeholder {
+    color: rgba(75, 49, 67, 0.34) !important;
+}
+
+html[data-theme="light"] #nav-backdrop {
+    background: rgba(255, 241, 247, 0.72) !important;
+}
+
+html[data-theme="light"] #chat-input {
+    background: rgba(255, 255, 255, 0.92) !important;
+    border-color: var(--theme-stroke-strong) !important;
+    color: var(--theme-text) !important;
+}
+
+html[data-theme="light"] .theme-toggle-btn {
+    background: rgba(255, 250, 252, 0.94) !important;
+    border-color: rgba(214, 170, 191, 0.65) !important;
+    color: var(--theme-text) !important;
+    box-shadow: 0 10px 24px rgba(214, 132, 173, 0.12);
+}
+
+html[data-theme="light"] .theme-toggle-btn:hover {
+    background: rgba(255, 244, 248, 0.98) !important;
+}
+</style>
+
+<script>
+(function () {
+    var storageKey = 'derby-theme';
+
+    function getTheme() {
+        var stored = null;
+        try {
+            stored = localStorage.getItem(storageKey);
+        } catch (e) {
+            stored = null;
+        }
+        return stored === 'light' || stored === 'dark' ? stored : 'dark';
+    }
+
+    function applyTheme(theme) {
+        var root = document.documentElement;
+        if (!root) return false;
+        root.setAttribute('data-theme', theme);
+        return true;
+    }
+
+    window.__derbySetTheme = function (theme) {
+        if (!applyTheme(theme)) return;
+        try {
+            localStorage.setItem(storageKey, theme);
+        } catch (e) {}
+        var lightMode = theme === 'light';
+        document.querySelectorAll('[data-theme-toggle-label]').forEach(function (node) {
+            node.textContent = lightMode ? 'Sombre' : 'Clair';
+        });
+        document.querySelectorAll('[data-theme-toggle-icon]').forEach(function (node) {
+            node.textContent = lightMode ? '🌙' : '☀️';
+        });
+        document.querySelectorAll('[data-theme-toggle]').forEach(function (node) {
+            node.setAttribute('aria-pressed', lightMode ? 'true' : 'false');
+            node.setAttribute('title', lightMode ? 'Passer au mode sombre' : 'Passer au mode clair');
+        });
+    };
+
+    function initTheme() {
+        window.__derbySetTheme(getTheme());
+    }
+
+    if (!applyTheme(getTheme())) {
+        document.addEventListener('DOMContentLoaded', initTheme, { once: true });
+    } else {
+        document.addEventListener('DOMContentLoaded', initTheme, { once: true });
+    }
+
+    document.addEventListener('click', function (event) {
+        var toggle = event.target.closest('[data-theme-toggle]');
+        if (!toggle) return;
+        var current = document.documentElement.getAttribute('data-theme') || getTheme();
+        window.__derbySetTheme(current === 'light' ? 'dark' : 'light');
+    });
+})();
+</script>

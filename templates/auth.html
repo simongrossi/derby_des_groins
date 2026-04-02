@@ -62,8 +62,13 @@
         }
         .pigs-row { font-size: 2rem; letter-spacing: 0.5rem; }
     </style>
+    {% include "_theme_assets.html" %}
 </head>
 <body>
+    <button type="button" data-theme-toggle aria-pressed="false" class="theme-toggle-btn fixed right-4 top-4 z-20 inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-sm font-bold text-white/75 backdrop-blur-md">
+        <span data-theme-toggle-icon>☀️</span>
+        <span data-theme-toggle-label>Clair</span>
+    </button>
     <div class="w-full max-w-md px-4">
         <div class="card p-8">
             <!-- Logo -->

@@ -7,8 +7,13 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
     <style>* { font-family: 'Nunito', sans-serif; }</style>
+    {% include "_theme_assets.html" %}
 </head>
 <body class="min-h-screen bg-gradient-to-br from-yellow-100 via-pink-50 to-orange-100 flex items-center justify-center p-4">
+    <button type="button" data-theme-toggle aria-pressed="false" class="theme-toggle-btn fixed right-4 top-4 z-20 inline-flex items-center gap-2 rounded-2xl border border-pink-200/30 bg-white/80 px-3 py-2 text-sm font-bold text-slate-700 backdrop-blur-md">
+        <span data-theme-toggle-icon>☀️</span>
+        <span data-theme-toggle-label>Clair</span>
+    </button>
     <div class="bg-white/90 backdrop-blur rounded-3xl shadow-2xl p-10 max-w-md text-center">
         <div class="text-7xl mb-4">🐷💨</div>
         <h1 class="text-3xl font-extrabold text-pink-600 mb-2" style="font-family:'Lilita One',sans-serif;">

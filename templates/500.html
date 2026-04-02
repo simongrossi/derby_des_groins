@@ -4,10 +4,38 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>500 - Erreur interne</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    * { font-family: 'Nunito', sans-serif; }
+    .font-title { font-family: 'Lilita One', cursive; }
+    body {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1.5rem;
+      background: #1b0b23;
+      background-image:
+        radial-gradient(circle at 12% 18%, rgba(244, 114, 182, 0.22), transparent 30%),
+        radial-gradient(circle at 82% 8%, rgba(251, 146, 60, 0.14), transparent 28%),
+        linear-gradient(180deg, #210d29 0%, #120917 100%);
+    }
+  </style>
+  {% include "_theme_assets.html" %}
 </head>
-<body style="font-family: sans-serif; max-width: 720px; margin: 3rem auto; padding: 0 1rem;">
-  <h1>500 — Erreur interne</h1>
-  <p>Une erreur interne est survenue. Réessaie dans quelques instants.</p>
-  <p><a href="{{ url_for('main.index') }}">Retour à l'accueil</a></p>
+<body>
+  <button type="button" data-theme-toggle aria-pressed="false" class="theme-toggle-btn fixed right-4 top-4 z-20 inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-sm font-bold text-white/75 backdrop-blur-md">
+      <span data-theme-toggle-icon>☀️</span>
+      <span data-theme-toggle-label>Clair</span>
+  </button>
+  <main class="w-full max-w-xl rounded-[2rem] border border-pink-200/10 bg-white/5 px-8 py-10 text-center text-white shadow-2xl backdrop-blur-xl">
+    <div class="text-6xl">🛠️</div>
+    <h1 class="font-title mt-4 text-4xl text-pink-200">500 — Erreur interne</h1>
+    <p class="mt-4 text-white/65">Une erreur interne est survenue. Réessaie dans quelques instants.</p>
+    <p class="mt-6">
+      <a href="{{ url_for('main.index') }}" class="inline-flex items-center rounded-full border border-pink-300/20 bg-pink-400/15 px-5 py-3 text-sm font-bold text-pink-100 transition hover:bg-pink-400/25">Retour à l'accueil</a>
+    </p>
+  </main>
 </body>
 </html>
