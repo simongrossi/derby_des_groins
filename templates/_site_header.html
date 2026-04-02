@@ -1,8 +1,62 @@
-{% set nav_base = "inline-flex w-full items-center justify-center gap-2 rounded-xl border px-3.5 py-2 text-sm font-bold transition-all whitespace-nowrap sm:w-auto" %}
+{% set nav_base = "inline-flex w-full items-center justify-center gap-2 rounded-2xl border px-3.5 py-2.5 text-sm font-bold transition-all whitespace-nowrap sm:w-auto" %}
 {% set nav_active = "border-pink-300/45 bg-pink-400/16 text-pink-100 shadow-[0_10px_26px_rgba(244,114,182,0.16)]" %}
 {% set nav_idle = "border-pink-100/10 bg-pink-200/[0.035] text-white/70 hover:border-pink-200/20 hover:bg-pink-200/[0.08] hover:text-white" %}
 {% set util_base = "inline-flex items-center gap-2 rounded-xl border px-3.5 py-2 text-sm font-bold transition-all whitespace-nowrap" %}
 {% set util_idle = "border-pink-100/10 bg-pink-200/[0.035] text-white/70 hover:border-pink-200/20 hover:bg-pink-200/[0.08] hover:text-white" %}
+{% set section_trigger_base = "flex w-full cursor-pointer list-none items-center gap-3 rounded-2xl border px-4 py-3 text-left text-sm font-bold transition-all lg:w-auto lg:min-w-[12.5rem]" %}
+{% set section_trigger_active = "border-pink-300/30 bg-pink-400/12 text-pink-100 shadow-[0_10px_24px_rgba(244,114,182,0.14)]" %}
+{% set section_trigger_idle = "border-pink-100/10 bg-white/[0.025] text-white/[0.72] hover:border-pink-200/[0.18] hover:bg-white/[0.05] hover:text-white" %}
+{% set section_link_base = "flex items-center justify-between gap-3 rounded-xl border px-3.5 py-3 text-sm font-bold transition-all" %}
+{% set section_link_active = "border-pink-300/35 bg-pink-400/14 text-pink-100" %}
+{% set section_link_idle = "border-white/[0.08] bg-white/[0.03] text-white/[0.72] hover:border-pink-200/[0.18] hover:bg-white/[0.06] hover:text-white" %}
+{% set primary_links = [
+    {'href': '/courses', 'label': 'Courses', 'icon': '📅', 'key': 'courses'},
+    {'href': '/paris', 'label': 'Paris', 'icon': '💰', 'key': 'paris'},
+    {'href': '/mon-cochon', 'label': 'Ma Porcherie', 'icon': '🛖', 'key': 'mon_cochon'},
+    {'href': '/classement', 'label': 'Classement', 'icon': '🏆', 'key': 'classement'},
+    {'href': '/profil', 'label': 'Profil', 'icon': '👤', 'key': 'profil'},
+    {'href': '/history', 'label': 'Historique', 'icon': '📋', 'key': 'history'}
+] %}
+{% set nav_groups = [
+    {
+        'label': 'Gestion',
+        'icon': '🧭',
+        'eyebrow': 'Progression & économie',
+        'active_keys': ['regles', 'veterinaire', 'bourse', 'marche'],
+        'links': [
+            {'href': '/regles', 'label': 'Règles', 'icon': '📘', 'key': 'regles'},
+            {'href': '/veterinaire', 'label': 'Vétérinaire', 'icon': '🏥', 'key': 'veterinaire'},
+            {'href': '/bourse', 'label': 'Bourse', 'icon': '🌾', 'key': 'bourse'},
+            {'href': '/marche', 'label': 'Marché', 'icon': '🏪', 'key': 'marche'}
+        ]
+    },
+    {
+        'label': 'Collection',
+        'icon': '✨',
+        'eyebrow': 'Lore & vitrines',
+        'active_keys': ['galerie', 'legendes_pop', 'cimetiere'],
+        'links': [
+            {'href': '/galerie-lard-chande', 'label': 'Galerie', 'icon': '🛒', 'key': 'galerie'},
+            {'href': '/legendes-pop', 'label': "Pop Cult'", 'icon': '🌟', 'key': 'legendes_pop'},
+            {'href': '/cimetiere', 'label': 'Cimetière', 'icon': '⚰️', 'key': 'cimetiere'}
+        ]
+    },
+    {
+        'label': 'Arcade',
+        'icon': '🎮',
+        'eyebrow': 'Mini-jeux & live',
+        'active_keys': ['blackjack', 'truffes', 'poker', 'agenda', 'cochon_pendu', 'circuit', 'live'],
+        'links': [
+            {'href': '/blackjack', 'label': 'Groin Jack', 'icon': '🃏', 'key': 'blackjack'},
+            {'href': '/truffes', 'label': 'Truffes', 'icon': '🍄', 'key': 'truffes'},
+            {'href': '/poker', 'label': 'Cochon Poker', 'icon': '🐷', 'key': 'poker'},
+            {'href': '/agenda', 'label': 'Whack-a-Réu', 'icon': '📅', 'key': 'agenda'},
+            {'href': '/cochon-pendu', 'label': 'Cochon Pendu', 'icon': '🪓', 'key': 'cochon_pendu'},
+            {'href': '/circuit', 'label': 'Circuit Live', 'icon': '🏟️', 'key': 'circuit'},
+            {'href': '/live', 'label': 'Replay', 'icon': '📼', 'key': 'live'}
+        ]
+    }
+] %}
 
 <header class="border-b border-pink-200/10 sticky top-0 z-[100]" style="background: linear-gradient(180deg, rgba(39, 13, 49, 0.96) 0%, rgba(28, 11, 41, 0.94) 100%); box-shadow: inset 0 1px 0 rgba(255,255,255,0.04); backdrop-filter: blur(20px);">
     <meta name="csrf-token" content="{{ csrf_token() }}">
@@ -73,29 +127,83 @@
             </div>
 
             {% if user %}
-            <!-- ── Nav : collapsible mobile, toujours visible lg+ ── -->
-            <nav id="main-nav" class="hidden flex-col items-stretch gap-2 rounded-2xl border border-pink-200/10 bg-[linear-gradient(180deg,rgba(39,13,49,0.96),rgba(28,11,41,0.94))] p-3 shadow-2xl max-h-[70vh] overflow-y-auto sm:flex-row sm:flex-wrap sm:items-center lg:flex lg:rounded-none lg:border-0 lg:bg-transparent lg:p-0 lg:shadow-none lg:max-h-none lg:overflow-visible">
-                <button id="chat-toggle" class="{{ nav_base }} border-indigo-400/30 bg-indigo-500/10 text-indigo-100 hover:bg-indigo-500/20">💬 Chat</button>
-                <a href="/courses" class="{{ nav_base }} {{ nav_active if active_page == 'courses' else nav_idle }}">📅 Courses</a>
-                <a href="/paris" class="{{ nav_base }} {{ nav_active if active_page == 'paris' else nav_idle }}">💰 Paris</a>
-                <a href="/mon-cochon" class="{{ nav_base }} {{ nav_active if active_page == 'mon_cochon' else nav_idle }}">🛖 Ma Porcherie</a>
-                <a href="/regles" class="{{ nav_base }} {{ nav_active if active_page == 'regles' else nav_idle }}">📘 Règles</a>
-                <a href="/veterinaire" class="{{ nav_base }} {{ 'border-red-400/35 bg-red-500/15 text-red-100 shadow-[0_8px_24px_rgba(248,113,113,0.12)]' if injured_pig_nav_id else (nav_active if active_page == 'veterinaire' else nav_idle) }}">{{ '🏥 Véto urgent' if injured_pig_nav_id else '🏥 Vétérinaire' }}</a>
-                <a href="/bourse" class="{{ nav_base }} {{ nav_active if active_page == 'bourse' else nav_idle }}">🌾 Bourse</a>
-                <a href="/marche" class="{{ nav_base }} {{ nav_active if active_page == 'marche' else nav_idle }}">🏪 Marché</a>
-                <a href="/galerie-lard-chande" class="{{ nav_base }} {{ nav_active if active_page == 'galerie' else nav_idle }}">🛒 Galerie</a>
-                <a href="/classement" class="{{ nav_base }} {{ nav_active if active_page == 'classement' else nav_idle }}">🏆 Classement</a>
-                <a href="/profil" class="{{ nav_base }} {{ nav_active if active_page == 'profil' else nav_idle }}">👤 Profil</a>
-                <a href="/history" class="{{ nav_base }} {{ nav_active if active_page == 'history' else nav_idle }}">📋 Historique</a>
-                <a href="/legendes-pop" class="{{ nav_base }} {{ nav_active if active_page == 'legendes_pop' else nav_idle }}">🌟 Pop Cult'</a>
-                <a href="/cimetiere" class="{{ nav_base }} {{ nav_active if active_page == 'cimetiere' else nav_idle }}">⚰️ Cimetière</a>
-                <a href="/blackjack" class="{{ nav_base }} {{ nav_active if active_page == 'blackjack' else nav_idle }}">🃏 Groin Jack</a>
-                <a href="/truffes" class="{{ nav_base }} {{ nav_active if active_page == 'truffes' else nav_idle }}">🍄 Truffes</a>
-                <a href="/poker" class="{{ nav_base }} {{ nav_active if active_page == 'poker' else nav_idle }}">🐷 Cochon Poker</a>
-                <a href="/agenda" class="{{ nav_base }} {{ nav_active if active_page == 'agenda' else nav_idle }}">📅 Whack-a-Réu</a>
-                <a href="/cochon-pendu" class="{{ nav_base }} {{ nav_active if active_page == 'cochon_pendu' else nav_idle }}">🪓 Cochon Pendu</a>
-                <a href="/circuit" class="{{ nav_base }} {{ nav_active if active_page == 'circuit' else nav_idle }}">🏟️ Circuit Live</a>
-                <a href="/live" class="{{ nav_base }} {{ nav_active if active_page == 'live' else nav_idle }}">📼 Replay</a>
+            <!-- ── Nav hiérarchisée : accès rapides + sections ── -->
+            <nav id="main-nav" class="hidden flex-col gap-3 rounded-[1.75rem] border border-pink-200/10 bg-[linear-gradient(180deg,rgba(39,13,49,0.98),rgba(28,11,41,0.95))] p-3.5 shadow-2xl max-h-[78vh] overflow-y-auto lg:flex lg:rounded-[1.75rem] lg:border-pink-200/[0.08] lg:bg-[linear-gradient(180deg,rgba(255,255,255,0.03),rgba(255,255,255,0.01))] lg:shadow-[0_24px_80px_rgba(10,4,18,0.28)]">
+                <div class="flex flex-col gap-2.5">
+                    <div class="flex items-center justify-between gap-3 px-1">
+                        <div>
+                            <p class="text-[10px] uppercase tracking-[0.26em] text-pink-100/32 font-black">Accès rapides</p>
+                            <p class="text-xs text-white/40 font-semibold mt-1">Les pages les plus utiles restent au premier niveau.</p>
+                        </div>
+                        <span class="hidden lg:inline-flex items-center gap-2 rounded-full border border-pink-200/10 bg-white/[0.04] px-3 py-1 text-[11px] font-bold text-white/45">
+                            <span class="h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_10px_rgba(74,222,128,0.6)]"></span>
+                            Menu simplifié
+                        </span>
+                    </div>
+
+                    <div class="flex flex-wrap gap-2">
+                        <button id="chat-toggle" data-nav-close class="{{ nav_base }} border-indigo-400/30 bg-indigo-500/10 text-indigo-100 hover:bg-indigo-500/20">💬 Chat</button>
+                        {% for item in primary_links %}
+                        <a href="{{ item.href }}" data-nav-close class="{{ nav_base }} {{ nav_active if active_page == item.key else nav_idle }}">
+                            <span>{{ item.icon }}</span>
+                            <span>{{ item.label }}</span>
+                        </a>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 gap-2.5 xl:grid-cols-3">
+                    {% for group in nav_groups %}
+                    {% set group_active = active_page in group.active_keys %}
+                    <details class="nav-group relative">
+                        <summary class="{{ section_trigger_base }} {{ section_trigger_active if group_active else section_trigger_idle }}">
+                            <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-white/[0.08] bg-white/[0.045] text-lg">{{ group.icon }}</span>
+                            <span class="min-w-0 flex-1">
+                                <span class="block text-[10px] uppercase tracking-[0.22em] text-white/35">{{ group.eyebrow }}</span>
+                                <span class="mt-1 block text-sm text-white/90">{{ group.label }}</span>
+                            </span>
+                            <span class="inline-flex h-7 min-w-[1.75rem] items-center justify-center rounded-full border border-white/[0.08] bg-white/[0.05] px-2 text-[11px] font-black text-white/50">{{ group.links|length }}</span>
+                            <svg class="nav-group-chevron h-4 w-4 shrink-0 text-white/35 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m6 9 6 6 6-6"></path>
+                            </svg>
+                        </summary>
+
+                        <div class="nav-group-panel mt-2 rounded-2xl border border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,8,26,0.96),rgba(29,14,43,0.94))] p-2.5 shadow-[0_24px_56px_rgba(10,4,18,0.4)] lg:absolute lg:left-0 lg:right-0 lg:top-[calc(100%+0.65rem)] lg:z-20 lg:mt-0">
+                            <div class="grid gap-2 sm:grid-cols-2 xl:grid-cols-1">
+                                {% for item in group.links %}
+                                {% if item.key == 'veterinaire' and injured_pig_nav_id %}
+                                <a href="{{ item.href }}" data-nav-close class="{{ section_link_base }} border-red-400/35 bg-red-500/15 text-red-100 shadow-[0_8px_24px_rgba(248,113,113,0.12)]">
+                                    <span class="flex items-center gap-2">
+                                        <span>{{ item.icon }}</span>
+                                        <span>Véto urgent</span>
+                                    </span>
+                                    <span class="text-[10px] uppercase tracking-[0.18em] text-red-200/70">Soins</span>
+                                </a>
+                                {% else %}
+                                <a href="{{ item.href }}" data-nav-close class="{{ section_link_base }} {{ section_link_active if active_page == item.key else section_link_idle }}">
+                                    <span class="flex items-center gap-2">
+                                        <span>{{ item.icon }}</span>
+                                        <span>{{ item.label }}</span>
+                                    </span>
+                                    <span class="text-[10px] uppercase tracking-[0.18em] {{ 'text-pink-200/65' if active_page == item.key else 'text-white/30' }}">Ouvrir</span>
+                                </a>
+                                {% endif %}
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </details>
+                    {% endfor %}
+                </div>
+
+                <div class="flex flex-col gap-2 border-t border-pink-200/[0.08] pt-3 lg:hidden">
+                    <p class="px-1 text-[10px] uppercase tracking-[0.24em] text-pink-100/30 font-black">Compte</p>
+                    <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                        {% if user.is_admin %}
+                        <a href="/admin" data-nav-close class="inline-flex items-center justify-center gap-2 rounded-2xl border border-fuchsia-400/20 bg-fuchsia-400/10 px-4 py-3 text-sm font-bold text-fuchsia-100">🔧 Admin</a>
+                        {% endif %}
+                        <a href="/logout" data-nav-close class="inline-flex items-center justify-center gap-2 rounded-2xl border border-red-400/20 bg-red-400/10 px-4 py-3 text-sm font-bold text-red-100">Quitter</a>
+                    </div>
+                </div>
             </nav>
             {% endif %}
 
@@ -155,6 +263,13 @@
 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 .chat-reply-btn { opacity: 0; transition: opacity 0.2s; }
 .message-bubble:hover .chat-reply-btn { opacity: 1; }
+.nav-group > summary::-webkit-details-marker { display: none; }
+.nav-group > summary { list-style: none; }
+.nav-group[open] .nav-group-chevron { transform: rotate(180deg); }
+@media (min-width: 1024px) {
+    .nav-group-panel { display: none; }
+    .nav-group[open] .nav-group-panel { display: block; }
+}
 </style>
 
 <script>
@@ -347,7 +462,14 @@
     var backdrop = document.getElementById('nav-backdrop');
     var iconOpen = document.getElementById('icon-open');
     var iconClose = document.getElementById('icon-close');
+    var navGroups = Array.prototype.slice.call(document.querySelectorAll('.nav-group'));
     if (!btn || !nav) return;
+
+    function closeAllNavGroups() {
+        navGroups.forEach(function (group) {
+            group.open = false;
+        });
+    }
 
     function openNav() {
         nav.classList.remove('hidden');
@@ -365,6 +487,7 @@
         iconOpen.classList.remove('hidden');
         iconClose.classList.add('hidden');
         btn.setAttribute('aria-expanded', 'false');
+        closeAllNavGroups();
     }
 
     btn.addEventListener('click', function () {
@@ -372,6 +495,27 @@
     });
 
     backdrop.addEventListener('click', closeNav);
+
+    nav.addEventListener('click', function (event) {
+        if (window.innerWidth < 1024 && event.target.closest('[data-nav-close]')) {
+            closeNav();
+        }
+    });
+
+    navGroups.forEach(function (group) {
+        group.addEventListener('toggle', function () {
+            if (!group.open) return;
+            navGroups.forEach(function (other) {
+                if (other !== group) other.open = false;
+            });
+        });
+    });
+
+    document.addEventListener('click', function (event) {
+        navGroups.forEach(function (group) {
+            if (!group.contains(event.target)) group.open = false;
+        });
+    });
 
     window.addEventListener('resize', function () {
         if (window.innerWidth >= 1024) closeNav();
