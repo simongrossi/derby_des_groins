@@ -1,0 +1,102 @@
+{% extends "admin_base.html" %}
+{% block title %}🔐 Journal des connexions{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <section class="glass-card p-5 md:p-6">
+        <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+            <h1 class="font-title text-2xl text-white">🔐 Journal des connexions</h1>
+            <div class="text-xs text-white/60">Affichage: {{ auth_logs|length }} / page (max 100)</div>
+        </div>
+
+        <form method="GET" class="grid grid-cols-1 md:grid-cols-5 gap-3">
+            <div>
+                <label class="text-xs text-white/60 block mb-1">Type</label>
+                <select name="event_type" class="w-full rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-sm">
+                    <option value="">Tous</option>
+                    {% for t in event_types %}
+                        <option value="{{ t }}" {{ 'selected' if filters.event_type == t else '' }}>{{ t }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label class="text-xs text-white/60 block mb-1">Resultat</label>
+                <select name="success" class="w-full rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-sm">
+                    <option value="" {{ 'selected' if not filters.success else '' }}>Tous</option>
+                    <option value="1" {{ 'selected' if filters.success == '1' else '' }}>Succes</option>
+                    <option value="0" {{ 'selected' if filters.success == '0' else '' }}>Echec</option>
+                </select>
+            </div>
+            <div>
+                <label class="text-xs text-white/60 block mb-1">Utilisateur</label>
+                <input type="text" name="username" value="{{ filters.username }}" placeholder="username tente" class="w-full rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-sm">
+            </div>
+            <div>
+                <label class="text-xs text-white/60 block mb-1">IP</label>
+                <input type="text" name="ip" value="{{ filters.ip }}" placeholder="203.0.113" class="w-full rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-sm">
+            </div>
+            <div class="flex items-end gap-2">
+                <button type="submit" class="btn-admin">Filtrer</button>
+                <a href="{{ url_for('admin.admin_auth_logs') }}" class="btn-admin" style="background: rgba(255,255,255,0.06);">Reset</a>
+            </div>
+        </form>
+    </section>
+
+    <section class="glass-card overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="w-full min-w-[980px] text-sm">
+                <thead class="bg-white/5 text-white/70">
+                    <tr>
+                        <th class="text-left px-3 py-2">Horodatage (UTC)</th>
+                        <th class="text-left px-3 py-2">Type</th>
+                        <th class="text-left px-3 py-2">Resultat</th>
+                        <th class="text-left px-3 py-2">User ID</th>
+                        <th class="text-left px-3 py-2">Username</th>
+                        <th class="text-left px-3 py-2">IP</th>
+                        <th class="text-left px-3 py-2">Route</th>
+                        <th class="text-left px-3 py-2">Details</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in auth_logs %}
+                    <tr class="border-t border-white/10">
+                        <td class="px-3 py-2 text-white/80">{{ row.occurred_at.strftime('%Y-%m-%d %H:%M:%S') if row.occurred_at else '-' }}</td>
+                        <td class="px-3 py-2 text-white">{{ row.event_type }}</td>
+                        <td class="px-3 py-2">
+                            {% if row.is_success %}
+                                <span class="text-green-400 font-bold">✅ succes</span>
+                            {% else %}
+                                <span class="text-red-400 font-bold">❌ echec</span>
+                            {% endif %}
+                        </td>
+                        <td class="px-3 py-2 text-white/80">{{ row.user_id or '-' }}</td>
+                        <td class="px-3 py-2 text-white/80">{{ row.username_attempt or '-' }}</td>
+                        <td class="px-3 py-2 text-white/80">{{ row.ip_address }}</td>
+                        <td class="px-3 py-2 text-white/70">{{ row.route or '-' }}</td>
+                        <td class="px-3 py-2 text-white/60">{{ row.details or '-' }}</td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="8" class="px-3 py-5 text-center text-white/50">Aucune entree pour ces filtres.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        {% if pagination.pages > 1 %}
+        <div class="p-4 border-t border-white/10 flex items-center justify-between text-xs">
+            <div class="text-white/60">Page {{ pagination.page }} / {{ pagination.pages }}</div>
+            <div class="flex items-center gap-2">
+                {% if pagination.has_prev %}
+                    <a class="btn-admin text-xs" href="{{ url_for('admin.admin_auth_logs', page=pagination.prev_num, event_type=filters.event_type, success=filters.success, username=filters.username, ip=filters.ip) }}">← Prec</a>
+                {% endif %}
+                {% if pagination.has_next %}
+                    <a class="btn-admin text-xs" href="{{ url_for('admin.admin_auth_logs', page=pagination.next_num, event_type=filters.event_type, success=filters.success, username=filters.username, ip=filters.ip) }}">Suiv →</a>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+    </section>
+</div>
+{% endblock %}
