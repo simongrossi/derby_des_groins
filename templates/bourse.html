@@ -569,12 +569,21 @@
             return;
         }
 
-        if (chartData.source === 'snapshot') {
-            chartStatus.textContent = "Pas encore d'historique sur 7 jours : affichage de l'etat actuel du marche.";
+        const rawTimestamps = chartData.timestamps || [];
+        const hasSinglePoint = rawTimestamps.length <= 1;
+        const normalizedTimestamps = hasSinglePoint
+            ? [
+                new Date((rawTimestamps[0] ? new Date(rawTimestamps[0]) : new Date()).getTime() - 60 * 60 * 1000).toISOString(),
+                rawTimestamps[0] || new Date().toISOString()
+            ]
+            : rawTimestamps;
+
+        if (chartData.source === 'snapshot' || hasSinglePoint) {
+            chartStatus.textContent = "Historique insuffisant : affichage d'un repere instantane du marche actuel.";
             chartStatus.classList.remove('hidden');
         }
 
-        const ts = chartData.timestamps.map(t => new Date(t).toLocaleString('fr-FR', {
+        const ts = normalizedTimestamps.map(t => new Date(t).toLocaleString('fr-FR', {
             day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit'
         }));
 
@@ -583,24 +592,34 @@
 
         for (const [key, ds] of Object.entries(chartData.datasets)) {
             const color = colors[key] || '#ffffff';
+            const pricePoints = Array.isArray(ds.prices) ? ds.prices : [];
+            const surchargePoints = Array.isArray(ds.surcharges) ? ds.surcharges : [];
+            const normalizedPrices = hasSinglePoint
+                ? [pricePoints[0] ?? 0, pricePoints[0] ?? 0]
+                : pricePoints;
+            const normalizedSurcharges = hasSinglePoint
+                ? [surchargePoints[0] ?? 1, surchargePoints[0] ?? 1]
+                : surchargePoints;
             priceDatasets.push({
                 label: ds.label,
-                data: ds.prices,
+                data: normalizedPrices,
                 borderColor: color,
                 backgroundColor: color + '20',
                 borderWidth: 2,
                 tension: 0.3,
-                pointRadius: 2,
+                pointRadius: hasSinglePoint ? 4 : 2,
+                pointHoverRadius: hasSinglePoint ? 6 : 4,
                 key: key
             });
             surchargeDatasets.push({
                 label: ds.label,
-                data: ds.surcharges.map(s => (s - 1) * 100), // En % additionnel
+                data: normalizedSurcharges.map(s => (s - 1) * 100), // En % additionnel
                 borderColor: color,
                 backgroundColor: color + '20',
                 borderWidth: 2,
                 tension: 0.3,
-                pointRadius: 2,
+                pointRadius: hasSinglePoint ? 4 : 2,
+                pointHoverRadius: hasSinglePoint ? 6 : 4,
                 key: key
             });
         }
