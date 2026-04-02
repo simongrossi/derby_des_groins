@@ -1,13 +1,13 @@
-{% set nav_base = "inline-flex w-full items-center justify-center gap-2 rounded-xl border px-3 py-2 text-sm font-bold transition-all whitespace-nowrap sm:w-auto" %}
+{% set nav_base = "inline-flex w-full min-h-[2.7rem] items-center justify-center gap-2 rounded-xl border px-2.5 py-1.5 text-[13px] font-bold transition-all whitespace-nowrap sm:min-h-0 sm:w-auto sm:px-3 sm:py-2 sm:text-sm" %}
 {% set nav_active = "border-pink-300/45 bg-pink-400/16 text-pink-100 shadow-[0_10px_26px_rgba(244,114,182,0.16)]" %}
 {% set nav_idle = "border-pink-100/10 bg-pink-200/[0.035] text-white/70 hover:border-pink-200/20 hover:bg-pink-200/[0.08] hover:text-white" %}
 {% set util_base = "inline-flex items-center gap-2 rounded-2xl border px-3 py-1.5 text-sm font-bold transition-all whitespace-nowrap" %}
 {% set util_idle = "border-pink-100/10 bg-pink-200/[0.035] text-white/70 hover:border-pink-200/20 hover:bg-pink-200/[0.08] hover:text-white" %}
 {% include "_theme_assets.html" %}
-{% set section_trigger_base = "flex w-full cursor-pointer list-none items-center gap-2.5 rounded-xl border px-3 py-2.5 text-left text-sm font-bold transition-all lg:w-auto lg:min-w-[11.75rem]" %}
+{% set section_trigger_base = "flex w-full cursor-pointer list-none items-center gap-2 rounded-xl border px-2.5 py-2 text-left text-sm font-bold transition-all sm:gap-2.5 sm:px-3 sm:py-2.5 lg:w-auto lg:min-w-[11.75rem]" %}
 {% set section_trigger_active = "border-pink-300/30 bg-pink-400/12 text-pink-100 shadow-[0_10px_24px_rgba(244,114,182,0.14)]" %}
 {% set section_trigger_idle = "border-pink-100/10 bg-white/[0.025] text-white/[0.72] hover:border-pink-200/[0.18] hover:bg-white/[0.05] hover:text-white" %}
-{% set section_link_base = "flex items-center justify-between gap-3 rounded-xl border px-3 py-2.5 text-sm font-bold transition-all" %}
+{% set section_link_base = "flex items-center justify-between gap-3 rounded-xl border px-2.5 py-2 text-[13px] font-bold transition-all sm:px-3 sm:py-2.5 sm:text-sm" %}
 {% set section_link_active = "border-pink-300/35 bg-pink-400/14 text-pink-100" %}
 {% set section_link_idle = "border-white/[0.08] bg-white/[0.03] text-white/[0.72] hover:border-pink-200/[0.18] hover:bg-white/[0.06] hover:text-white" %}
 {% set primary_links = [
@@ -138,13 +138,13 @@
 
             {% if user %}
             <!-- ── Nav hiérarchisée : accès rapides + sections ── -->
-            <nav id="main-nav" class="hidden flex-col gap-2.5 rounded-[1.5rem] border border-pink-200/10 bg-[linear-gradient(180deg,rgba(39,13,49,0.98),rgba(28,11,41,0.95))] p-2.5 shadow-2xl max-h-[78vh] overflow-y-auto lg:flex lg:rounded-[1.5rem] lg:border-pink-200/[0.08] lg:bg-[linear-gradient(180deg,rgba(255,255,255,0.03),rgba(255,255,255,0.01))] lg:max-h-none lg:overflow-visible lg:shadow-[0_24px_80px_rgba(10,4,18,0.28)]">
-                <div class="flex flex-col gap-2">
+            <nav id="main-nav" class="hidden flex-col gap-2 rounded-[1.5rem] border border-pink-200/10 bg-[linear-gradient(180deg,rgba(39,13,49,0.98),rgba(28,11,41,0.95))] p-2 shadow-2xl max-h-[calc(100dvh-6rem)] overflow-y-auto lg:flex lg:rounded-[1.5rem] lg:border-pink-200/[0.08] lg:bg-[linear-gradient(180deg,rgba(255,255,255,0.03),rgba(255,255,255,0.01))] lg:max-h-none lg:overflow-visible lg:p-2.5 lg:shadow-[0_24px_80px_rgba(10,4,18,0.28)]">
+                <div class="flex flex-col gap-1.5 sm:gap-2">
                     <div class="px-1">
                         <p class="text-[9px] uppercase tracking-[0.24em] text-pink-100/28 font-black">Accès rapides</p>
                     </div>
 
-                    <div class="flex flex-wrap gap-1.5">
+                    <div class="grid grid-cols-2 gap-1.5 sm:flex sm:flex-wrap">
                         <button id="chat-toggle" data-nav-close class="{{ nav_base }} border-indigo-400/30 bg-indigo-500/10 text-indigo-100 hover:bg-indigo-500/20">💬 Chat</button>
                         {% for item in primary_links %}
                         <a href="{{ item.href }}" data-nav-close class="{{ nav_base }} {{ nav_active if active_page == item.key else nav_idle }}">
@@ -155,15 +155,15 @@
                     </div>
                 </div>
 
-                <div class="grid grid-cols-1 gap-2 xl:grid-cols-3">
+                <div class="grid grid-cols-1 gap-1.5 sm:gap-2 xl:grid-cols-3">
                     {% for group in nav_groups %}
                     {% set group_active = active_page in group.active_keys %}
                     <details class="nav-group relative">
                         <summary class="{{ section_trigger_base }} {{ section_trigger_active if group_active else section_trigger_idle }}">
-                            <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-white/[0.08] bg-white/[0.045] text-base">{{ group.icon }}</span>
+                            <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-white/[0.08] bg-white/[0.045] text-[15px] sm:h-9 sm:w-9 sm:text-base">{{ group.icon }}</span>
                             <span class="min-w-0 flex-1">
-                                <span class="block text-[9px] uppercase tracking-[0.2em] text-white/30">{{ group.eyebrow }}</span>
-                                <span class="mt-0.5 block text-[0.95rem] text-white/90">{{ group.label }}</span>
+                                <span class="block text-[8px] uppercase tracking-[0.18em] text-white/30 sm:text-[9px] sm:tracking-[0.2em]">{{ group.eyebrow }}</span>
+                                <span class="mt-0.5 block text-[0.92rem] text-white/90 sm:text-[0.95rem]">{{ group.label }}</span>
                             </span>
                             <span class="inline-flex h-6 min-w-[1.6rem] items-center justify-center rounded-full border border-white/[0.08] bg-white/[0.05] px-1.5 text-[10px] font-black text-white/50">{{ group.links|length }}</span>
                             <svg class="nav-group-chevron h-4 w-4 shrink-0 text-white/35 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -171,7 +171,7 @@
                             </svg>
                         </summary>
 
-                        <div class="nav-group-panel mt-1.5 rounded-2xl border border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,8,26,0.96),rgba(29,14,43,0.94))] p-2 shadow-[0_24px_56px_rgba(10,4,18,0.4)] lg:absolute lg:left-0 lg:right-0 lg:top-[calc(100%+0.45rem)] lg:z-20 lg:mt-0">
+                        <div class="nav-group-panel mt-1 rounded-2xl border border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,8,26,0.96),rgba(29,14,43,0.94))] p-1.5 shadow-[0_24px_56px_rgba(10,4,18,0.4)] sm:mt-1.5 sm:p-2 lg:absolute lg:left-0 lg:right-0 lg:top-[calc(100%+0.45rem)] lg:z-20 lg:mt-0">
                             <div class="grid gap-1.5 sm:grid-cols-2 xl:grid-cols-1">
                                 {% for item in group.links %}
                                 {% if item.key == 'veterinaire' and injured_pig_nav_id %}
@@ -198,17 +198,17 @@
                     {% endfor %}
                 </div>
 
-                <div class="flex flex-col gap-2 border-t border-pink-200/[0.08] pt-3 lg:hidden">
-                    <p class="px-1 text-[10px] uppercase tracking-[0.24em] text-pink-100/30 font-black">Compte</p>
-                    <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                        <button type="button" data-theme-toggle aria-pressed="false" class="theme-toggle-btn inline-flex items-center justify-center gap-2 rounded-2xl border border-pink-200/15 bg-pink-200/[0.04] px-4 py-3 text-sm font-bold text-white/75">
+                <div class="flex flex-col gap-1.5 border-t border-pink-200/[0.08] pt-2.5 lg:hidden">
+                    <p class="px-1 text-[9px] uppercase tracking-[0.22em] text-pink-100/30 font-black">Compte</p>
+                    <div class="grid grid-cols-2 gap-1.5">
+                        <button type="button" data-theme-toggle aria-pressed="false" class="theme-toggle-btn inline-flex items-center justify-center gap-2 rounded-2xl border border-pink-200/15 bg-pink-200/[0.04] px-3 py-2.5 text-sm font-bold text-white/75">
                             <span data-theme-toggle-icon>☀️</span>
                             <span data-theme-toggle-label>Clair</span>
                         </button>
                         {% if user.is_admin %}
-                        <a href="/admin" data-nav-close class="inline-flex items-center justify-center gap-2 rounded-2xl border border-fuchsia-400/20 bg-fuchsia-400/10 px-4 py-3 text-sm font-bold text-fuchsia-100">🔧 Admin</a>
+                        <a href="/admin" data-nav-close class="inline-flex items-center justify-center gap-2 rounded-2xl border border-fuchsia-400/20 bg-fuchsia-400/10 px-3 py-2.5 text-sm font-bold text-fuchsia-100">🔧 Admin</a>
                         {% endif %}
-                        <a href="/logout" data-nav-close class="inline-flex items-center justify-center gap-2 rounded-2xl border border-red-400/20 bg-red-400/10 px-4 py-3 text-sm font-bold text-red-100">Quitter</a>
+                        <a href="/logout" data-nav-close class="inline-flex items-center justify-center gap-2 rounded-2xl border border-red-400/20 bg-red-400/10 px-3 py-2.5 text-sm font-bold text-red-100 {% if user.is_admin %}col-span-2{% endif %}">Quitter</a>
                     </div>
                 </div>
             </nav>
