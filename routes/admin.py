@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, request, redirect, url_for, session, flash, make_response
 from werkzeug.security import generate_password_hash
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import csv
 import io
 import json
@@ -8,6 +8,7 @@ import logging
 import os
 import re
 import secrets
+from zoneinfo import ZoneInfo
 
 from extensions import db
 from models import User, Race, Pig, Bet, CerealItem, TrainingItem, SchoolLessonItem, PigAvatar, AuthEventLog
@@ -155,9 +156,10 @@ def admin_dashboard(user):
         'admin_count': User.query.filter_by(is_admin=True).count(),
     }
     recent_races = Race.query.filter_by(status='finished').order_by(Race.finished_at.desc()).limit(8).all()
+    current_timezone = get_config('timezone', 'Europe/Paris')
 
     return render_template('admin_dashboard.html',
-        user=user, admin_tab='dashboard', stats=stats, recent_races=recent_races)
+        user=user, admin_tab='dashboard', stats=stats, recent_races=recent_races, current_timezone=current_timezone)
 
 
 @admin_bp.route('/admin/auth-logs')
@@ -311,6 +313,7 @@ def admin_races(user):
             'market_duration': settings.market_duration,
             'min_real_participants': settings.min_real_participants,
             'empty_race_mode': settings.empty_race_mode,
+            'timezone': get_config('timezone', 'Europe/Paris'),
             'race_schedule': settings.race_schedule,
             'schedule_dict': settings.schedule_dict,
             'race_themes': merged_themes,
@@ -322,6 +325,7 @@ def admin_races(user):
 @admin_bp.route('/admin/save', methods=['POST'])
 @admin_required
 def admin_save(user):
+    old_timezone = get_config('timezone', 'Europe/Paris')
     keys = [
         'race_hour', 'race_minute', 'market_hour',
         'market_minute', 'market_duration', 'min_real_participants', 'empty_race_mode'
@@ -330,6 +334,42 @@ def admin_save(user):
         val = request.form.get(key)
         if val is not None:
             set_config(key, val)
+
+    new_timezone = (request.form.get('timezone') or '').strip()
+    if new_timezone:
+        try:
+            old_tz = ZoneInfo(old_timezone)
+            new_tz = ZoneInfo(new_timezone)
+        except Exception:
+            flash("Fuseau horaire invalide. Aucun changement applique.", "error")
+            return redirect(url_for('admin.admin_races'))
+
+        if new_timezone != old_timezone:
+            upcoming_races = Race.query.filter(
+                Race.status.in_(['upcoming', 'open']),
+                Race.scheduled_at.isnot(None),
+            ).all()
+            for race in upcoming_races:
+                scheduled_utc = race.scheduled_at
+                if scheduled_utc.tzinfo is None:
+                    scheduled_utc = scheduled_utc.replace(tzinfo=timezone.utc)
+                else:
+                    scheduled_utc = scheduled_utc.astimezone(timezone.utc)
+
+                old_local = scheduled_utc.astimezone(old_tz)
+                preserved_local = datetime(
+                    old_local.year, old_local.month, old_local.day,
+                    old_local.hour, old_local.minute, old_local.second, old_local.microsecond,
+                    tzinfo=new_tz,
+                )
+                race.scheduled_at = preserved_local.astimezone(timezone.utc).replace(tzinfo=None)
+
+            db.session.commit()
+            set_config('timezone', new_timezone)
+            flash("Fuseau horaire mis a jour. Les courses a venir ont ete recalees pour garder les memes heures locales.", "success")
+            flash("Note logs Docker: pour aligner l'heure systeme (TZ), redemarre le conteneur web.", "info")
+        else:
+            set_config('timezone', new_timezone)
 
     # Jours du marché : checkboxes multi-valeurs → "1,3,4"
     market_days = request.form.getlist('market_days')
