@@ -1,0 +1,250 @@
+{% include '_site_header.html' %}
+
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Derby des Groins — Cochon Pendu</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="min-h-screen bg-[radial-gradient(circle_at_top,rgba(52,12,27,0.96),rgba(17,5,8,1)_58%)] text-white">
+  <main class="max-w-6xl mx-auto px-4 py-8 space-y-6">
+    <section class="rounded-3xl border border-rose-200/10 bg-black/25 p-5 sm:p-7 shadow-2xl shadow-rose-950/30">
+      <div class="flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <p class="text-xs uppercase tracking-[0.24em] text-rose-100/45">Mini-jeu dramatique</p>
+          <h1 class="text-3xl sm:text-4xl font-black text-rose-100">🐷 Cochon Pendu</h1>
+        </div>
+        <button id="restart-btn" class="rounded-xl border border-rose-300/25 bg-rose-300/15 px-4 py-2.5 text-sm font-black text-rose-100 hover:bg-rose-300/25 transition">Rejouer</button>
+      </div>
+
+      <div class="mt-6 grid gap-6 lg:grid-cols-[1.2fr_1fr]">
+        <article class="rounded-2xl border border-white/10 bg-black/25 p-4 sm:p-6">
+          <p class="text-xs uppercase tracking-[0.22em] text-white/45">Progression du cochon pendu</p>
+          <div class="mt-4 flex justify-center">
+            <svg viewBox="0 0 200 300" class="w-full max-w-sm rounded-2xl border border-rose-200/10 bg-[#1f090f] p-3">
+              <g id="stage-0">
+                <rect x="0" y="260" width="200" height="40" fill="#3b2418"></rect>
+                <ellipse cx="100" cy="235" rx="36" ry="18" fill="#f8b4c5"></ellipse>
+                <circle cx="86" cy="232" r="3" fill="#111"></circle>
+                <circle cx="114" cy="232" r="3" fill="#111"></circle>
+                <path d="M85 245 Q100 255 115 245" stroke="#7f1d1d" stroke-width="3" fill="none"></path>
+              </g>
+              <g id="stage-1" class="hidden">
+                <line x1="145" y1="35" x2="145" y2="110" stroke="#c3b8aa" stroke-width="3"></line>
+                <circle cx="145" cy="30" r="10" fill="#5f5247"></circle>
+              </g>
+              <g id="stage-2" class="hidden">
+                <line x1="145" y1="35" x2="120" y2="220" stroke="#d6cabd" stroke-width="2.5" stroke-dasharray="4 3"></line>
+                <circle cx="120" cy="220" r="8" fill="none" stroke="#d6cabd" stroke-width="2"></circle>
+                <circle cx="138" cy="215" r="2.5" fill="#fecaca"></circle>
+              </g>
+              <g id="stage-3" class="hidden">
+                <ellipse cx="120" cy="200" rx="30" ry="15" fill="#f9a8d4" transform="rotate(180 120 200)"></ellipse>
+                <circle cx="98" cy="200" r="8" fill="#f9a8d4"></circle>
+                <circle cx="95" cy="198" r="1.8" fill="#111"></circle>
+                <circle cx="101" cy="198" r="1.8" fill="#111"></circle>
+                <line x1="120" y1="185" x2="120" y2="245" stroke="#d6cabd" stroke-width="2"></line>
+              </g>
+              <g id="stage-4" class="hidden">
+                <ellipse cx="100" cy="262" rx="56" ry="16" fill="#94a3b8"></ellipse>
+                <rect x="44" y="230" width="112" height="34" rx="10" fill="#64748b"></rect>
+              </g>
+              <g id="stage-5" class="hidden">
+                <path d="M70 268 C76 248,84 248,90 268" fill="#fb923c"></path>
+                <path d="M95 268 C102 242,112 242,118 268" fill="#facc15"></path>
+                <path d="M120 268 C126 248,135 248,140 268" fill="#fb923c"></path>
+              </g>
+              <g id="stage-6" class="hidden">
+                <line x1="145" y1="35" x2="130" y2="140" stroke="#fca5a5" stroke-width="2" stroke-dasharray="2 6"></line>
+              </g>
+              <g id="stage-7" class="hidden">
+                <rect x="75" y="175" width="50" height="22" rx="10" fill="#b91c1c"></rect>
+                <line x1="82" y1="175" x2="82" y2="197" stroke="#fca5a5" stroke-width="1.5"></line>
+                <line x1="95" y1="175" x2="95" y2="197" stroke="#fca5a5" stroke-width="1.5"></line>
+                <line x1="108" y1="175" x2="108" y2="197" stroke="#fca5a5" stroke-width="1.5"></line>
+              </g>
+            </svg>
+          </div>
+          <p id="stage-caption" class="mt-4 text-center text-sm text-white/70">Le cochon garde son sourire… pour l'instant.</p>
+        </article>
+
+        <article class="rounded-2xl border border-white/10 bg-black/25 p-4 sm:p-6 space-y-5">
+          <div class="grid grid-cols-2 gap-3 text-sm">
+            <div class="rounded-xl border border-yellow-300/25 bg-yellow-300/10 p-3">
+              <p class="text-yellow-100/70 uppercase tracking-wide text-xs">Gain victoire</p>
+              <p class="text-2xl font-black text-yellow-300">+{{ reward }} 🪙</p>
+            </div>
+            <div class="rounded-xl border border-red-300/25 bg-red-300/10 p-3">
+              <p class="text-red-100/70 uppercase tracking-wide text-xs">Défaite</p>
+              <p class="text-xs mt-1">-{{ happiness_penalty }} bonheur / -{{ energy_penalty }} énergie</p>
+            </div>
+          </div>
+
+          <div>
+            <p class="text-xs uppercase tracking-[0.22em] text-white/45">Mot à deviner</p>
+            <div id="word-display" class="mt-3 flex flex-wrap gap-2"></div>
+          </div>
+
+          <div class="flex items-center justify-between text-sm">
+            <p class="text-white/70">Erreurs: <span id="errors-count" class="font-black text-rose-300">0</span>/7</p>
+            <p id="status-text" class="font-black text-cyan-200">À toi de jouer !</p>
+          </div>
+
+          <div>
+            <p class="text-xs uppercase tracking-[0.22em] text-white/45 mb-2">Clavier porcin</p>
+            <div id="keyboard" class="grid grid-cols-7 sm:grid-cols-9 gap-2"></div>
+          </div>
+        </article>
+      </div>
+    </section>
+  </main>
+
+  <div id="end-modal" class="fixed inset-0 hidden items-center justify-center bg-black/70 p-4 z-[120]">
+    <div class="w-full max-w-md rounded-2xl border border-white/15 bg-[#19070c] p-6 text-center space-y-3">
+      <h2 id="modal-title" class="text-2xl font-black text-rose-100"></h2>
+      <p id="modal-text" class="text-white/75"></p>
+      <button id="modal-restart" class="mt-2 rounded-xl border border-rose-300/30 bg-rose-300/15 px-5 py-2.5 text-sm font-black text-rose-100 hover:bg-rose-300/25 transition">Rejouer</button>
+    </div>
+  </div>
+
+  <script>
+    const INITIAL_STATE = {{ game_state|tojson }};
+    const stageCaption = document.getElementById('stage-caption');
+    const wordDisplay = document.getElementById('word-display');
+    const errorsCount = document.getElementById('errors-count');
+    const statusText = document.getElementById('status-text');
+    const keyboard = document.getElementById('keyboard');
+    const endModal = document.getElementById('end-modal');
+    const modalTitle = document.getElementById('modal-title');
+    const modalText = document.getElementById('modal-text');
+
+    const STAGE_CAPTIONS = [
+      "Le cochon garde son sourire… pour l'instant.",
+      'Une poulie grinçante surgit au-dessus de lui.',
+      'La corde attrape sa patte, il transpire.',
+      'Le cochon pendu gigote la tête en bas.',
+      'La marmite arrive sous ses sabots.',
+      'Le feu crépite. La pression monte.',
+      'La corde craque dangereusement...',
+      'COUIC. Transformé en saucisson.'
+    ];
+
+    let gameState = INITIAL_STATE;
+
+    function drawWord(maskedWord) {
+      wordDisplay.innerHTML = '';
+      maskedWord.forEach((letter) => {
+        const node = document.createElement('span');
+        node.className = 'inline-flex h-12 w-10 items-end justify-center border-b-4 border-rose-300/70 text-xl font-black tracking-wider';
+        node.textContent = letter === '_' ? '' : letter;
+        wordDisplay.appendChild(node);
+      });
+    }
+
+    function renderStages(errors) {
+      for (let i = 1; i <= 7; i += 1) {
+        const stage = document.getElementById(`stage-${i}`);
+        if (!stage) continue;
+        stage.classList.toggle('hidden', errors < i);
+      }
+      stageCaption.textContent = STAGE_CAPTIONS[Math.min(errors, 7)];
+    }
+
+    function lockKeyboard(lock = true) {
+      keyboard.querySelectorAll('button').forEach((btn) => {
+        btn.disabled = lock || btn.dataset.used === '1';
+      });
+    }
+
+    function updateUi(state) {
+      gameState = state;
+      drawWord(state.masked_word || []);
+      errorsCount.textContent = String(state.errors || 0);
+      renderStages(state.errors || 0);
+
+      if (state.status === 'won') {
+        statusText.textContent = 'Ouf, vous l\'avez sauvé !';
+        statusText.className = 'font-black text-emerald-300';
+        lockKeyboard(true);
+        openModal(true, state.word);
+      } else if (state.status === 'lost') {
+        statusText.textContent = 'Transformé en saucisson...';
+        statusText.className = 'font-black text-red-300';
+        lockKeyboard(true);
+        openModal(false, state.word);
+      } else {
+        statusText.textContent = 'À toi de jouer !';
+        statusText.className = 'font-black text-cyan-200';
+      }
+    }
+
+    function openModal(isWin, word) {
+      modalTitle.textContent = isWin ? "Ouf, vous l'avez sauvé !" : 'Transformé en saucisson !';
+      modalText.textContent = isWin
+        ? `Mot trouvé : ${word}. Vous gagnez {{ reward }} Truffes.`
+        : `Mot manqué : ${word}. Votre cochon est traumatisé (-{{ happiness_penalty }} bonheur, -{{ energy_penalty }} énergie).`;
+      endModal.classList.remove('hidden');
+      endModal.classList.add('flex');
+    }
+
+    async function guessLetter(letter, button) {
+      button.disabled = true;
+      button.dataset.used = '1';
+
+      const prevMasked = (gameState.masked_word || []).join('');
+      try {
+        const response = await fetch('/api/cochon-pendu/guess', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+          },
+          body: JSON.stringify({ letter })
+        });
+        const data = await response.json();
+        if (!response.ok || !data.ok) throw new Error(data.error || 'Erreur serveur');
+
+        const nextMasked = (data.masked_word || []).join('');
+        const isSuccess = nextMasked !== prevMasked;
+        button.classList.add(isSuccess ? 'bg-emerald-500/40' : 'bg-red-500/40');
+        updateUi(data);
+      } catch (err) {
+        button.disabled = false;
+        button.dataset.used = '0';
+        statusText.textContent = err.message || 'Erreur de connexion';
+        statusText.className = 'font-black text-yellow-300';
+      }
+    }
+
+    function renderKeyboard() {
+      keyboard.innerHTML = '';
+      for (let code = 65; code <= 90; code += 1) {
+        const letter = String.fromCharCode(code);
+        const btn = document.createElement('button');
+        btn.textContent = letter;
+        btn.className = 'rounded-lg border border-white/20 bg-white/10 py-2 text-sm font-black transition hover:bg-white/20 disabled:opacity-50';
+        if ((gameState.guessed_letters || []).includes(letter)) {
+          btn.disabled = true;
+          btn.dataset.used = '1';
+        } else {
+          btn.dataset.used = '0';
+        }
+        btn.addEventListener('click', () => guessLetter(letter, btn));
+        keyboard.appendChild(btn);
+      }
+    }
+
+    function restart() {
+      window.location.href = '/cochon-pendu';
+    }
+
+    document.getElementById('restart-btn').addEventListener('click', restart);
+    document.getElementById('modal-restart').addEventListener('click', restart);
+
+    renderKeyboard();
+    updateUi(gameState);
+  </script>
+</body>
+</html>
