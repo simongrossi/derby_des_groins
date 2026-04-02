@@ -1,0 +1,57 @@
+{% extends "admin_base.html" %}
+{% block title %}🍄 Truffes Admin{% endblock %}
+
+{% block content %}
+<h1 class="font-title text-3xl text-white mb-1">🍄 Chasse aux Truffes</h1>
+<p class="text-white/40 font-semibold text-sm mb-6">Parametrage du jeu des truffes.</p>
+
+<div class="card p-6 max-w-2xl">
+    <form method="POST">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+        <div class="space-y-6">
+            <!-- Limite quotidienne -->
+            <div>
+                <label for="truffe_daily_limit" class="text-white/60 text-xs font-bold block mb-1 uppercase tracking-wider">Limite quotidienne gratuite</label>
+                <div class="flex items-center gap-3">
+                    <input type="number" name="truffe_daily_limit" id="truffe_daily_limit"
+                           value="{{ config.daily_limit }}" min="0" class="input-admin w-32">
+                    <span class="text-white/40 text-sm font-semibold">partie(s) par jour</span>
+                </div>
+                <p class="text-white/20 text-[10px] mt-2 italic">Nombre de chasses gratuites offertes chaque jour à chaque joueur.</p>
+            </div>
+
+            <!-- Coût de rejeu -->
+            <div>
+                <label for="truffe_replay_cost" class="text-white/60 text-xs font-bold block mb-1 uppercase tracking-wider">Prix de relance d'une partie</label>
+                <div class="flex items-center gap-3">
+                    <input type="number" name="truffe_replay_cost" id="truffe_replay_cost"
+                           value="{{ config.replay_cost }}" min="0" class="input-admin w-32">
+                    <span class="text-white/40 text-sm font-semibold">BitGroins 🪙</span>
+                </div>
+                <p class="text-white/20 text-[10px] mt-2 italic">Coût facturé au joueur s'il souhaite rejouer après avoir épuisé sa limite gratuite.</p>
+            </div>
+
+            <div class="pt-4 border-t border-white/5 flex justify-end">
+                <button type="submit" class="btn-admin">💾 Sauvegarder la configuration</button>
+            </div>
+        </div>
+    </form>
+</div>
+
+<div class="mt-8 grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl">
+    <div class="card p-4 bg-indigo-500/5 border-indigo-500/20">
+        <h3 class="text-indigo-300 font-bold text-sm mb-2">💡 Astuce</h3>
+        <p class="text-white/40 text-xs leading-relaxed">
+            Un coût de rejeu de 2 BitGroins est équilibré par rapport à la récompense de 20 BitGroins.
+            Cela permet aux joueurs de tenter leur chance plusieurs fois tout en restant rentable.
+        </p>
+    </div>
+    <div class="card p-4 bg-amber-500/5 border-amber-500/20">
+        <h3 class="text-amber-300 font-bold text-sm mb-2">⚠️ Attention</h3>
+        <p class="text-white/40 text-xs leading-relaxed">
+            Si vous fixez la limite gratuite à 0, toutes les parties seront payantes dès le premier essai.
+        </p>
+    </div>
+</div>
+{% endblock %}

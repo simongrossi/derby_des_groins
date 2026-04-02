@@ -56,6 +56,7 @@ def init_default_config():
         'min_real_participants': '2',
         'empty_race_mode': 'fill',
         'truffe_daily_limit': '1',
+        'truffe_replay_cost': '2',
         'bets_per_race_limit': '1',
     }
     for k, v in defaults.items():

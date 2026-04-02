@@ -164,6 +164,9 @@
                 <a href="{{ url_for('admin.admin_progression') }}" class="sidebar-link {{ 'active' if admin_tab == 'progression' }}">
                     <span class="text-base w-6 text-center">📈</span> Progression
                 </a>
+                <a href="{{ url_for('admin.admin_truffes') }}" class="sidebar-link {{ 'active' if admin_tab == 'truffes' }}">
+                    <span class="text-base w-6 text-center">🍄</span> Truffes
+                </a>
                 <a href="{{ url_for('admin.admin_races') }}#npcs" class="sidebar-link">
                     <span class="text-base w-6 text-center">🐽</span> PNJ de course
                 </a>
@@ -214,6 +217,9 @@
             </a>
             <a href="{{ url_for('admin.admin_progression') }}" class="flex flex-col items-center gap-0.5 px-2 py-1 rounded-lg text-[10px] font-bold {{ 'text-indigo-400' if admin_tab == 'progression' else 'text-white/40' }}">
                 <span class="text-lg">📈</span>Prog
+            </a>
+            <a href="{{ url_for('admin.admin_truffes') }}" class="flex flex-col items-center gap-0.5 px-2 py-1 rounded-lg text-[10px] font-bold {{ 'text-indigo-400' if admin_tab == 'truffes' else 'text-white/40' }}">
+                <span class="text-lg">🍄</span>Truffes
             </a>
             <a href="{{ url_for('admin.admin_races') }}#npcs" class="flex flex-col items-center gap-0.5 px-2 py-1 rounded-lg text-[10px] font-bold text-white/40">
                 <span class="text-lg">🐽</span>PNJ

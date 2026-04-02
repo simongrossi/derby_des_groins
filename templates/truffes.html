@@ -67,26 +67,44 @@
       box-shadow: 0 0 14px rgba(52,211,153,0.4), inset 0 0 8px rgba(52,211,153,0.2);
       animation: pulse-found 0.6s ease-out;
     }
-    .cell-scorched {
-      background: radial-gradient(circle, rgba(192,90,255,0.6) 0%, rgba(147,51,234,0.2) 70%) !important;
+    /* N°1 Violet Foncé (Cramé): distance === 1 */
+    .cell-cramé {
+      background: radial-gradient(circle, rgba(109,40,217,0.6) 0%, rgba(76,29,149,0.2) 70%) !important; /* Violet Foncé */
+      border-color: rgba(109,40,217,0.5) !important;
+      box-shadow: 0 0 14px rgba(109,40,217,0.4), inset 0 0 8px rgba(109,40,217,0.15);
+      animation: pop-in 0.3s ease-out;
+    }
+    /* N°2 Violet pale (Brulant): distance === 2 */
+    .cell-brulant {
+      background: radial-gradient(circle, rgba(192,90,255,0.6) 0%, rgba(147,51,234,0.2) 70%) !important; /* Violet Pale */
       border-color: rgba(192,90,255,0.5) !important;
       box-shadow: 0 0 14px rgba(192,90,255,0.4), inset 0 0 8px rgba(192,90,255,0.15);
       animation: pop-in 0.3s ease-out;
     }
-    .cell-hot {
-      background: radial-gradient(circle, rgba(248,113,113,0.5) 0%, rgba(239,68,68,0.15) 70%) !important;
-      border-color: rgba(248,113,113,0.35) !important;
-      box-shadow: 0 0 10px rgba(248,113,113,0.25);
+    /* N°3 Rouge (Bouillant): distance === 3 */
+    .cell-bouillant {
+      background: radial-gradient(circle, rgba(239,68,68,0.6) 0%, rgba(220,38,38,0.2) 70%) !important; /* Rouge */
+      border-color: rgba(239,68,68,0.5) !important;
+      box-shadow: 0 0 14px rgba(239,68,68,0.4), inset 0 0 8px rgba(239,68,68,0.15);
       animation: pop-in 0.3s ease-out;
     }
-    .cell-warm {
-      background: radial-gradient(circle, rgba(251,191,36,0.4) 0%, rgba(245,158,11,0.12) 70%) !important;
-      border-color: rgba(251,191,36,0.3) !important;
-      box-shadow: 0 0 8px rgba(251,191,36,0.2);
+    /* N°4 Orange (Chaud): distance >= 4 && distance <= 6 */
+    .cell-chaud {
+      background: radial-gradient(circle, rgba(251,146,60,0.5) 0%, rgba(249,115,22,0.15) 70%) !important; /* Orange */
+      border-color: rgba(251,146,60,0.35) !important;
+      box-shadow: 0 0 10px rgba(251,146,60,0.25);
       animation: pop-in 0.3s ease-out;
     }
-    .cell-cold {
-      background: radial-gradient(circle, rgba(125,211,252,0.3) 0%, rgba(56,189,248,0.08) 70%) !important;
+    /* N°5 Jaune clair (Tiède): distance >= 7 && distance <= 9 */
+    .cell-tiede {
+      background: radial-gradient(circle, rgba(253,224,71,0.4) 0%, rgba(234,179,8,0.12) 70%) !important; /* Jaune clair */
+      border-color: rgba(253,224,71,0.3) !important;
+      box-shadow: 0 0 8px rgba(253,224,71,0.2);
+      animation: pop-in 0.3s ease-out;
+    }
+    /* N°6 Bleu ciel (Froid): distance > 9 */
+    .cell-froid {
+      background: radial-gradient(circle, rgba(125,211,252,0.3) 0%, rgba(56,189,248,0.08) 70%) !important; /* Bleu ciel */
       border-color: rgba(125,211,252,0.2) !important;
       box-shadow: 0 0 6px rgba(125,211,252,0.15);
       animation: pop-in 0.3s ease-out;
@@ -114,7 +132,7 @@
 
     /* ── Disabled cells ── */
     .cell-btn:disabled { cursor: default; }
-    .cell-btn:disabled:not(.cell-found):not(.cell-scorched):not(.cell-hot):not(.cell-warm):not(.cell-cold) {
+    .cell-btn:disabled:not(.cell-found):not(.cell-cramé):not(.cell-brulant):not(.cell-bouillant):not(.cell-chaud):not(.cell-tiede):not(.cell-froid) {
       opacity: 0.3;
     }
 
@@ -184,11 +202,13 @@
         <section class="rounded-3xl border border-white/10 bg-black/15 p-4 sm:p-5">
           <h2 class="text-sm font-black text-white/80 uppercase tracking-wide">Légende</h2>
           <div class="mt-3 space-y-2 text-sm">
-            <div class="flex items-center gap-2"><span class="inline-block h-3 w-3 rounded-full bg-sky-400/60"></span><span class="text-white/70"><strong class="text-sky-200">Froid</strong> — distance &gt; 10</span></div>
-            <div class="flex items-center gap-2"><span class="inline-block h-3 w-3 rounded-full bg-amber-400/60"></span><span class="text-white/70"><strong class="text-amber-200">Tiède</strong> — 6 à 10</span></div>
-            <div class="flex items-center gap-2"><span class="inline-block h-3 w-3 rounded-full bg-red-400/60"></span><span class="text-white/70"><strong class="text-red-300">Brûlant</strong> — 2 à 5</span></div>
-            <div class="flex items-center gap-2"><span class="inline-block h-3 w-3 rounded-full bg-purple-400/60"></span><span class="text-white/70"><strong class="text-purple-300">Cramé</strong> — 1 case</span></div>
             <div class="flex items-center gap-2"><span class="inline-block h-3 w-3 rounded-full bg-emerald-400/60"></span><span class="text-white/70"><strong class="text-emerald-300">Trouvé</strong> — jackpot !</span></div>
+            <div class="flex items-center gap-2"><span class="inline-block h-3 w-3 rounded-full bg-purple-800/60"></span><span class="text-white/70"><strong class="text-purple-700">Cramé</strong> — 1 case</span></div>
+            <div class="flex items-center gap-2"><span class="inline-block h-3 w-3 rounded-full bg-purple-400/60"></span><span class="text-white/70"><strong class="text-purple-300">Brûlant</strong> — 2 cases</span></div>
+            <div class="flex items-center gap-2"><span class="inline-block h-3 w-3 rounded-full bg-red-600/60"></span><span class="text-white/70"><strong class="text-red-500">Bouillant</strong> — 3 cases</span></div>
+            <div class="flex items-center gap-2"><span class="inline-block h-3 w-3 rounded-full bg-orange-400/60"></span><span class="text-white/70"><strong class="text-orange-300">Chaud</strong> — 4 à 6 cases</span></div>
+            <div class="flex items-center gap-2"><span class="inline-block h-3 w-3 rounded-full bg-yellow-300/60"></span><span class="text-white/70"><strong class="text-yellow-200">Tiède</strong> — 7 à 9 cases</span></div>
+            <div class="flex items-center gap-2"><span class="inline-block h-3 w-3 rounded-full bg-sky-300/60"></span><span class="text-white/70"><strong class="text-sky-200">Froid</strong> — au-delà de 9 cases</span></div>
           </div>
         </section>
 
@@ -211,6 +231,7 @@
     const MAX_CLICKS = {{ max_clicks }};
     const WIN_REWARD = {{ reward }};
     const ALREADY_PLAYED = {{ 'true' if already_played else 'false' }};
+    const REPLAY_COST = {{ replay_cost }}; // Added replay cost
     const grid = document.getElementById('grid');
     const status = document.getElementById('status');
     const statusDetail = document.getElementById('status-detail');
@@ -223,6 +244,7 @@
     let clicksLeft = MAX_CLICKS;
     let finished = false;
     let gameStarted = false;
+    let startInFlight = false;
 
     function randomCell() {
       hiddenX = Math.floor(Math.random() * GRID_SIZE);
@@ -231,10 +253,12 @@
 
     function distanceLabel(distance) {
       if (distance === 0) return { title: 'Trouvé !', detail: `La truffe est à toi. +${WIN_REWARD} 🪙.`, tone: 'found' };
-      if (distance === 1) return { title: 'Cramé !', detail: 'La truffe est à portée de groin !', tone: 'scorched' };
-      if (distance <= 5) return { title: 'Brûlant', detail: 'Tu renifles presque la truffe.', tone: 'hot' };
-      if (distance <= 10) return { title: 'Tiède', detail: 'Le groin capte quelque chose.', tone: 'warm' };
-      return { title: 'Froid', detail: 'Rien. Juste de la terre humide.', tone: 'cold' };
+      if (distance === 1) return { title: 'Cramé !', detail: 'La truffe est à portée de groin !', tone: 'cramé' };
+      if (distance === 2) return { title: 'Brûlant', detail: 'Tu renifles presque la truffe.', tone: 'brulant' };
+      if (distance === 3) return { title: 'Bouillant', detail: 'La truffe est très proche !', tone: 'bouillant' };
+      if (distance >= 4 && distance <= 6) return { title: 'Chaud', detail: 'Ça chauffe !', tone: 'chaud' };
+      if (distance >= 7 && distance <= 9) return { title: 'Tiède', detail: 'Le groin capte quelque chose.', tone: 'tiede' };
+      return { title: 'Froid', detail: 'Rien. Juste de la terre humide.', tone: 'froid' };
     }
 
     async function reportWin(clicksUsed) {
@@ -253,43 +277,66 @@
     }
 
     function setTone(tone) {
-      status.className = 'mt-2 text-2xl font-black';
+      status.className = 'mt-2 text-xl font-black';
       if (tone === 'found') status.classList.add('text-emerald-300');
-      else if (tone === 'scorched') status.classList.add('text-purple-300');
-      else if (tone === 'hot') status.classList.add('text-red-300');
-      else if (tone === 'warm') status.classList.add('text-amber-200');
+      else if (tone === 'cramé') status.classList.add('text-purple-700');
+      else if (tone === 'brulant') status.classList.add('text-purple-300');
+      else if (tone === 'bouillant') status.classList.add('text-red-500');
+      else if (tone === 'chaud') status.classList.add('text-orange-300');
+      else if (tone === 'tiede') status.classList.add('text-yellow-200');
       else status.classList.add('text-sky-200');
     }
 
     function revealCell(button, tone) {
       button.disabled = true;
       if (tone === 'found') button.classList.add('cell-found');
-      else if (tone === 'scorched') button.classList.add('cell-scorched');
-      else if (tone === 'hot') button.classList.add('cell-hot');
-      else if (tone === 'warm') button.classList.add('cell-warm');
-      else button.classList.add('cell-cold');
+      else if (tone === 'cramé') button.classList.add('cell-cramé');
+      else if (tone === 'brulant') button.classList.add('cell-brulant');
+      else if (tone === 'bouillant') button.classList.add('cell-bouillant');
+      else if (tone === 'chaud') button.classList.add('cell-chaud');
+      else if (tone === 'tiede') button.classList.add('cell-tiede');
+      else button.classList.add('cell-froid');
     }
 
-    async function startGame() {
-      const res = await fetch('{{ url_for("truffes.truffes_play") }}', {
-        method: 'POST',
-        headers: { 
-            'Content-Type': 'application/json',
-            'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-        },
-      });
-      const data = await res.json();
-      if (!data.ok) {
-        showAlreadyPlayed();
-        return false;
+    async function startGame(isReplay = false) {
+      if (startInFlight) return false;
+      startInFlight = true;
+      try {
+        const res = await fetch('{{ url_for("truffes.truffes_play") }}', {
+          method: 'POST',
+          headers: { 
+              'Content-Type': 'application/json',
+              'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+          },
+          body: JSON.stringify({ is_replay: isReplay }), // Pass is_replay flag
+        });
+        const data = await res.json();
+        if (!data.ok) {
+          if (data.error === 'Limite quotidienne atteinte' && !isReplay) {
+              showAlreadyPlayed();
+          } else if (data.error === 'Fonds insuffisants') {
+              alert('Vous n\'avez pas assez de BitGroins pour rejouer. Il vous faut ' + REPLAY_COST + ' 🪙.');
+              newGameButton.disabled = false; // Re-enable new game button
+              newGameButton.classList.remove('opacity-40', 'cursor-not-allowed');
+          } else {
+              alert(data.error); // Generic error
+          }
+          return false;
+        }
+        if (isReplay) {
+          balanceNode.textContent = Number(data.new_balance).toFixed(2); // Update balance if replay cost was deducted
+        }
+        gameStarted = true;
+        return true;
+      } finally {
+        startInFlight = false;
       }
-      gameStarted = true;
-      return true;
     }
 
     async function handleCellClick(event) {
       const button = event.currentTarget;
       if (finished) return;
+      if (startInFlight) return;
       if (!gameStarted) {
         const ok = await startGame();
         if (!ok) return;
@@ -326,7 +373,7 @@
         finished = true;
         status.textContent = 'Perdu';
         statusDetail.textContent = `La truffe était en (${hiddenX + 1}, ${hiddenY + 1}).`;
-        setTone('cold');
+        setTone('froid'); // Set to cold tone for lost game
         /* reveal the truffle location */
         const truffleBtn = grid.querySelector(`[data-x="${hiddenX}"][data-y="${hiddenY}"]`);
         if (truffleBtn) {
@@ -361,15 +408,16 @@
       finished = true;
       gameStarted = false;
       status.textContent = 'Déjà joué !';
-      statusDetail.textContent = 'Reviens demain pour une nouvelle chasse.';
+      statusDetail.textContent = 'Reviens demain pour une nouvelle chasse gratuite, ou rejoue pour ' + REPLAY_COST + ' 🪙.';
       status.className = 'mt-2 text-2xl font-black text-amber-200';
       clicksLeftNode.textContent = '0';
-      newGameButton.disabled = true;
-      newGameButton.classList.add('opacity-40', 'cursor-not-allowed');
+      newGameButton.disabled = false; // Allow replay
+      newGameButton.textContent = 'Rejouer (' + REPLAY_COST + ' 🪙)';
+      newGameButton.classList.remove('opacity-40', 'cursor-not-allowed');
       grid.querySelectorAll('.cell-btn').forEach(btn => { btn.disabled = true; });
     }
 
-    function resetGame() {
+    async function resetGame(isReplay = false) {
       clicksLeft = MAX_CLICKS;
       finished = false;
       gameStarted = false;
@@ -377,13 +425,31 @@
       clicksLeftNode.textContent = clicksLeft;
       status.textContent = 'En attente…';
       statusDetail.textContent = 'Clique une case pour commencer à fouiller.';
-      status.className = 'mt-2 text-2xl font-black text-amber-100';
+      status.className = 'mt-2 text-xl font-black text-amber-100';
+      newGameButton.textContent = 'Nouvelle partie';
+      newGameButton.disabled = false;
+      newGameButton.classList.remove('opacity-40', 'cursor-not-allowed');
       buildGrid();
+      if (isReplay) {
+        newGameButton.disabled = true;
+        newGameButton.classList.add('opacity-40', 'cursor-not-allowed');
+        grid.querySelectorAll('.cell-btn').forEach(btn => { btn.disabled = true; });
+        const ok = await startGame(true); // Deduct cost immediately if it's a replay
+        if (ok) {
+          grid.querySelectorAll('.cell-btn').forEach(btn => { btn.disabled = false; });
+          newGameButton.disabled = false;
+          newGameButton.classList.remove('opacity-40', 'cursor-not-allowed');
+        }
+      }
     }
 
-    newGameButton.addEventListener('click', () => {
-      if (ALREADY_PLAYED) return;
-      resetGame();
+    newGameButton.addEventListener('click', async () => {
+      if (ALREADY_PLAYED) {
+        // If already played, this button acts as a replay button
+        await resetGame(true); // Pass true to indicate it's a replay
+      } else {
+        await resetGame(false);
+      }
     });
 
     if (ALREADY_PLAYED) {

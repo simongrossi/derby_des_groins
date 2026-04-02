@@ -772,6 +772,28 @@ def admin_test_smtp(user):
 
 
 # ══════════════════════════════════════════════════════════════════════════════
+# Truffes
+# ══════════════════════════════════════════════════════════════════════════════
+
+@admin_bp.route('/admin/truffes', methods=['GET', 'POST'])
+@admin_required
+def admin_truffes(user):
+    if request.method == 'POST':
+        daily_limit = request.form.get('truffe_daily_limit', '1')
+        replay_cost = request.form.get('truffe_replay_cost', '2')
+        set_config('truffe_daily_limit', daily_limit)
+        set_config('truffe_replay_cost', replay_cost)
+        flash("Configuration des truffes sauvegardee !", "success")
+        return redirect(url_for('admin.admin_truffes'))
+
+    config = {
+        'daily_limit': get_config('truffe_daily_limit', '1'),
+        'replay_cost': get_config('truffe_replay_cost', '2'),
+    }
+    return render_template('admin_truffes.html', user=user, admin_tab='truffes', config=config)
+
+
+# ══════════════════════════════════════════════════════════════════════════════
 # Donnees de jeu (CRUD cereales, entrainements, lecons)
 # ══════════════════════════════════════════════════════════════════════════════
 
@@ -996,10 +1018,8 @@ def admin_lesson_save(user):
 
 
 @admin_bp.route('/admin/data/lesson/<int:item_id>/delete', methods=['POST'])
-def admin_lesson_delete(item_id):
-    user, redir = _require_admin()
-    if redir:
-        return redir
+@admin_required
+def admin_lesson_delete(user, item_id):
     item = SchoolLessonItem.query.get_or_404(item_id)
     name = item.name
     db.session.delete(item)
@@ -1009,10 +1029,8 @@ def admin_lesson_delete(item_id):
 
 
 @admin_bp.route('/admin/data/lesson/<int:item_id>/toggle', methods=['POST'])
-def admin_lesson_toggle(item_id):
-    user, redir = _require_admin()
-    if redir:
-        return redir
+@admin_required
+def admin_lesson_toggle(user, item_id):
     item = SchoolLessonItem.query.get_or_404(item_id)
     item.is_active = not item.is_active
     db.session.commit()
