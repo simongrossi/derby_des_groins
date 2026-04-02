@@ -636,7 +636,10 @@
     if (!bitgroinsViews[viewName]) return;
     activeBitgroinsView = viewName;
     Object.entries(bitgroinsViews).forEach(([name, el]) => {
-      if (el) el.style.display = name === viewName ? '' : 'none';
+      if (!el) return;
+      const active = name === viewName;
+      el.classList.toggle('hidden', !active);
+      el.style.display = active ? '' : 'none';
     });
     bitgroinsViewButtons.forEach((btn) => {
       const active = btn.dataset.bitgroinsViewBtn === viewName;
