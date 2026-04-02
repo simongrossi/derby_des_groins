@@ -1059,3 +1059,37 @@ class PokerHandHistory(db.Model):
     hand_results = db.Column(db.Text, default='{}')
     community_json = db.Column(db.Text, default='[]')
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+
+class ChatMessage(db.Model):
+    """Messages du chat global."""
+    __tablename__ = 'chat_message'
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    username = db.Column(db.String(80), nullable=False)
+    message = db.Column(db.Text, nullable=False)
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+    parent_id = db.Column(db.Integer, db.ForeignKey('chat_message.id'), nullable=True)
+
+    user = db.relationship('User', backref=db.backref('chat_messages', lazy=True))
+    replies = db.relationship('ChatMessage', backref=db.backref('parent', remote_side=[id]), lazy=True)
+
+    def __repr__(self):
+        return f'<ChatMessage {self.id} by {self.username}>'
+
+    def to_dict(self):
+        data = {
+            'id': self.id,
+            'user_id': self.user_id,
+            'username': self.username,
+            'message': self.message,
+            'timestamp': self.timestamp.isoformat() + 'Z',
+            'parent_id': self.parent_id
+        }
+        if self.parent:
+            data['parent_context'] = {
+                'username': self.parent.username,
+                'message': self.parent.message[:50] + ('...' if len(self.parent.message) > 50 else '')
+            }
+        return data

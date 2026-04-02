@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 import json as _json
 
 from extensions import db, limiter
-from models import User, Pig, Race, Participant, Bet, UserNotification
+from models import User, Pig, Race, Participant, Bet, UserNotification, ChatMessage
 from data import SCHOOL_COOLDOWN_MINUTES, MIN_INJURY_RISK, DEFAULT_PIG_WEIGHT_KG
 from helpers import (
     get_user_active_pigs, calculate_pig_power,
@@ -460,3 +460,47 @@ def race_live():
     race = Race.query.filter_by(status='finished').order_by(Race.finished_at.desc()).first()
     race_id = race.id if race else None
     return render_template('race_live.html', user=user, race_id=race_id, active_page='live')
+
+
+@api_bp.route('/api/chat/messages')
+def get_chat_messages():
+    if 'user_id' not in session:
+        return jsonify({'error': 'Non connecté'}), 401
+
+    # Récupérer les 50 derniers messages
+    messages = ChatMessage.query.order_by(ChatMessage.timestamp.desc()).limit(50).all()
+    # Inverser pour avoir l'ordre chronologique (plus anciens en haut)
+    messages.reverse()
+
+    return jsonify([m.to_dict() for m in messages])
+
+
+@api_bp.route('/api/chat/send', methods=['POST'])
+@limiter.limit("20 per minute")
+def send_chat_message():
+    if 'user_id' not in session:
+        return jsonify({'error': 'Non connecté'}), 401
+
+    user = User.query.get(session['user_id'])
+    if not user:
+        return jsonify({'error': 'Utilisateur introuvable'}), 404
+
+    data = request.get_json(silent=True) or {}
+    message_text = data.get('message', '').strip()
+
+    if not message_text:
+        return jsonify({'error': 'Message vide'}), 400
+
+    # Limiter la longueur du message
+    message_text = message_text[:500]
+
+    new_message = ChatMessage(
+        user_id=user.id,
+        username=user.username,
+        message=message_text
+    )
+
+    db.session.add(new_message)
+    db.session.commit()
+
+    return jsonify(new_message.to_dict()), 201
