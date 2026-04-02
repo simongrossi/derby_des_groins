@@ -55,6 +55,7 @@ class EconomySettings:
     max_bet_race: float
     max_payout_race: float
     truffe_daily_limit: int
+    truffe_replay_cost: float
     bets_per_race_limit: int
     bet_types: dict[str, dict]
 
@@ -158,6 +159,7 @@ def _normalize_settings(
     max_bet_race,
     max_payout_race,
     truffe_daily_limit,
+    truffe_replay_cost,
     bets_per_race_limit,
     bet_types,
 ):
@@ -185,6 +187,7 @@ def _normalize_settings(
         max_bet_race=max_bet,
         max_payout_race=payout_cap,
         truffe_daily_limit=_coerce_int(truffe_daily_limit, 1, minimum=1, maximum=50),
+        truffe_replay_cost=_coerce_float(truffe_replay_cost, 2.0, minimum=0.0),
         bets_per_race_limit=_coerce_int(bets_per_race_limit, 1, minimum=1, maximum=20),
         bet_types=_normalize_bet_types(bet_types),
     )
@@ -209,6 +212,7 @@ def get_economy_settings():
         max_bet_race=get_config('economy_max_bet_race', str(DEFAULT_MAX_BET_RACE)),
         max_payout_race=get_config('economy_max_payout_race', str(DEFAULT_MAX_PAYOUT_RACE)),
         truffe_daily_limit=get_config('truffe_daily_limit', '1'),
+        truffe_replay_cost=get_config('truffe_replay_cost', '2'),
         bets_per_race_limit=get_config('bets_per_race_limit', '1'),
         bet_types=_load_json_config('economy_bet_type_overrides', {}),
     )
@@ -243,6 +247,7 @@ def build_economy_settings_from_form(form, current_settings=None):
         max_bet_race=form.get('max_bet_race', settings.max_bet_race),
         max_payout_race=form.get('max_payout_race', settings.max_payout_race),
         truffe_daily_limit=form.get('truffe_daily_limit', settings.truffe_daily_limit),
+        truffe_replay_cost=form.get('truffe_replay_cost', settings.truffe_replay_cost),
         bets_per_race_limit=form.get('bets_per_race_limit', settings.bets_per_race_limit),
         bet_types=raw_bet_overrides,
     )
@@ -267,6 +272,7 @@ def save_economy_settings(settings):
         'economy_max_bet_race': settings.max_bet_race,
         'economy_max_payout_race': settings.max_payout_race,
         'truffe_daily_limit': settings.truffe_daily_limit,
+        'truffe_replay_cost': settings.truffe_replay_cost,
         'bets_per_race_limit': settings.bets_per_race_limit,
         'economy_bet_type_overrides': _serialize_json({
             key: {'house_edge': meta['house_edge']}
@@ -390,7 +396,7 @@ def cap_bet_payout(payout_amount, settings=None):
 
 
 def get_merged_race_themes(reward_multiplier_overrides=None):
-    from helpers.config import DEFAULT_RACE_THEMES
+    from helpers.game_data import DEFAULT_RACE_THEMES
 
     current_themes = _load_json_config('race_themes', {})
     overrides = reward_multiplier_overrides if isinstance(reward_multiplier_overrides, dict) else {}
