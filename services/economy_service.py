@@ -11,6 +11,7 @@ from sqlalchemy import func
 from data import (
     BET_TYPES as DEFAULT_BET_TYPES,
     BREEDING_COST as DEFAULT_BREEDING_COST,
+    DAILY_BACON_TICKETS as DEFAULT_DAILY_BACON_TICKETS,
     DAILY_LOGIN_REWARD as DEFAULT_DAILY_LOGIN_REWARD,
     FEEDING_PRESSURE_PER_PIG as DEFAULT_FEEDING_PRESSURE_PER_PIG,
     MAX_BET_RACE as DEFAULT_MAX_BET_RACE,
@@ -43,6 +44,7 @@ class EconomySettings:
     welcome_bonus: float
     daily_login_reward: float
     weekly_bacon_tickets: int
+    daily_bacon_tickets: int
     weekly_race_quota: int
     race_appearance_reward: float
     race_position_rewards: dict[int, float]
@@ -147,6 +149,7 @@ def _normalize_settings(
     welcome_bonus,
     daily_login_reward,
     weekly_bacon_tickets,
+    daily_bacon_tickets,
     weekly_race_quota,
     race_appearance_reward,
     race_position_rewards,
@@ -170,6 +173,7 @@ def _normalize_settings(
         welcome_bonus=_coerce_float(welcome_bonus, DEFAULT_WELCOME_BONUS, minimum=0.0),
         daily_login_reward=_coerce_float(daily_login_reward, DEFAULT_DAILY_LOGIN_REWARD, minimum=0.0),
         weekly_bacon_tickets=_coerce_int(weekly_bacon_tickets, DEFAULT_WEEKLY_BACON_TICKETS, minimum=0, maximum=20),
+        daily_bacon_tickets=_coerce_int(daily_bacon_tickets, DEFAULT_DAILY_BACON_TICKETS, minimum=0, maximum=20),
         weekly_race_quota=_coerce_int(weekly_race_quota, DEFAULT_WEEKLY_RACE_QUOTA, minimum=0, maximum=20),
         race_appearance_reward=_coerce_float(race_appearance_reward, DEFAULT_RACE_APPEARANCE_REWARD, minimum=0.0),
         race_position_rewards=_normalize_position_rewards(race_position_rewards),
@@ -200,6 +204,7 @@ def get_economy_settings():
         welcome_bonus=get_config('economy_welcome_bonus', str(DEFAULT_WELCOME_BONUS)),
         daily_login_reward=get_config('economy_daily_login_reward', str(DEFAULT_DAILY_LOGIN_REWARD)),
         weekly_bacon_tickets=get_config('economy_weekly_bacon_tickets', str(DEFAULT_WEEKLY_BACON_TICKETS)),
+        daily_bacon_tickets=get_config('economy_daily_bacon_tickets', str(DEFAULT_DAILY_BACON_TICKETS)),
         weekly_race_quota=get_config('economy_weekly_race_quota', str(DEFAULT_WEEKLY_RACE_QUOTA)),
         race_appearance_reward=get_config('economy_race_appearance_reward', str(DEFAULT_RACE_APPEARANCE_REWARD)),
         race_position_rewards=_load_json_config('economy_race_position_rewards', DEFAULT_RACE_POSITION_REWARDS),
@@ -235,6 +240,7 @@ def build_economy_settings_from_form(form, current_settings=None):
         welcome_bonus=form.get('welcome_bonus', settings.welcome_bonus),
         daily_login_reward=form.get('daily_login_reward', settings.daily_login_reward),
         weekly_bacon_tickets=form.get('weekly_bacon_tickets', settings.weekly_bacon_tickets),
+        daily_bacon_tickets=form.get('daily_bacon_tickets', settings.daily_bacon_tickets),
         weekly_race_quota=form.get('weekly_race_quota', settings.weekly_race_quota),
         race_appearance_reward=form.get('race_appearance_reward', settings.race_appearance_reward),
         race_position_rewards=raw_rewards,
@@ -260,6 +266,7 @@ def save_economy_settings(settings):
         'economy_welcome_bonus': settings.welcome_bonus,
         'economy_daily_login_reward': settings.daily_login_reward,
         'economy_weekly_bacon_tickets': settings.weekly_bacon_tickets,
+        'economy_daily_bacon_tickets': settings.daily_bacon_tickets,
         'economy_weekly_race_quota': settings.weekly_race_quota,
         'economy_race_appearance_reward': settings.race_appearance_reward,
         'economy_race_position_rewards': _serialize_json({str(k): v for k, v in settings.race_position_rewards.items()}),
@@ -308,6 +315,10 @@ def get_daily_login_reward_value(settings=None):
 
 def get_weekly_bacon_tickets_value(settings=None):
     return (settings or get_economy_settings()).weekly_bacon_tickets
+
+
+def get_daily_bacon_tickets_value(settings=None):
+    return (settings or get_economy_settings()).daily_bacon_tickets
 
 
 def get_weekly_race_quota_value(settings=None):
@@ -1025,6 +1036,7 @@ class ProgressionSettings:
     comeback_speed_bonus_multiplier: float
     vet_energy_cost: float
     vet_happiness_cost: float
+    rested_threshold_hours: float
 
 
 @dataclass(frozen=True)
@@ -1090,6 +1102,7 @@ def _normalize_progression_settings(
     comeback_speed_bonus_multiplier,
     vet_energy_cost,
     vet_happiness_cost,
+    rested_threshold_hours,
 ):
     penalty_24 = _coerce_float(
         recent_race_penalty_under_24h,
@@ -1137,6 +1150,7 @@ def _normalize_progression_settings(
         comeback_speed_bonus_multiplier=_coerce_float(comeback_speed_bonus_multiplier, DEFAULT_COMEBACK_SPEED_BONUS_MULTIPLIER, minimum=1.0, maximum=3.0),
         vet_energy_cost=_coerce_float(vet_energy_cost, DEFAULT_VET_ENERGY_COST, minimum=0.0, maximum=100.0),
         vet_happiness_cost=_coerce_float(vet_happiness_cost, DEFAULT_VET_HAPPINESS_COST, minimum=0.0, maximum=100.0),
+        rested_threshold_hours=_coerce_float(rested_threshold_hours, 12.0, minimum=1.0, maximum=72.0),
     )
 
 
@@ -1177,6 +1191,7 @@ def get_progression_settings():
         comeback_speed_bonus_multiplier=get_config('progression_comeback_speed_bonus_multiplier', str(DEFAULT_COMEBACK_SPEED_BONUS_MULTIPLIER)),
         vet_energy_cost=get_config('progression_vet_energy_cost', str(DEFAULT_VET_ENERGY_COST)),
         vet_happiness_cost=get_config('progression_vet_happiness_cost', str(DEFAULT_VET_HAPPINESS_COST)),
+        rested_threshold_hours=get_config('progression_rested_threshold_hours', '12.0'),
     )
 
 

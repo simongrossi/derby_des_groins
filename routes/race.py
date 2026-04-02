@@ -9,8 +9,8 @@ from helpers import ensure_next_race, get_user_active_pigs, apply_row_lock, ensu
 from services.economy_service import (
     get_bet_limits,
     get_configured_bet_types,
+    get_daily_bacon_tickets_value,
     get_effective_bet_odds,
-    get_weekly_bacon_tickets_value,
     get_weekly_race_quota_value,
 )
 from services.pig_service import calculate_pig_power, get_weight_profile
@@ -18,7 +18,7 @@ from services.race_service import (
     attach_bet_outcome_snapshots,
     RacePlanningError, build_course_schedule, calculate_bet_odds,
     count_pig_weekly_course_commitments, format_bet_label,
-    get_course_theme, get_user_weekly_bet_count, normalize_bet_type,
+    get_course_theme, get_user_daily_bet_count, get_user_weekly_bet_count, normalize_bet_type,
     parse_selection_ids, plan_pig_for_race, serialize_selection_ids,
     get_upcoming_course_slots
 )
@@ -97,7 +97,7 @@ def courses():
 def paris():
     """Page dédiée aux paris — cotes, formulaire de pari, historique."""
     bet_types = get_configured_bet_types()
-    weekly_bacon_tickets = get_weekly_bacon_tickets_value()
+    daily_bacon_tickets = get_daily_bacon_tickets_value()
     bet_limits = get_bet_limits()
     slot_str = request.args.get('slot')
     race_id = request.args.get('race_id', type=int)
@@ -142,7 +142,7 @@ def paris():
     user = None
     user_bets = []
     pigs = []
-    bacon_tickets_remaining = weekly_bacon_tickets
+    bacon_tickets_remaining = daily_bacon_tickets
     headline_status = {'participates': False}
     participants = []
     next_race_theme = None
@@ -152,8 +152,8 @@ def paris():
         user = User.query.get(session['user_id'])
         if user:
             pigs = get_user_active_pigs(user)
-            weekly_bet_count = get_user_weekly_bet_count(user, datetime.now())
-            bacon_tickets_remaining = max(0, weekly_bacon_tickets - weekly_bet_count)
+            daily_bet_count = get_user_daily_bet_count(user, datetime.now())
+            bacon_tickets_remaining = max(0, daily_bacon_tickets - daily_bet_count)
             if next_race:
                 user_bets = Bet.query.filter_by(user_id=user.id, race_id=next_race.id).all()
             # Derniers paris de l'utilisateur
@@ -184,7 +184,7 @@ def paris():
         recent_bets=recent_bets,
         upcoming_elements=upcoming_elements,
         bacon_tickets_remaining=bacon_tickets_remaining,
-        weekly_bacon_tickets=weekly_bacon_tickets,
+        daily_bacon_tickets=daily_bacon_tickets,
         headline_status=headline_status,
         bet_types=bet_types,
         min_bet_race=bet_limits['min_bet_race'],
@@ -237,11 +237,11 @@ def place_bet():
         session.pop('user_id', None)
         return redirect(url_for('auth.login'))
     bet_types = get_configured_bet_types()
-    weekly_bacon_tickets = get_weekly_bacon_tickets_value()
+    daily_bacon_tickets = get_daily_bacon_tickets_value()
     bet_limits = get_bet_limits()
-    weekly_bet_count = get_user_weekly_bet_count(user, datetime.now())
-    if weekly_bet_count >= weekly_bacon_tickets:
-        flash(f"Tu as deja utilise tes {weekly_bacon_tickets} Tickets Bacon de la semaine.", "warning")
+    daily_bet_count = get_user_daily_bet_count(user, datetime.now())
+    if daily_bet_count >= daily_bacon_tickets:
+        flash(f"Tu as deja utilise tes {daily_bacon_tickets} Tickets Bacon aujourd'hui.", "warning")
         return redirect(url_for('race.paris'))
 
     race_id = request.form.get('race_id', type=int)

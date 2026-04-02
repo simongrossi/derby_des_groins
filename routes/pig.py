@@ -90,6 +90,7 @@ def mon_cochon():
         adoption_cost=adoption_cost, active_listing_count=active_listing_count,
         feeding_multiplier=feeding_multiplier, max_slots=max_slots, breeding_cost=breeding_cost,
         available_avatars=available_avatars,
+        now=datetime.utcnow(),
     )
 
 
@@ -299,14 +300,20 @@ def school():
         return redirect(url_for('pig.mon_cochon'))
 
     selected_answer = answers[answer_idx]
-    category = pig.study(lesson, correct=selected_answer['correct'])
+    category, xp_mult = pig.study(lesson, correct=selected_answer['correct'])
     if category == 'success':
         feedback_prefix = "Cours valide avec mention groin-tres-bien."
     else:
         feedback_prefix = "Le cours etait plus complique que prevu."
 
+    fatigue_suffix = ""
+    if xp_mult <= 0.1:
+        fatigue_suffix = " ⚠️ Fatigue cognitive : XP reduit a 10%, energie double."
+    elif xp_mult <= 0.5:
+        fatigue_suffix = " ⚠️ Fatigue cognitive : XP reduit a 50%."
+
     db.session.commit()
-    flash(f"{lesson['emoji']} {lesson['name']} - {feedback_prefix} {selected_answer['feedback']}", category)
+    flash(f"{lesson['emoji']} {lesson['name']} - {feedback_prefix} {selected_answer['feedback']}{fatigue_suffix}", category)
     return redirect(url_for('pig.mon_cochon'))
 
 

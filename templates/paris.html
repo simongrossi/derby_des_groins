@@ -129,7 +129,7 @@
             <div class="flex items-center gap-4">
                 <div>
                     <p class="font-title text-4xl text-pink-400">{{ bacon_tickets_remaining }}</p>
-                    <p class="text-white/30 text-xs font-bold">/ {{ weekly_bacon_tickets }} cette semaine</p>
+                    <p class="text-white/30 text-xs font-bold">/ {{ daily_bacon_tickets }} aujourd'hui</p>
                 </div>
                 <div class="h-10 w-px bg-white/10"></div>
                 <div>
@@ -237,8 +237,8 @@
                         <div class="flex items-start gap-3">
                             <span class="text-2xl shrink-0">🎫</span>
                             <div>
-                                <p class="text-white font-bold text-sm">Quota : {{ bacon_tickets_remaining }} / {{ weekly_bacon_tickets }} tickets restants</p>
-                                <p class="text-white/40 text-[11px] font-semibold mt-1">Chaque pari consomme 1 Ticket Bacon. Reinitialisation chaque lundi matin.</p>
+                                <p class="text-white font-bold text-sm">Quota : {{ bacon_tickets_remaining }} / {{ daily_bacon_tickets }} tickets restants</p>
+                                <p class="text-white/40 text-[11px] font-semibold mt-1">Chaque pari consomme 1 Ticket Bacon. Reinitialisation chaque jour a minuit.</p>
                             </div>
                         </div>
                     </div>
@@ -264,7 +264,7 @@
                         </div>
                     </div>
                 </form>
-                <p class="text-white/30 text-xs font-bold mt-3">Un seul ticket par course et {{ weekly_bacon_tickets }} tickets maximum par semaine.</p>
+                <p class="text-white/30 text-xs font-bold mt-3">Un seul ticket par course et {{ daily_bacon_tickets }} tickets maximum par jour.</p>
                 {% endif %}
             {% elif not user %}
             <div class="mt-5 space-y-3">

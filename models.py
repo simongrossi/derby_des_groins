@@ -95,12 +95,11 @@ class User(db.Model):
 
     @property
     def bacon_tickets(self) -> int:
-        """Nombre de tickets bacon (quota de paris hebdo) restants."""
-        from services.race_service import get_user_weekly_bet_count
-        from services.economy_service import get_weekly_bacon_tickets_value
-        # Utiliser datetime.utcnow() pour correspondre aux dates de paris en DB
-        count = get_user_weekly_bet_count(self, datetime.utcnow())
-        return max(0, get_weekly_bacon_tickets_value() - count)
+        """Nombre de tickets bacon (quota de paris journalier) restants."""
+        from services.race_service import get_user_daily_bet_count
+        from services.economy_service import get_daily_bacon_tickets_value
+        count = get_user_daily_bet_count(self, datetime.utcnow())
+        return max(0, get_daily_bacon_tickets_value() - count)
 
 
 class Pig(db.Model):
@@ -133,6 +132,8 @@ class Pig(db.Model):
     races_won = db.Column(db.Integer, default=0)
     races_entered = db.Column(db.Integer, default=0)
     school_sessions_completed = db.Column(db.Integer, default=0)
+    school_lessons_today_count = db.Column(db.Integer, default=0)
+    school_lessons_today_date = db.Column(db.Date, nullable=True)
 
     # Durée de vie & Rareté & Origine
     max_races = db.Column(db.Integer, default=80)
@@ -205,6 +206,19 @@ class Pig(db.Model):
     def can_school(self) -> bool:
         """Le cochon peut-il aller à l'école ? (vivant, pas blessé)"""
         return self.is_alive and not self.is_injured
+
+    @property
+    def is_rested(self) -> bool:
+        """Cochon reposé : aucune interaction depuis plus de rested_threshold_hours.
+        Prochaine victoire en course → 2× gains de stats et de bonheur."""
+        if not self.is_alive:
+            return False
+        from services.economy_service import get_progression_settings
+        last = self.last_interaction_at or self.created_at
+        if not last:
+            return True
+        threshold = get_progression_settings().rested_threshold_hours
+        return (datetime.utcnow() - last).total_seconds() >= threshold * 3600
 
     @property
     def ideal_weight(self) -> float:
@@ -385,29 +399,57 @@ class Pig(db.Model):
         self.register_positive_interaction(datetime.utcnow())
         self.mark_bad_state_if_needed()
 
-    def study(self, lesson: dict, correct: bool) -> str:
+    def get_daily_school_multipliers(self) -> tuple:
+        """Retourne (xp_mult, energy_mult) selon la fatigue cognitive du jour.
+        Leçons 1-2 : 100% XP, coût normal.
+        Leçon 3 : 50% XP, coût normal.
+        Leçon 4+ : 10% XP, coût énergie x2."""
+        today = datetime.utcnow().date()
+        if self.school_lessons_today_date != today:
+            return (1.0, 1.0)
+        count = self.school_lessons_today_count or 0
+        if count < 2:
+            return (1.0, 1.0)
+        elif count == 2:
+            return (0.5, 1.0)
+        else:
+            return (0.1, 2.0)
+
+    def study(self, lesson: dict, correct: bool) -> tuple:
         """Suivre un cours (dict issu de data.SCHOOL_LESSONS).
-        Renvoie 'success' ou 'warning' selon la réponse."""
+        Renvoie (category, xp_mult) où category est 'success' ou 'warning'
+        et xp_mult le multiplicateur de fatigue appliqué ce jour."""
         from services.economy_service import get_progression_settings, scale_stat_gains
 
         progression = get_progression_settings()
-        self.energy = max(0, float(self.energy or 0.0) - lesson['energy_cost'])
+
+        # Fatigue cognitive : calcul des multiplicateurs avant toute modification
+        xp_mult, energy_mult = self.get_daily_school_multipliers()
+
+        self.energy = max(0, float(self.energy or 0.0) - lesson['energy_cost'] * energy_mult)
         self.hunger = max(0, float(self.hunger or 0.0) - lesson['hunger_cost'])
         self.last_school_at = datetime.utcnow()
         self.school_sessions_completed = (self.school_sessions_completed or 0) + 1
+
+        # Mise à jour du compteur journalier
+        today = datetime.utcnow().date()
+        if self.school_lessons_today_date != today:
+            self.school_lessons_today_count = 0
+            self.school_lessons_today_date = today
+        self.school_lessons_today_count = (self.school_lessons_today_count or 0) + 1
 
         if correct:
             self.apply_stat_boosts(
                 scale_stat_gains(lesson.get('stats', {}), progression.school_stat_gain_multiplier)
             )
-            self.xp = int(self.xp or 0) + int(round(lesson['xp'] * progression.school_xp_multiplier))
+            self.xp = int(self.xp or 0) + int(round(lesson['xp'] * progression.school_xp_multiplier * xp_mult))
             self.happiness = min(
                 100,
                 float(self.happiness or 0.0) + (lesson.get('happiness_bonus', 0) * progression.school_happiness_multiplier),
             )
             category = 'success'
         else:
-            self.xp = int(self.xp or 0) + int(round(lesson.get('wrong_xp', 0) * progression.school_wrong_xp_multiplier))
+            self.xp = int(self.xp or 0) + int(round(lesson.get('wrong_xp', 0) * progression.school_wrong_xp_multiplier * xp_mult))
             self.happiness = max(
                 0,
                 float(self.happiness or 0.0) - (lesson.get('wrong_happiness_penalty', 0) * progression.school_wrong_happiness_multiplier),
@@ -417,7 +459,7 @@ class Pig(db.Model):
         self.register_positive_interaction(datetime.utcnow())
         self.mark_bad_state_if_needed()
         self.check_level_up()
-        return category
+        return category, xp_mult
 
     def heal(self):
         """Soigne le cochon : retire blessure et deadline vétérinaire."""

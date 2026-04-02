@@ -116,13 +116,13 @@
             <div class="flex items-center justify-between gap-3 mt-2">
                 <h2 class="font-title text-3xl text-white">Tickets Bacon</h2>
                 <span class="pill {% if bacon_tickets_remaining > 0 %}bg-emerald-500/12 text-emerald-200 border border-emerald-400/20{% else %}bg-red-500/12 text-red-200 border border-red-400/20{% endif %}">
-                    {{ bacon_tickets_remaining }} / {{ weekly_bacon_tickets }}
+                    {{ bacon_tickets_remaining }} / {{ daily_bacon_tickets }}
                 </span>
             </div>
             {% if user %}
             <div class="info-tile flex items-center gap-3 mt-4">
                 <span class="text-pink-200 font-extrabold text-xl">🎟️ {{ bacon_tickets_remaining }}</span>
-                <span class="text-white/30 text-sm font-bold">/ {{ weekly_bacon_tickets }} tickets cette semaine</span>
+                <span class="text-white/30 text-sm font-bold">/ {{ daily_bacon_tickets }} tickets aujourd'hui</span>
             </div>
             {% if user_bets %}
             <div class="soft p-4 mt-4">
@@ -263,7 +263,7 @@
             <div class="flex flex-col gap-2 shrink-0">
                 {% if user %}
                 <div class="flex items-center gap-3 text-sm">
-                    <span class="text-pink-400 font-extrabold">🎟️ {{ bacon_tickets_remaining }}/{{ weekly_bacon_tickets }}</span>
+                    <span class="text-pink-400 font-extrabold">🎟️ {{ bacon_tickets_remaining }}/{{ daily_bacon_tickets }}</span>
                     <span class="text-white/20">·</span>
                     <span class="text-yellow-400 font-extrabold">{{ "%.0f"|format(user.balance) }} 🪙</span>
                 </div>

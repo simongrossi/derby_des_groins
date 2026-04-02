@@ -357,11 +357,23 @@ def get_week_window(anchor_dt):
     return week_start, week_start + timedelta(days=7)
 
 
+def get_day_window(anchor_dt):
+    day_start = anchor_dt.replace(hour=0, minute=0, second=0, microsecond=0)
+    return day_start, day_start + timedelta(days=1)
+
+
 def get_user_weekly_bet_count(user, anchor_dt=None):
     if not user:
         return 0
     week_start, week_end = get_week_window(anchor_dt or datetime.now())
     return Bet.query.filter(Bet.user_id == user.id, Bet.placed_at >= week_start, Bet.placed_at < week_end).count()
+
+
+def get_user_daily_bet_count(user, anchor_dt=None):
+    if not user:
+        return 0
+    day_start, day_end = get_day_window(anchor_dt or datetime.now())
+    return Bet.query.filter(Bet.user_id == user.id, Bet.placed_at >= day_start, Bet.placed_at < day_end).count()
 
 
 def count_pig_weekly_course_commitments(pig_id, anchor_dt, exclude_scheduled_at=None):

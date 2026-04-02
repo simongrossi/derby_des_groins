@@ -32,12 +32,12 @@ from services.economy_service import (
     get_adoption_cost_for_active_count,
     get_bet_limits,
     get_configured_bet_types,
+    get_daily_bacon_tickets_value,
     get_daily_login_reward_value,
     get_economy_settings,
     get_feeding_multiplier_for_count,
     get_progression_settings,
     get_race_reward_settings,
-    get_weekly_bacon_tickets_value,
     get_weekly_race_quota_value,
     get_welcome_bonus_value,
     xp_for_level_value,
@@ -49,7 +49,7 @@ from services.race_service import (
     build_course_schedule,
     get_course_theme,
     get_pig_dashboard_status,
-    get_user_weekly_bet_count,
+    get_user_daily_bet_count,
 )
 
 main_bp = Blueprint('main', __name__)
@@ -316,7 +316,7 @@ def _build_rules_page_context():
         {'label': "Bonus d'inscription", 'value': f"{get_welcome_bonus_value(economy):.0f} 🪙", 'note': "Crédité à la création du compte."},
         {'label': 'Prime quotidienne', 'value': f"{get_daily_login_reward_value(economy):.0f} 🪙", 'note': "Versée à la première connexion du jour."},
         {'label': 'Quota de courses', 'value': f"{get_weekly_race_quota_value(economy)} / semaine", 'note': "Par cochon vivant."},
-        {'label': 'Tickets Bacon', 'value': f"{economy.weekly_bacon_tickets} / semaine", 'note': "Un seul ticket par course."},
+        {'label': 'Tickets Bacon', 'value': f"{economy.daily_bacon_tickets} / jour", 'note': "Un seul ticket par course."},
         {'label': 'Fenêtre vétérinaire', 'value': f"{VET_RESPONSE_MINUTES} min", 'note': "Au-delà, le cochon peut mourir."},
         {
             'label': 'Mise par ticket',
@@ -484,7 +484,7 @@ def _build_rules_page_context():
             'title': 'Paris et Tickets Bacon',
             'summary': "Les paris sont limités en nombre, ferment juste avant le départ et peuvent être plafonnés pour protéger l’économie.",
             'bullets': [
-                f"Chaque joueur dispose de {economy.weekly_bacon_tickets} Ticket(s) Bacon par semaine et ne peut poser qu’un seul ticket par course.",
+                f"Chaque joueur dispose de {economy.daily_bacon_tickets} Ticket(s) Bacon par jour et ne peut poser qu’un seul ticket par course.",
                 f"Les mises doivent rester entre {bet_limits['min_bet_race']:.0f} et {bet_limits['max_bet_race']:.0f} BitGroins.",
                 "Les paris ferment 30 secondes avant le départ.",
                 f"Les tickets complexes à {COMPLEX_BET_MIN_SELECTIONS}+ sélections exigent que ton propre cochon participe à la course.",
@@ -575,9 +575,9 @@ def index():
     featured_pig = None
     featured_pig_status = None
     headline_status = None
-    weekly_bacon_tickets = get_weekly_bacon_tickets_value()
+    daily_bacon_tickets = get_daily_bacon_tickets_value()
     bet_types = get_configured_bet_types()
-    bacon_tickets_remaining = weekly_bacon_tickets
+    bacon_tickets_remaining = daily_bacon_tickets
     latest_race = recent_races[0] if recent_races else None
     latest_race_participants = []
     news_items = []
@@ -600,8 +600,8 @@ def index():
                 'dashboard': get_pig_dashboard_status(pig),
             } for pig in pigs]
             week_slots = build_course_schedule(user, pigs, days=7)
-            weekly_bet_count = get_user_weekly_bet_count(user, datetime.now())
-            bacon_tickets_remaining = max(0, weekly_bacon_tickets - weekly_bet_count)
+            daily_bet_count = get_user_daily_bet_count(user, datetime.now())
+            bacon_tickets_remaining = max(0, daily_bacon_tickets - daily_bet_count)
             if next_race:
                 user_bets = Bet.query.filter_by(user_id=user.id, race_id=next_race.id).all()
 
@@ -697,7 +697,7 @@ def index():
         featured_pig_status=featured_pig_status,
         headline_status=headline_status,
         bacon_tickets_remaining=bacon_tickets_remaining,
-        weekly_bacon_tickets=weekly_bacon_tickets,
+        daily_bacon_tickets=daily_bacon_tickets,
         week_race_cards=week_race_cards,
         next_race_theme=next_race_theme,
         latest_race=latest_race,

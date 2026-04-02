@@ -183,6 +183,7 @@ def run_race_if_needed():
                 participants_by_id[p.id] = p
         pig_start_freshness = {}
         pig_comeback_bonus_flags = {}
+        pig_rested_flags = {}
 
         pigs_for_sim = []
         for p in participants:
@@ -191,6 +192,7 @@ def run_race_if_needed():
                 if pig:
                     pig_start_freshness[p.pig_id] = float(pig.freshness or 100.0)
                     pig_comeback_bonus_flags[p.pig_id] = bool(pig.comeback_bonus_ready)
+                    pig_rested_flags[p.pig_id] = pig.is_rested
                     plan = CoursePlan.query.filter_by(
                         pig_id=pig.id, scheduled_at=race.scheduled_at,
                     ).first()
@@ -342,15 +344,16 @@ def run_race_if_needed():
                             description="Remporter une course juste apres une periode d'inactivite.",
                             pig_name=pig.name,
                         )
+                    rested_mult = 2.0 if pig_rested_flags.get(pig.id) else 1.0
                     pig.vitesse = min(
                         100,
-                        pig.vitesse + (random.uniform(0.5, 1.5) * progression.race_winner_stat_gain_multiplier),
+                        pig.vitesse + (random.uniform(0.5, 1.5) * progression.race_winner_stat_gain_multiplier * rested_mult),
                     )
                     pig.endurance = min(
                         100,
-                        pig.endurance + (random.uniform(0.5, 1.5) * progression.race_winner_stat_gain_multiplier),
+                        pig.endurance + (random.uniform(0.5, 1.5) * progression.race_winner_stat_gain_multiplier * rested_mult),
                     )
-                    pig.moral = min(100, pig.moral + 2)
+                    pig.moral = min(100, pig.moral + int(2 * rested_mult))
                 elif p.finish_position <= 3:
                     pig.moral = min(100, pig.moral + 1)
                     stat = random.choice(['vitesse', 'endurance', 'agilite', 'force', 'intelligence'])
