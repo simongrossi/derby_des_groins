@@ -87,6 +87,7 @@ def init_default_config():
         'market_duration': '120',
         'min_real_participants': '2',
         'empty_race_mode': 'fill',
+        'timezone': 'Europe/Paris',
     }
     for k, v in defaults.items():
         if not GameConfig.query.filter_by(key=k).first():

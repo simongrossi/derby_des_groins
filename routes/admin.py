@@ -155,9 +155,10 @@ def admin_dashboard(user):
         'admin_count': User.query.filter_by(is_admin=True).count(),
     }
     recent_races = Race.query.filter_by(status='finished').order_by(Race.finished_at.desc()).limit(8).all()
+    current_timezone = get_config('timezone', 'Europe/Paris')
 
     return render_template('admin_dashboard.html',
-        user=user, admin_tab='dashboard', stats=stats, recent_races=recent_races)
+        user=user, admin_tab='dashboard', stats=stats, recent_races=recent_races, current_timezone=current_timezone)
 
 
 @admin_bp.route('/admin/auth-logs')
@@ -311,6 +312,7 @@ def admin_races(user):
             'market_duration': settings.market_duration,
             'min_real_participants': settings.min_real_participants,
             'empty_race_mode': settings.empty_race_mode,
+            'timezone': get_config('timezone', 'Europe/Paris'),
             'race_schedule': settings.race_schedule,
             'schedule_dict': settings.schedule_dict,
             'race_themes': merged_themes,
@@ -324,7 +326,7 @@ def admin_races(user):
 def admin_save(user):
     keys = [
         'race_hour', 'race_minute', 'market_hour',
-        'market_minute', 'market_duration', 'min_real_participants', 'empty_race_mode'
+        'market_minute', 'market_duration', 'min_real_participants', 'empty_race_mode', 'timezone'
     ]
     for key in keys:
         val = request.form.get(key)
