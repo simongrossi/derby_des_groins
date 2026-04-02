@@ -52,6 +52,16 @@ class AuthLogsTests(unittest.TestCase):
             self.assertIsNotNone(event)
             self.assertTrue(event.is_success)
 
+    def test_non_auth_request_is_logged_with_ip(self):
+        response = self.client.get('/', headers={'X-Forwarded-For': '203.0.113.99'})
+        self.assertIn(response.status_code, (200, 302))
+
+        with self.app.app_context():
+            event = AuthEventLog.query.filter_by(event_type='site_action').order_by(AuthEventLog.id.desc()).first()
+            self.assertIsNotNone(event)
+            self.assertEqual(event.ip_address, '203.0.113.99')
+            self.assertEqual(event.route, '/')
+
     def test_purge_old_auth_logs_removes_expired_rows(self):
         with self.app.app_context():
             stale = AuthEventLog(

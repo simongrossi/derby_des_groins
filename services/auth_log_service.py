@@ -45,3 +45,21 @@ def purge_old_auth_events(retention_days: int) -> int:
     deleted = AuthEventLog.query.filter(AuthEventLog.occurred_at < threshold).delete(synchronize_session=False)
     db.session.commit()
     return int(deleted or 0)
+
+
+def log_site_action(*, user_id: int | None, method: str, path: str, status_code: int) -> None:
+    """Journalise une action HTTP hors auth (audit d'usage + IP)."""
+    payload = {
+        'event_type': 'site_action',
+        'is_success': bool(status_code < 400),
+        'user_id': user_id,
+        'username_attempt': None,
+        'ip_address': _extract_client_ip(),
+        'user_agent': (request.user_agent.string[:300] if request.user_agent else None),
+        'route': (path or '')[:120],
+        'details': f'{(method or "-")[:10]} {int(status_code)}',
+        'occurred_at': datetime.utcnow(),
+    }
+    # Transaction séparée pour ne pas perturber la transaction métier courante.
+    with db.engine.begin() as conn:
+        conn.execute(AuthEventLog.__table__.insert().values(**payload))

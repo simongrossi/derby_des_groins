@@ -21,7 +21,7 @@ from models import (
 from data import PIG_ORIGINS, CEREALS, TRAININGS, SCHOOL_LESSONS
 from helpers import init_default_config, ensure_next_race, get_first_injured_pig
 from services.finance_service import record_balance_transaction
-from services.auth_log_service import purge_old_auth_events
+from services.auth_log_service import purge_old_auth_events, log_site_action
 from services.pig_service import apply_origin_bonus, generate_weight_kg_for_profile, clamp_pig_weight, create_preloaded_admin_pigs, build_unique_pig_name
 from routes import all_blueprints
 from scheduler import start_scheduler, should_autostart_scheduler
@@ -117,13 +117,28 @@ def create_app():
     # ── Logging structure ───────────────────────────────────────────────
     @app.after_request
     def log_request(response):
-        if request.path.startswith('/static') or request.path == '/health':
+        ignored_prefixes = (
+            '/static',
+            '/health',
+            '/admin/auth-logs',  # Eviter l'auto-bruit de la page de consultation.
+            '/api/notifications/poll',
+        )
+        if request.path.startswith(ignored_prefixes) or request.path.startswith('/chat'):
             return response
         logger.info(
             "%s %s %s — user=%s",
             request.method, request.path, response.status_code,
             session.get('user_id', '-'),
         )
+        try:
+            log_site_action(
+                user_id=session.get('user_id'),
+                method=request.method,
+                path=request.path,
+                status_code=response.status_code,
+            )
+        except Exception:
+            logger.exception("Impossible d'ecrire le log d'action pour %s %s", request.method, request.path)
         return response
 
     @app.context_processor
@@ -187,7 +202,6 @@ def register_cli_commands(app):
         retention_days = int(days or app.config.get('AUTH_LOG_RETENTION_DAYS', 180))
         deleted_count = purge_old_auth_events(retention_days)
         click.echo(f'🧹 Auth logs purgés: {deleted_count} (rétention: {retention_days} jours)')
-
 
 
 def ensure_admin_user():
