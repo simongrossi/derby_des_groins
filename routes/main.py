@@ -597,7 +597,35 @@ def history():
     
     all_users = User.query.order_by(User.username).all()
 
-    bets = Bet.query.filter_by(user_id=target_user.id).order_by(Bet.placed_at.desc()).all()
+    bet_filter_values = request.args.getlist('bet_u')
+    bet_filter_raw = 'all'
+    bet_filter_user = None
+    bet_filter_users = []
+    bet_selected_user_ids = []
+
+    bet_query = Bet.query.order_by(Bet.placed_at.desc(), Bet.id.desc())
+    selected_bet_ids = []
+    for raw_value in bet_filter_values:
+        if raw_value == 'all':
+            selected_bet_ids = []
+            break
+        try:
+            selected_bet_ids.append(int(raw_value))
+        except (TypeError, ValueError):
+            continue
+
+    bet_selected_user_ids = sorted(set(selected_bet_ids))
+    if bet_selected_user_ids:
+        bet_filter_users = User.query.filter(User.id.in_(bet_selected_user_ids)).order_by(User.username).all()
+        bet_selected_user_ids = [u.id for u in bet_filter_users]
+        if bet_selected_user_ids:
+            bet_query = bet_query.filter(Bet.user_id.in_(bet_selected_user_ids))
+            bet_filter_raw = 'multi'
+            bet_filter_user = bet_filter_users[0] if len(bet_filter_users) == 1 else None
+        else:
+            bet_filter_raw = 'all'
+
+    bets = bet_query.all()
     attach_bet_outcome_snapshots(bets)
 
     tx_filter_values = request.args.getlist('tx_u')
@@ -648,6 +676,10 @@ def history():
         won_bets=won_bets,
         lost_bets=lost_bets,
         settled_bets=settled_bets,
+        bet_filter_raw=bet_filter_raw,
+        bet_filter_user=bet_filter_user,
+        bet_filter_users=bet_filter_users,
+        bet_selected_user_ids=bet_selected_user_ids,
         transactions=transactions,
         bitgroins_curve=bitgroins_curve,
         tx_filter_raw=tx_filter_raw,
