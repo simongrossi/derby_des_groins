@@ -155,9 +155,10 @@ def admin_dashboard(user):
         'admin_count': User.query.filter_by(is_admin=True).count(),
     }
     recent_races = Race.query.filter_by(status='finished').order_by(Race.finished_at.desc()).limit(8).all()
+    current_timezone = get_config('timezone', 'Europe/Paris')
 
     return render_template('admin_dashboard.html',
-        user=user, admin_tab='dashboard', stats=stats, recent_races=recent_races)
+        user=user, admin_tab='dashboard', stats=stats, recent_races=recent_races, current_timezone=current_timezone)
 
 
 @admin_bp.route('/admin/auth-logs')
