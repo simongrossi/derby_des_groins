@@ -734,6 +734,28 @@ def admin_test_smtp(user):
 
 
 # ══════════════════════════════════════════════════════════════════════════════
+# Truffes
+# ══════════════════════════════════════════════════════════════════════════════
+
+@admin_bp.route('/admin/truffes', methods=['GET', 'POST'])
+@admin_required
+def admin_truffes(user):
+    if request.method == 'POST':
+        daily_limit = request.form.get('truffe_daily_limit', '1')
+        replay_cost = request.form.get('truffe_replay_cost', '2')
+        set_config('truffe_daily_limit', daily_limit)
+        set_config('truffe_replay_cost', replay_cost)
+        flash("Configuration des truffes sauvegardee !", "success")
+        return redirect(url_for('admin.admin_truffes'))
+
+    config = {
+        'daily_limit': get_config('truffe_daily_limit', '1'),
+        'replay_cost': get_config('truffe_replay_cost', '2'),
+    }
+    return render_template('admin_truffes.html', user=user, admin_tab='truffes', config=config)
+
+
+# ══════════════════════════════════════════════════════════════════════════════
 # Donnees de jeu (CRUD cereales, entrainements, lecons)
 # ══════════════════════════════════════════════════════════════════════════════
 
