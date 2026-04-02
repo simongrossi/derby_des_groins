@@ -1,0 +1,13 @@
+services:
+  web:
+    ports: []
+    expose:
+      - "5001"
+    networks:
+      - default
+      - caddy
+
+networks:
+  caddy:
+    external: true
+    name: caddy

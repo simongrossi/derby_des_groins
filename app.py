@@ -1,9 +1,10 @@
-from flask import Flask, session, request
+from flask import Flask, session, request, render_template
 import click
 from werkzeug.security import generate_password_hash
 from datetime import datetime, timedelta
 import os
 import logging
+from sqlalchemy import inspect
 
 logger = logging.getLogger(__name__)
 
@@ -98,21 +99,34 @@ def create_app():
         app.register_blueprint(bp)
 
     # ── Rate limiting : page 429 personnalisee ───────────────────────────
-    from flask import jsonify as _jsonify, render_template as _rt
+    from flask import jsonify as _jsonify
+
+    def _render_error_template(template_name, status_code):
+        try:
+            return render_template(template_name), status_code
+        except Exception:
+            logger.exception("Erreur pendant le rendu de %s", template_name)
+            return (
+                f"Erreur {status_code}. "
+                "Le serveur rencontre un probleme temporaire.",
+                status_code,
+                {'Content-Type': 'text/plain; charset=utf-8'},
+            )
+
     @app.errorhandler(429)
     def ratelimit_handler(e):
         if request.path.startswith('/api/'):
             return _jsonify({'error': 'Trop de requetes, ralentis un peu !'}), 429
-        return _rt('429.html'), 429
+        return _render_error_template('429.html', 429)
 
     @app.errorhandler(404)
     def not_found_error(e):
-        return _rt('404.html'), 404
+        return _render_error_template('404.html', 404)
 
     @app.errorhandler(500)
     def internal_error(e):
         db.session.rollback()
-        return _rt('500.html'), 500
+        return _render_error_template('500.html', 500)
 
     # ── Logging structure ───────────────────────────────────────────────
     @app.after_request
@@ -162,8 +176,10 @@ def create_app():
 
     with app.app_context():
         try:
-            db.create_all()
-            init_default_config()
+            if inspect(db.engine).has_table('game_config'):
+                init_default_config()
+            else:
+                logger.info("Table game_config absente: init_default_config différé après migrations.")
         except Exception as e:
             logger.exception("Erreur critique lors de l'initialisation DB: %s", e)
             raise
