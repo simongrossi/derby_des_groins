@@ -26,13 +26,6 @@ else
     echo "SQLite mode, skipping PostgreSQL wait."
 fi
 
-if [[ "${RUN_DB_MIGRATIONS:-1}" == "1" ]]; then
-    echo "Running database migrations (flask db upgrade)..."
-    flask db upgrade
-else
-    echo "RUN_DB_MIGRATIONS=0, skipping migrations."
-fi
-
 exec gunicorn \
     --bind 0.0.0.0:5001 \
     --workers 1 \

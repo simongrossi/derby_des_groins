@@ -272,24 +272,6 @@ Verification anti-collision routes :
 python scripts/check_routes.py
 ```
 
-### Option GitHub Actions (push -> deploy VPS)
-
-Le repo inclut aussi un workflow `.github/workflows/deploy.yml` qui deploie sur push `main`, sur `workflow_dispatch` (manuel), ou sur `repository_dispatch` (API). Configurer les secrets:
-
-- `VPS_HOST`
-- `VPS_USER`
-- `VPS_PORT`
-- `VPS_SSH_KEY`
-- `VPS_APP_DIR` (ex: `/home/ubuntu/derby_des_groins`)
-
-Si tu veux declencher l'action depuis ton VPS, utilise:
-
-```bash
-export GITHUB_REPOSITORY="owner/repo"
-export GITHUB_TOKEN="ghp_..."
-./scripts/trigger_github_deploy.sh
-```
-
 ---
 
 ## 👥 Utilisateurs pré-configurés
