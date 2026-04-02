@@ -186,28 +186,32 @@
 
         <!-- Stats -->
         <section class="rounded-3xl border border-white/10 bg-black/15 p-4 sm:p-5">
-          <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <p class="text-xs uppercase tracking-[0.25em] text-white/40">Clics restants</p>
-              <div id="clicks-left" class="mt-2 text-2xl font-black text-white sm:text-3xl">{{ max_clicks }}</div>
+          <div class="space-y-3">
+            <div class="rounded-2xl border border-white/8 bg-white/[0.03] px-4 py-3">
+              <p class="text-[11px] uppercase tracking-[0.22em] text-white/40">Clics restants</p>
+              <div id="clicks-left" class="mt-2 text-3xl font-black text-white">{{ max_clicks }}</div>
             </div>
-            <div class="sm:text-center">
-              <p class="text-xs uppercase tracking-[0.25em] text-white/40">Parties gratuites</p>
-              <div id="remaining-free-plays" class="mt-2 text-2xl font-black text-emerald-300 sm:text-3xl">{{ remaining }}</div>
-              <p id="remaining-free-detail" class="mt-1 text-xs text-white/50">sur {{ limit }} aujourd'hui</p>
+
+            <div class="rounded-2xl border border-emerald-400/10 bg-emerald-400/[0.04] px-4 py-3">
+              <div class="flex items-end justify-between gap-3">
+                <div>
+                  <p class="text-[11px] uppercase tracking-[0.22em] text-white/40">Parties gratuites</p>
+                  <div id="remaining-free-plays" class="mt-2 text-3xl font-black text-emerald-300">{{ remaining }}</div>
+                </div>
+                <p id="remaining-free-detail" class="text-right text-xs leading-tight text-white/50">sur {{ limit }} aujourd'hui</p>
+              </div>
+              <div class="mt-3 h-2 overflow-hidden rounded-full bg-white/10">
+                <div
+                  id="remaining-free-bar"
+                  class="h-full rounded-full bg-gradient-to-r from-emerald-500 to-yellow-400 transition-all duration-300"
+                  style="width: {{ 0 if limit <= 0 else ((remaining / limit) * 100)|round(0, 'floor') }}%;"
+                ></div>
+              </div>
             </div>
-            <div class="sm:text-right">
-              <p class="text-xs uppercase tracking-[0.25em] text-white/40">Solde</p>
-              <div id="balance" class="mt-2 text-2xl font-black text-yellow-300 sm:text-3xl">{{ '%.2f'|format(user.balance) }}</div>
-            </div>
-          </div>
-          <div class="mt-4">
-            <div class="h-2 overflow-hidden rounded-full bg-white/10">
-              <div
-                id="remaining-free-bar"
-                class="h-full rounded-full bg-gradient-to-r from-emerald-500 to-yellow-400 transition-all duration-300"
-                style="width: {{ 0 if limit <= 0 else ((remaining / limit) * 100)|round(0, 'floor') }}%;"
-              ></div>
+
+            <div class="rounded-2xl border border-yellow-300/10 bg-yellow-300/[0.04] px-4 py-3">
+              <p class="text-[11px] uppercase tracking-[0.22em] text-white/40">Solde</p>
+              <div id="balance" class="mt-2 text-3xl font-black text-yellow-300">{{ '%.2f'|format(user.balance) }}</div>
             </div>
           </div>
         </section>
