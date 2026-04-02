@@ -493,25 +493,39 @@ def history():
 
     bets = Bet.query.filter_by(user_id=target_user.id).order_by(Bet.placed_at.desc()).all()
 
-    tx_filter_raw = request.args.get('tx_u', 'all' if current_user.is_admin else str(current_user.id))
+    tx_filter_values = request.args.getlist('tx_u')
+    tx_filter_raw = 'all'
     tx_filter_user = None
+    tx_filter_users = []
+    tx_selected_user_ids = []
 
     tx_query = BalanceTransaction.query.order_by(BalanceTransaction.created_at.desc(), BalanceTransaction.id.desc())
     if current_user.is_admin:
-        if tx_filter_raw != 'all':
+        selected_ids = []
+        for raw_value in tx_filter_values:
+            if raw_value == 'all':
+                selected_ids = []
+                break
             try:
-                tx_filter_id = int(tx_filter_raw)
+                selected_ids.append(int(raw_value))
             except (TypeError, ValueError):
-                tx_filter_id = current_user.id
-            tx_filter_user = User.query.get(tx_filter_id)
-            if tx_filter_user:
-                tx_query = tx_query.filter_by(user_id=tx_filter_user.id)
+                continue
+
+        tx_selected_user_ids = sorted(set(selected_ids))
+        if tx_selected_user_ids:
+            tx_filter_users = User.query.filter(User.id.in_(tx_selected_user_ids)).order_by(User.username).all()
+            tx_selected_user_ids = [u.id for u in tx_filter_users]
+            if tx_selected_user_ids:
+                tx_query = tx_query.filter(BalanceTransaction.user_id.in_(tx_selected_user_ids))
+                tx_filter_raw = 'multi'
+                tx_filter_user = tx_filter_users[0] if len(tx_filter_users) == 1 else None
             else:
                 tx_filter_raw = 'all'
-                tx_filter_user = None
     else:
         tx_filter_raw = str(current_user.id)
         tx_filter_user = current_user
+        tx_filter_users = [current_user]
+        tx_selected_user_ids = [current_user.id]
         tx_query = tx_query.filter_by(user_id=current_user.id)
 
     transactions = tx_query.all()
@@ -536,6 +550,8 @@ def history():
         transactions=transactions,
         tx_filter_raw=tx_filter_raw,
         tx_filter_user=tx_filter_user,
+        tx_filter_users=tx_filter_users,
+        tx_selected_user_ids=tx_selected_user_ids,
         race_history=race_history,
         bet_types=get_configured_bet_types(),
         credited_amount=credited_amount,
