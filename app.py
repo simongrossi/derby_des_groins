@@ -189,6 +189,7 @@ def register_cli_commands(app):
         click.echo(f'🧹 Auth logs purgés: {deleted_count} (rétention: {retention_days} jours)')
 
 
+
 def ensure_admin_user():
     """Garantit que le compte admin existe avec les bons credentials.
     Committé de façon indépendante pour ne pas être affecté par les autres seeds."""

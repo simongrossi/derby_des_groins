@@ -487,6 +487,7 @@ def send_chat_message():
 
     data = request.get_json(silent=True) or {}
     message_text = data.get('message', '').strip()
+    parent_id = data.get('parent_id')
 
     if not message_text:
         return jsonify({'error': 'Message vide'}), 400
@@ -497,7 +498,8 @@ def send_chat_message():
     new_message = ChatMessage(
         user_id=user.id,
         username=user.username,
-        message=message_text
+        message=message_text,
+        parent_id=parent_id
     )
 
     db.session.add(new_message)

@@ -123,6 +123,15 @@
 
     <!-- Zone de saisie -->
     <div class="p-4 border-t border-indigo-500/20 bg-[#2d124d] shrink-0">
+        <!-- Reply Context Indicator -->
+        <div id="chat-reply-context" class="hidden mb-2 p-2 bg-indigo-900/40 border-l-4 border-indigo-500 rounded text-xs text-indigo-100 flex justify-between items-start">
+            <div class="min-w-0">
+                <p class="font-bold opacity-60" id="reply-user-name"></p>
+                <p class="truncate italic" id="reply-message-text"></p>
+            </div>
+            <button id="cancel-reply" class="text-white/30 hover:text-white ml-2">✕</button>
+        </div>
+
         <div class="relative flex items-end gap-2">
             <div id="chat-input" contenteditable="true"
                  class="flex-1 min-h-[40px] max-h-32 overflow-y-auto bg-black/40 border border-indigo-500/30 rounded-xl p-2.5 text-sm text-white focus:outline-none focus:border-indigo-500/60 empty:before:content-[attr(placeholder)] empty:before:text-white/30"
@@ -144,6 +153,8 @@
 #chat-sidebar.open { transform: translateX(0); }
 .no-scrollbar::-webkit-scrollbar { display: none; }
 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+.chat-reply-btn { opacity: 0; transition: opacity 0.2s; }
+.message-bubble:hover .chat-reply-btn { opacity: 1; }
 </style>
 
 <script>
@@ -154,8 +165,14 @@
     const sendBtn = document.getElementById('chat-send');
     const input = document.getElementById('chat-input');
     const messagesContainer = document.getElementById('chat-messages');
+    const replyContext = document.getElementById('chat-reply-context');
+    const replyUserName = document.getElementById('reply-user-name');
+    const replyMsgText = document.getElementById('reply-message-text');
+    const cancelReplyBtn = document.getElementById('cancel-reply');
+
     let lastMessageId = 0;
     let pollInterval = null;
+    let replyToId = null;
 
     if (!sidebar || !toggle) return;
 
@@ -179,7 +196,6 @@
             input.innerText += btn.innerText;
             input.dispatchEvent(new Event('input'));
             input.focus();
-            // Placer le curseur à la fin
             const range = document.createRange();
             const sel = window.getSelection();
             range.selectNodeContents(input);
@@ -189,12 +205,30 @@
         };
     });
 
+    window.initiateReply = (msgId, username, text) => {
+        replyToId = msgId;
+        replyUserName.innerText = "@" + username;
+        replyMsgText.innerText = text;
+        replyContext.classList.remove('hidden');
+        input.focus();
+    };
+
+    cancelReplyBtn.onclick = () => {
+        replyToId = null;
+        replyContext.classList.add('hidden');
+    };
+
     async function sendMessage() {
         const text = input.innerText.trim();
         if (!text) return;
 
+        const body = { message: text };
+        if (replyToId) body.parent_id = replyToId;
+
         input.innerText = '';
         input.dispatchEvent(new Event('input'));
+        replyToId = null;
+        replyContext.classList.add('hidden');
 
         try {
             const resp = await fetch('/api/chat/send', {
@@ -203,7 +237,7 @@
                     'Content-Type': 'application/json',
                     'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content
                 },
-                body: JSON.stringify({ message: text })
+                body: JSON.stringify(body)
             });
             if (resp.ok) refreshMessages();
         } catch (e) {
@@ -219,12 +253,10 @@
         }
     };
 
-    // Copier-coller images (Placeholder)
     input.onpaste = (e) => {
         const items = (e.clipboardData || e.originalEvent.clipboardData).items;
         for (let item of items) {
             if (item.type.indexOf('image') !== -1) {
-                // Pour l'instant, on prévient juste
                 alert("Groin Talk : L'envoi d'images arrive bientôt dans la version Pro ! En attendant, utilise tes mots (ou des emojis).");
                 e.preventDefault();
             }
@@ -245,17 +277,33 @@
 
             const isAtBottom = messagesContainer.scrollHeight - messagesContainer.scrollTop <= messagesContainer.clientHeight + 100;
 
-            messagesContainer.innerHTML = messages.map(m => `
-                <div class="flex flex-col ${m.user_id === {{ user.id }} ? 'items-end' : 'items-start'}">
-                    <div class="flex items-center gap-2 mb-1">
-                        <span class="text-[10px] font-bold text-indigo-300/60 uppercase tracking-wider">${m.username}</span>
-                        <span class="text-[9px] text-white/20">${formatTime(m.timestamp)}</span>
+            messagesContainer.innerHTML = messages.map(m => {
+                const isMine = m.user_id === {{ user.id }};
+                const parentHtml = m.parent_context ? `
+                    <div class="mb-1.5 p-1.5 bg-black/20 border-l-2 border-white/20 rounded text-[11px] opacity-70 italic">
+                        <strong>@${m.parent_context.username}</strong>: ${m.parent_context.message}
                     </div>
-                    <div class="max-w-[90%] rounded-2xl p-2.5 text-sm ${m.user_id === {{ user.id }} ? 'bg-indigo-600 text-white rounded-tr-none' : 'bg-white/10 text-indigo-50 rounded-tl-none'} break-words">
-                        ${m.message}
+                ` : '';
+
+                return `
+                    <div class="flex flex-col ${isMine ? 'items-end' : 'items-start'} group message-bubble">
+                        <div class="flex items-center gap-2 mb-1">
+                            <span class="text-[10px] font-bold text-indigo-300/60 uppercase tracking-wider">${m.username}</span>
+                            <span class="text-[9px] text-white/20">${formatTime(m.timestamp)}</span>
+                        </div>
+                        <div class="relative max-w-[90%] rounded-2xl p-2.5 text-sm ${isMine ? 'bg-indigo-600 text-white rounded-tr-none' : 'bg-white/10 text-indigo-50 rounded-tl-none'} break-words">
+                            ${parentHtml}
+                            ${m.message}
+
+                            <!-- Reply Button -->
+                            <button onclick="initiateReply(${m.id}, '${m.username}', '${m.message.replace(/'/g, "\\'")}')"
+                                    class="chat-reply-btn absolute top-0 ${isMine ? '-left-8' : '-right-8'} p-1 text-white/30 hover:text-white transition-all">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/></svg>
+                            </button>
+                        </div>
                     </div>
-                </div>
-            `).join('');
+                `;
+            }).join('');
 
             lastMessageId = messages.length > 0 ? messages[messages.length-1].id : 0;
 
