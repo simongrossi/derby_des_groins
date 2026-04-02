@@ -25,6 +25,7 @@ services:
     environment:
       DATABASE_URL: postgresql://derby:${POSTGRES_PASSWORD:-derby_secret}@db:5432/derby
       SECRET_KEY: ${SECRET_KEY:-change-me-in-production}
+      FLASK_APP: app:app
       FLASK_ENV: ${FLASK_ENV:-production}
       FLASK_DEBUG: "false"
       TZ: ${DERBY_TIMEZONE:-Europe/Paris}
