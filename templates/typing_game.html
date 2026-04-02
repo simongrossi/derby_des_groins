@@ -112,6 +112,7 @@
         const timerEl = document.getElementById('timer-display');
         const errorEl = document.getElementById('error-display');
         const form = document.getElementById('complete-form');
+        const fallbackRedirectUrl = {{ url_for('pig.mon_cochon')|tojson }};
 
         inputEl.focus();
 
@@ -190,8 +191,30 @@
 
             // Redirect after a short delay
             setTimeout(() => {
-                form.submit();
+                submitCompletion();
             }, 800);
+        }
+
+        async function submitCompletion() {
+            try {
+                const response = await fetch(form.action, {
+                    method: 'POST',
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                    body: new FormData(form),
+                    credentials: 'same-origin',
+                });
+
+                if (!response.ok) {
+                    throw new Error('Completion request failed');
+                }
+
+                const payload = await response.json();
+                window.location.assign(payload.redirect_url || fallbackRedirectUrl);
+            } catch (error) {
+                form.submit();
+            }
         }
     </script>
     {% include '_footer.html' %}

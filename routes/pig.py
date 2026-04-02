@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, redirect, url_for, session, flash
+from flask import Blueprint, jsonify, render_template, request, redirect, url_for, session, flash
 from datetime import datetime
 import random
 
@@ -517,6 +517,7 @@ def sacrifice_pig():
 
 
 @pig_bp.route('/typing-challenge/<int:pig_id>')
+@pig_bp.route('/typing-challenge/<int:pig_id>/')
 def typing_challenge(pig_id):
     if 'user_id' not in session:
         return redirect(url_for('auth.login'))
@@ -540,11 +541,15 @@ def typing_challenge(pig_id):
     return render_template('typing_game.html', pig=pig, words=words)
 
 
-@pig_bp.route('/typing-complete', methods=['POST'])
+@pig_bp.route('/typing-complete', methods=['GET', 'POST'])
+@pig_bp.route('/typing-complete/', methods=['GET', 'POST'])
 @limiter.limit("10 per minute")
 def typing_complete():
     if 'user_id' not in session:
         return redirect(url_for('auth.login'))
+
+    if request.method != 'POST':
+        return redirect(url_for('pig.mon_cochon'))
     
     pig_id = request.form.get('pig_id', type=int)
     time_taken = request.form.get('time_taken', type=float)
@@ -591,6 +596,13 @@ def typing_complete():
     pig.mark_bad_state_if_needed()
     pig.check_level_up()
     db.session.commit()
-    
+
     flash(f"🏆 Typing Derby termine ! {bonus_msg} (WPM: {wpm:.1f}, Erreurs: {errors})", category)
+
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return jsonify({
+            'ok': True,
+            'redirect_url': url_for('pig.mon_cochon'),
+        })
+
     return redirect(url_for('pig.mon_cochon'))

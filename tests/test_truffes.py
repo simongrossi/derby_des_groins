@@ -1,6 +1,9 @@
 import unittest
+import uuid
 
 from app import create_app
+from extensions import db
+from helpers import set_config
 from models import User
 from routes.truffes import GRID_SIZE, MAX_CLICKS, TRUFFE_REWARD
 
@@ -44,6 +47,60 @@ class TruffesRouteTests(unittest.TestCase):
             self.assertEqual(round(refreshed.balance or 0.0, 2), round(before + TRUFFE_REWARD, 2))
             refreshed.balance = before
             from extensions import db
+            db.session.commit()
+
+    def test_play_route_decrements_remaining_free_plays_for_regular_user(self):
+        client = self.app.test_client()
+        username = f"truffes-player-{uuid.uuid4().hex[:8]}"
+
+        with self.app.app_context():
+            set_config('truffe_daily_limit', '5')
+            user = User(username=username, password_hash='x', is_admin=False, truffe_plays_today=0)
+            db.session.add(user)
+            db.session.commit()
+            user_id = user.id
+
+        with client.session_transaction() as session:
+            session['user_id'] = user_id
+
+        response = client.post('/truffes/play', json={'is_replay': False})
+        payload = response.get_json()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(payload['ok'])
+        self.assertEqual(payload['remaining_free_plays'], 4)
+
+        with self.app.app_context():
+            refreshed = User.query.get(user_id)
+            self.assertEqual(refreshed.truffe_plays_today, 1)
+            db.session.delete(refreshed)
+            db.session.commit()
+
+    def test_play_route_keeps_admin_remaining_free_plays_at_limit(self):
+        client = self.app.test_client()
+        username = f"truffes-admin-{uuid.uuid4().hex[:8]}"
+
+        with self.app.app_context():
+            set_config('truffe_daily_limit', '5')
+            admin = User(username=username, password_hash='x', is_admin=True, truffe_plays_today=0)
+            db.session.add(admin)
+            db.session.commit()
+            admin_id = admin.id
+
+        with client.session_transaction() as session:
+            session['user_id'] = admin_id
+
+        response = client.post('/truffes/play', json={'is_replay': False})
+        payload = response.get_json()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(payload['ok'])
+        self.assertEqual(payload['remaining_free_plays'], 5)
+
+        with self.app.app_context():
+            refreshed = User.query.get(admin_id)
+            self.assertEqual(refreshed.truffe_plays_today, 1)
+            db.session.delete(refreshed)
             db.session.commit()
 
 
