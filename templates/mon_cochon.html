@@ -102,7 +102,7 @@
         }
     </style>
 </head>
-<body>
+<body class="page-mon-cochon">
 {% set active_page = 'mon_cochon' %}
 
 {% include "_site_header.html" %}
@@ -371,7 +371,7 @@
                         {% if performance_flags.weight_penalty %}
                         <div class="px-3 py-2 rounded-xl border border-amber-500/20 bg-amber-500/10 text-amber-200 text-[11px] font-bold">⚖️ {{ 'Trop lourd' if weight_profile.delta > 0 else 'Hors gabarit' }} : vitesse et agilité ralenties.</div>
                         {% endif %}
-                        <div class="px-3 py-3 rounded-xl border {{ 'border-emerald-400/20 bg-emerald-500/10' if freshness.active else 'border-white/10 bg-white/5' }}">
+                        <div class="freshness-card px-3 py-3 rounded-xl border {{ 'border-emerald-400/20 bg-emerald-500/10' if freshness.active else 'border-white/10 bg-white/5' }}">
                             <div class="flex items-center justify-between text-[10px] font-bold uppercase">
                                 <span class="text-emerald-200">Fraicheur</span>
                                 <span class="text-emerald-300">{{ "%.0f"|format(pig.freshness or 100) }}%</span>
@@ -385,7 +385,7 @@
 
                 {% set rgb_bg = '16,185,129' if weight_profile.status == 'ideal' else ('245,158,11' if weight_profile.status == 'warning' else '239,68,68') %}
                 {% set rgb_border = '52,211,153' if weight_profile.status == 'ideal' else ('251,191,36' if weight_profile.status == 'warning' else '248,113,113') %}
-                <div class="card p-5" style="background:rgba({{ rgb_bg }},0.07); border:1px solid rgba({{ rgb_border }},0.22);">
+                <div class="card p-5 weight-card" style="background:rgba({{ rgb_bg }},0.07); border:1px solid rgba({{ rgb_border }},0.22);">
                     <div class="flex items-start justify-between gap-4">
                         <div>
                             {% set weight_txt_color = '#6ee7b7' if weight_profile.status == 'ideal' else ('#fbbf24' if weight_profile.status == 'warning' else '#f87171') %}
@@ -446,7 +446,7 @@
 
                 {% set injury_bg_rgb = '185,28,28' if injury_risk > 25 else ('217,119,6' if injury_risk > 15 else '15,118,110') %}
                 {% set injury_border_rgb = '239,68,68' if injury_risk > 25 else ('245,158,11' if injury_risk > 15 else '20,184,166') %}
-                <div class="card p-5" style="background:rgba({{ injury_bg_rgb }}, 0.07); border:1px solid rgba({{ injury_border_rgb }}, 0.25);">
+                <div class="card p-5 injury-risk-card" style="background:rgba({{ injury_bg_rgb }}, 0.07); border:1px solid rgba({{ injury_border_rgb }}, 0.25);">
                     <div class="flex items-center justify-between mb-2">
                         {% set injury_title_color = '#f87171' if injury_risk > 25 else ('#fbbf24' if injury_risk > 15 else '#2dd4bf') %}
                         <h3 class="font-bold text-sm" style="color:{{ injury_title_color }}">
@@ -473,7 +473,7 @@
                     </p>
                 </div>
 
-                <div class="card p-5 border-amber-500/20" style="background: rgba(245, 158, 11, 0.05);">
+                <div class="card p-5 border-amber-500/20 lineage-card" style="background: rgba(245, 158, 11, 0.05);">
                     <div class="flex items-center justify-between mb-2">
                         <h3 class="text-amber-300 font-title">🧬 Lignée & Héritage</h3>
                         <span class="text-[10px] px-2 py-0.5 rounded bg-amber-500/15 border border-amber-400/20 text-amber-200 font-bold">G{{ pig.generation or 1 }}</span>
@@ -507,7 +507,7 @@
                 </div>
 
                 <!-- Challenge Mort -->
-                <div class="card p-5 border-red-500/20" style="background: rgba(185, 28, 28, 0.05);">
+                <div class="card p-5 border-red-500/20 challenge-card" style="background: rgba(185, 28, 28, 0.05);">
                     <div class="flex items-center justify-between mb-2">
                         <h3 class="text-red-400 font-title">💀 Challenge Mort</h3>
                         {% if pig.challenge_mort_wager > 0 %}
@@ -534,7 +534,7 @@
                 </div>
 
                 <!-- En-cas Solidaire -->
-                <div class="card p-5 border-emerald-500/20" style="background: rgba(16, 185, 129, 0.05);">
+                <div class="card p-5 border-emerald-500/20 share-snack-card" style="background: rgba(16, 185, 129, 0.05);">
                     <div class="flex items-center justify-between mb-2">
                         <h3 class="text-emerald-400 font-title">🍎 En-cas Solidaire</h3>
                         <span class="text-[10px] bg-emerald-600 px-2 py-0.5 rounded text-white font-bold">{{ pd.share_snacks_remaining }} restants</span>
@@ -627,7 +627,7 @@
 
                     <!-- TAB ECOLE -->
                     <div id="tab-ecole-{{ pig.id }}" class="p-4 space-y-3 h-[380px] overflow-y-auto hidden">
-                        <div class="p-4 rounded-2xl border border-indigo-400/20 bg-indigo-400/10">
+                        <div class="p-4 rounded-2xl border border-indigo-400/20 bg-indigo-400/10 school-hero-card">
                             <div class="flex items-center justify-between gap-3">
                                 <div>
                                     <p class="text-indigo-300 font-bold text-xs uppercase tracking-wider">Academie Porcine</p>
@@ -658,7 +658,7 @@
                         {% set too_hungry = pig.hunger < lesson.hunger_cost %}
                         {% set too_sad = pig.happiness < lesson.min_happiness %}
                         {% set unavailable = too_injured or pd.school_cooldown > 0 or too_tired or too_hungry or too_sad %}
-                        <div class="p-4 bg-white/5 border border-white/10 rounded-2xl">
+                        <div class="p-4 bg-white/5 border border-white/10 rounded-2xl lesson-card">
                             <div class="flex items-start justify-between gap-3">
                                 <div>
                                     <div class="flex items-center gap-2 flex-wrap">
@@ -719,31 +719,76 @@
             (function() {
                 const ctx = document.getElementById('radarChart-{{ pig.id }}').getContext('2d');
                 const statsData = JSON.parse(document.getElementById('stats-data-{{ pig.id }}').dataset.stats);
-                new Chart(ctx, {
+                function getRadarThemeColors() {
+                    const theme = document.documentElement.getAttribute('data-theme') || 'dark';
+                    if (theme === 'light') {
+                        return {
+                            fill: 'rgba(245, 158, 11, 0.16)',
+                            border: '#d97706',
+                            pointBg: '#fff7ed',
+                            pointBorder: '#d97706',
+                            grid: 'rgba(127, 79, 108, 0.18)',
+                            angle: 'rgba(127, 79, 108, 0.18)',
+                            labels: 'rgba(75, 49, 67, 0.88)'
+                        };
+                    }
+                    return {
+                        fill: 'rgba(245, 158, 11, 0.2)',
+                        border: '#f59e0b',
+                        pointBg: '#2a1020',
+                        pointBorder: '#f59e0b',
+                        grid: 'rgba(255,255,255,0.05)',
+                        angle: 'rgba(255,255,255,0.05)',
+                        labels: 'rgba(255,255,255,0.4)'
+                    };
+                }
+
+                const radarColors = getRadarThemeColors();
+                const radarChart = new Chart(ctx, {
                     type: 'radar',
                     data: {
                         labels: ['Vitesse', 'Endur.', 'Agilité', 'Force', 'Intel.', 'Moral'],
                         datasets: [{
                             data: statsData,
-                        backgroundColor: 'rgba(245, 158, 11, 0.2)',
-                        borderColor: '#f59e0b',
-                        borderWidth: 2,
-                        pointRadius: 3
-                    }]
-                },
-                options: {
-                    scales: {
-                        r: {
-                            beginAtZero: true, max: 100,
-                            ticks: { display: false, stepSize: 20 },
-                            grid: { color: 'rgba(255,255,255,0.05)' },
-                            angleLines: { color: 'rgba(255,255,255,0.05)' },
-                            pointLabels: { color: 'rgba(255,255,255,0.4)', font: { size: 10, weight: 'bold' } }
-                        }
+                            backgroundColor: radarColors.fill,
+                            borderColor: radarColors.border,
+                            borderWidth: 2,
+                            pointRadius: 4,
+                            pointHoverRadius: 5,
+                            pointBackgroundColor: radarColors.pointBg,
+                            pointBorderColor: radarColors.pointBorder,
+                            pointBorderWidth: 2
+                        }]
                     },
-                    plugins: { legend: { display: false } }
-                }
-            });
+                    options: {
+                        scales: {
+                            r: {
+                                beginAtZero: true,
+                                max: 100,
+                                ticks: { display: false, stepSize: 20 },
+                                grid: { color: radarColors.grid },
+                                angleLines: { color: radarColors.angle },
+                                pointLabels: {
+                                    color: radarColors.labels,
+                                    font: { size: 11, weight: 'bold' }
+                                }
+                            }
+                        },
+                        plugins: { legend: { display: false } }
+                    }
+                });
+
+                document.addEventListener('derby-theme-change', function() {
+                    const nextColors = getRadarThemeColors();
+                    radarChart.data.datasets[0].backgroundColor = nextColors.fill;
+                    radarChart.data.datasets[0].borderColor = nextColors.border;
+                    radarChart.data.datasets[0].pointBackgroundColor = nextColors.pointBg;
+                    radarChart.data.datasets[0].pointBorderColor = nextColors.pointBorder;
+                    radarChart.options.scales.r.grid.color = nextColors.grid;
+                    radarChart.options.scales.r.angleLines.color = nextColors.angle;
+                    radarChart.options.scales.r.pointLabels.color = nextColors.labels;
+                    radarChart.update();
+                });
             })();
         </script>
         {% endfor %}
