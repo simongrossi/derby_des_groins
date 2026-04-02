@@ -11,7 +11,7 @@ import secrets
 from zoneinfo import ZoneInfo
 
 from extensions import db
-from models import User, Race, Pig, Bet, CerealItem, TrainingItem, SchoolLessonItem, PigAvatar, AuthEventLog
+from models import User, Race, Pig, Bet, BalanceTransaction, CerealItem, TrainingItem, SchoolLessonItem, PigAvatar, AuthEventLog
 from data import JOURS_FR
 from helpers import (
     set_config, get_config, populate_race_participants, run_race_if_needed,
@@ -28,14 +28,16 @@ from services.economy_service import (
     build_progression_settings_from_form,
     build_progression_simulation_inputs_from_form,
     build_simulation_inputs_from_form,
+    get_configured_bet_types,
     get_economy_settings,
     get_progression_settings,
     save_day_reward_multipliers,
     save_economy_settings,
     save_progression_settings,
 )
+from services.finance_service import adjust_user_balance
 from services.game_settings_service import get_game_settings
-from services.race_service import get_configured_npcs
+from services.race_service import attach_bet_outcome_snapshots, get_configured_npcs
 
 admin_bp = Blueprint('admin', __name__)
 
@@ -130,6 +132,62 @@ def _parse_race_npcs_from_lines(lines):
         seen.add(name)
         npcs.append({'name': name, 'emoji': emoji})
     return npcs
+
+
+def _get_bet_payout_balance_delta(bet):
+    amount = (
+        db.session.query(db.func.coalesce(db.func.sum(BalanceTransaction.amount), 0.0))
+        .filter(
+            BalanceTransaction.user_id == bet.user_id,
+            BalanceTransaction.reference_type == 'bet',
+            BalanceTransaction.reference_id == bet.id,
+            BalanceTransaction.reason_code.in_([
+                'bet_payout',
+                'bet_payout_adjustment',
+                'bet_payout_reversal',
+            ]),
+        )
+        .scalar()
+    )
+    return round(float(amount or 0.0), 2)
+
+
+def _reconcile_bet_record(bet):
+    snapshot = getattr(bet, 'outcome_snapshot', None)
+    if snapshot is None:
+        attach_bet_outcome_snapshots([bet])
+        snapshot = getattr(bet, 'outcome_snapshot', None)
+    if snapshot is None or snapshot.actual_status is None:
+        return False, "Course non terminee: aucun recalcul possible."
+
+    expected_winnings = round(bet.amount * bet.odds_at_bet, 2) if snapshot.actual_status == 'won' else 0.0
+    current_payout_delta = _get_bet_payout_balance_delta(bet)
+    payout_delta = round(expected_winnings - current_payout_delta, 2)
+
+    if payout_delta > 0:
+        adjust_user_balance(
+            bet.user_id,
+            payout_delta,
+            reason_code='bet_payout_adjustment',
+            reason_label='Correction gain de pari',
+            details=f"Correction admin du ticket #{bet.id} sur la course #{bet.race_id}.",
+            reference_type='bet',
+            reference_id=bet.id,
+        )
+    elif payout_delta < 0:
+        adjust_user_balance(
+            bet.user_id,
+            payout_delta,
+            reason_code='bet_payout_reversal',
+            reason_label='Correction pari',
+            details=f"Annulation du trop-percu sur le ticket #{bet.id} de la course #{bet.race_id}.",
+            reference_type='bet',
+            reference_id=bet.id,
+        )
+
+    bet.status = snapshot.actual_status
+    bet.winnings = expected_winnings
+    return True, snapshot.actual_status
 
 # ══════════════════════════════════════════════════════════════════════════════
 # Dashboard
@@ -506,6 +564,100 @@ def admin_cancel_race(user, race_id):
     db.session.commit()
     flash(f"Course #{race_id} annulee et paris rembourses.", "success")
     return redirect(url_for('admin.admin_races'))
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# Paris
+# ══════════════════════════════════════════════════════════════════════════════
+
+@admin_bp.route('/admin/bets')
+@admin_required
+def admin_bets(user):
+    status_filter = (request.args.get('status') or '').strip()
+    race_id_filter = request.args.get('race_id', type=int)
+    username_filter = (request.args.get('username') or '').strip()
+    mismatch_only = request.args.get('mismatch') == '1'
+
+    query = Bet.query.join(User, User.id == Bet.user_id).join(Race, Race.id == Bet.race_id)
+    if status_filter:
+        query = query.filter(Bet.status == status_filter)
+    if race_id_filter:
+        query = query.filter(Bet.race_id == race_id_filter)
+    if username_filter:
+        query = query.filter(User.username.ilike(f"%{username_filter}%"))
+
+    bets = (
+        query
+        .order_by(Bet.placed_at.desc(), Bet.id.desc())
+        .limit(150)
+        .all()
+    )
+    attach_bet_outcome_snapshots(bets)
+
+    if mismatch_only:
+        bets = [bet for bet in bets if not bet.outcome_snapshot.is_consistent]
+
+    mismatch_count = sum(1 for bet in bets if not bet.outcome_snapshot.is_consistent)
+    finished_count = sum(1 for bet in bets if bet.outcome_snapshot.race_finished)
+
+    return render_template(
+        'admin_bets.html',
+        user=user,
+        admin_tab='bets',
+        bets=bets,
+        bet_types=get_configured_bet_types(),
+        filters={
+            'status': status_filter,
+            'race_id': race_id_filter or '',
+            'username': username_filter,
+            'mismatch': mismatch_only,
+        },
+        stats={
+            'visible': len(bets),
+            'finished': finished_count,
+            'mismatch': mismatch_count,
+        },
+    )
+
+
+@admin_bp.route('/admin/bets/reconcile', methods=['POST'])
+@admin_required
+def admin_reconcile_bets(user):
+    bets = (
+        Bet.query
+        .join(Race, Race.id == Bet.race_id)
+        .filter(Race.status == 'finished')
+        .order_by(Bet.id.asc())
+        .all()
+    )
+    attach_bet_outcome_snapshots(bets)
+
+    updated = 0
+    for bet in bets:
+        if bet.outcome_snapshot.is_consistent:
+            continue
+        did_update, _ = _reconcile_bet_record(bet)
+        if did_update:
+            updated += 1
+
+    db.session.commit()
+    flash(f"{updated} ticket(s) ont ete recalcules et corriges.", "success")
+    return redirect(url_for('admin.admin_bets'))
+
+
+@admin_bp.route('/admin/bets/<int:bet_id>/reconcile', methods=['POST'])
+@admin_required
+def admin_reconcile_bet(user, bet_id):
+    bet = Bet.query.get_or_404(bet_id)
+    attach_bet_outcome_snapshots([bet])
+    did_update, result = _reconcile_bet_record(bet)
+    if not did_update:
+        flash(result, "warning")
+        return redirect(url_for('admin.admin_bets'))
+
+    db.session.commit()
+    flash(f"Ticket #{bet.id} recalcule: statut final {result}.", "success")
+    return redirect(url_for('admin.admin_bets'))
 
 
 # ══════════════════════════════════════════════════════════════════════════════

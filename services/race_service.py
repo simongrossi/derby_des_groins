@@ -72,6 +72,27 @@ class PlannedRaceAction:
     scheduled_at: datetime
 
 
+@dataclass(frozen=True)
+class BetOutcomeSnapshot:
+    bet_type: str
+    bet_label: str
+    selection_ids: tuple[int, ...]
+    selection_names: tuple[str, ...]
+    expected_count: int
+    top_n: int
+    order_matters: bool
+    top_finishers: tuple[str, ...]
+    top_finisher_ids: tuple[int, ...]
+    hit_count: int
+    actual_status: str | None
+    is_winner: bool
+    race_finished: bool
+    is_consistent: bool
+    status_label: str
+    summary: str
+    detail: str
+
+
 def get_configured_npcs():
     """Renvoie la liste des PNJ de course configurable depuis l'admin."""
     from helpers.config import get_config
@@ -206,6 +227,129 @@ def get_bet_selection_ids(bet, participants_by_id):
         return selection_ids
     matching_participant = next((participant for participant in participants_by_id.values() if participant.name == bet.pig_name), None)
     return [matching_participant.id] if matching_participant else []
+
+
+def get_race_finish_order(race_id, participants_by_id=None):
+    if participants_by_id is None:
+        participants_by_id = {
+            participant.id: participant
+            for participant in Participant.query.filter_by(race_id=race_id).all()
+        }
+    ordered = sorted(
+        participants_by_id.values(),
+        key=lambda participant: (
+            participant.finish_position is None,
+            participant.finish_position or 999,
+            participant.id,
+        ),
+    )
+    return [participant for participant in ordered if participant.finish_position is not None]
+
+
+def build_bet_outcome_snapshot(bet, participants_by_id=None):
+    bet_types = get_configured_bet_types()
+    bet_type = normalize_bet_type(getattr(bet, 'bet_type', None))
+    bet_config = bet_types.get(bet_type, bet_types['win'])
+    participants_by_id = participants_by_id or {}
+    finish_order = get_race_finish_order(bet.race_id, participants_by_id=participants_by_id)
+    selection_ids = tuple(get_bet_selection_ids(bet, participants_by_id))
+    selection_names = tuple(
+        participants_by_id.get(selection_id).name
+        for selection_id in selection_ids
+        if participants_by_id.get(selection_id) is not None
+    )
+    expected_count = int(bet_config.get('selection_count', 1))
+    top_n = int(bet_config.get('top_n', expected_count))
+    order_matters = bool(bet_config.get('order_matters', True))
+    top_finishers = tuple(participant.name for participant in finish_order[:top_n])
+    top_finisher_ids = tuple(participant.id for participant in finish_order[:top_n])
+    race_finished = bool(getattr(getattr(bet, 'race', None), 'status', None) == 'finished' or finish_order)
+
+    selected_set = set(selection_ids)
+    top_set = set(top_finisher_ids)
+    hit_count = len(selected_set & top_set)
+    is_winner = False
+    if len(selection_ids) == expected_count and len(top_finisher_ids) >= expected_count:
+        if order_matters:
+            is_winner = top_finisher_ids[:expected_count] == selection_ids
+        else:
+            is_winner = selected_set.issubset(top_set)
+
+    actual_status = None
+    if race_finished:
+        actual_status = 'won' if is_winner else 'lost'
+
+    current_status = getattr(bet, 'status', None)
+    is_consistent = actual_status is None or current_status == actual_status
+
+    if actual_status == 'won':
+        status_label = 'Gagnant'
+        summary = f"Arrivee validee: {' > '.join(top_finishers[:expected_count])}"
+        detail = "Ticket valide selon les resultats enregistres."
+    elif actual_status == 'lost':
+        status_label = 'Perdu'
+        arrival_excerpt = ' > '.join(top_finishers) if top_finishers else 'arrivee indisponible'
+        if order_matters and hit_count == expected_count and set(selection_ids) == set(top_finisher_ids[:expected_count]):
+            detail = "Les bons cochons etaient bien dans le top, mais pas dans le bon ordre."
+        elif hit_count > 0:
+            detail = f"{hit_count}/{expected_count} bon(s) cochon(s) retrouves dans le top {top_n}."
+        else:
+            detail = f"Aucun ticket gagnant sur le top {top_n} de cette course."
+        summary = f"Arrivee constatee: {arrival_excerpt}"
+    elif current_status == 'refunded':
+        status_label = 'Rembourse'
+        summary = "Ticket rembourse."
+        detail = "La course n'a pas genere de resultat exploitable pour ce ticket."
+    else:
+        status_label = 'En attente'
+        summary = "Course pas encore reglee."
+        detail = "Le resultat sera confirme apres l'arrivee officielle."
+
+    return BetOutcomeSnapshot(
+        bet_type=bet_type,
+        bet_label=bet_config['label'],
+        selection_ids=selection_ids,
+        selection_names=selection_names,
+        expected_count=expected_count,
+        top_n=top_n,
+        order_matters=order_matters,
+        top_finishers=top_finishers,
+        top_finisher_ids=top_finisher_ids,
+        hit_count=hit_count,
+        actual_status=actual_status,
+        is_winner=is_winner,
+        race_finished=race_finished,
+        is_consistent=is_consistent,
+        status_label=status_label,
+        summary=summary,
+        detail=detail,
+    )
+
+
+def attach_bet_outcome_snapshots(bets):
+    bets = list(bets or [])
+    if not bets:
+        return bets
+    race_ids = {bet.race_id for bet in bets if bet.race_id}
+    participants = (
+        Participant.query
+        .filter(Participant.race_id.in_(race_ids))
+        .all()
+        if race_ids else []
+    )
+    participants_by_race = {}
+    for participant in participants:
+        participants_by_race.setdefault(participant.race_id, {})[participant.id] = participant
+    for bet in bets:
+        setattr(
+            bet,
+            'outcome_snapshot',
+            build_bet_outcome_snapshot(
+                bet,
+                participants_by_id=participants_by_race.get(bet.race_id, {}),
+            ),
+        )
+    return bets
 
 
 def get_week_window(anchor_dt):

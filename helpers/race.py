@@ -35,7 +35,7 @@ from services.pig_service import (
 )
 from services.race_service import (
     calculate_bet_odds, generate_course_segments,
-    get_bet_selection_ids, get_course_theme, get_next_race_time,
+    build_bet_outcome_snapshot, get_course_theme, get_next_race_time,
     get_pig_last_race_datetime, normalize_bet_type,
     populate_race_participants,
 )
@@ -401,43 +401,28 @@ def run_race_if_needed():
                     pig.retire()
 
         bets = Bet.query.filter_by(race_id=race.id, status='pending').all()
-        finish_order_ids = [participant.id for participant in order]
         bet_types = get_configured_bet_types()
+        participants_by_participant_id = {participant.id: participant for participant in participants}
         for bet in bets:
+            snapshot = build_bet_outcome_snapshot(
+                bet,
+                participants_by_id=participants_by_participant_id,
+            )
             bet_type = normalize_bet_type(getattr(bet, 'bet_type', None))
             bet_config = bet_types.get(bet_type, bet_types['win'])
-            expected_count = bet_config['selection_count']
-            top_n = bet_config.get('top_n', expected_count)
-            order_matters = bet_config.get('order_matters', True)
 
-            selection_ids = get_bet_selection_ids(bet, participants_by_id)
-
-            if len(selection_ids) == expected_count:
-                top_finishers = finish_order_ids[:top_n]
-                is_winner = False
-
-                if order_matters:
-                    if top_finishers[:expected_count] == selection_ids:
-                        is_winner = True
-                else:
-                    if all(sid in top_finishers for sid in selection_ids):
-                        is_winner = True
-
-                if is_winner:
-                    winnings = round(bet.amount * bet.odds_at_bet, 2)
-                    bet.status = 'won'
-                    bet.winnings = winnings
-                    credit_user_balance(
-                        bet.user_id, winnings,
-                        reason_code='bet_payout',
-                        reason_label='Gain de pari',
-                        details=f"Ticket {bet_config['label'].lower()} gagnant sur la course #{race.id}: {bet.pig_name}.",
-                        reference_type='bet',
-                        reference_id=bet.id,
-                    )
-                else:
-                    bet.status = 'lost'
-                    bet.winnings = 0.0
+            if snapshot.actual_status == 'won':
+                winnings = round(bet.amount * bet.odds_at_bet, 2)
+                bet.status = 'won'
+                bet.winnings = winnings
+                credit_user_balance(
+                    bet.user_id, winnings,
+                    reason_code='bet_payout',
+                    reason_label='Gain de pari',
+                    details=f"Ticket {bet_config['label'].lower()} gagnant sur la course #{race.id}: {bet.pig_name}.",
+                    reference_type='bet',
+                    reference_id=bet.id,
+                )
             else:
                 bet.status = 'lost'
                 bet.winnings = 0.0

@@ -1,0 +1,128 @@
+{% extends "admin_base.html" %}
+{% block title %}🎯 Paris — Admin{% endblock %}
+
+{% block content %}
+<div class="flex flex-col gap-6">
+    <section class="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+        <div>
+            <h1 class="font-title text-3xl text-white mb-1">🎯 Controle des paris</h1>
+            <p class="text-white/40 font-semibold text-sm">Audit des tickets, arrivees constatees et corrections admin quand un statut ne colle pas aux resultats.</p>
+        </div>
+        <form method="POST" action="{{ url_for('admin.admin_reconcile_bets') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="btn-warning">♻️ Recalculer tous les tickets incoherents</button>
+        </form>
+    </section>
+
+    <section class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <article class="card p-5">
+            <p class="text-white/40 text-xs font-bold uppercase tracking-[0.2em]">Tickets visibles</p>
+            <p class="font-title text-4xl text-white mt-2">{{ stats.visible }}</p>
+        </article>
+        <article class="card p-5">
+            <p class="text-white/40 text-xs font-bold uppercase tracking-[0.2em]">Courses terminees</p>
+            <p class="font-title text-4xl text-emerald-300 mt-2">{{ stats.finished }}</p>
+        </article>
+        <article class="card p-5">
+            <p class="text-white/40 text-xs font-bold uppercase tracking-[0.2em]">Ecarts detectes</p>
+            <p class="font-title text-4xl {% if stats.mismatch %}text-red-300{% else %}text-cyan-300{% endif %} mt-2">{{ stats.mismatch }}</p>
+        </article>
+    </section>
+
+    <section class="card p-5">
+        <form method="GET" class="grid grid-cols-1 md:grid-cols-4 gap-3">
+            <div>
+                <label class="text-white/60 text-xs font-bold block mb-1">Statut enregistre</label>
+                <select name="status" class="input-admin w-full">
+                    <option value="">Tous</option>
+                    {% for status in ['pending', 'won', 'lost', 'refunded', 'cancelled'] %}
+                    <option value="{{ status }}" {% if filters.status == status %}selected{% endif %}>{{ status }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label class="text-white/60 text-xs font-bold block mb-1">Course</label>
+                <input type="number" name="race_id" value="{{ filters.race_id }}" placeholder="Ex: 13" class="input-admin w-full">
+            </div>
+            <div>
+                <label class="text-white/60 text-xs font-bold block mb-1">Joueur</label>
+                <input type="text" name="username" value="{{ filters.username }}" placeholder="Pseudo" class="input-admin w-full">
+            </div>
+            <div class="flex flex-col justify-end gap-3">
+                <label class="flex items-center gap-2 text-white/70 text-xs font-bold">
+                    <input type="checkbox" name="mismatch" value="1" {% if filters.mismatch %}checked{% endif %}>
+                    Montrer uniquement les ecarts
+                </label>
+                <button type="submit" class="btn-admin w-full">Filtrer</button>
+            </div>
+        </form>
+    </section>
+
+    <section class="space-y-3">
+        {% if bets %}
+            {% for bet in bets %}
+            {% set bet_type_key = bet.bet_type if bet.bet_type in bet_types else 'win' %}
+            {% set snapshot = bet.outcome_snapshot %}
+            {% set status_color = 'text-emerald-300 border-emerald-400/20 bg-emerald-400/10' if bet.status == 'won' else ('text-rose-300 border-rose-400/20 bg-rose-400/10' if bet.status == 'lost' else 'text-amber-200 border-amber-400/20 bg-amber-400/10') %}
+            <article class="card p-5 {% if not snapshot.is_consistent %}ring-2 ring-red-400/40{% endif %}">
+                <div class="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+                    <div class="min-w-0">
+                        <div class="flex flex-wrap items-center gap-2">
+                            <span class="pill bg-white/8 text-white/70 border border-white/10">#{{ bet.id }}</span>
+                            <span class="pill bg-white/8 text-white/70 border border-white/10">{{ bet_types[bet_type_key].icon }} {{ snapshot.bet_label }}</span>
+                            <span class="pill bg-white/8 text-white/70 border border-white/10">👤 {{ bet.user.username }}</span>
+                            <span class="pill bg-white/8 text-white/70 border border-white/10">🏁 Course #{{ bet.race_id }}</span>
+                            <span class="pill {{ status_color }}">{{ bet.status }}</span>
+                            {% if snapshot.actual_status %}
+                            <span class="pill {% if snapshot.actual_status == 'won' %}bg-emerald-500/12 text-emerald-200 border border-emerald-400/20{% else %}bg-rose-500/12 text-rose-200 border border-rose-400/20{% endif %}">
+                                attendu: {{ snapshot.actual_status }}
+                            </span>
+                            {% endif %}
+                            {% if not snapshot.is_consistent %}
+                            <span class="pill bg-red-500/12 text-red-200 border border-red-400/20">alerte coherence</span>
+                            {% endif %}
+                        </div>
+
+                        <p class="text-white font-extrabold text-lg mt-4">{{ bet.pig_name }}</p>
+                        <p class="text-white/45 text-sm font-semibold mt-1">
+                            Mise {{ "%.2f"|format(bet.amount) }} 🪙 • Cote x{{ "%.2f"|format(bet.odds_at_bet) }} • Ticket joue le {{ bet.placed_at.strftime('%d/%m/%Y a %H:%M') }}
+                        </p>
+
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-3 mt-4">
+                            <div class="user-row p-4">
+                                <p class="text-white/35 text-[11px] font-bold uppercase tracking-[0.18em]">Selection</p>
+                                <p class="text-white font-bold mt-2">{{ snapshot.selection_names|join(' > ') if snapshot.selection_names else bet.pig_name }}</p>
+                            </div>
+                            <div class="user-row p-4">
+                                <p class="text-white/35 text-[11px] font-bold uppercase tracking-[0.18em]">Arrivee utile</p>
+                                <p class="text-white font-bold mt-2">{{ snapshot.top_finishers|join(' > ') if snapshot.top_finishers else 'Pas encore d arrivee' }}</p>
+                            </div>
+                        </div>
+
+                        <div class="mt-4 rounded-xl border border-white/10 bg-white/5 px-4 py-3">
+                            <p class="text-white font-bold">{{ snapshot.summary }}</p>
+                            <p class="text-white/45 text-sm font-semibold mt-1">{{ snapshot.detail }}</p>
+                        </div>
+                    </div>
+
+                    <div class="xl:w-64 shrink-0 space-y-3">
+                        <div class="user-row p-4">
+                            <p class="text-white/35 text-[11px] font-bold uppercase tracking-[0.18em]">Gain enregistre</p>
+                            <p class="font-title text-3xl {% if bet.winnings and bet.winnings > 0 %}text-emerald-300{% else %}text-white{% endif %} mt-2">{{ "%.2f"|format(bet.winnings or 0.0) }}</p>
+                        </div>
+                        <form method="POST" action="{{ url_for('admin.admin_reconcile_bet', bet_id=bet.id) }}">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit" class="btn-admin w-full">Corriger ce ticket</button>
+                        </form>
+                    </div>
+                </div>
+            </article>
+            {% endfor %}
+        {% else %}
+        <article class="card p-10 text-center">
+            <p class="text-white/35 font-semibold">Aucun ticket ne correspond aux filtres courants.</p>
+        </article>
+        {% endif %}
+    </section>
+</div>
+{% endblock %}

@@ -328,7 +328,10 @@
                 <div class="soft px-4 py-3 flex items-center justify-between gap-3">
                     <div class="min-w-0">
                         <p class="text-white font-bold text-sm truncate">{{ bet_types[bet_type_key].icon }} {{ bet.pig_name }}</p>
-                        <p class="text-white/35 text-xs font-semibold">Course #{{ bet.race_id }} · {{ bet.amount }} 🪙 @ x{{ bet.odds_at_bet }}</p>
+                        <p class="text-white/35 text-xs font-semibold">{{ bet_types[bet_type_key].label }} · Course #{{ bet.race_id }} · {{ bet.amount }} 🪙 @ x{{ bet.odds_at_bet }}</p>
+                        {% if bet.outcome_snapshot %}
+                        <p class="text-white/25 text-[11px] font-semibold mt-1 truncate">{{ bet.outcome_snapshot.summary }}</p>
+                        {% endif %}
                     </div>
                     {% if bet.status == 'won' %}
                     <span class="pill bg-emerald-500/12 text-emerald-200 border border-emerald-400/20 shrink-0 text-[10px]">Gagne</span>

@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>🐷 Derby des Groins - Historique & Tracabilite</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" crossorigin="anonymous"></script>
     <link href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
     <style>
         * { font-family: 'Nunito', sans-serif; }
@@ -77,6 +78,11 @@
             padding: 0;
         }
         .tx-sort-btn:hover { color: rgba(255, 255, 255, 0.9); }
+        .subtab-btn.active {
+            box-shadow: inset 0 0 0 1px rgba(125, 211, 252, 0.25);
+            background: rgba(34, 211, 238, 0.14);
+            color: #cffafe;
+        }
     </style>
 </head>
 <body>
@@ -239,10 +245,11 @@
     </section>
 
     <section id="bitgroins" class="space-y-4">
+        <div id="bitgroins-courbes"></div>
         <div class="flex flex-col md:flex-row md:items-end justify-between gap-6">
             <div>
                 <h2 class="font-title text-3xl text-white">💰 Journal BitGroins</h2>
-                <p class="text-white/45 font-semibold mt-1">Chaque credit, debit, remboursement ou prime reste visible pour reconstituer ton solde.</p>
+                <p class="text-white/45 font-semibold mt-1">Chaque credit, debit, remboursement ou prime reste visible pour reconstituer ton solde, avec une vue courbe pour comparer les trajectoires.</p>
             </div>
 
             <form method="GET" action="/history" class="flex flex-wrap items-center gap-3 rounded-2xl border border-cyan-400/15 bg-cyan-500/5 px-3 py-2">
@@ -288,6 +295,12 @@
         </div>
 
         <div class="card p-5 lg:p-6 space-y-4">
+            <div class="flex flex-wrap items-center gap-2">
+                <button type="button" data-bitgroins-view-btn="journal" class="subtab-btn pill bg-cyan-400/12 text-cyan-200 border border-cyan-400/20 active">📒 Journal</button>
+                <button type="button" data-bitgroins-view-btn="courbes" class="subtab-btn pill bg-white/8 text-white/70 border border-white/10">📈 Courbes</button>
+            </div>
+
+            <div id="bitgroins-journal-view" class="space-y-4">
             <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                     <h3 class="text-white text-xl font-extrabold">
@@ -352,6 +365,84 @@
                 <p class="text-white/50 font-bold">Aucun mouvement BitGroins enregistre pour l'instant.</p>
             </div>
             {% endif %}
+            </div>
+
+            <div id="bitgroins-curves-view" class="hidden space-y-4">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="soft-card p-4">
+                        <p class="text-white/35 text-[11px] uppercase tracking-[0.18em] font-extrabold">Utilisateurs traces</p>
+                        <p class="font-title text-3xl text-cyan-200 mt-2">{{ bitgroins_curve.user_count }}</p>
+                    </div>
+                    <div class="soft-card p-4">
+                        <p class="text-white/35 text-[11px] uppercase tracking-[0.18em] font-extrabold">Plus gros bond</p>
+                        {% if bitgroins_curve.biggest_jump %}
+                        <p class="font-title text-3xl text-emerald-300 mt-2">+{{ "%.2f"|format(bitgroins_curve.biggest_jump.largest_jump) }}</p>
+                        <p class="text-white/45 text-xs font-semibold mt-1">{{ bitgroins_curve.biggest_jump.label }}</p>
+                        {% else %}
+                        <p class="font-title text-3xl text-white mt-2">0.00</p>
+                        {% endif %}
+                    </div>
+                    <div class="soft-card p-4">
+                        <p class="text-white/35 text-[11px] uppercase tracking-[0.18em] font-extrabold">Plus grosse chute</p>
+                        {% if bitgroins_curve.biggest_drop %}
+                        <p class="font-title text-3xl text-rose-300 mt-2">{{ "%.2f"|format(bitgroins_curve.biggest_drop.largest_drop) }}</p>
+                        <p class="text-white/45 text-xs font-semibold mt-1">{{ bitgroins_curve.biggest_drop.label }}</p>
+                        {% else %}
+                        <p class="font-title text-3xl text-white mt-2">0.00</p>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="soft-card p-4 lg:p-5">
+                    <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between mb-4">
+                        <div>
+                            <h3 class="text-white text-xl font-extrabold">Courbes comparees des soldes</h3>
+                            <p class="text-white/45 text-sm font-semibold mt-1">Chaque ligne suit le solde apres transaction d'un utilisateur pour reperer un emballement anormal en un coup d'oeil.</p>
+                        </div>
+                        <span class="pill bg-cyan-400/12 text-cyan-200 border border-cyan-400/20">{{ bitgroins_curve.total_points }} point(s)</span>
+                    </div>
+                    {% if bitgroins_curve.datasets %}
+                    <div class="relative h-[24rem]">
+                        <canvas id="bitgroins-curves-chart"></canvas>
+                    </div>
+                    {% else %}
+                    <div class="soft-card p-8 text-center">
+                        <p class="text-white/50 font-bold">Pas assez de donnees pour tracer une courbe.</p>
+                    </div>
+                    {% endif %}
+                </div>
+
+                {% if bitgroins_curve.rows %}
+                <div class="table-shell overflow-x-auto">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Utilisateur</th>
+                                <th>Solde actuel</th>
+                                <th>Pic</th>
+                                <th>Plancher</th>
+                                <th>Plus gros bond</th>
+                                <th>Plus grosse chute</th>
+                                <th>Dernier point</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for row in bitgroins_curve.rows %}
+                            <tr>
+                                <td class="text-white font-bold whitespace-nowrap">{{ row.label }}</td>
+                                <td class="text-cyan-200 font-extrabold whitespace-nowrap">{{ "%.2f"|format(row.current_balance) }} 🪙</td>
+                                <td class="text-emerald-200 font-bold whitespace-nowrap">{{ "%.2f"|format(row.peak_balance) }} 🪙</td>
+                                <td class="text-rose-200 font-bold whitespace-nowrap">{{ "%.2f"|format(row.lowest_balance) }} 🪙</td>
+                                <td class="text-emerald-300 font-bold whitespace-nowrap">+{{ "%.2f"|format(row.largest_jump) }} 🪙</td>
+                                <td class="text-rose-300 font-bold whitespace-nowrap">{{ "%.2f"|format(row.largest_drop) }} 🪙</td>
+                                <td class="text-white/65 text-sm font-semibold whitespace-nowrap">{{ row.last_at or 'N/A' }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% endif %}
+            </div>
         </div>
 
     </section>
@@ -392,6 +483,10 @@
                         </div>
                         <p class="text-white font-extrabold text-lg mt-3">{{ bet.pig_name }}</p>
                         <p class="text-white/45 text-sm font-semibold mt-1">Mise {{ "%.2f"|format(bet.amount) }} 🪙 • Cote x{{ "%.2f"|format(bet.odds_at_bet) }}</p>
+                        {% if bet.outcome_snapshot %}
+                        <p class="text-white/70 text-sm font-bold mt-3">{{ bet.outcome_snapshot.summary }}</p>
+                        <p class="text-white/40 text-xs font-semibold mt-1">{{ bet.outcome_snapshot.detail }}</p>
+                        {% endif %}
                     </div>
                     <div class="text-left lg:text-right">
                         {% if bet.status == 'won' %}
@@ -422,6 +517,7 @@
 </main>
 <script>
 (function() {
+  const bitgroinsCurveDatasets = {{ bitgroins_curve.datasets | tojson }};
   const tabs = document.querySelectorAll('.hist-tab');
   const sections = {
     courses: document.getElementById('courses'),
@@ -436,6 +532,129 @@
     bitgroins: 'ring-cyan-400/40',
     paris: 'ring-pink-400/40',
   };
+  const bitgroinsViewButtons = document.querySelectorAll('[data-bitgroins-view-btn]');
+  const bitgroinsViews = {
+    journal: document.getElementById('bitgroins-journal-view'),
+    courbes: document.getElementById('bitgroins-curves-view'),
+  };
+  let activeBitgroinsView = 'journal';
+  let bitgroinsChart = null;
+
+  function formatHash(mainTab, subView = null) {
+    if (mainTab !== 'bitgroins' || !subView || subView === 'journal') {
+      return `#${mainTab}`;
+    }
+    return `#bitgroins-${subView}`;
+  }
+
+  function ensureBitgroinsChart() {
+    if (bitgroinsChart || !bitgroinsViews.courbes || !window.Chart || !bitgroinsCurveDatasets.length) return;
+    const canvas = document.getElementById('bitgroins-curves-chart');
+    if (!canvas) return;
+
+    const palette = [
+      '#22d3ee', '#f472b6', '#fbbf24', '#34d399', '#a78bfa', '#fb7185',
+      '#60a5fa', '#fb923c', '#4ade80', '#c084fc', '#f87171', '#38bdf8'
+    ];
+    const datasets = bitgroinsCurveDatasets.map((dataset, index) => {
+      const color = palette[index % palette.length];
+      return {
+        label: dataset.label,
+        data: dataset.data,
+        parsing: false,
+        borderColor: color,
+        backgroundColor: `${color}33`,
+        borderWidth: 2.5,
+        pointRadius: 1.5,
+        pointHoverRadius: 4,
+        tension: 0.25,
+      };
+    });
+
+    bitgroinsChart = new Chart(canvas, {
+      type: 'line',
+      data: { datasets },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { mode: 'nearest', intersect: false },
+        plugins: {
+          legend: {
+            labels: {
+              color: 'rgba(255,255,255,0.72)',
+              usePointStyle: true,
+              boxWidth: 10,
+              boxHeight: 10,
+              font: { weight: '700' },
+            },
+          },
+          tooltip: {
+            callbacks: {
+              title(items) {
+                const item = items[0];
+                return item?.raw?.date || item?.dataset?.label || '';
+              },
+              label(context) {
+                const raw = context.raw || {};
+                const amount = Number(raw.amount || 0);
+                const sign = amount > 0 ? '+' : '';
+                return `${context.dataset.label} • ${raw.y?.toFixed?.(2) ?? raw.y} 🪙 (${sign}${amount.toFixed(2)} 🪙)`;
+              },
+              afterLabel(context) {
+                return context.raw?.reason || '';
+              },
+            },
+          },
+        },
+        scales: {
+          x: {
+            type: 'linear',
+            ticks: {
+              color: 'rgba(255,255,255,0.55)',
+              callback(value) {
+                const date = new Date(Number(value));
+                if (Number.isNaN(date.getTime())) return '';
+                return date.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' });
+              },
+              maxTicksLimit: 8,
+            },
+            grid: { color: 'rgba(255,255,255,0.06)' },
+          },
+          y: {
+            ticks: {
+              color: 'rgba(255,255,255,0.6)',
+              callback(value) { return `${Number(value).toFixed(0)} 🪙`; },
+            },
+            grid: { color: 'rgba(255,255,255,0.06)' },
+          },
+        },
+      },
+    });
+  }
+
+  function activateBitgroinsView(viewName, updateHash = true) {
+    if (!bitgroinsViews[viewName]) return;
+    activeBitgroinsView = viewName;
+    Object.entries(bitgroinsViews).forEach(([name, el]) => {
+      if (el) el.style.display = name === viewName ? '' : 'none';
+    });
+    bitgroinsViewButtons.forEach((btn) => {
+      const active = btn.dataset.bitgroinsViewBtn === viewName;
+      btn.classList.toggle('active', active);
+      btn.classList.toggle('bg-cyan-400/12', active);
+      btn.classList.toggle('text-cyan-200', active);
+      btn.classList.toggle('border-cyan-400/20', active);
+      btn.classList.toggle('bg-white/8', !active);
+      btn.classList.toggle('text-white/70', !active);
+      btn.classList.toggle('border-white/10', !active);
+    });
+    if (viewName === 'courbes') {
+      ensureBitgroinsChart();
+    }
+    if (updateHash) {
+      history.replaceState(null, '', formatHash('bitgroins', viewName));
+    }
+  }
 
   function activate(tabName) {
     // Show/hide sections
@@ -453,16 +672,26 @@
       }
     });
     // Update URL hash without scroll
-    history.replaceState(null, '', '#' + tabName);
+    history.replaceState(null, '', formatHash(tabName, tabName === 'bitgroins' ? activeBitgroinsView : null));
   }
 
   tabs.forEach(btn => {
     btn.addEventListener('click', () => activate(btn.dataset.tab));
   });
+  bitgroinsViewButtons.forEach((btn) => {
+    btn.addEventListener('click', () => {
+      activate('bitgroins');
+      activateBitgroinsView(btn.dataset.bitgroinsViewBtn);
+    });
+  });
 
   // Activate from URL hash or default to courses
   const hash = window.location.hash.replace('#', '');
-  activate(sections[hash] ? hash : 'courses');
+  const isBitgroinsHash = hash === 'bitgroins' || hash === 'bitgroins-courbes';
+  const initialMainTab = sections[hash] ? hash : (isBitgroinsHash ? 'bitgroins' : 'courses');
+  const initialBitgroinsView = hash === 'bitgroins-courbes' ? 'courbes' : 'journal';
+  activateBitgroinsView(initialBitgroinsView, false);
+  activate(initialMainTab);
 
   const sortButtons = document.querySelectorAll('.tx-sort-btn');
   const txBody = document.getElementById('bitgroins-table-body');

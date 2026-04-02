@@ -43,7 +43,13 @@ from services.economy_service import (
 )
 from services.market_service import get_prix_moyen_groin, is_market_open, get_next_market_time
 from services.pig_service import calculate_pig_power, get_weight_profile
-from services.race_service import get_pig_dashboard_status, build_course_schedule, get_user_weekly_bet_count, get_course_theme
+from services.race_service import (
+    attach_bet_outcome_snapshots,
+    build_course_schedule,
+    get_course_theme,
+    get_pig_dashboard_status,
+    get_user_weekly_bet_count,
+)
 
 main_bp = Blueprint('main', __name__)
 
@@ -71,6 +77,106 @@ def _format_stat_changes(stats):
         label = STAT_LABELS.get(key, key[:3].upper())
         parts.append(f"{'+' if amount > 0 else ''}{_fmt_number(amount)} {label}")
     return ", ".join(parts) if parts else "Aucun gain de stat direct"
+
+
+def _build_bitgroins_curve_context(transactions):
+    ordered_transactions = sorted(
+        transactions or [],
+        key=lambda tx: (
+            tx.created_at or datetime.min,
+            tx.id or 0,
+        ),
+    )
+    series_by_user = {}
+    total_points = 0
+
+    for tx in ordered_transactions:
+        if not tx.user:
+            continue
+        created_at = tx.created_at or datetime.min
+        timestamp_ms = int(created_at.timestamp() * 1000)
+        username = tx.user.username
+        user_series = series_by_user.setdefault(tx.user_id, {
+            'user_id': tx.user_id,
+            'label': username,
+            'points': [],
+            'tx_count': 0,
+            'peak_balance': None,
+            'lowest_balance': None,
+            'largest_jump': 0.0,
+            'largest_drop': 0.0,
+            'current_balance': 0.0,
+            'last_at': None,
+        })
+
+        balance_after = round(float(tx.balance_after or 0.0), 2)
+        amount = round(float(tx.amount or 0.0), 2)
+        user_series['points'].append({
+            'x': timestamp_ms,
+            'y': balance_after,
+            'amount': amount,
+            'reason': tx.reason_label,
+            'date': created_at.strftime('%d/%m/%Y %H:%M'),
+        })
+        user_series['tx_count'] += 1
+        user_series['current_balance'] = balance_after
+        user_series['last_at'] = created_at.strftime('%d/%m %H:%M')
+        user_series['peak_balance'] = balance_after if user_series['peak_balance'] is None else max(user_series['peak_balance'], balance_after)
+        user_series['lowest_balance'] = balance_after if user_series['lowest_balance'] is None else min(user_series['lowest_balance'], balance_after)
+        if tx.reason_code != 'snapshot':
+            user_series['largest_jump'] = max(user_series['largest_jump'], amount)
+            user_series['largest_drop'] = min(user_series['largest_drop'], amount)
+        total_points += 1
+
+    rows = sorted(
+        (
+            {
+                'user_id': series['user_id'],
+                'label': series['label'],
+                'tx_count': series['tx_count'],
+                'current_balance': round(series['current_balance'], 2),
+                'peak_balance': round(series['peak_balance'] or 0.0, 2),
+                'lowest_balance': round(series['lowest_balance'] or 0.0, 2),
+                'largest_jump': round(series['largest_jump'], 2),
+                'largest_drop': round(series['largest_drop'], 2),
+                'last_at': series['last_at'],
+            }
+            for series in series_by_user.values()
+            if series['points']
+        ),
+        key=lambda row: (
+            -row['current_balance'],
+            row['label'].lower(),
+        ),
+    )
+
+    datasets = [
+        {
+            'label': series['label'],
+            'user_id': series['user_id'],
+            'data': series['points'],
+        }
+        for series in sorted(
+            series_by_user.values(),
+            key=lambda item: (
+                -(item['current_balance'] or 0.0),
+                item['label'].lower(),
+            ),
+        )
+        if series['points']
+    ]
+
+    biggest_jump_row = max(rows, key=lambda row: row['largest_jump'], default=None)
+    lowest_drop_row = min(rows, key=lambda row: row['largest_drop'], default=None)
+
+    return {
+        'datasets': datasets,
+        'rows': rows,
+        'total_points': total_points,
+        'user_count': len(rows),
+        'biggest_jump': biggest_jump_row,
+        'biggest_drop': lowest_drop_row,
+    }
 
 
 def _build_rules_page_context():
@@ -492,6 +598,7 @@ def history():
     all_users = User.query.order_by(User.username).all()
 
     bets = Bet.query.filter_by(user_id=target_user.id).order_by(Bet.placed_at.desc()).all()
+    attach_bet_outcome_snapshots(bets)
 
     tx_filter_values = request.args.getlist('tx_u')
     tx_filter_raw = 'all'
@@ -522,6 +629,7 @@ def history():
             tx_filter_raw = 'all'
 
     transactions = tx_query.all()
+    bitgroins_curve = _build_bitgroins_curve_context(transactions)
 
     race_history = get_race_history_entries()
 
@@ -541,6 +649,7 @@ def history():
         lost_bets=lost_bets,
         settled_bets=settled_bets,
         transactions=transactions,
+        bitgroins_curve=bitgroins_curve,
         tx_filter_raw=tx_filter_raw,
         tx_filter_user=tx_filter_user,
         tx_filter_users=tx_filter_users,

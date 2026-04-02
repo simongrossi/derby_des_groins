@@ -15,6 +15,7 @@ from services.economy_service import (
 )
 from services.pig_service import calculate_pig_power, get_weight_profile
 from services.race_service import (
+    attach_bet_outcome_snapshots,
     RacePlanningError, build_course_schedule, calculate_bet_odds,
     count_pig_weekly_course_commitments, format_bet_label,
     get_course_theme, get_user_weekly_bet_count, normalize_bet_type,
@@ -158,10 +159,11 @@ def paris():
             # Derniers paris de l'utilisateur
             recent_bets = (
                 Bet.query.filter_by(user_id=user.id)
-                .order_by(Bet.id.desc())
+                .order_by(Bet.placed_at.desc(), Bet.id.desc())
                 .limit(10)
                 .all()
             )
+            attach_bet_outcome_snapshots(recent_bets)
 
     if next_race:
         participants = Participant.query.filter_by(race_id=next_race.id).order_by(Participant.odds).all()
