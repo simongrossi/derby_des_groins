@@ -1,6 +1,7 @@
 from flask import Blueprint, render_template, redirect, url_for, session, flash, request, current_app
 from sqlalchemy import func
 from datetime import datetime
+from statistics import median
 import time
 
 from data import (
@@ -176,6 +177,128 @@ def _build_bitgroins_curve_context(transactions):
         'user_count': len(rows),
         'biggest_jump': biggest_jump_row,
         'biggest_drop': lowest_drop_row,
+    }
+
+
+def _get_bet_net_delta(bet):
+    if bet.status == 'won':
+        return round(float((bet.winnings or 0.0) - (bet.amount or 0.0)), 2)
+    if bet.status == 'lost':
+        return round(float(-(bet.amount or 0.0)), 2)
+    if bet.status == 'refunded':
+        return 0.0
+    return None
+
+
+def _build_bet_curve_context(bets):
+    ordered_bets = sorted(
+        bets or [],
+        key=lambda bet: (
+            bet.placed_at or datetime.min,
+            bet.id or 0,
+        ),
+    )
+    settled_deltas = [
+        abs(delta)
+        for bet in ordered_bets
+        for delta in [_get_bet_net_delta(bet)]
+        if delta is not None and abs(delta) > 0
+    ]
+    suspicious_threshold = 0.0
+    if settled_deltas:
+        suspicious_threshold = max(150.0, round(float(median(settled_deltas)) * 4, 2))
+
+    series_by_user = {}
+    total_points = 0
+    for bet in ordered_bets:
+        if not bet.user:
+            continue
+        delta = _get_bet_net_delta(bet)
+        if delta is None:
+            continue
+        created_at = bet.placed_at or datetime.min
+        timestamp_ms = int(created_at.timestamp() * 1000)
+        username = bet.user.username
+        user_series = series_by_user.setdefault(bet.user_id, {
+            'user_id': bet.user_id,
+            'label': username,
+            'points': [],
+            'bet_count': 0,
+            'settled_count': 0,
+            'cumulative_profit': 0.0,
+            'peak_profit': 0.0,
+            'lowest_profit': 0.0,
+            'largest_jump': 0.0,
+            'largest_drop': 0.0,
+            'last_at': None,
+        })
+        user_series['bet_count'] += 1
+        if bet.status in ('won', 'lost', 'refunded'):
+            user_series['settled_count'] += 1
+        user_series['cumulative_profit'] = round(user_series['cumulative_profit'] + delta, 2)
+        user_series['peak_profit'] = max(user_series['peak_profit'], user_series['cumulative_profit'])
+        user_series['lowest_profit'] = min(user_series['lowest_profit'], user_series['cumulative_profit'])
+        user_series['largest_jump'] = max(user_series['largest_jump'], delta)
+        user_series['largest_drop'] = min(user_series['largest_drop'], delta)
+        user_series['last_at'] = created_at.strftime('%d/%m %H:%M')
+        user_series['points'].append({
+            'x': timestamp_ms,
+            'y': user_series['cumulative_profit'],
+            'delta': delta,
+            'date': created_at.strftime('%d/%m/%Y %H:%M'),
+            'bet_label': getattr(getattr(bet, 'outcome_snapshot', None), 'bet_label', bet.bet_type),
+            'selection': bet.pig_name,
+            'status': bet.status,
+        })
+        total_points += 1
+
+    rows = []
+    for series in series_by_user.values():
+        if not series['points']:
+            continue
+        max_abs_swing = max(abs(series['largest_jump']), abs(series['largest_drop']))
+        is_suspicious = bool(suspicious_threshold and max_abs_swing >= suspicious_threshold)
+        rows.append({
+            'user_id': series['user_id'],
+            'label': series['label'],
+            'bet_count': series['bet_count'],
+            'settled_count': series['settled_count'],
+            'cumulative_profit': round(series['cumulative_profit'], 2),
+            'peak_profit': round(series['peak_profit'], 2),
+            'lowest_profit': round(series['lowest_profit'], 2),
+            'largest_jump': round(series['largest_jump'], 2),
+            'largest_drop': round(series['largest_drop'], 2),
+            'max_abs_swing': round(max_abs_swing, 2),
+            'last_at': series['last_at'],
+            'is_suspicious': is_suspicious,
+        })
+
+    rows.sort(key=lambda row: (-row['cumulative_profit'], row['label'].lower()))
+    datasets = [
+        {
+            'label': series['label'],
+            'user_id': series['user_id'],
+            'data': series['points'],
+            'is_suspicious': next((row['is_suspicious'] for row in rows if row['user_id'] == series['user_id']), False),
+        }
+        for series in sorted(
+            series_by_user.values(),
+            key=lambda item: (-(item['cumulative_profit'] or 0.0), item['label'].lower()),
+        )
+        if series['points']
+    ]
+    biggest_jump_row = max(rows, key=lambda row: row['largest_jump'], default=None)
+    biggest_drop_row = min(rows, key=lambda row: row['largest_drop'], default=None)
+
+    return {
+        'datasets': datasets,
+        'rows': rows,
+        'total_points': total_points,
+        'user_count': len(rows),
+        'biggest_jump': biggest_jump_row,
+        'biggest_drop': biggest_drop_row,
+        'suspicious_threshold': suspicious_threshold,
+        'suspicious_count': sum(1 for row in rows if row['is_suspicious']),
     }
 
 
@@ -627,6 +750,7 @@ def history():
 
     bets = bet_query.all()
     attach_bet_outcome_snapshots(bets)
+    bet_curve = _build_bet_curve_context(bets)
 
     tx_filter_values = request.args.getlist('tx_u')
     tx_filter_raw = 'all'
@@ -680,6 +804,7 @@ def history():
         bet_filter_user=bet_filter_user,
         bet_filter_users=bet_filter_users,
         bet_selected_user_ids=bet_selected_user_ids,
+        bet_curve=bet_curve,
         transactions=transactions,
         bitgroins_curve=bitgroins_curve,
         tx_filter_raw=tx_filter_raw,

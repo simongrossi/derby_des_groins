@@ -448,6 +448,7 @@
     </section>
 
     <section id="paris" class="space-y-4">
+        <div id="paris-courbes"></div>
         <div class="flex flex-col md:flex-row md:items-end justify-between gap-6">
             <div>
                 <h2 class="font-title text-3xl text-white">🎯 Historique des paris</h2>
@@ -499,6 +500,13 @@
             </form>
         </div>
 
+        <div class="card p-5 lg:p-6 space-y-4">
+            <div class="flex flex-wrap items-center gap-2">
+                <button type="button" data-paris-view-btn="liste" class="subtab-btn pill bg-pink-400/12 text-pink-200 border border-pink-400/20 active">🧾 Liste</button>
+                <button type="button" data-paris-view-btn="courbes" class="subtab-btn pill bg-white/8 text-white/70 border border-white/10">📈 Courbes des paris</button>
+            </div>
+
+            <div id="paris-list-view" class="space-y-4">
         {% if bets %}
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div class="card p-4 text-center">
@@ -560,11 +568,106 @@
             </a>
         </div>
         {% endif %}
+            </div>
+
+            <div id="paris-curves-view" class="hidden space-y-4">
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div class="soft-card p-4">
+                        <p class="text-white/35 text-[11px] uppercase tracking-[0.18em] font-extrabold">Profils traces</p>
+                        <p class="font-title text-3xl text-pink-200 mt-2">{{ bet_curve.user_count }}</p>
+                    </div>
+                    <div class="soft-card p-4">
+                        <p class="text-white/35 text-[11px] uppercase tracking-[0.18em] font-extrabold">Plus gros gain net</p>
+                        {% if bet_curve.biggest_jump %}
+                        <p class="font-title text-3xl text-emerald-300 mt-2">+{{ "%.2f"|format(bet_curve.biggest_jump.largest_jump) }}</p>
+                        <p class="text-white/45 text-xs font-semibold mt-1">{{ bet_curve.biggest_jump.label }}</p>
+                        {% else %}
+                        <p class="font-title text-3xl text-white mt-2">0.00</p>
+                        {% endif %}
+                    </div>
+                    <div class="soft-card p-4">
+                        <p class="text-white/35 text-[11px] uppercase tracking-[0.18em] font-extrabold">Plus grosse perte nette</p>
+                        {% if bet_curve.biggest_drop %}
+                        <p class="font-title text-3xl text-rose-300 mt-2">{{ "%.2f"|format(bet_curve.biggest_drop.largest_drop) }}</p>
+                        <p class="text-white/45 text-xs font-semibold mt-1">{{ bet_curve.biggest_drop.label }}</p>
+                        {% else %}
+                        <p class="font-title text-3xl text-white mt-2">0.00</p>
+                        {% endif %}
+                    </div>
+                    <div class="soft-card p-4">
+                        <p class="text-white/35 text-[11px] uppercase tracking-[0.18em] font-extrabold">Profils suspects</p>
+                        <p class="font-title text-3xl {% if bet_curve.suspicious_count %}text-amber-300{% else %}text-white{% endif %} mt-2">{{ bet_curve.suspicious_count }}</p>
+                        <p class="text-white/45 text-xs font-semibold mt-1">Seuil: {{ "%.2f"|format(bet_curve.suspicious_threshold or 0) }} 🪙</p>
+                    </div>
+                </div>
+
+                <div class="soft-card p-4 lg:p-5">
+                    <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between mb-4">
+                        <div>
+                            <h3 class="text-white text-xl font-extrabold">Gains / pertes cumules par utilisateur</h3>
+                            <p class="text-white/45 text-sm font-semibold mt-1">Chaque ligne additionne le resultat net des tickets regles dans l'ordre chronologique. Les profils suspects sont mis en avant.</p>
+                        </div>
+                        <span class="pill bg-pink-400/12 text-pink-200 border border-pink-400/20">{{ bet_curve.total_points }} point(s)</span>
+                    </div>
+                    {% if bet_curve.datasets %}
+                    <div class="relative h-[24rem]">
+                        <canvas id="paris-curves-chart"></canvas>
+                    </div>
+                    {% else %}
+                    <div class="soft-card p-8 text-center">
+                        <p class="text-white/50 font-bold">Pas assez de tickets regles pour tracer des courbes de paris.</p>
+                    </div>
+                    {% endif %}
+                </div>
+
+                {% if bet_curve.rows %}
+                <div class="table-shell overflow-x-auto">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Utilisateur</th>
+                                <th>Profit cumule</th>
+                                <th>Pic</th>
+                                <th>Plancher</th>
+                                <th>Plus gros gain</th>
+                                <th>Plus grosse perte</th>
+                                <th>Etat</th>
+                                <th>Dernier point</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for row in bet_curve.rows %}
+                            <tr>
+                                <td class="text-white font-bold whitespace-nowrap">{{ row.label }}</td>
+                                <td class="{% if row.cumulative_profit >= 0 %}text-emerald-200{% else %}text-rose-200{% endif %} font-extrabold whitespace-nowrap">
+                                    {% if row.cumulative_profit > 0 %}+{% endif %}{{ "%.2f"|format(row.cumulative_profit) }} 🪙
+                                </td>
+                                <td class="text-emerald-200 font-bold whitespace-nowrap">{% if row.peak_profit > 0 %}+{% endif %}{{ "%.2f"|format(row.peak_profit) }} 🪙</td>
+                                <td class="text-rose-200 font-bold whitespace-nowrap">{{ "%.2f"|format(row.lowest_profit) }} 🪙</td>
+                                <td class="text-emerald-300 font-bold whitespace-nowrap">+{{ "%.2f"|format(row.largest_jump) }} 🪙</td>
+                                <td class="text-rose-300 font-bold whitespace-nowrap">{{ "%.2f"|format(row.largest_drop) }} 🪙</td>
+                                <td class="whitespace-nowrap">
+                                    {% if row.is_suspicious %}
+                                    <span class="pill bg-amber-400/12 text-amber-200 border border-amber-400/20">⚠️ Bond suspect</span>
+                                    {% else %}
+                                    <span class="pill bg-white/8 text-white/60 border border-white/10">RAS</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-white/65 text-sm font-semibold whitespace-nowrap">{{ row.last_at or 'N/A' }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% endif %}
+            </div>
+        </div>
     </section>
 </main>
 <script>
 (function() {
   const bitgroinsCurveDatasets = {{ bitgroins_curve.datasets | tojson }};
+  const betCurveDatasets = {{ bet_curve.datasets | tojson }};
   const tabs = document.querySelectorAll('.hist-tab');
   const sections = {
     courses: document.getElementById('courses'),
@@ -584,14 +687,29 @@
     journal: document.getElementById('bitgroins-journal-view'),
     courbes: document.getElementById('bitgroins-curves-view'),
   };
+  const parisViewButtons = document.querySelectorAll('[data-paris-view-btn]');
+  const parisViews = {
+    liste: document.getElementById('paris-list-view'),
+    courbes: document.getElementById('paris-curves-view'),
+  };
   let activeBitgroinsView = 'journal';
+  let activeParisView = 'liste';
   let bitgroinsChart = null;
+  let parisChart = null;
 
   function formatHash(mainTab, subView = null) {
-    if (mainTab !== 'bitgroins' || !subView || subView === 'journal') {
+    if (mainTab === 'bitgroins') {
+      if (!subView || subView === 'journal') return '#bitgroins';
+      return `#bitgroins-${subView}`;
+    }
+    if (mainTab === 'paris') {
+      if (!subView || subView === 'liste') return '#paris';
+      return `#paris-${subView}`;
+    }
+    if (!subView) {
       return `#${mainTab}`;
     }
-    return `#bitgroins-${subView}`;
+    return `#${mainTab}-${subView}`;
   }
 
   function ensureBitgroinsChart() {
@@ -706,6 +824,124 @@
     }
   }
 
+  function ensureParisChart() {
+    if (parisChart || !parisViews.courbes || !window.Chart || !betCurveDatasets.length) return;
+    const canvas = document.getElementById('paris-curves-chart');
+    if (!canvas) return;
+
+    const palette = [
+      '#f472b6', '#22d3ee', '#fbbf24', '#34d399', '#a78bfa', '#fb7185',
+      '#60a5fa', '#fb923c', '#4ade80', '#c084fc', '#f87171', '#38bdf8'
+    ];
+    const datasets = betCurveDatasets.map((dataset, index) => {
+      const color = palette[index % palette.length];
+      return {
+        label: dataset.label,
+        data: dataset.data,
+        parsing: false,
+        borderColor: color,
+        backgroundColor: `${color}33`,
+        borderWidth: dataset.is_suspicious ? 4 : 2.5,
+        borderDash: dataset.is_suspicious ? [8, 6] : [],
+        pointRadius: dataset.is_suspicious ? 2.5 : 1.5,
+        pointHoverRadius: 4,
+        tension: 0.22,
+      };
+    });
+
+    parisChart = new Chart(canvas, {
+      type: 'line',
+      data: { datasets },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { mode: 'nearest', intersect: false },
+        plugins: {
+          legend: {
+            labels: {
+              color: 'rgba(255,255,255,0.72)',
+              usePointStyle: true,
+              boxWidth: 10,
+              boxHeight: 10,
+              font: { weight: '700' },
+            },
+          },
+          tooltip: {
+            callbacks: {
+              title(items) {
+                const item = items[0];
+                return item?.raw?.date || item?.dataset?.label || '';
+              },
+              label(context) {
+                const raw = context.raw || {};
+                const delta = Number(raw.delta || 0);
+                const sign = delta > 0 ? '+' : '';
+                return `${context.dataset.label} • cumule ${Number(raw.y || 0).toFixed(2)} 🪙 (${sign}${delta.toFixed(2)} 🪙)`;
+              },
+              afterLabel(context) {
+                const raw = context.raw || {};
+                return `${raw.status || ''} • ${raw.bet_label || ''} • ${raw.selection || ''}`;
+              },
+            },
+          },
+        },
+        scales: {
+          x: {
+            type: 'linear',
+            ticks: {
+              color: 'rgba(255,255,255,0.55)',
+              callback(value) {
+                const date = new Date(Number(value));
+                if (Number.isNaN(date.getTime())) return '';
+                return date.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' });
+              },
+              maxTicksLimit: 8,
+            },
+            grid: { color: 'rgba(255,255,255,0.06)' },
+          },
+          y: {
+            ticks: {
+              color: 'rgba(255,255,255,0.6)',
+              callback(value) {
+                const number = Number(value);
+                const sign = number > 0 ? '+' : '';
+                return `${sign}${number.toFixed(0)} 🪙`;
+              },
+            },
+            grid: { color: 'rgba(255,255,255,0.06)' },
+          },
+        },
+      },
+    });
+  }
+
+  function activateParisView(viewName, updateHash = true) {
+    if (!parisViews[viewName]) return;
+    activeParisView = viewName;
+    Object.entries(parisViews).forEach(([name, el]) => {
+      if (!el) return;
+      const active = name === viewName;
+      el.classList.toggle('hidden', !active);
+      el.style.display = active ? '' : 'none';
+    });
+    parisViewButtons.forEach((btn) => {
+      const active = btn.dataset.parisViewBtn === viewName;
+      btn.classList.toggle('active', active);
+      btn.classList.toggle('bg-pink-400/12', active);
+      btn.classList.toggle('text-pink-200', active);
+      btn.classList.toggle('border-pink-400/20', active);
+      btn.classList.toggle('bg-white/8', !active);
+      btn.classList.toggle('text-white/70', !active);
+      btn.classList.toggle('border-white/10', !active);
+    });
+    if (viewName === 'courbes') {
+      ensureParisChart();
+    }
+    if (updateHash) {
+      history.replaceState(null, '', formatHash('paris', viewName));
+    }
+  }
+
   function activate(tabName) {
     // Show/hide sections
     Object.entries(sections).forEach(([name, el]) => {
@@ -734,13 +970,22 @@
       activateBitgroinsView(btn.dataset.bitgroinsViewBtn);
     });
   });
+  parisViewButtons.forEach((btn) => {
+    btn.addEventListener('click', () => {
+      activate('paris');
+      activateParisView(btn.dataset.parisViewBtn);
+    });
+  });
 
   // Activate from URL hash or default to courses
   const hash = window.location.hash.replace('#', '');
   const isBitgroinsHash = hash === 'bitgroins' || hash === 'bitgroins-courbes';
-  const initialMainTab = sections[hash] ? hash : (isBitgroinsHash ? 'bitgroins' : 'courses');
+  const isParisHash = hash === 'paris' || hash === 'paris-courbes';
+  const initialMainTab = sections[hash] ? hash : (isBitgroinsHash ? 'bitgroins' : (isParisHash ? 'paris' : 'courses'));
   const initialBitgroinsView = hash === 'bitgroins-courbes' ? 'courbes' : 'journal';
+  const initialParisView = hash === 'paris-courbes' ? 'courbes' : 'liste';
   activateBitgroinsView(initialBitgroinsView, false);
+  activateParisView(initialParisView, false);
   activate(initialMainTab);
 
   const sortButtons = document.querySelectorAll('.tx-sort-btn');
