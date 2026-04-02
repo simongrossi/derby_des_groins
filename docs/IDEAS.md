@@ -150,3 +150,252 @@ La Bourse aux Grains est implementee. Evolutions futures envisageables :
 
 - Jeu de bureau asynchrone : planification de la semaine plutôt qu'actions répétitives.
 - Permettre à un joueur de venir 5 minutes le lundi pour planifier toute sa semaine.
+
+---
+
+## Équilibrage Hardcore vs Casuals
+
+> **Problème identifié :** L'école a un cooldown fixe de 30 minutes (`SCHOOL_COOLDOWN_MINUTES = 30`). Un joueur actif 24h/24 peut enchaîner 48 sessions/jour ; un casual en fait 2. Le ratio d'avantage XP est de ×24. Cette section documente le déséquilibre avec des simulations basées sur le code réel, et propose des mécaniques correctives.
+
+---
+
+### Simulations chiffrées (basées sur le code)
+
+Les valeurs utilisées sont extraites directement de `data.py` : XP école = 22–26 (moyenne 24), cooldown 30 min, 1ère place course = 100 BitGroins, quota 3 courses/semaine/cochon.
+
+#### Simulation 1 — Gap XP École (sans correction, 30 jours)
+
+| Profil | Sessions/jour | XP/session (moy.) | XP/jour | XP à 30 jours |
+|--------|--------------|-------------------|---------|---------------|
+| Hardcore (toutes les 30 min, 24h/24) | 48 | 24 | 1 152 | **34 560** |
+| Casual (2 sessions/jour) | 2 | 24 | 48 | **1 440** |
+
+**Ratio : ×24 en faveur du hardcore.** Un casual ne peut jamais combler cet écart.
+
+#### Simulation 2 — Impact du rendement décroissant (proposition A1)
+
+Règle : sessions 1–2 à 100% XP, session 3 à 50%, sessions 4+ à 10%.
+
+| Profil | Sessions 1-2 | Sessions 3+ | XP/jour | XP à 30 jours |
+|--------|-------------|-------------|---------|---------------|
+| Hardcore | 2 × 24 = 48 | 46 × 2.4 = 110 | **~158** | ~4 740 |
+| Casual | 2 × 24 = 48 | 0 | **48** | 1 440 |
+
+**Ratio réduit de ×24 à ×3.3.** Gain massif pour l'équité sans pénaliser le casual.
+
+#### Simulation 3 — Écart économique BitGroins (30 jours, sans correction)
+
+Hypothèses : hardcore = 4 cochons, tous gagnent chaque semaine ; casual = 1 cochon, 1 victoire/semaine. Quota : 3 courses/semaine/cochon.
+
+| Profil | Victoires/semaine | Gains/semaine | Gains à 30 jours (~4.3 sem.) |
+|--------|-------------------|---------------|------------------------------|
+| Hardcore (4 cochons × 3 courses × 100) | 12 | 1 200 | **~5 143** |
+| Casual (1 cochon × 1 victoire) | 1 | 100 | **~428** |
+
+**Ratio : ×12 économique.** S'ajoute à l'écart XP pour creuser un fossé sur toutes les dimensions.
+
+#### Simulation 4 — Impact de la taxe progressive (proposition C1)
+
+Règle : gains taxés à 20% au-delà de 2 000 BitGroins, 50% au-delà de 5 000.
+
+| Profil | Sans taxe à 30j | Avec taxe à 30j | Effet |
+|--------|-----------------|-----------------|-------|
+| Hardcore | ~5 143 | ~2 500 (plafonnement effectif) | Ralenti fortement après semaine 2 |
+| Casual | ~428 | ~428 (non taxé) | Aucun impact négatif |
+
+L'excédent prélevé alimente une **Caisse de Solidarité** redistribuée aux joueurs en difficulté.
+
+---
+
+### Groupe A — Anti-Farm
+
+#### A1. Rendement décroissant à l'école *(priorité HAUTE)*
+
+**Description :** Appliquer un multiplicateur XP dégressif par jour calendaire sur le cochon actif :
+- Sessions 1–2 : `school_xp_multiplier = 1.0` (100%)
+- Session 3 : `school_xp_multiplier = 0.5` (50%)
+- Sessions 4+ : `school_xp_multiplier = 0.1` (10%) + coût énergie ×2
+
+Le compteur repart à zéro à minuit UTC.
+
+**Impact :** Ratio ×24 → ×3.3 (voir Simulation 2). Quick win à faible effort.
+
+**Fichiers concernés :**
+- `data.py` — ajouter constante `SCHOOL_XP_DECAY_THRESHOLDS`
+- `routes/pig.py` — endpoint `/school`, lire le compteur quotidien du cochon avant d'appliquer le multiplicateur
+- `services/economy_service.py` — si la logique de multiplicateur est centralisée ici
+- `models.py` — ajouter champ `Pig.daily_school_sessions` (int, reset quotidien)
+
+---
+
+#### A2. Surmenage / Risque de blessure exponentiel *(priorité MOYENNE)*
+
+**Description :** Tracker les actions (école + entraînement) dans une fenêtre glissante de 2h sur le cochon :
+- Actions 1–2 : `injury_risk` normal (actuel : MIN=2.0, MAX=18.0)
+- Actions 3–4 : `injury_risk × 1.5`
+- Actions 5+ : `injury_risk × 2.5` → force à passer chez le vétérinaire (`VET_RESPONSE_MINUTES = 20`)
+
+**Impact :** Frein naturel au farm intensif ; le hardcore doit gérer la récupération comme une ressource.
+
+**Fichiers concernés :**
+- `models.py` — `Pig` : ajouter `activity_window_start` (datetime) et `activity_window_count` (int)
+- `routes/pig.py` — incrémenter et vérifier le compteur avant chaque action école/entraînement
+- `helpers/race.py` — la formule `effective_risk` existe déjà, y injecter le multiplicateur de surmenage
+
+---
+
+#### A3. Dette de Carrière (max_races) *(priorité MOYENNE)*
+
+**Description :** Si une course est lancée avec `energy < 20` ou `hunger < 20`, retirer 2 `max_races` au lieu de 1. Pénalise la négligence du cochon, décourage les courses en mode "zombie".
+
+**Impact :** Indirect mais dissuasif ; réduit la durée de vie effective des cochons sur-utilisés.
+
+**Fichiers concernés :**
+- `routes/race.py` — vérifier energy/hunger au moment de l'inscription
+- `services/race_service.py` — ajuster le décrément de `pig.max_races`
+
+---
+
+### Groupe B — Rested XP / Aide Casuals
+
+#### B1. Bonus "Cochon Reposé" (Rested XP) *(priorité HAUTE)*
+
+**Description :** Si aucune interaction avec le cochon depuis ≥ 12h, passer `pig.comeback_bonus_ready = True`. À la prochaine **victoire de course** : ×2 XP + ×2 gains stats + ×2 bonheur. Le flag se consomme en une fois.
+
+Le champ `comeback_bonus_ready` existe déjà dans `models.py` — il suffit de l'alimenter automatiquement.
+
+**Impact :** Récompense directement le joueur casual qui revient après une longue absence. Aucun impact sur le hardcore (son cochon n'atteint jamais 12h sans interaction).
+
+**Fichiers concernés :**
+- `models.py` — `Pig.comeback_bonus_ready` (existant)
+- `services/pig_service.py` — ajouter vérification `last_interaction_at` au moment d'une action pig
+- `services/race_service.py` — appliquer le bonus ×2 si flag actif, puis reset
+
+---
+
+#### B2. Mode Pension / Stagiaire (Automation) *(priorité BASSE — complexe)*
+
+**Description :** Payer 50 BitGroins → une IA effectue automatiquement 3 sessions école dans la journée pour le cochon (aux créneaux optimaux). Money sink + aide directe aux casuals.
+
+**Impact :** Permet au casual de "jouer" sans être connecté. Complexe à implémenter proprement.
+
+**Fichiers concernés :**
+- Nouveau `services/automation_service.py`
+- `routes/pig.py` — endpoint d'activation du mode pension
+- Scheduler (APScheduler ou Celery) pour déclencher les sessions différées
+
+---
+
+#### B3. Courses Asynchrones (Contre-la-montre) *(priorité BASSE — gros chantier)*
+
+**Description :** Inscription ouverte toute la journée ; comparaison des temps à minuit. Le joueur soumet son cochon quand il est disponible, sans contrainte de présence en temps réel.
+
+**Impact :** Élimine la contrainte horaire, ideal pour le "jeu de bureau asynchrone" défini comme direction forte. Chantier majeur sur le moteur de course.
+
+**Fichiers concernés :**
+- `models.py` — `Race` : nouveau mode `async`
+- `race_engine.py` — séparer inscription et résolution
+- Scheduler — tâche de résolution quotidienne à minuit
+
+---
+
+### Groupe C — Money Sinks (vider les poches des riches)
+
+#### C1. Taxe progressive sur les gains *(priorité HAUTE)*
+
+**Description :** À chaque crédit de BitGroins (via `credit_user_balance` dans `finance_service.py`), vérifier le solde du joueur :
+- Solde > 2 000 → gain taxé à 20%
+- Solde > 5 000 → gain taxé à 50%
+
+Les BitGroins prélevés sont versés dans une **Caisse de Solidarité** (solde d'un compte système).
+
+**Impact :** Plafonnement effectif à ~2 500 BitGroins pour le hardcore après 2 semaines (voir Simulation 4). Le casual sous 2 000 n'est jamais taxé.
+
+**Fichiers concernés :**
+- `services/finance_service.py` — modifier `credit_user_balance` pour injecter la taxe
+- `services/economy_service.py` — gérer le compte Caisse de Solidarité
+- `models.py` — `GameConfig` (existant) : seuils configurables `TAX_THRESHOLD_1 = 2000`, `TAX_RATE_1 = 0.20`, etc.
+
+---
+
+#### C2. Caisse de Solidarité IA *(priorité HAUTE — liée à C1)*
+
+**Description :** Cagnotte alimentée par la taxe C1. Logique automatique :
+- Si `user.balance < 50 BitGroins` : attribuer un **"Ticket Bacon d'Or"** (inscription gratuite à la prochaine course)
+- Remplace/complète l'emergency relief actuel (20 BitGroins si < 10 BitGroins)
+
+**Impact :** Redistribution automatique vers les joueurs en difficulté. Donne un plancher de dignité sans inflation monétaire.
+
+**Fichiers concernés :**
+- `services/economy_service.py` — logique de distribution du Ticket Bacon d'Or
+- `models.py` — `GameConfig` pour le seuil, `User` ou `Pig` pour tracker le ticket gratuit
+
+---
+
+#### C3. Courses High Roller / Weekend VIP *(priorité MOYENNE)*
+
+**Description :** Inscription à 500–1 000 BitGroins, gains en prestige et trophées uniques (pas de BitGroins supplémentaires). Disponibles les weekends uniquement (configurable via `GameConfig`).
+
+**Impact :** Money sink volontaire pour les riches ; crée un événement récurrent mémorable.
+
+**Fichiers concernés :**
+- `models.py` — `Race` : champ `entry_fee`, `is_vip`
+- `routes/race.py` — validation entry fee + restriction temporelle
+- `services/race_service.py` — déduction entry fee via `debit_user_balance`
+
+---
+
+#### C4. Boss IA "Le Sanglier Noir" *(priorité MOYENNE)*
+
+**Description :** Apparition aléatoire dans certaines courses (probabilité configurable). Stats proches du maximum. Si les joueurs perdent contre lui, le Sanglier absorbe une partie des mises/gains. Crée un risque et un event narratif.
+
+**Impact :** Money sink dynamique et imprédictible. Génère de l'engagement sans punir systématiquement.
+
+**Fichiers concernés :**
+- `race_engine.py` — génération de NPC avec profil "boss"
+- `data.py` — configuration NPC `SANGLIER_NOIR_STATS`
+
+---
+
+#### C5. Boutique cosmétique *(priorité BASSE)*
+
+**Description :** Avatars animés, skins cochons, titres de chat. Coût en milliers de BitGroins. Aucun impact sur les stats ou les courses.
+
+**Impact :** Money sink pur ; motivant pour les joueurs riches sans créer d'avantage compétitif. Long à concevoir et intégrer.
+
+**Fichiers concernés :**
+- Nouveau `routes/shop.py`
+- `models.py` — ownership des cosmétiques (table `UserCosmetic`)
+
+---
+
+### Groupe D — Social & Solidarité
+
+#### D1. Sponsoring (Investisseur ↔ Éleveur) *(priorité BASSE — complexe)*
+
+**Description :** Un joueur riche finance le cochon d'un joueur pauvre (nourriture, vétérinaire, inscription de course). En échange, il récupère 30% des gains de course du sponsorisé pendant N semaines.
+
+**Impact :** Crée un lien social, draine les richesses des whales vers les casuals de façon organique. Complexe à équilibrer et à implémenter.
+
+**Fichiers concernés :**
+- `models.py` — nouveau modèle `SponsorContract`
+- `services/economy_service.py` — split automatique des gains à chaque victoire
+
+---
+
+### Tableau récapitulatif des priorités
+
+| Priorité | Idée | Effort | Impact équité |
+|----------|------|--------|---------------|
+| 🔴 HAUTE | A1. Rendement décroissant école | Faible | Très fort (×24 → ×3.3) |
+| 🔴 HAUTE | B1. Rested XP (comeback_bonus_ready) | Très faible | Fort |
+| 🔴 HAUTE | C1. Taxe progressive | Moyen | Fort |
+| 🔴 HAUTE | C2. Caisse Solidarité IA | Moyen | Fort |
+| 🟡 MOYENNE | A2. Surmenage / blessure exponentiel | Moyen | Moyen |
+| 🟡 MOYENNE | A3. Dette de carrière (max_races) | Faible | Moyen |
+| 🟡 MOYENNE | C3. High Roller weekend | Moyen | Moyen |
+| 🟡 MOYENNE | C4. Boss IA Sanglier Noir | Moyen | Moyen |
+| 🟢 BASSE | B2. Pension / Automation | Fort | Moyen |
+| 🟢 BASSE | C5. Boutique cosmétique | Fort | Faible |
+| 🟢 BASSE | B3. Courses Asynchrones | Très fort | Moyen |
+| 🟢 BASSE | D1. Sponsoring | Très fort | Moyen |
