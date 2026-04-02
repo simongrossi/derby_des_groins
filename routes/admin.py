@@ -10,7 +10,7 @@ import re
 import secrets
 
 from extensions import db
-from models import User, Race, Pig, Bet, CerealItem, TrainingItem, SchoolLessonItem, PigAvatar
+from models import User, Race, Pig, Bet, CerealItem, TrainingItem, SchoolLessonItem, PigAvatar, AuthEventLog
 from data import JOURS_FR
 from helpers import (
     set_config, get_config, populate_race_participants, run_race_if_needed,
@@ -158,6 +158,50 @@ def admin_dashboard(user):
 
     return render_template('admin_dashboard.html',
         user=user, admin_tab='dashboard', stats=stats, recent_races=recent_races)
+
+
+@admin_bp.route('/admin/auth-logs')
+@admin_required
+def admin_auth_logs(user):
+    page = max(1, request.args.get('page', default=1, type=int) or 1)
+    event_type = (request.args.get('event_type', '') or '').strip()
+    success_filter = (request.args.get('success', '') or '').strip()
+    username = (request.args.get('username', '') or '').strip()
+    ip_address = (request.args.get('ip', '') or '').strip()
+
+    query = AuthEventLog.query
+    if event_type:
+        query = query.filter(AuthEventLog.event_type == event_type)
+    if success_filter == '1':
+        query = query.filter(AuthEventLog.is_success.is_(True))
+    elif success_filter == '0':
+        query = query.filter(AuthEventLog.is_success.is_(False))
+    if username:
+        query = query.filter(AuthEventLog.username_attempt.ilike(f"%{username}%"))
+    if ip_address:
+        query = query.filter(AuthEventLog.ip_address.ilike(f"%{ip_address}%"))
+
+    pagination = query.order_by(AuthEventLog.occurred_at.desc(), AuthEventLog.id.desc()).paginate(
+        page=page,
+        per_page=100,
+        error_out=False,
+    )
+    event_types = [row[0] for row in db.session.query(AuthEventLog.event_type).distinct().order_by(AuthEventLog.event_type).all()]
+
+    return render_template(
+        'admin_auth_logs.html',
+        user=user,
+        admin_tab='auth_logs',
+        pagination=pagination,
+        auth_logs=pagination.items,
+        filters={
+            'event_type': event_type,
+            'success': success_filter,
+            'username': username,
+            'ip': ip_address,
+        },
+        event_types=event_types,
+    )
 
 
 @admin_bp.route('/admin/economy', methods=['GET', 'POST'])
