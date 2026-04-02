@@ -77,6 +77,18 @@
                 </div>
             </div>
 
+            <h2 class="font-title text-xl text-white mb-3 mt-6">🌍 Fuseau Horaire</h2>
+            <div class="mb-4">
+                <label for="timezone" class="text-white/60 text-xs font-bold block mb-1">Fuseau Horaire du Serveur</label>
+                <select class="input-admin w-full" id="timezone" name="timezone">
+                    <option value="Europe/Paris" {% if config.timezone == 'Europe/Paris' %}selected{% endif %}>Europe/Paris (France)</option>
+                    <option value="America/Montreal" {% if config.timezone == 'America/Montreal' %}selected{% endif %}>America/Montreal (Quebec)</option>
+                    <option value="Indian/Reunion" {% if config.timezone == 'Indian/Reunion' %}selected{% endif %}>Indian/Reunion (La Reunion)</option>
+                    <option value="Pacific/Noumea" {% if config.timezone == 'Pacific/Noumea' %}selected{% endif %}>Pacific/Noumea (Nouvelle-Caledonie)</option>
+                </select>
+                <p class="text-white/30 text-[10px] font-semibold mt-1">Ce fuseau est utilise pour l'heure des courses, du marche et la treve du week-end.</p>
+            </div>
+
             <h2 id="npcs" class="font-title text-xl text-white mb-3 mt-6">🐷 PNJ de remplissage</h2>
             <p class="text-white/40 text-xs font-semibold mb-2">Une ligne par PNJ au format <code>Nom|Emoji</code>. Si l'emoji est omis, 🐷 est utilise.</p>
             <div class="flex flex-wrap gap-2 mb-2">
