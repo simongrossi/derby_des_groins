@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, redirect, url_for, session, flash, request
+from flask import Blueprint, render_template, redirect, url_for, session, flash, request, current_app
 from sqlalchemy import func
 from datetime import datetime
 import time
@@ -546,7 +546,23 @@ def history():
 def _build_classement_data():
     """Build rankings, chart_data and awards. Cached for 5 min."""
     all_users = User.query.all()
-    user_ids = [u.id for u in all_users]
+    if not all_users:
+        empty_chart_data = {
+            'labels': [],
+            'balances': [],
+            'wins': [],
+            'dead': [],
+            'all_labels': [],
+            'all_dead': [],
+            'all_challenge': [],
+            'all_blessure': [],
+            'all_sacrifice': [],
+            'all_vieillesse': [],
+            'all_bet_profit': [],
+            'all_win_rate': [],
+            'all_races': [],
+        }
+        return [], empty_chart_data, []
 
     # ── Batch: stats courses par user (1 query) ────────────────────────
     pig_stats_rows = (
@@ -555,14 +571,13 @@ def _build_classement_data():
             func.coalesce(func.sum(Pig.races_won), 0),
             func.coalesce(func.sum(Pig.races_entered), 0),
         )
-        .filter(Pig.user_id.in_(user_ids))
         .group_by(Pig.user_id)
         .all()
     )
     pig_stats = {uid: (int(w), int(r)) for uid, w, r in pig_stats_rows}
 
     # ── Batch: tous les cochons (1 query) ──────────────────────────────
-    all_pigs_list = Pig.query.filter(Pig.user_id.in_(user_ids)).all()
+    all_pigs_list = Pig.query.all()
     pigs_by_user = {}
     for p in all_pigs_list:
         pigs_by_user.setdefault(p.user_id, []).append(p)
@@ -577,7 +592,6 @@ def _build_classement_data():
             func.coalesce(func.sum(Bet.winnings), 0.0),
             func.max(db.case((Bet.status == 'won', Bet.odds_at_bet), else_=0.0)),
         )
-        .filter(Bet.user_id.in_(user_ids))
         .group_by(Bet.user_id, Bet.status)
         .all()
     )
@@ -606,7 +620,6 @@ def _build_classement_data():
             func.coalesce(func.sum(func.abs(BalanceTransaction.amount)), 0.0),
         )
         .filter(
-            BalanceTransaction.user_id.in_(user_ids),
             BalanceTransaction.reason_code == 'feed_purchase',
         )
         .group_by(BalanceTransaction.user_id)
@@ -620,7 +633,6 @@ def _build_classement_data():
             func.coalesce(func.sum(BalanceTransaction.amount), 0.0),
         )
         .filter(
-            BalanceTransaction.user_id.in_(user_ids),
             BalanceTransaction.amount > 0,
             BalanceTransaction.reason_code != 'snapshot',
         )
@@ -630,7 +642,7 @@ def _build_classement_data():
     total_earned_map = {uid: round(float(v), 2) for uid, v in earned_rows}
 
     # ── Batch: trophees memorial par user (1 query) ────────────────────
-    all_trophies = Trophy.query.filter(Trophy.user_id.in_(user_ids)).order_by(Trophy.earned_at.asc()).all()
+    all_trophies = Trophy.query.order_by(Trophy.earned_at.asc()).all()
     trophies_by_user = {}
     for t in all_trophies:
         trophies_by_user.setdefault(t.user_id, []).append(t)
@@ -845,12 +857,34 @@ def classement():
         user = User.query.get(session['user_id'])
 
     now = time.time()
-    if _classement_cache['data'] and (now - _classement_cache['ts']) < _CLASSEMENT_TTL:
-        rankings, chart_data, awards = _classement_cache['data']
-    else:
-        rankings, chart_data, awards = _build_classement_data()
-        _classement_cache['data'] = (rankings, chart_data, awards)
-        _classement_cache['ts'] = now
+    try:
+        if _classement_cache['data'] and (now - _classement_cache['ts']) < _CLASSEMENT_TTL:
+            rankings, chart_data, awards = _classement_cache['data']
+        else:
+            rankings, chart_data, awards = _build_classement_data()
+            _classement_cache['data'] = (rankings, chart_data, awards)
+            _classement_cache['ts'] = now
+    except Exception:
+        current_app.logger.exception("Erreur lors de la construction du classement")
+        if _classement_cache['data']:
+            rankings, chart_data, awards = _classement_cache['data']
+        else:
+            rankings, chart_data, awards = [], {
+                'labels': [],
+                'balances': [],
+                'wins': [],
+                'dead': [],
+                'all_labels': [],
+                'all_dead': [],
+                'all_challenge': [],
+                'all_blessure': [],
+                'all_sacrifice': [],
+                'all_vieillesse': [],
+                'all_bet_profit': [],
+                'all_win_rate': [],
+                'all_races': [],
+            }, []
+            flash("Le classement est temporairement indisponible. Réessaie dans quelques minutes.", "warning")
 
     return render_template('classement.html', user=user, rankings=rankings, chart_data=chart_data, awards=awards, active_page='classement')
 
