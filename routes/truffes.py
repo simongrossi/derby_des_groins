@@ -85,7 +85,7 @@ def truffes_play():
             if (user.balance or 0) < replay_cost:
                 return jsonify({'ok': False, 'error': 'Fonds insuffisants'}), 400
             
-            debit_user_balance(
+            debit_ok = debit_user_balance(
                 user.id,
                 replay_cost,
                 reason_code='truffe_replay',
@@ -94,6 +94,9 @@ def truffes_play():
                 reference_type='user',
                 reference_id=user.id
             )
+            if not debit_ok:
+                db.session.rollback()
+                return jsonify({'ok': False, 'error': 'Fonds insuffisants'}), 400
         else:
             return jsonify({'ok': False, 'error': 'Limite quotidienne atteinte'}), 429
 

@@ -244,6 +244,7 @@
     let clicksLeft = MAX_CLICKS;
     let finished = false;
     let gameStarted = false;
+    let startInFlight = false;
 
     function randomCell() {
       hiddenX = Math.floor(Math.random() * GRID_SIZE);
@@ -298,37 +299,44 @@
     }
 
     async function startGame(isReplay = false) {
-      const res = await fetch('{{ url_for("truffes.truffes_play") }}', {
-        method: 'POST',
-        headers: { 
-            'Content-Type': 'application/json',
-            'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-        },
-        body: JSON.stringify({ is_replay: isReplay }), // Pass is_replay flag
-      });
-      const data = await res.json();
-      if (!data.ok) {
-        if (data.error === 'Limite quotidienne atteinte' && !isReplay) {
-            showAlreadyPlayed();
-        } else if (data.error === 'Fonds insuffisants') {
-            alert('Vous n\'avez pas assez de BitGroins pour rejouer. Il vous faut ' + REPLAY_COST + ' 🪙.');
-            newGameButton.disabled = false; // Re-enable new game button
-            newGameButton.classList.remove('opacity-40', 'cursor-not-allowed');
-        } else {
-            alert(data.error); // Generic error
+      if (startInFlight) return false;
+      startInFlight = true;
+      try {
+        const res = await fetch('{{ url_for("truffes.truffes_play") }}', {
+          method: 'POST',
+          headers: { 
+              'Content-Type': 'application/json',
+              'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+          },
+          body: JSON.stringify({ is_replay: isReplay }), // Pass is_replay flag
+        });
+        const data = await res.json();
+        if (!data.ok) {
+          if (data.error === 'Limite quotidienne atteinte' && !isReplay) {
+              showAlreadyPlayed();
+          } else if (data.error === 'Fonds insuffisants') {
+              alert('Vous n\'avez pas assez de BitGroins pour rejouer. Il vous faut ' + REPLAY_COST + ' 🪙.');
+              newGameButton.disabled = false; // Re-enable new game button
+              newGameButton.classList.remove('opacity-40', 'cursor-not-allowed');
+          } else {
+              alert(data.error); // Generic error
+          }
+          return false;
         }
-        return false;
+        if (isReplay) {
+          balanceNode.textContent = Number(data.new_balance).toFixed(2); // Update balance if replay cost was deducted
+        }
+        gameStarted = true;
+        return true;
+      } finally {
+        startInFlight = false;
       }
-      if (isReplay) {
-        balanceNode.textContent = Number(data.new_balance).toFixed(2); // Update balance if replay cost was deducted
-      }
-      gameStarted = true;
-      return true;
     }
 
     async function handleCellClick(event) {
       const button = event.currentTarget;
       if (finished) return;
+      if (startInFlight) return;
       if (!gameStarted) {
         const ok = await startGame();
         if (!ok) return;
@@ -409,7 +417,7 @@
       grid.querySelectorAll('.cell-btn').forEach(btn => { btn.disabled = true; });
     }
 
-    function resetGame(isReplay = false) {
+    async function resetGame(isReplay = false) {
       clicksLeft = MAX_CLICKS;
       finished = false;
       gameStarted = false;
@@ -423,16 +431,24 @@
       newGameButton.classList.remove('opacity-40', 'cursor-not-allowed');
       buildGrid();
       if (isReplay) {
-        startGame(true); // Deduct cost immediately if it's a replay
+        newGameButton.disabled = true;
+        newGameButton.classList.add('opacity-40', 'cursor-not-allowed');
+        grid.querySelectorAll('.cell-btn').forEach(btn => { btn.disabled = true; });
+        const ok = await startGame(true); // Deduct cost immediately if it's a replay
+        if (ok) {
+          grid.querySelectorAll('.cell-btn').forEach(btn => { btn.disabled = false; });
+          newGameButton.disabled = false;
+          newGameButton.classList.remove('opacity-40', 'cursor-not-allowed');
+        }
       }
     }
 
-    newGameButton.addEventListener('click', () => {
+    newGameButton.addEventListener('click', async () => {
       if (ALREADY_PLAYED) {
         // If already played, this button acts as a replay button
-        resetGame(true); // Pass true to indicate it's a replay
+        await resetGame(true); // Pass true to indicate it's a replay
       } else {
-        resetGame(false);
+        await resetGame(false);
       }
     });
 

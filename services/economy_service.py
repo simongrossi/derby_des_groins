@@ -396,7 +396,7 @@ def cap_bet_payout(payout_amount, settings=None):
 
 
 def get_merged_race_themes(reward_multiplier_overrides=None):
-    from helpers.game_data import DEFAULT_RACE_THEMES
+    from helpers.config import DEFAULT_RACE_THEMES
 
     current_themes = _load_json_config('race_themes', {})
     overrides = reward_multiplier_overrides if isinstance(reward_multiplier_overrides, dict) else {}
