@@ -10,4 +10,4 @@ services:
 networks:
   caddy:
     external: true
-    name: caddy
+    name: deploy_top100_net
