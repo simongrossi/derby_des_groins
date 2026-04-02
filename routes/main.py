@@ -500,33 +500,26 @@ def history():
     tx_selected_user_ids = []
 
     tx_query = BalanceTransaction.query.order_by(BalanceTransaction.created_at.desc(), BalanceTransaction.id.desc())
-    if current_user.is_admin:
-        selected_ids = []
-        for raw_value in tx_filter_values:
-            if raw_value == 'all':
-                selected_ids = []
-                break
-            try:
-                selected_ids.append(int(raw_value))
-            except (TypeError, ValueError):
-                continue
+    selected_ids = []
+    for raw_value in tx_filter_values:
+        if raw_value == 'all':
+            selected_ids = []
+            break
+        try:
+            selected_ids.append(int(raw_value))
+        except (TypeError, ValueError):
+            continue
 
-        tx_selected_user_ids = sorted(set(selected_ids))
+    tx_selected_user_ids = sorted(set(selected_ids))
+    if tx_selected_user_ids:
+        tx_filter_users = User.query.filter(User.id.in_(tx_selected_user_ids)).order_by(User.username).all()
+        tx_selected_user_ids = [u.id for u in tx_filter_users]
         if tx_selected_user_ids:
-            tx_filter_users = User.query.filter(User.id.in_(tx_selected_user_ids)).order_by(User.username).all()
-            tx_selected_user_ids = [u.id for u in tx_filter_users]
-            if tx_selected_user_ids:
-                tx_query = tx_query.filter(BalanceTransaction.user_id.in_(tx_selected_user_ids))
-                tx_filter_raw = 'multi'
-                tx_filter_user = tx_filter_users[0] if len(tx_filter_users) == 1 else None
-            else:
-                tx_filter_raw = 'all'
-    else:
-        tx_filter_raw = str(current_user.id)
-        tx_filter_user = current_user
-        tx_filter_users = [current_user]
-        tx_selected_user_ids = [current_user.id]
-        tx_query = tx_query.filter_by(user_id=current_user.id)
+            tx_query = tx_query.filter(BalanceTransaction.user_id.in_(tx_selected_user_ids))
+            tx_filter_raw = 'multi'
+            tx_filter_user = tx_filter_users[0] if len(tx_filter_users) == 1 else None
+        else:
+            tx_filter_raw = 'all'
 
     transactions = tx_query.all()
 
