@@ -1,10 +1,14 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+APP_DIR="${APP_DIR:-/home/ubuntu/derby_des_groins}"
 COMPOSE_FILES=(-f docker-compose.yml -f docker-compose.prod.yml)
 
-echo "==> Pull latest code"
-git pull --ff-only
+cd "${APP_DIR}"
+
+echo "==> Pull latest main"
+git fetch origin
+git reset --hard origin/main
 
 echo "==> Build and start containers"
 docker compose "${COMPOSE_FILES[@]}" up -d --build
@@ -12,7 +16,10 @@ docker compose "${COMPOSE_FILES[@]}" up -d --build
 echo "==> Run DB migrations"
 docker compose "${COMPOSE_FILES[@]}" exec -T web flask db upgrade
 
-echo "==> Restart web after migration"
+echo "==> Check routes"
+docker compose "${COMPOSE_FILES[@]}" exec -T web python scripts/check_routes.py
+
+echo "==> Restart web"
 docker compose "${COMPOSE_FILES[@]}" up -d web
 
 echo "==> Health check"

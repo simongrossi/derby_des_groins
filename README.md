@@ -257,6 +257,15 @@ Option script :
 ./scripts/deploy_prod.sh
 ```
 
+Le script VPS remet volontairement le dossier dans un etat propre avec :
+
+```bash
+git fetch origin
+git reset --hard origin/main
+```
+
+Cela evite les conflits lies aux modifications locales faites directement sur le VPS.
+
 Verification anti-collision routes :
 
 ```bash
