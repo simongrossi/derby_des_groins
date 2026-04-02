@@ -1,22 +1,32 @@
 from datetime import datetime, time, timedelta
 from zoneinfo import ZoneInfo
+from helpers.config import get_config
 
-PARIS_TZ = ZoneInfo('Europe/Paris')
 WEEKEND_TRUCE_START = time(18, 0)
 WEEKEND_TRUCE_END = time(8, 0)
 WEEKEND_TRUCE_DURATION = timedelta(days=2, hours=14)
 
 
+def get_current_tz():
+    """Récupère le fuseau horaire depuis la base de données avec un fallback."""
+    try:
+        tz_str = get_config('timezone', 'Europe/Paris')
+        return ZoneInfo(tz_str)
+    except Exception:
+        return ZoneInfo('Europe/Paris')
+
+
 def get_paris_now():
-    return datetime.now(PARIS_TZ)
+    return datetime.now(get_current_tz())
 
 
 def to_paris_time(dt):
     if dt is None:
         return None
+    tz = get_current_tz()
     if dt.tzinfo is None:
-        return dt.replace(tzinfo=ZoneInfo('UTC')).astimezone(PARIS_TZ)
-    return dt.astimezone(PARIS_TZ)
+        return dt.replace(tzinfo=ZoneInfo('UTC')).astimezone(tz)
+    return dt.astimezone(tz)
 
 
 def is_weekend_truce_active(moment=None):
@@ -36,7 +46,7 @@ def _next_weekend_truce_start(after_local):
     candidate_day = after_local.date()
     days_until_friday = (4 - after_local.weekday()) % 7
     candidate_day = candidate_day + timedelta(days=days_until_friday)
-    candidate_start = datetime.combine(candidate_day, WEEKEND_TRUCE_START, tzinfo=PARIS_TZ)
+    candidate_start = datetime.combine(candidate_day, WEEKEND_TRUCE_START, tzinfo=get_current_tz())
     if candidate_start <= after_local:
         candidate_start += timedelta(days=7)
     return candidate_start
@@ -55,7 +65,7 @@ def _get_current_truce_window_start(local_moment):
     return datetime.combine(
         local_moment.date() - timedelta(days=delta_days),
         WEEKEND_TRUCE_START,
-        tzinfo=PARIS_TZ,
+        tzinfo=get_current_tz(),
     )
 
 

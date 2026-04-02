@@ -27,6 +27,7 @@ services:
       SECRET_KEY: ${SECRET_KEY:-change-me-in-production}
       FLASK_ENV: ${FLASK_ENV:-production}
       FLASK_DEBUG: "false"
+      TZ: ${DERBY_TIMEZONE:-Europe/Paris}
       DERBY_TIMEZONE: ${DERBY_TIMEZONE:-Europe/Paris}
       DERBY_FORCE_SCHEDULER: "1"
       # Mettre à "true" seulement si le site est servi en HTTPS (reverse proxy avec SSL)

@@ -155,9 +155,54 @@ def admin_dashboard(user):
         'admin_count': User.query.filter_by(is_admin=True).count(),
     }
     recent_races = Race.query.filter_by(status='finished').order_by(Race.finished_at.desc()).limit(8).all()
+    current_timezone = get_config('timezone', 'Europe/Paris')
 
     return render_template('admin_dashboard.html',
-        user=user, admin_tab='dashboard', stats=stats, recent_races=recent_races)
+        user=user, admin_tab='dashboard', stats=stats, recent_races=recent_races, current_timezone=current_timezone)
+
+
+@admin_bp.route('/admin/auth-logs')
+@admin_required
+def admin_auth_logs(user):
+    page = max(1, request.args.get('page', default=1, type=int) or 1)
+    event_type = (request.args.get('event_type', '') or '').strip()
+    success_filter = (request.args.get('success', '') or '').strip()
+    username = (request.args.get('username', '') or '').strip()
+    ip_address = (request.args.get('ip', '') or '').strip()
+
+    query = AuthEventLog.query
+    if event_type:
+        query = query.filter(AuthEventLog.event_type == event_type)
+    if success_filter == '1':
+        query = query.filter(AuthEventLog.is_success.is_(True))
+    elif success_filter == '0':
+        query = query.filter(AuthEventLog.is_success.is_(False))
+    if username:
+        query = query.filter(AuthEventLog.username_attempt.ilike(f"%{username}%"))
+    if ip_address:
+        query = query.filter(AuthEventLog.ip_address.ilike(f"%{ip_address}%"))
+
+    pagination = query.order_by(AuthEventLog.occurred_at.desc(), AuthEventLog.id.desc()).paginate(
+        page=page,
+        per_page=100,
+        error_out=False,
+    )
+    event_types = [row[0] for row in db.session.query(AuthEventLog.event_type).distinct().order_by(AuthEventLog.event_type).all()]
+
+    return render_template(
+        'admin_auth_logs.html',
+        user=user,
+        admin_tab='auth_logs',
+        pagination=pagination,
+        auth_logs=pagination.items,
+        filters={
+            'event_type': event_type,
+            'success': success_filter,
+            'username': username,
+            'ip': ip_address,
+        },
+        event_types=event_types,
+    )
 
 
 @admin_bp.route('/admin/auth-logs')
@@ -311,6 +356,7 @@ def admin_races(user):
             'market_duration': settings.market_duration,
             'min_real_participants': settings.min_real_participants,
             'empty_race_mode': settings.empty_race_mode,
+            'timezone': get_config('timezone', 'Europe/Paris'),
             'race_schedule': settings.race_schedule,
             'schedule_dict': settings.schedule_dict,
             'race_themes': merged_themes,
@@ -324,7 +370,7 @@ def admin_races(user):
 def admin_save(user):
     keys = [
         'race_hour', 'race_minute', 'market_hour',
-        'market_minute', 'market_duration', 'min_real_participants', 'empty_race_mode'
+        'market_minute', 'market_duration', 'min_real_participants', 'empty_race_mode', 'timezone'
     ]
     for key in keys:
         val = request.form.get(key)

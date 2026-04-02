@@ -73,6 +73,25 @@
     </div>
 </div>
 
+<!-- CONFIG FUSEAU -->
+<div class="card p-6 mb-8">
+    <h2 class="font-title text-xl text-white mb-2">🌍 Fuseau horaire serveur</h2>
+    <p class="text-white/40 text-xs font-semibold mb-4">Utilise pour les courses, le marche et la treve du week-end.</p>
+    <form method="POST" action="{{ url_for('admin.admin_save') }}" class="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-3 items-end">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div>
+            <label for="timezone" class="text-white/60 text-xs font-bold block mb-1">Fuseau Horaire</label>
+            <select class="input-admin w-full" id="timezone" name="timezone">
+                <option value="Europe/Paris" {% if current_timezone == 'Europe/Paris' %}selected{% endif %}>Europe/Paris (France)</option>
+                <option value="America/Montreal" {% if current_timezone == 'America/Montreal' %}selected{% endif %}>America/Montreal (Quebec)</option>
+                <option value="Indian/Reunion" {% if current_timezone == 'Indian/Reunion' %}selected{% endif %}>Indian/Reunion (La Reunion)</option>
+                <option value="Pacific/Noumea" {% if current_timezone == 'Pacific/Noumea' %}selected{% endif %}>Pacific/Noumea (Nouvelle-Caledonie)</option>
+            </select>
+        </div>
+        <button type="submit" class="btn-admin">💾 Sauvegarder</button>
+    </form>
+</div>
+
 <!-- ACTIONS RAPIDES -->
 <div class="card p-6">
     <h2 class="font-title text-xl text-white mb-4">⚡ Actions rapides</h2>
