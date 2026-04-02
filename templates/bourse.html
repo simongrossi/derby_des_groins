@@ -458,6 +458,8 @@
 
     <!-- ===== VUE GRAPHIQUES (Hidden by default) ===== -->
     <section id="view-charts" class="hidden space-y-6">
+        <div id="chart-status" class="hidden rounded-2xl border border-cyan-400/20 bg-cyan-500/10 px-4 py-3 text-sm font-semibold text-cyan-100"></div>
+
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <!-- Graphique des Prix -->
             <div class="card p-6">
@@ -531,6 +533,7 @@
     }
 
     let priceChart, surchargeChart, chartData;
+    const chartStatus = document.getElementById('chart-status');
     const colors = {
         mais: '#facc15', // yellow
         orge: '#60a5fa', // blue
@@ -546,8 +549,30 @@
     async function loadCharts() {
         if (priceChart) return; // Déjà chargé
 
+        if (typeof Chart === 'undefined') {
+            chartStatus.textContent = "La librairie des graphiques n'a pas pu etre chargee.";
+            chartStatus.classList.remove('hidden');
+            return;
+        }
+
         const res = await fetch('/bourse/history?days=7');
+        if (!res.ok) {
+            chartStatus.textContent = "Impossible de charger l'historique de la Bourse pour le moment.";
+            chartStatus.classList.remove('hidden');
+            return;
+        }
         chartData = await res.json();
+
+        if (!chartData.timestamps || !chartData.datasets) {
+            chartStatus.textContent = "Les donnees de graphique sont incompletes.";
+            chartStatus.classList.remove('hidden');
+            return;
+        }
+
+        if (chartData.source === 'snapshot') {
+            chartStatus.textContent = "Pas encore d'historique sur 7 jours : affichage de l'etat actuel du marche.";
+            chartStatus.classList.remove('hidden');
+        }
 
         const ts = chartData.timestamps.map(t => new Date(t).toLocaleString('fr-FR', {
             day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit'
@@ -619,6 +644,7 @@
     }
 
     function toggleDataset(key) {
+        if (!priceChart || !surchargeChart) return;
         const btn = document.getElementById('toggle-' + key);
         priceChart.data.datasets.forEach(ds => {
             if (ds.key === key) ds.hidden = !ds.hidden;

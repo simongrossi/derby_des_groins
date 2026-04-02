@@ -204,40 +204,66 @@ def bourse_history():
         MarketHistory.recorded_at >= since
     ).order_by(MarketHistory.recorded_at.asc()).all()
 
-    from data import CEREALS
-    
+    cereals = get_cereals_dict()
+
+    # Si l'historique est vide, on renvoie au moins l'etat courant pour eviter
+    # d'afficher des cartes entierement vides.
+    if not history_rows:
+        market = get_grain_market()
+        surcharges = get_all_grain_surcharges(market)
+        snapshot_at = datetime.utcnow().isoformat()
+        datasets = {}
+        for key, cereal in cereals.items():
+            base_cost = float(cereal.get('cost', 0) or 0)
+            surcharge = float(surcharges.get(key, 1.0) or 1.0)
+            datasets[key] = {
+                'label': cereal.get('name', key),
+                'emoji': cereal.get('emoji', '🌾'),
+                'prices': [round(base_cost * surcharge, 2)],
+                'surcharges': [round(surcharge, 2)],
+            }
+        return jsonify({
+            'timestamps': [snapshot_at],
+            'datasets': datasets,
+            'source': 'snapshot',
+        })
+
     # Organiser par céréale
     data = {}
     labels = []
-    
+
     # On veut des labels temporels uniques pour l'axe X
     # Mais comme on logue tout d'un coup, on peut grouper par "recorded_at"
     timestamps = sorted(list(set(h.recorded_at.isoformat() for h in history_rows)))
-    
-    for key in CEREALS.keys():
+
+    cereal_keys = sorted(set(cereals.keys()) | {h.cereal_key for h in history_rows})
+
+    for key in cereal_keys:
+        cereal = cereals.get(key, {})
         data[key] = {
-            'label': CEREALS[key]['name'],
-            'emoji': CEREALS[key]['emoji'],
+            'label': cereal.get('name', key),
+            'emoji': cereal.get('emoji', '🌾'),
             'prices': [],
             'surcharges': []
         }
-        
+
     # On remplit les trous si nécessaire (même si normalement on logue tout le bloc)
     for ts in timestamps:
         rows_at_ts = [h for h in history_rows if h.recorded_at.isoformat() == ts]
-        for key in CEREALS.keys():
+        for key in cereal_keys:
             match = next((h for h in rows_at_ts if h.cereal_key == key), None)
             if match:
                 data[key]['prices'].append(match.price)
                 data[key]['surcharges'].append(match.surcharge)
             else:
                 # Valeur par défaut ou répétition de la dernière
-                prev_price = data[key]['prices'][-1] if data[key]['prices'] else CEREALS[key]['cost']
+                prev_price = data[key]['prices'][-1] if data[key]['prices'] else float(cereals.get(key, {}).get('cost', 0) or 0)
                 prev_sur = data[key]['surcharges'][-1] if data[key]['surcharges'] else 1.0
                 data[key]['prices'].append(prev_price)
                 data[key]['surcharges'].append(prev_sur)
 
     return jsonify({
         'timestamps': timestamps,
-        'datasets': data
+        'datasets': data,
+        'source': 'history',
     })
