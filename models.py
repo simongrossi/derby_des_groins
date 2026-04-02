@@ -964,6 +964,28 @@ class PigAvatar(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 
+class AuthEventLog(db.Model):
+    """Journal des événements de connexion/authentification."""
+    __tablename__ = 'auth_event_log'
+
+    id = db.Column(db.Integer, primary_key=True)
+    event_type = db.Column(db.String(40), nullable=False)
+    is_success = db.Column(db.Boolean, nullable=False, default=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True, index=True)
+    username_attempt = db.Column(db.String(80), nullable=True, index=True)
+    ip_address = db.Column(db.String(64), nullable=False, index=True)
+    user_agent = db.Column(db.String(300), nullable=True)
+    route = db.Column(db.String(120), nullable=True)
+    details = db.Column(db.String(255), nullable=True)
+    occurred_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, index=True)
+
+    user = db.relationship('User', backref=db.backref('auth_events', lazy=True))
+
+    __table_args__ = (
+        db.Index('ix_auth_event_type_time', 'event_type', 'occurred_at'),
+    )
+
+
 # ──────────────────────────────────────────────────────────
 # 🐷 GROIN POKER — modèles multijoueur
 # ──────────────────────────────────────────────────────────

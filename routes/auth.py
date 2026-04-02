@@ -12,6 +12,7 @@ from data import PIG_ORIGINS, RARITIES
 from helpers import get_config, get_market_unlock_progress, get_market_lock_reason
 from services.economy_service import get_configured_bet_types, get_welcome_bonus_value
 from services.finance_service import record_balance_transaction
+from services.auth_log_service import log_auth_event
 from services.pig_service import apply_origin_bonus, generate_weight_kg_for_profile, get_active_listing_count, build_unique_pig_name
 
 auth_bp = Blueprint('auth', __name__)
@@ -50,6 +51,12 @@ def register():
         apply_origin_bonus(pig, origin)
         pig.weight_kg = generate_weight_kg_for_profile(pig)
         db.session.add(pig)
+        log_auth_event(
+            event_type='register',
+            is_success=True,
+            user_id=user.id,
+            username_attempt=username,
+        )
         db.session.commit()
         session['user_id'] = user.id
         return redirect(url_for('pig.mon_cochon'))
@@ -64,7 +71,21 @@ def login():
         password = request.form.get('password', '').strip()
         user = User.query.filter_by(username=username).first()
         if not user or not check_password_hash(user.password_hash, password):
+            log_auth_event(
+                event_type='login',
+                is_success=False,
+                username_attempt=username,
+                details='invalid_credentials',
+            )
+            db.session.commit()
             return render_template('auth.html', error="Identifiants incorrects !", mode='login')
+        log_auth_event(
+            event_type='login',
+            is_success=True,
+            user_id=user.id,
+            username_attempt=username,
+        )
+        db.session.commit()
         session['user_id'] = user.id
         next_url = request.args.get('next') or request.form.get('next')
         if next_url:
@@ -91,6 +112,12 @@ def magic_login(token):
         # Found matching token — check expiry
         expires = datetime.fromisoformat(data['expires'])
         if datetime.utcnow() > expires:
+            log_auth_event(
+                event_type='magic_login',
+                is_success=False,
+                username_attempt=str(data.get('user_id', '')),
+                details='expired_token',
+            )
             db.session.delete(cfg)
             db.session.commit()
             flash("Ce lien magique a expire.", "error")
@@ -98,8 +125,21 @@ def magic_login(token):
         # Valid token — log in
         user = User.query.get(data['user_id'])
         if not user:
+            log_auth_event(
+                event_type='magic_login',
+                is_success=False,
+                username_attempt=str(data.get('user_id', '')),
+                details='user_not_found',
+            )
             flash("Utilisateur introuvable.", "error")
+            db.session.commit()
             return redirect(url_for('auth.login'))
+        log_auth_event(
+            event_type='magic_login',
+            is_success=True,
+            user_id=user.id,
+            username_attempt=user.username,
+        )
         session['user_id'] = user.id
         # Consume the token
         db.session.delete(cfg)
@@ -113,6 +153,14 @@ def magic_login(token):
 
 @auth_bp.route('/logout')
 def logout():
+    user_id = session.get('user_id')
+    if user_id:
+        log_auth_event(
+            event_type='logout',
+            is_success=True,
+            user_id=user_id,
+        )
+        db.session.commit()
     session.pop('user_id', None)
     return redirect(url_for('main.index'))
 
