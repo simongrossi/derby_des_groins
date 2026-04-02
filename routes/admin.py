@@ -31,9 +31,13 @@ from services.economy_service import (
     get_configured_bet_types,
     get_economy_settings,
     get_progression_settings,
+    get_solidarity_fund_balance,
+    get_tax_settings,
     save_day_reward_multipliers,
     save_economy_settings,
     save_progression_settings,
+    save_tax_settings,
+    TaxSettings,
 )
 from services.finance_service import adjust_user_balance
 from services.game_settings_service import get_game_settings
@@ -268,9 +272,23 @@ def admin_auth_logs(user):
 @admin_required
 def admin_economy(user):
     current_settings = get_economy_settings()
+    current_tax = get_tax_settings()
     if request.method == 'POST':
         settings = build_economy_settings_from_form(request.form, current_settings=current_settings)
         reward_multiplier_overrides = build_day_reward_multipliers_from_form(request.form)
+
+        # Tax settings from form
+        tax_enabled = request.form.get('tax_enabled') == 'true'
+        new_tax = TaxSettings(
+            tax_enabled=tax_enabled,
+            tax_threshold_1=float(request.form.get('tax_threshold_1', current_tax.tax_threshold_1) or current_tax.tax_threshold_1),
+            tax_rate_1=float(request.form.get('tax_rate_1', int(current_tax.tax_rate_1 * 100)) or int(current_tax.tax_rate_1 * 100)) / 100,
+            tax_threshold_2=float(request.form.get('tax_threshold_2', current_tax.tax_threshold_2) or current_tax.tax_threshold_2),
+            tax_rate_2=float(request.form.get('tax_rate_2', int(current_tax.tax_rate_2 * 100)) or int(current_tax.tax_rate_2 * 100)) / 100,
+            solidarity_poor_threshold=float(request.form.get('tax_solidarity_poor_threshold', current_tax.solidarity_poor_threshold) or current_tax.solidarity_poor_threshold),
+            solidarity_poor_daily_bonus=float(request.form.get('tax_solidarity_poor_daily_bonus', current_tax.solidarity_poor_daily_bonus) or current_tax.solidarity_poor_daily_bonus),
+        )
+
         preview_context = build_admin_economy_context(
             settings=settings,
             reward_multiplier_overrides=reward_multiplier_overrides,
@@ -283,8 +301,10 @@ def admin_economy(user):
         if request.form.get('action') == 'save':
             save_economy_settings(settings)
             save_day_reward_multipliers(reward_multiplier_overrides)
+            save_tax_settings(new_tax)
             flash("Configuration economique sauvegardee.", "success")
             current_settings = settings
+            current_tax = new_tax
         context = build_admin_economy_context(
             settings=(current_settings if request.form.get('action') == 'save' else settings),
             simulation_inputs=simulation_inputs,
@@ -298,6 +318,8 @@ def admin_economy(user):
         user=user,
         admin_tab='economy',
         admin_page='economy',
+        tax_settings=current_tax,
+        solidarity_fund_balance=get_solidarity_fund_balance(),
         **context,
     )
 
@@ -330,6 +352,8 @@ def admin_progression(user):
         user=user,
         admin_tab='progression',
         admin_page='progression',
+        tax_settings=get_tax_settings(),
+        solidarity_fund_balance=get_solidarity_fund_balance(),
         **context,
     )
 

@@ -105,6 +105,16 @@ Les stats permanentes ne suffisent pas. La performance reelle depend aussi de l'
 - toute interaction positive utile remet la fraicheur a `100`;
 - apres plus de 3 jours sans interaction positive, un bonus "comeback" est prepare pour la prochaine course.
 
+### Bonus de Repos (💤 Reposé)
+
+Si un cochon n'a eu aucune interaction (course ou ecole) depuis au moins **12 heures** (configurable), il gagne le statut **Reposé**.
+
+- badge 💤 **Reposé** visible sur la fiche cochon;
+- la prochaine **victoire en course** declenche un bonus : stats gagnees x2, bonheur x2;
+- le statut disparait des qu'une interaction a lieu (course, ecole, entrainement).
+
+Ce systeme recompense les joueurs casual qui reviennent apres une pause.
+
 ### Poids
 
 - le poids ideal depend des stats et du niveau du cochon;
@@ -157,6 +167,19 @@ Regles:
 - une bonne reponse donne les gains complets du cours et l'XP associee;
 - une mauvaise reponse donne un petit peu d'XP, mais retire de l'humeur;
 - un cochon blesse ne peut pas aller a l'ecole.
+
+**Fatigue Cognitive (rendement decroissant journalier)**
+
+L'abus de l'ecole en une seule journee est puni par une degradation des gains :
+
+| Lecons dans la journee | XP obtenu | Cout energie |
+|---|---|---|
+| 1re et 2e lecon | 100% | normal |
+| 3e lecon | 50% | normal |
+| 4e lecon et au-dela | 10% | x2 |
+
+Un badge apparait sur la fiche cochon : 🧠 **Fatigué** (3e lecon) ou 🧠 **Épuisé** (4e lecon+).
+Le compteur se remet a zero chaque nuit a minuit UTC.
 
 Cours de base:
 
@@ -242,7 +265,7 @@ Veterinaire:
 ## 8. Paris
 
 Regles structurelles:
-- `3` Tickets Bacon maximum par semaine;
+- `3` Tickets Bacon maximum **par jour** (reinitialisation a minuit UTC, administrable);
 - `1` seul ticket par course et par joueur;
 - fermeture des paris `30 secondes` avant le depart;
 - mise mini `5`, maxi `500` BitGroins;
@@ -360,11 +383,41 @@ Desormais:
 - `Mon Cochon`, `Paris` et `Bourse` pointent vers les sections pertinentes;
 - les regles joueur et les docs depot sont alignees.
 
-## 14. Reglages admin qui peuvent faire bouger ces chiffres
+## 14. Equilibrage Hardcore vs Casual
+
+Trois mecanismes ont ete ajoutes pour limiter l'avantage des joueurs "tryhard" sur les casualss.
+
+### Tickets Bacon quotidiens
+
+La limite de paris est **journaliere** (et non plus hebdomadaire). Le joueur qui mise tout le vendredi n'est plus prive de paris pendant toute la semaine : il retrouve son quota des le lendemain.
+
+Param admin : `economy_daily_bacon_tickets` (defaut : 3).
+
+### Fatigue Cognitive a l'Ecole
+
+Voir section 5.3 ci-dessus.
+
+### Bonus de Repos (💤 Repose)
+
+Voir section 4 (Fraicheur) ci-dessus.
+
+### Taxe Progressive / Caisse de Solidarite IA
+
+Optionnel, desactive par defaut (toggle admin `tax_enabled`).
+
+Lorsqu'elle est activee :
+- au-dela du seuil 1 (defaut `2000` 🪙 en banque), les gains de courses sont taxes a `20%`;
+- au-dela du seuil 2 (defaut `5000` 🪙), taxes a `50%`;
+- les BitGroins preleves alimentent la **Caisse de Solidarite Porcine**;
+- cette caisse booste automatiquement la prime journaliere des joueurs les plus pauvres (balance < seuil pauvrete, defaut `200` 🪙) : bonus de `+25` 🪙/jour jusqu'a epuisement du fond.
+
+Params admin : `tax_enabled`, `tax_threshold_1`, `tax_rate_1`, `tax_threshold_2`, `tax_rate_2`, `tax_solidarity_poor_threshold`, `tax_solidarity_poor_daily_bonus`.
+
+## 15. Reglages admin qui peuvent faire bouger ces chiffres
 
 Source de pilotage:
-- `/admin/economy` pour l'economie, les tickets, les rewards, les couts, les caps de payout et les types de paris;
-- `/admin/progression` pour l'energie, la satiete, la fraicheur, la courbe d'XP, l'XP de course, les multiplicateurs de progression et les couts veto.
+- `/admin/economy` pour l'economie, les tickets quotidiens, les rewards, les couts, les caps de payout, les types de paris et la taxe de solidarite;
+- `/admin/progression` pour l'energie, la satiete, la fraicheur, la courbe d'XP, l'XP de course, les multiplicateurs de progression, les couts veto et le seuil de repos (`progression_rested_threshold_hours`).
 
 Conclusion:
 - le vocabulaire et les principes doivent rester stables;

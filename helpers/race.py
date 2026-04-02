@@ -22,11 +22,13 @@ from race_engine import CourseManager
 
 from helpers.config import get_config
 from services.economy_service import (
+    apply_solidarity_tax,
     get_configured_bet_types,
     get_progression_settings,
     get_race_position_xp_value,
     get_race_reward_settings,
     get_recent_race_penalty_multiplier,
+    get_tax_settings,
 )
 from services.finance_service import credit_user_balance
 from services.pig_service import (
@@ -302,6 +304,9 @@ def run_race_if_needed():
                         reference_type='race',
                         reference_id=race.id,
                     )
+                    # Taxe de solidarité sur les gains de course
+                    if get_tax_settings().tax_enabled:
+                        apply_solidarity_tax(owner.id, reward, race_id=race.id)
 
                 if pig.challenge_mort_wager > 0:
                     wager = pig.challenge_mort_wager
@@ -315,6 +320,8 @@ def run_race_if_needed():
                                 reference_type='race',
                                 reference_id=race.id,
                             )
+                            if get_tax_settings().tax_enabled:
+                                apply_solidarity_tax(owner.id, wager * 3, race_id=race.id)
                         xp_gained *= 2
                         pig.happiness = min(100, pig.happiness + 15)
                     elif p.finish_position == num_participants:

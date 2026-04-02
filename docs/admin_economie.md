@@ -43,12 +43,29 @@ Les blocs "Réglages appliqués" sont persistés via `GameConfig`.
 - pression de nourrissage par cochon supplémentaire
 
 ### Paris
-- Tickets Bacon par semaine
+- **Tickets Bacon par jour** (`economy_daily_bacon_tickets`, defaut 3) — remplace la limite hebdomadaire
 - quota de courses par cochon
 - mise minimum
 - mise maximum
 - cap de payout par ticket
 - `house_edge` par type de ticket
+
+### Taxe de Solidarité (section dédiée)
+| Paramètre GameConfig | Défaut | Description |
+|---|---|---|
+| `tax_enabled` | `false` | Active/désactive la taxe |
+| `tax_threshold_1` | `2000` | Seuil 1 (BitGroins en banque) |
+| `tax_rate_1` | `0.20` | Taux au seuil 1 (20%) |
+| `tax_threshold_2` | `5000` | Seuil 2 |
+| `tax_rate_2` | `0.50` | Taux au seuil 2 (50%) |
+| `tax_solidarity_poor_threshold` | `200` | Balance "pauvre" (en dessous = éligible au bonus) |
+| `tax_solidarity_poor_daily_bonus` | `25` | Bonus daily en 🪙 prélevé sur la caisse |
+| `solidarity_fund_balance` | auto | Solde de la caisse (géré automatiquement) |
+
+### Équilibrage Progression
+| Paramètre GameConfig | Défaut | Description |
+|---|---|---|
+| `progression_rested_threshold_hours` | `12.0` | Heures d'inactivité pour le statut 💤 Reposé |
 
 ### Multiplicateurs journaliers
 
@@ -105,15 +122,16 @@ Le panneau n'est pas seulement décoratif : les réglages sont utilisés par le 
 
 Ils alimentent désormais :
 - le bonus de bienvenue à l'inscription
-- la prime quotidienne
-- le nombre de Tickets Bacon
+- la prime quotidienne (+ bonus solidarité si actif)
+- le nombre de **Tickets Bacon par jour**
 - le quota hebdomadaire de courses
 - les coûts d'adoption et de portée
 - la pression de nourrissage
-- les récompenses de course
+- les récompenses de course (après déduction taxe si active)
 - les limites de mise
 - le catalogue de types de pari et leur `house_edge`
 - le cap de payout affiché sur `/paris`
+- la taxe progressive et la caisse de solidarité IA
 
 ## Point important sur les paris
 

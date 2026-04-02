@@ -305,6 +305,160 @@ def get_configured_bet_types(settings=None):
     return deepcopy((settings or get_economy_settings()).bet_types)
 
 
+# ─────────────────────────────────────────────────────────────
+# Taxe Progressive / Caisse de Solidarité IA
+# ─────────────────────────────────────────────────────────────
+
+@dataclass(frozen=True)
+class TaxSettings:
+    tax_enabled: bool
+    tax_threshold_1: float
+    tax_rate_1: float
+    tax_threshold_2: float
+    tax_rate_2: float
+    solidarity_poor_threshold: float
+    solidarity_poor_daily_bonus: float
+
+
+DEFAULT_TAX_SETTINGS = TaxSettings(
+    tax_enabled=False,
+    tax_threshold_1=2000.0,
+    tax_rate_1=0.20,
+    tax_threshold_2=5000.0,
+    tax_rate_2=0.50,
+    solidarity_poor_threshold=200.0,
+    solidarity_poor_daily_bonus=25.0,
+)
+
+
+def get_tax_settings() -> TaxSettings:
+    from helpers.config import get_config
+    return TaxSettings(
+        tax_enabled=get_config('tax_enabled', 'false').lower() in ('true', '1', 'yes'),
+        tax_threshold_1=_coerce_float(get_config('tax_threshold_1', '2000'), 2000.0, minimum=0.0),
+        tax_rate_1=_coerce_float(get_config('tax_rate_1', '0.20'), 0.20, minimum=0.0, maximum=0.99),
+        tax_threshold_2=_coerce_float(get_config('tax_threshold_2', '5000'), 5000.0, minimum=0.0),
+        tax_rate_2=_coerce_float(get_config('tax_rate_2', '0.50'), 0.50, minimum=0.0, maximum=0.99),
+        solidarity_poor_threshold=_coerce_float(get_config('tax_solidarity_poor_threshold', '200'), 200.0, minimum=0.0),
+        solidarity_poor_daily_bonus=_coerce_float(get_config('tax_solidarity_poor_daily_bonus', '25'), 25.0, minimum=0.0),
+    )
+
+
+def save_tax_settings(settings: TaxSettings) -> None:
+    from helpers.config import invalidate_config_cache
+    payload = {
+        'tax_enabled': 'true' if settings.tax_enabled else 'false',
+        'tax_threshold_1': str(settings.tax_threshold_1),
+        'tax_rate_1': str(settings.tax_rate_1),
+        'tax_threshold_2': str(settings.tax_threshold_2),
+        'tax_rate_2': str(settings.tax_rate_2),
+        'tax_solidarity_poor_threshold': str(settings.solidarity_poor_threshold),
+        'tax_solidarity_poor_daily_bonus': str(settings.solidarity_poor_daily_bonus),
+    }
+    existing = {
+        entry.key: entry
+        for entry in GameConfig.query.filter(GameConfig.key.in_(list(payload.keys()))).all()
+    }
+    for key, value in payload.items():
+        entry = existing.get(key)
+        if entry:
+            entry.value = value
+        else:
+            db.session.add(GameConfig(key=key, value=value))
+    db.session.commit()
+    invalidate_config_cache()
+
+
+def get_solidarity_fund_balance() -> float:
+    from helpers.config import get_config
+    return _coerce_float(get_config('solidarity_fund_balance', '0'), 0.0, minimum=0.0)
+
+
+def _add_to_solidarity_fund(amount: float) -> None:
+    """Ajoute `amount` à la cagnotte de solidarité (GameConfig)."""
+    current = get_solidarity_fund_balance()
+    entry = GameConfig.query.filter_by(key='solidarity_fund_balance').first()
+    new_balance = round(current + amount, 2)
+    if entry:
+        entry.value = str(new_balance)
+    else:
+        db.session.add(GameConfig(key='solidarity_fund_balance', value=str(new_balance)))
+
+
+def _deduct_from_solidarity_fund(amount: float) -> float:
+    """Retire `amount` de la cagnotte (plafonné au solde dispo). Retourne le montant réel retiré."""
+    current = get_solidarity_fund_balance()
+    actual = min(amount, current)
+    if actual <= 0:
+        return 0.0
+    entry = GameConfig.query.filter_by(key='solidarity_fund_balance').first()
+    new_balance = round(current - actual, 2)
+    if entry:
+        entry.value = str(new_balance)
+    else:
+        db.session.add(GameConfig(key='solidarity_fund_balance', value=str(new_balance)))
+    return actual
+
+
+def apply_solidarity_tax(user_id: int, earned_amount: float, race_id: int = None) -> float:
+    """Applique la taxe progressive sur `earned_amount` pour l'utilisateur `user_id`.
+    Débite le joueur, crédite la cagnotte de solidarité.
+    Retourne le montant taxé (0 si taxe désactivée ou seuil non atteint)."""
+    from services.finance_service import debit_user_balance
+
+    tax = get_tax_settings()
+    if not tax.tax_enabled or earned_amount <= 0:
+        return 0.0
+
+    user = User.query.get(user_id)
+    if not user:
+        return 0.0
+
+    balance_after = float(user.balance or 0.0)
+    if balance_after <= tax.tax_threshold_1:
+        return 0.0
+
+    if balance_after > tax.tax_threshold_2:
+        rate = tax.tax_rate_2
+    else:
+        rate = tax.tax_rate_1
+
+    tax_amount = round(earned_amount * rate, 2)
+    if tax_amount <= 0:
+        return 0.0
+
+    details = f"Taxe de solidarité ({int(rate * 100)}%) sur gain de {earned_amount:.0f} 🪙."
+    if race_id:
+        details += f" Course #{race_id}."
+    deducted = debit_user_balance(
+        user_id, tax_amount,
+        reason_code='solidarity_tax',
+        reason_label='Taxe de Solidarité',
+        details=details,
+        reference_type='race',
+        reference_id=race_id,
+    )
+    if deducted:
+        _add_to_solidarity_fund(tax_amount)
+        return tax_amount
+    return 0.0
+
+
+def get_solidarity_enhanced_daily_reward(user) -> float:
+    """Retourne la prime journalière de base + éventuellement un bonus solidarité
+    si le joueur est pauvre et que la cagnotte est suffisante."""
+    settings = get_economy_settings()
+    base = settings.daily_login_reward
+    tax = get_tax_settings()
+    if not tax.tax_enabled:
+        return base
+    balance = float(user.balance or 0.0)
+    if balance >= tax.solidarity_poor_threshold:
+        return base
+    bonus = _deduct_from_solidarity_fund(tax.solidarity_poor_daily_bonus)
+    return base + bonus
+
+
 def get_welcome_bonus_value(settings=None):
     return (settings or get_economy_settings()).welcome_bonus
 

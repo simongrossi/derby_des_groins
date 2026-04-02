@@ -214,8 +214,9 @@
                     <h3 class="font-title text-lg text-white mb-4">Paris</h3>
                     <div class="grid grid-cols-2 gap-3">
                         <label class="text-white/65 text-sm font-bold">
-                            Tickets / semaine
-                            <input class="input-admin w-full mt-2" type="number" min="0" step="1" name="weekly_bacon_tickets" value="{{ settings.weekly_bacon_tickets }}">
+                            Tickets Bacon / jour
+                            <input class="input-admin w-full mt-2" type="number" min="0" max="20" step="1" name="daily_bacon_tickets" value="{{ settings.daily_bacon_tickets }}">
+                            <span class="text-white/30 text-xs font-semibold mt-1 block">Réinitialisation chaque nuit à minuit UTC.</span>
                         </label>
                         <label class="text-white/65 text-sm font-bold">
                             Quota courses / cochon
@@ -239,6 +240,54 @@
                             <span class="text-white/30 text-xs font-semibold mt-2 block">0 = pas de cap. La limite coupe les jackpots extrêmes même si la cote calculée est plus haute.</span>
                         </label>
                     </div>
+                </div>
+            </div>
+
+            <!-- ═══ Taxe de Solidarité ═══ -->
+            <div class="card p-5 mt-6 border border-amber-400/20">
+                <div class="flex items-center gap-3 mb-4">
+                    <h3 class="font-title text-lg text-white">⚖️ Taxe de Solidarité IA</h3>
+                    <span class="text-[10px] font-black uppercase tracking-wider px-2 py-1 rounded-full
+                        {% if tax_settings.tax_enabled %}bg-emerald-500/20 text-emerald-200 border border-emerald-400/20{% else %}bg-white/5 text-white/30 border border-white/10{% endif %}">
+                        {% if tax_settings.tax_enabled %}Activée{% else %}Désactivée{% endif %}
+                    </span>
+                </div>
+                <p class="text-white/40 text-xs font-semibold mb-4">Prélève un % sur les gains de course des joueurs riches. Redistribue via un bonus daily aux joueurs pauvres.</p>
+                <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
+                    <label class="text-white/65 text-sm font-bold col-span-2 md:col-span-3 flex items-center gap-3">
+                        <input type="checkbox" name="tax_enabled" value="true" {% if tax_settings.tax_enabled %}checked{% endif %} class="w-4 h-4 accent-amber-400">
+                        Activer la taxe (désactivée par défaut — impact financier fort)
+                    </label>
+                    <label class="text-white/65 text-sm font-bold">
+                        Seuil 1 🪙
+                        <input class="input-admin w-full mt-2" type="number" min="0" step="100" name="tax_threshold_1" value="{{ tax_settings.tax_threshold_1 }}">
+                        <span class="text-white/30 text-xs font-semibold mt-1 block">Balance à partir de laquelle le taux 1 s'applique</span>
+                    </label>
+                    <label class="text-white/65 text-sm font-bold">
+                        Taux 1 (%)
+                        <input class="input-admin w-full mt-2" type="number" min="0" max="99" step="1" name="tax_rate_1" value="{{ (tax_settings.tax_rate_1 * 100)|int }}">
+                    </label>
+                    <label class="text-white/65 text-sm font-bold">
+                        Seuil 2 🪙
+                        <input class="input-admin w-full mt-2" type="number" min="0" step="100" name="tax_threshold_2" value="{{ tax_settings.tax_threshold_2 }}">
+                    </label>
+                    <label class="text-white/65 text-sm font-bold">
+                        Taux 2 (%)
+                        <input class="input-admin w-full mt-2" type="number" min="0" max="99" step="1" name="tax_rate_2" value="{{ (tax_settings.tax_rate_2 * 100)|int }}">
+                    </label>
+                    <label class="text-white/65 text-sm font-bold">
+                        Seuil pauvreté 🪙
+                        <input class="input-admin w-full mt-2" type="number" min="0" step="10" name="tax_solidarity_poor_threshold" value="{{ tax_settings.solidarity_poor_threshold }}">
+                        <span class="text-white/30 text-xs font-semibold mt-1 block">Balance en dessous de laquelle le joueur reçoit un bonus daily</span>
+                    </label>
+                    <label class="text-white/65 text-sm font-bold">
+                        Bonus daily solidarité 🪙
+                        <input class="input-admin w-full mt-2" type="number" min="0" step="5" name="tax_solidarity_poor_daily_bonus" value="{{ tax_settings.solidarity_poor_daily_bonus }}">
+                    </label>
+                </div>
+                <div class="mt-4 p-3 rounded-xl bg-amber-500/10 border border-amber-400/20">
+                    <p class="text-amber-200 text-xs font-bold">💰 Caisse de Solidarité Porcine : <span class="text-amber-300 font-black text-sm">{{ "%.0f"|format(solidarity_fund_balance) }} 🪙</span></p>
+                    <p class="text-amber-100/40 text-[11px] font-semibold mt-1">Alimentée par les taxes prélevées. Redistribuée via le bonus daily des joueurs en dessous du seuil de pauvreté.</p>
                 </div>
             </div>
 

@@ -65,12 +65,14 @@ class User(db.Model):
 
     def claim_daily_reward(self) -> float:
         """Verse la prime de pointage journalière si elle n'a pas encore été
-        réclamée aujourd'hui. Renvoie le montant crédité (0 si déjà perçue)."""
-        from services.economy_service import get_daily_login_reward_value
+        réclamée aujourd'hui. Renvoie le montant crédité (0 si déjà perçue).
+        Si la Caisse de Solidarité est active et le joueur est pauvre,
+        un bonus supplémentaire est ajouté."""
+        from services.economy_service import get_solidarity_enhanced_daily_reward
         today = datetime.utcnow().date()
         if self.last_daily_reward_at and self.last_daily_reward_at.date() >= today:
             return 0.0
-        reward_amount = get_daily_login_reward_value()
+        reward_amount = get_solidarity_enhanced_daily_reward(self)
         # Marquer AVANT earn() pour eviter le double-credit en cas de race condition
         self.last_daily_reward_at = datetime.utcnow()
         db.session.flush()  # Persiste le timestamp dans la transaction
