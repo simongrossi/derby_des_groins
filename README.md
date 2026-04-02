@@ -174,6 +174,7 @@ git clone <repo-url>
 cd derby_des_groins
 cp .env.example .env        # optionnel : personnaliser SECRET_KEY, etc.
 docker compose up -d
+docker compose exec web flask db upgrade
 ```
 
 > **Note** : Pour un déploiement derrière un reverse proxy HTTPS, ajouter `SECURE_COOKIES=true` dans le fichier `.env`. Par défaut (`false`), les sessions fonctionnent en HTTP pur (localhost).
@@ -206,7 +207,88 @@ En usage local via `python app.py`, le scheduler demarre automatiquement. Si le 
 - Les comptes par defaut (Christophe, Simon, etc.) utilisent le mot de passe : `mdp1234`
 - Le compte `Christophe` dispose des droits administrateur.
 
-La base de donnees est creee automatiquement au premier lancement avec 6 utilisateurs pre-configures.
+La structure de base doit etre geree par migrations Alembic (`flask db upgrade`), pas par `db.create_all()`.
+
+---
+
+## 🧱 Migrations (Flask-Migrate / Alembic)
+
+Initialisation (une seule fois dans l'historique du repo) :
+
+```bash
+export FLASK_APP=app:app
+flask db init
+flask db migrate -m "initial schema"
+flask db upgrade
+```
+
+Pour chaque changement de model SQLAlchemy :
+
+```bash
+export FLASK_APP=app:app
+flask db migrate -m "describe change"
+flask db upgrade
+```
+
+Les fichiers de migration (`migrations/` + `migrations/versions/*.py`) doivent etre commits dans Git.
+
+---
+
+## 🚀 Deploiement VPS (simple et reproductible)
+
+Le repo inclut 2 fichiers Compose :
+
+- `docker-compose.yml` : base commune
+- `docker-compose.prod.yml` : surcharge production (reseau Caddy, pas de port publie)
+
+Deploiement manuel conseille :
+
+```bash
+git pull --ff-only
+docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+docker compose -f docker-compose.yml -f docker-compose.prod.yml exec -T web flask db upgrade
+docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d web
+docker compose -f docker-compose.yml -f docker-compose.prod.yml logs --tail=100 web
+```
+
+Option script :
+
+```bash
+./scripts/deploy_prod.sh
+```
+
+Le script VPS remet volontairement le dossier dans un etat propre avec :
+
+```bash
+git fetch origin
+git reset --hard origin/main
+```
+
+Cela evite les conflits lies aux modifications locales faites directement sur le VPS.
+
+Verification anti-collision routes :
+
+```bash
+python scripts/check_routes.py
+```
+
+### Option GitHub Actions (push -> deploy VPS)
+
+Le repo inclut aussi un workflow `.github/workflows/deploy.yml` qui deploie sur push `main`, sur `workflow_dispatch` (manuel), ou sur `repository_dispatch` (API). Configurer les secrets:
+
+- `VPS_HOST`
+- `VPS_USER`
+- `VPS_PORT`
+- `VPS_SSH_KEY`
+- `VPS_APP_DIR` (ex: `/home/ubuntu/derby_des_groins`)
+
+Si tu veux declencher l'action depuis ton VPS, utilise:
+
+```bash
+export GITHUB_REPOSITORY="owner/repo"
+export GITHUB_TOKEN="ghp_..."
+./scripts/trigger_github_deploy.sh
+```
 
 ---
 
