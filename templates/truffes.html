@@ -191,9 +191,23 @@
               <p class="text-xs uppercase tracking-[0.25em] text-white/40">Clics restants</p>
               <div id="clicks-left" class="mt-2 text-2xl font-black text-white sm:text-3xl">{{ max_clicks }}</div>
             </div>
+            <div class="sm:text-center">
+              <p class="text-xs uppercase tracking-[0.25em] text-white/40">Parties gratuites</p>
+              <div id="remaining-free-plays" class="mt-2 text-2xl font-black text-emerald-300 sm:text-3xl">{{ remaining }}</div>
+              <p id="remaining-free-detail" class="mt-1 text-xs text-white/50">sur {{ limit }} aujourd'hui</p>
+            </div>
             <div class="sm:text-right">
               <p class="text-xs uppercase tracking-[0.25em] text-white/40">Solde</p>
               <div id="balance" class="mt-2 text-2xl font-black text-yellow-300 sm:text-3xl">{{ '%.2f'|format(user.balance) }}</div>
+            </div>
+          </div>
+          <div class="mt-4">
+            <div class="h-2 overflow-hidden rounded-full bg-white/10">
+              <div
+                id="remaining-free-bar"
+                class="h-full rounded-full bg-gradient-to-r from-emerald-500 to-yellow-400 transition-all duration-300"
+                style="width: {{ 0 if limit <= 0 else ((remaining / limit) * 100)|round(0, 'floor') }}%;"
+              ></div>
             </div>
           </div>
         </section>
@@ -231,11 +245,15 @@
     const MAX_CLICKS = {{ max_clicks }};
     const WIN_REWARD = {{ reward }};
     const ALREADY_PLAYED = {{ 'true' if already_played else 'false' }};
+    const FREE_DAILY_LIMIT = {{ limit }};
     const REPLAY_COST = {{ replay_cost }}; // Added replay cost
     const grid = document.getElementById('grid');
     const status = document.getElementById('status');
     const statusDetail = document.getElementById('status-detail');
     const clicksLeftNode = document.getElementById('clicks-left');
+    const remainingFreePlaysNode = document.getElementById('remaining-free-plays');
+    const remainingFreeDetailNode = document.getElementById('remaining-free-detail');
+    const remainingFreeBarNode = document.getElementById('remaining-free-bar');
     const balanceNode = document.getElementById('balance');
     const newGameButton = document.getElementById('new-game');
 
@@ -245,10 +263,36 @@
     let finished = false;
     let gameStarted = false;
     let startInFlight = false;
+    let remainingFreePlays = {{ remaining }};
 
     function randomCell() {
       hiddenX = Math.floor(Math.random() * GRID_SIZE);
       hiddenY = Math.floor(Math.random() * GRID_SIZE);
+    }
+
+    function updateRemainingFreePlays(nextRemaining) {
+      remainingFreePlays = Math.max(0, Number(nextRemaining) || 0);
+      remainingFreePlaysNode.textContent = remainingFreePlays;
+
+      remainingFreePlaysNode.className = 'mt-2 text-2xl font-black sm:text-3xl';
+      if (remainingFreePlays > 0) {
+        remainingFreePlaysNode.classList.add('text-emerald-300');
+      } else {
+        remainingFreePlaysNode.classList.add('text-amber-200');
+      }
+
+      if (FREE_DAILY_LIMIT > 0) {
+        const percentage = Math.max(0, Math.min(100, (remainingFreePlays / FREE_DAILY_LIMIT) * 100));
+        remainingFreeBarNode.style.width = percentage + '%';
+        remainingFreeDetailNode.textContent = 'sur ' + FREE_DAILY_LIMIT + " aujourd'hui";
+      } else {
+        remainingFreeBarNode.style.width = '0%';
+        remainingFreeDetailNode.textContent = 'aucune partie gratuite aujourd\'hui';
+      }
+
+      if (!startInFlight) {
+        newGameButton.textContent = remainingFreePlays > 0 ? 'Nouvelle partie' : 'Rejouer (' + REPLAY_COST + ' 🪙)';
+      }
     }
 
     function distanceLabel(distance) {
@@ -325,6 +369,9 @@
         }
         if (isReplay) {
           balanceNode.textContent = Number(data.new_balance).toFixed(2); // Update balance if replay cost was deducted
+        }
+        if (Object.prototype.hasOwnProperty.call(data, 'remaining_free_plays')) {
+          updateRemainingFreePlays(data.remaining_free_plays);
         }
         gameStarted = true;
         return true;
@@ -411,8 +458,8 @@
       statusDetail.textContent = 'Reviens demain pour une nouvelle chasse gratuite, ou rejoue pour ' + REPLAY_COST + ' 🪙.';
       status.className = 'mt-2 text-2xl font-black text-amber-200';
       clicksLeftNode.textContent = '0';
+      updateRemainingFreePlays(0);
       newGameButton.disabled = false; // Allow replay
-      newGameButton.textContent = 'Rejouer (' + REPLAY_COST + ' 🪙)';
       newGameButton.classList.remove('opacity-40', 'cursor-not-allowed');
       grid.querySelectorAll('.cell-btn').forEach(btn => { btn.disabled = true; });
     }
@@ -426,9 +473,9 @@
       status.textContent = 'En attente…';
       statusDetail.textContent = 'Clique une case pour commencer à fouiller.';
       status.className = 'mt-2 text-xl font-black text-amber-100';
-      newGameButton.textContent = 'Nouvelle partie';
       newGameButton.disabled = false;
       newGameButton.classList.remove('opacity-40', 'cursor-not-allowed');
+      updateRemainingFreePlays(remainingFreePlays);
       buildGrid();
       if (isReplay) {
         newGameButton.disabled = true;
@@ -444,13 +491,14 @@
     }
 
     newGameButton.addEventListener('click', async () => {
-      if (ALREADY_PLAYED) {
-        // If already played, this button acts as a replay button
+      if (remainingFreePlays <= 0) {
         await resetGame(true); // Pass true to indicate it's a replay
       } else {
         await resetGame(false);
       }
     });
+
+    updateRemainingFreePlays(remainingFreePlays);
 
     if (ALREADY_PLAYED) {
       buildGrid();

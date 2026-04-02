@@ -23,20 +23,35 @@ def _get_truffe_config():
         return 1, 2
 
 
-def _already_played_today(user):
-    """Note: This function now also resets the daily counter if the day has changed."""
+def _sync_truffe_daily_counter(user):
+    """Reset the daily counter when the stored play date is from a previous day."""
     if getattr(user, 'is_admin', False):
-        return False
-    if not user.last_truffe_at:
-        return False
-    
-    limit, _ = _get_truffe_config()
+        return
+
     today = date.today()
-    if user.last_truffe_at.date() < today:
+    if user.last_truffe_at and user.last_truffe_at.date() < today and user.truffe_plays_today:
         user.truffe_plays_today = 0
         db.session.commit()
-    
-    return user.truffe_plays_today >= limit
+        db.session.refresh(user)
+
+
+def _get_remaining_free_plays(user, limit=None):
+    if getattr(user, 'is_admin', False):
+        return limit if limit is not None else _get_truffe_config()[0]
+
+    applied_limit = limit if limit is not None else _get_truffe_config()[0]
+    _sync_truffe_daily_counter(user)
+    return max(0, applied_limit - (user.truffe_plays_today or 0))
+
+
+def _already_played_today(user):
+    """Return whether the user has exhausted today's free plays."""
+    if getattr(user, 'is_admin', False):
+        return False
+
+    limit, _ = _get_truffe_config()
+    remaining = _get_remaining_free_plays(user, limit=limit)
+    return remaining <= 0
 
 
 @truffes_bp.route('/truffes')
@@ -48,6 +63,7 @@ def truffes():
     user = User.query.get(user_id)
     already_played = _already_played_today(user)
     limit, replay_cost = _get_truffe_config()
+    remaining = _get_remaining_free_plays(user, limit=limit)
     
     return render_template(
         'truffes.html',
@@ -59,7 +75,7 @@ def truffes():
         already_played=already_played,
         limit=limit,
         replay_cost=replay_cost,
-        remaining=max(0, limit - user.truffe_plays_today) if not getattr(user, 'is_admin', False) else limit
+        remaining=remaining,
     )
 
 
@@ -107,7 +123,8 @@ def truffes_play():
     
     return jsonify({
         'ok': True,
-        'new_balance': round(user.balance or 0.0, 2)
+        'new_balance': round(user.balance or 0.0, 2),
+        'remaining_free_plays': _get_remaining_free_plays(user, limit=limit),
     })
 
 
