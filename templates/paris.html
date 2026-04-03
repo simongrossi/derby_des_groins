@@ -99,6 +99,17 @@
             background:rgba(255,244,247,.04);
             padding:1rem;
         }
+        .paris-dual-grid {
+            display:grid;
+            grid-template-columns:minmax(0, 1fr);
+            gap:1rem;
+        }
+        @media (min-width: 1280px) {
+            .paris-dual-grid {
+                grid-template-columns:minmax(0, 1fr) 31rem;
+                gap:1.25rem;
+            }
+        }
         .odds-badge { border-radius:.5rem; padding:.25rem .75rem; font-weight:800; font-size:1rem; }
         .odds-low { border:1px solid #16a34a; color:#86efac; background:linear-gradient(135deg,#052e16,#14532d); }
         .odds-mid { border:1px solid #d97706; color:#fcd34d; background:linear-gradient(135deg,#1c1007,#451a03); }
@@ -294,7 +305,7 @@
     {% endwith %}
 
     <!-- ═══ EN-TETE : Infos course + Tickets ═══ -->
-    <section class="grid grid-cols-1 xl:grid-cols-[minmax(0,1.45fr)_20rem] gap-4 lg:gap-5 items-stretch">
+    <section class="paris-dual-grid items-stretch">
         <article class="card p-5 lg:p-6">
             {% if next_race %}
             <div class="flex flex-col gap-5 lg:grid lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end lg:gap-6">
@@ -387,7 +398,7 @@
 
     <!-- ═══ GRILLE DES PARTANTS + FORMULAIRE ═══ -->
     {% if next_race %}
-    <section class="grid grid-cols-1 xl:grid-cols-[1.15fr_0.85fr] gap-4 lg:gap-5">
+    <section class="paris-dual-grid">
         <!-- Partants -->
         <article class="card p-4 lg:p-5">
             <p class="text-white/40 text-xs uppercase tracking-[0.22em] font-extrabold">📈 Cotes en direct</p>
