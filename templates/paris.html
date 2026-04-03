@@ -67,6 +67,17 @@
             font-family:'Lilita One', cursive;
             background:linear-gradient(135deg,#f472b6,#fb7185,#fdba74);
             -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;
+            font-size:clamp(3.2rem, 6vw, 4.6rem);
+            letter-spacing:-0.05em;
+            white-space:nowrap;
+            max-width:100%;
+            overflow:hidden;
+        }
+        .pig-name-clamp {
+            display:-webkit-box;
+            -webkit-box-orient:vertical;
+            -webkit-line-clamp:2;
+            overflow:hidden;
         }
         html[data-theme="light"] #bet-form-section {
             background-image: none !important;
@@ -170,9 +181,9 @@
                         <a href="/regles#tickets-paris" class="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-black uppercase tracking-[0.14em] text-white/60 hover:text-white transition-colors">🎟️ Formats de tickets</a>
                     </div>
                 </div>
-                <div class="soft px-4 py-4 lg:px-5 lg:py-4 min-w-[15rem] lg:max-w-[18rem]">
+                <div class="soft px-4 py-4 lg:px-5 lg:py-4 min-w-0 w-full lg:min-w-[17rem] lg:max-w-[19rem] overflow-hidden">
                     <p class="text-white/40 text-xs uppercase tracking-[0.22em] font-extrabold">Depart dans</p>
-                    <div id="countdown-display" class="text-5xl lg:text-[4.5rem] leading-none mt-1">--:--:--</div>
+                    <div id="countdown-display" class="leading-none mt-1">--:--:--</div>
                     <div id="race-running-msg" class="hidden mt-2 text-yellow-300 font-bold animate-pulse text-sm">La course est en cours...</div>
                     {% if next_race_theme and next_race_theme.reward_multiplier > 1 %}
                     <div class="mt-3">
@@ -236,16 +247,16 @@
             <p class="text-white/40 text-xs uppercase tracking-[0.22em] font-extrabold">📈 Cotes en direct</p>
             <h2 class="font-title text-2xl text-white mt-2">Partants de la course</h2>
             {% if participants %}
-            <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 mt-4" id="pig-grid">
+            <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5 mt-4" id="pig-grid">
                 {% for pig in participants %}
                 {% set odds_class = 'odds-low' if pig.odds <= 2.5 else ('odds-mid' if pig.odds <= 4.0 else 'odds-high') %}
-                <div class="pig-card relative p-3.5 text-center {% if pig.pig_id %}ring-1 ring-pink-500/30{% endif %}" data-participant-id="{{ pig.id }}" data-pig-name="{{ pig.name }}" data-odds="{{ pig.odds }}" data-win-probability="{{ pig.win_probability }}" role="button" tabindex="0" aria-pressed="false">
+                <div class="pig-card relative p-3 text-center {% if pig.pig_id %}ring-1 ring-pink-500/30{% endif %}" data-participant-id="{{ pig.id }}" data-pig-name="{{ pig.name }}" data-odds="{{ pig.odds }}" data-win-probability="{{ pig.win_probability }}" role="button" tabindex="0" aria-pressed="false">
                     <span class="selection-badge" data-selection-badge></span>
-                    <div class="text-3xl">{{ pig.emoji }}</div>
-                    <p class="text-white font-bold mt-2 text-sm leading-tight">{{ pig.name }}</p>
-                    <p class="text-xs font-bold {% if pig.owner_name %}text-pink-400/70{% else %}text-white/20{% endif %}">{% if pig.owner_name %}👤 {{ pig.owner_name }}{% else %}💻 Ordinateur{% endif %}</p>
-                    <div class="odds-badge {{ odds_class }} mt-2 inline-block">x{{ pig.odds }}</div>
-                    <p class="text-white/30 text-xs mt-1">{{ "%.0f"|format(pig.win_probability * 100) }}% de chance</p>
+                    <div class="text-[1.9rem] leading-none">{{ pig.emoji }}</div>
+                    <p class="pig-name-clamp text-white font-bold mt-1.5 text-[15px] leading-tight min-h-[2.35rem]">{{ pig.name }}</p>
+                    <p class="text-[11px] leading-tight font-bold mt-1 {% if pig.owner_name %}text-pink-400/70{% else %}text-white/20{% endif %}">{% if pig.owner_name %}👤 {{ pig.owner_name }}{% else %}💻 Ordinateur{% endif %}</p>
+                    <div class="odds-badge {{ odds_class }} mt-2 inline-block text-[0.9rem] px-3 py-1">x{{ pig.odds }}</div>
+                    <p class="text-white/30 text-[11px] mt-1 leading-tight">{{ "%.0f"|format(pig.win_probability * 100) }}% de chance</p>
                 </div>
                 {% endfor %}
             </div>
