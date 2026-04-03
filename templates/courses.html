@@ -112,61 +112,64 @@
     {# ══════════════════════════════════════════════ #}
     {# HERO CARD simplifié                            #}
     {# ══════════════════════════════════════════════ #}
-    <section class="hero-card p-6 lg:p-8">
-        <p class="text-xs uppercase tracking-[0.35em] text-pink-200/70 font-extrabold">Inscription aux courses</p>
-        <h1 class="font-title text-3xl md:text-4xl text-white mt-3">📅 Courses — Inscrire mon cochon</h1>
-        <p class="text-white/55 font-semibold mt-3 max-w-3xl">
-            Choisis les courses de la semaine et clique sur <strong class="text-pink-300">➕ Inscrire</strong> pour engager ton cochon.
-            Quota : {{ weekly_quota }} courses max par cochon et par semaine. Les creneaux ou ton cochon est inscrit sont marques d'une <strong class="text-emerald-300">bordure verte</strong>.
-        </p>
-
-        {# Barre résumé cochons #}
-        {% if pigs_data %}
-        <div class="flex flex-wrap gap-3 mt-5">
-            {% for pd in pigs_data %}
-            {% set pig = pd.pig %}
-            <div class="flex items-center gap-2.5 pill bg-white/8 border border-white/10 !py-2 !px-4">
-                {{ pig_display(pig, 'text-lg', 24) }}
-                <span class="text-white font-bold text-sm">{{ pig.name }}</span>
-                <span class="text-xs font-extrabold
-                    {% if pd.weekly_remaining == 0 %}text-red-300
-                    {% elif pd.weekly_remaining == 1 %}text-amber-300
-                    {% else %}text-emerald-300{% endif %}">
-                    {{ pd.weekly_remaining }}/{{ weekly_quota }} restantes
-                </span>
-            </div>
-            {% endfor %}
-        </div>
-        {% endif %}
-
-        {# Prochaines courses de vos cochons #}
-        {% if next_pig_races %}
-        <div class="soft-card p-4 mt-5" style="background: rgba(52,211,153,0.06); border-color: rgba(52,211,153,0.15);">
-            <div class="flex items-center gap-2 mb-3">
-                <span class="text-emerald-400 text-lg">🏁</span>
-                <p class="text-emerald-200 font-extrabold text-sm">Prochaines courses de vos cochons
-                    <span class="pill !px-2 !py-0.5 bg-emerald-500/15 text-emerald-200 border border-emerald-400/25 text-[11px] ml-1">{{ total_inscribed }} inscription{{ 's' if total_inscribed > 1 else '' }}</span>
+    <section class="hero-card px-5 py-5 lg:px-6 lg:py-5">
+        <div class="flex flex-col gap-4 lg:grid lg:grid-cols-[minmax(0,1.2fr)_minmax(18rem,0.8fr)] lg:items-start lg:gap-5">
+            <div class="min-w-0">
+                <p class="text-[11px] uppercase tracking-[0.32em] text-pink-200/70 font-extrabold">Inscription aux courses</p>
+                <h1 class="font-title text-3xl md:text-4xl text-white mt-2">📅 Courses — Inscrire mon cochon</h1>
+                <p class="text-white/55 font-semibold mt-2 max-w-3xl">
+                    Choisis les courses de la semaine et clique sur <strong class="text-pink-300">➕ Inscrire</strong> pour engager ton cochon.
+                    Quota : {{ weekly_quota }} courses max par cochon et par semaine. Les creneaux ou ton cochon est inscrit sont marques d'une <strong class="text-emerald-300">bordure verte</strong>.
                 </p>
             </div>
-            <div class="flex flex-wrap gap-2">
-                {% for race in next_pig_races %}
-                <div class="flex items-center gap-2 pill bg-emerald-500/10 border border-emerald-400/20 !py-1.5 !px-3">
-                    {{ pig_display(race.pig, 'text-sm', 18) }}
-                    <span class="text-white font-bold text-xs">{{ race.pig.name }}</span>
-                    <span class="text-emerald-300/70 text-[11px] font-semibold">{{ race.date_label }} {{ race.slot.strftime('%H:%M') }}</span>
-                    <span class="text-white/30 text-[11px]">{{ race.theme.emoji }}</span>
+
+            <div class="space-y-3">
+                {% if pigs_data %}
+                <div class="flex flex-wrap gap-2.5 lg:justify-end">
+                    {% for pd in pigs_data %}
+                    {% set pig = pd.pig %}
+                    <div class="flex items-center gap-2 rounded-full bg-white/8 border border-white/10 px-3 py-2">
+                        {{ pig_display(pig, 'text-base', 20) }}
+                        <span class="text-white font-bold text-sm truncate max-w-[10rem]">{{ pig.name }}</span>
+                        <span class="text-[11px] font-extrabold whitespace-nowrap
+                            {% if pd.weekly_remaining == 0 %}text-red-300
+                            {% elif pd.weekly_remaining == 1 %}text-amber-300
+                            {% else %}text-emerald-300{% endif %}">
+                            {{ pd.weekly_remaining }}/{{ weekly_quota }} restantes
+                        </span>
+                    </div>
+                    {% endfor %}
                 </div>
-                {% endfor %}
+                {% endif %}
+
+                {% if next_pig_races %}
+                <div class="soft-card p-3 lg:p-3.5" style="background: rgba(52,211,153,0.06); border-color: rgba(52,211,153,0.15);">
+                    <div class="flex flex-wrap items-center gap-2 mb-2">
+                        <span class="text-emerald-400 text-sm">🏁</span>
+                        <p class="text-emerald-200 font-extrabold text-sm">Prochaines courses</p>
+                        <span class="pill !px-2 !py-0.5 bg-emerald-500/15 text-emerald-200 border border-emerald-400/25 text-[11px]">{{ total_inscribed }} inscription{{ 's' if total_inscribed > 1 else '' }}</span>
+                    </div>
+                    <div class="flex flex-wrap gap-2">
+                        {% for race in next_pig_races %}
+                        <div class="flex items-center gap-2 rounded-full bg-emerald-500/10 border border-emerald-400/20 px-2.5 py-1.5">
+                            {{ pig_display(race.pig, 'text-xs', 16) }}
+                            <span class="text-white font-bold text-[11px]">{{ race.pig.name }}</span>
+                            <span class="text-emerald-300/70 text-[10px] font-semibold">{{ race.slot.strftime('%d/%m %H:%M') }}</span>
+                            <span class="text-white/30 text-[10px]">{{ race.theme.emoji }}</span>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% elif pigs_data %}
+                <div class="soft-card px-3 py-2.5" style="background: rgba(255,255,255,0.02); border-color: rgba(255,255,255,0.06);">
+                    <div class="flex items-center gap-2">
+                        <span class="text-white/30 text-sm">📭</span>
+                        <p class="text-white/45 font-semibold text-xs sm:text-sm">Aucun cochon inscrit pour le moment. Clique sur <strong class="text-pink-300">➕ Inscrire</strong> ci-dessous pour engager ton cochon.</p>
+                    </div>
+                </div>
+                {% endif %}
             </div>
         </div>
-        {% elif pigs_data %}
-        <div class="soft-card p-4 mt-5" style="background: rgba(255,255,255,0.02); border-color: rgba(255,255,255,0.06);">
-            <div class="flex items-center gap-2">
-                <span class="text-white/30 text-lg">📭</span>
-                <p class="text-white/40 font-semibold text-sm">Aucun cochon inscrit pour le moment. Clique sur <strong class="text-pink-300">➕ Inscrire</strong> ci-dessous pour engager ton cochon !</p>
-            </div>
-        </div>
-        {% endif %}
     </section>
 
     {# ══════════════════════════════════════════════ #}
