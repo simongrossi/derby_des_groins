@@ -38,7 +38,13 @@ def _get_state():
 
 def _build_masked_word(word, guessed_letters):
     guessed_set = set(guessed_letters)
-    return [letter if letter in guessed_set else '_' for letter in word]
+    masked = []
+    for letter in word:
+        if letter == ' ':
+            masked.append(' ')
+        else:
+            masked.append(letter if letter in guessed_set else '_')
+    return masked
 
 
 def _serialize_state(state):

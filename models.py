@@ -921,7 +921,7 @@ class HangmanWordItem(db.Model):
     """Mot utilisable dans le mini-jeu Cochon Pendu."""
     __tablename__ = 'hangman_word_item'
     id = db.Column(db.Integer, primary_key=True)
-    word = db.Column(db.String(40), unique=True, nullable=False)
+    word = db.Column(db.String(80), unique=True, nullable=False)
     is_active = db.Column(db.Boolean, default=True)
     sort_order = db.Column(db.Integer, default=0)
 

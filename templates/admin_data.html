@@ -34,6 +34,13 @@
         padding: 0.1rem 0.5rem; border-radius: 9999px;
         font-size: 0.65rem; font-weight: 800;
     }
+    .bulk-textarea {
+        width: 100%;
+        min-height: 16rem;
+        resize: vertical;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        line-height: 1.5;
+    }
 {% endblock %}
 
 {% block content %}
@@ -213,10 +220,29 @@
     <div class="flex items-center justify-between mb-4">
         <div>
             <h2 class="font-title text-2xl text-white">🐽 Mots du Cochon Pendu ({{ hangman_words | length }})</h2>
-            <p class="text-white/40 text-sm font-semibold">Liste des mots proposes dans le mini-jeu.</p>
+            <p class="text-white/40 text-sm font-semibold">Colle une liste complete: une ligne = un mot ou une expression.</p>
         </div>
         <a href="{{ url_for('admin.admin_hangman_word_new') }}" class="btn-admin btn-sm">+ Ajouter</a>
     </div>
+
+    <form method="POST" action="{{ url_for('admin.admin_hangman_words_bulk_save') }}" class="mb-6">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <label for="hangman-words-text" class="block text-white/60 text-xs font-bold mb-2 uppercase tracking-[0.18em]">
+            Edition texte
+        </label>
+        <textarea
+            id="hangman-words-text"
+            name="words_text"
+            class="input-admin bulk-textarea"
+            placeholder="Exemple&#10;GROS GROIN&#10;VETERINAIRE&#10;TRUFFES"
+        >{{ hangman_words_text }}</textarea>
+        <div class="flex flex-wrap items-center justify-between gap-3 mt-3">
+            <p class="text-white/35 text-xs font-semibold">
+                Le bouton ci-dessous remplace toute la liste actuelle. Les doublons et lignes vides sont ignores.
+            </p>
+            <button type="submit" class="btn-admin btn-sm">💾 Enregistrer la liste</button>
+        </div>
+    </form>
 
     <div class="space-y-2">
         {% for word in hangman_words %}
@@ -229,7 +255,7 @@
                         {% if not word.is_active %}<span class="badge-inactive ml-1">OFF</span>{% endif %}
                     </p>
                     <p class="text-white/30 text-xs font-semibold truncate">
-                        {{ word.word|length }} lettres · Ordre {{ word.sort_order }}
+                        {{ word.word|replace(' ', '')|length }} lettres · Ordre {{ word.sort_order }}
                     </p>
                 </div>
             </div>

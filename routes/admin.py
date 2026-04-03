@@ -138,7 +138,12 @@ def _parse_race_npcs_from_lines(lines):
 def _normalize_hangman_word(raw_word):
     normalized = unicodedata.normalize('NFD', (raw_word or '').strip().upper())
     normalized = ''.join(ch for ch in normalized if unicodedata.category(ch) != 'Mn')
-    if not normalized or not normalized.isalpha() or len(normalized) > 40:
+    normalized = re.sub(r'\s+', ' ', normalized).strip()
+    if not normalized or len(normalized) > 80:
+        return None
+    if not any(ch.isalpha() for ch in normalized):
+        return None
+    if any((not ch.isalpha()) and ch != ' ' for ch in normalized):
         return None
     return normalized
 
@@ -965,8 +970,10 @@ def admin_data(user):
     trainings = TrainingItem.query.order_by(TrainingItem.sort_order, TrainingItem.id).all()
     lessons = SchoolLessonItem.query.order_by(SchoolLessonItem.sort_order, SchoolLessonItem.id).all()
     hangman_words = HangmanWordItem.query.order_by(HangmanWordItem.sort_order, HangmanWordItem.id).all()
+    hangman_words_text = '\n'.join(word.word for word in hangman_words)
     return render_template('admin_data.html',
-        user=user, admin_tab='data', cereals=cereals, trainings=trainings, lessons=lessons, hangman_words=hangman_words,
+        user=user, admin_tab='data', cereals=cereals, trainings=trainings, lessons=lessons,
+        hangman_words=hangman_words, hangman_words_text=hangman_words_text,
         stat_names=STAT_NAMES)
 
 
@@ -1244,7 +1251,7 @@ def admin_hangman_word_save(user):
 
     word = _normalize_hangman_word(request.form.get('word', ''))
     if not word:
-        flash("Le mot doit contenir uniquement des lettres (accents autorises, sans espace ni tiret).", "warning")
+        flash("Le mot doit contenir uniquement des lettres et des espaces (accents autorises).", "warning")
         return redirect(redirect_target)
 
     if item_id:
@@ -1261,13 +1268,54 @@ def admin_hangman_word_save(user):
         return redirect(redirect_target)
 
     item.word = word
-    item.sort_order = int(request.form.get('sort_order', 0))
+    item.sort_order = request.form.get('sort_order', type=int) or 0
     item.is_active = 'is_active' in request.form
     if not item_id:
         db.session.add(item)
 
     db.session.commit()
     flash(f"Mot '{item.word}' sauvegarde !", "success")
+    return redirect(url_for('admin.admin_data') + '#hangman-words')
+
+
+@admin_bp.route('/admin/data/hangman-words/bulk-save', methods=['POST'])
+@admin_required
+def admin_hangman_words_bulk_save(user):
+    raw_text = request.form.get('words_text', '')
+    lines = raw_text.splitlines()
+    normalized_words = []
+    seen = set()
+    invalid_lines = []
+
+    for index, raw_line in enumerate(lines, start=1):
+        if not raw_line.strip():
+            continue
+        normalized = _normalize_hangman_word(raw_line)
+        if not normalized:
+            invalid_lines.append(index)
+            continue
+        if normalized in seen:
+            continue
+        seen.add(normalized)
+        normalized_words.append(normalized)
+
+    if invalid_lines:
+        preview = ', '.join(str(line_no) for line_no in invalid_lines[:5])
+        if len(invalid_lines) > 5:
+            preview += ', ...'
+        flash(f"Lignes invalides dans la liste de mots: {preview}. Utilise uniquement des lettres et des espaces.", "warning")
+        return redirect(url_for('admin.admin_data') + '#hangman-words')
+
+    if not normalized_words:
+        flash("La liste de mots est vide. Colle au moins une ligne.", "warning")
+        return redirect(url_for('admin.admin_data') + '#hangman-words')
+
+    HangmanWordItem.query.delete()
+    for index, word in enumerate(normalized_words):
+        db.session.add(HangmanWordItem(word=word, is_active=True, sort_order=index))
+    db.session.commit()
+
+    flash(f"Liste du Cochon Pendu remplacee ({len(normalized_words)} mots/expressions).", "success")
     return redirect(url_for('admin.admin_data') + '#hangman-words')
 
 

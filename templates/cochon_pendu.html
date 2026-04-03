@@ -57,6 +57,11 @@
       font-size: .95rem;
       color: #ffd9e7;
     }
+    .word-gap {
+      width: 1.2rem;
+      height: 2.8rem;
+      display: inline-flex;
+    }
   </style>
 </head>
 <body class="min-h-screen text-white">
@@ -208,6 +213,12 @@
     function drawWord(maskedWord) {
       wordDisplay.innerHTML = '';
       maskedWord.forEach((letter) => {
+        if (letter === ' ') {
+          const gap = document.createElement('span');
+          gap.className = 'word-gap';
+          wordDisplay.appendChild(gap);
+          return;
+        }
         const node = document.createElement('span');
         node.className = 'word-slot';
         node.textContent = letter === '_' ? '' : letter;
