@@ -10,42 +10,60 @@
         * { font-family: 'Nunito', sans-serif; }
         .font-title { font-family: 'Lilita One', cursive; }
 
-        body {
-            background:
+        :root {
+            --regles-page-bg:
                 radial-gradient(circle at top left, rgba(244, 114, 182, 0.18), transparent 28%),
                 radial-gradient(circle at top right, rgba(251, 191, 36, 0.12), transparent 24%),
                 linear-gradient(180deg, #17071f 0%, #1f0a2f 45%, #140818 100%);
+            --regles-glass-bg: rgba(255, 255, 255, 0.05);
+            --regles-glass-border: rgba(255, 255, 255, 0.08);
+            --regles-glass-shadow: 0 25px 50px rgba(10, 5, 18, 0.35);
+            --regles-section-bg: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02));
+            --regles-section-border: rgba(255,255,255,0.08);
+            --regles-section-inset: rgba(255,255,255,0.04);
+            --regles-anchor-bg: rgba(255,255,255,0.04);
+            --regles-anchor-border: rgba(255,255,255,0.08);
+            --regles-metric-bg: linear-gradient(145deg, rgba(244,114,182,0.10), rgba(255,255,255,0.03));
+            --regles-metric-border: rgba(244,114,182,0.16);
+            --regles-table-heading: rgba(255, 255, 255, 0.45);
+            --regles-table-text: rgba(255, 255, 255, 0.82);
+            --regles-table-border: rgba(255,255,255,0.08);
+            --regles-table-hover: rgba(255,255,255,0.03);
+        }
+
+        body {
+            background: var(--regles-page-bg);
             min-height: 100vh;
         }
 
         .glass-card {
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            box-shadow: 0 25px 50px rgba(10, 5, 18, 0.35);
+            background: var(--regles-glass-bg);
+            border: 1px solid var(--regles-glass-border);
+            box-shadow: var(--regles-glass-shadow);
             backdrop-filter: blur(14px);
         }
 
         .section-shell {
-            background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02));
-            border: 1px solid rgba(255,255,255,0.08);
-            box-shadow: inset 0 1px 0 rgba(255,255,255,0.04);
+            background: var(--regles-section-bg);
+            border: 1px solid var(--regles-section-border);
+            box-shadow: inset 0 1px 0 var(--regles-section-inset);
         }
 
         .anchor-chip {
-            background: rgba(255,255,255,0.04);
-            border: 1px solid rgba(255,255,255,0.08);
+            background: var(--regles-anchor-bg);
+            border: 1px solid var(--regles-anchor-border);
         }
 
         .metric-card {
-            background: linear-gradient(145deg, rgba(244,114,182,0.10), rgba(255,255,255,0.03));
-            border: 1px solid rgba(244,114,182,0.16);
+            background: var(--regles-metric-bg);
+            border: 1px solid var(--regles-metric-border);
         }
 
         .data-table th {
             font-size: 0.7rem;
             letter-spacing: 0.12em;
             text-transform: uppercase;
-            color: rgba(255, 255, 255, 0.45);
+            color: var(--regles-table-heading);
             font-weight: 800;
             padding: 0.8rem 1rem;
             white-space: nowrap;
@@ -53,14 +71,42 @@
 
         .data-table td {
             padding: 0.85rem 1rem;
-            border-top: 1px solid rgba(255,255,255,0.08);
-            color: rgba(255,255,255,0.82);
+            border-top: 1px solid var(--regles-table-border);
+            color: var(--regles-table-text);
             font-weight: 700;
             vertical-align: top;
         }
 
         .data-table tr:hover td {
-            background: rgba(255,255,255,0.03);
+            background: var(--regles-table-hover);
+        }
+
+        html[data-theme="light"] {
+            --regles-page-bg:
+                radial-gradient(circle at 10% 14%, rgba(251, 113, 133, 0.12), transparent 26%),
+                radial-gradient(circle at 82% 6%, rgba(253, 186, 116, 0.14), transparent 24%),
+                linear-gradient(180deg, #fffdfd 0%, #fff4f8 100%);
+            --regles-glass-bg: rgba(255, 251, 253, 0.84);
+            --regles-glass-border: rgba(214, 170, 191, 0.44);
+            --regles-glass-shadow: 0 22px 52px rgba(214, 132, 173, 0.12);
+            --regles-section-bg: linear-gradient(180deg, rgba(255,255,255,0.78), rgba(255,247,251,0.92));
+            --regles-section-border: rgba(214, 170, 191, 0.42);
+            --regles-section-inset: rgba(255,255,255,0.75);
+            --regles-anchor-bg: rgba(255, 248, 251, 0.86);
+            --regles-anchor-border: rgba(214, 170, 191, 0.4);
+            --regles-metric-bg: linear-gradient(145deg, rgba(251, 208, 224, 0.32), rgba(255,255,255,0.74));
+            --regles-metric-border: rgba(214, 170, 191, 0.42);
+            --regles-table-heading: rgba(75, 49, 67, 0.58);
+            --regles-table-text: #5a3c4f;
+            --regles-table-border: rgba(214, 170, 191, 0.34);
+            --regles-table-hover: rgba(250, 231, 240, 0.55);
+        }
+
+        html[data-theme="light"] .glass-card,
+        html[data-theme="light"] .section-shell,
+        html[data-theme="light"] .anchor-chip,
+        html[data-theme="light"] .metric-card {
+            backdrop-filter: blur(16px);
         }
     </style>
 </head>

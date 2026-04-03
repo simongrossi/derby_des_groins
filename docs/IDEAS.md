@@ -399,3 +399,141 @@ Les BitGroins prélevés sont versés dans une **Caisse de Solidarité** (solde 
 | 🟢 BASSE | C5. Boutique cosmétique | Fort | Faible |
 | 🟢 BASSE | B3. Courses Asynchrones | Très fort | Moyen |
 | 🟢 BASSE | D1. Sponsoring | Très fort | Moyen |
+
+---
+
+### Simulation — Joueur qui enchaîne tous les mini-jeux (session marathon)
+
+> **Hypothèse :** Un joueur se connecte et joue de façon continue. On simule une journée complète (24h) en enchaînant toutes les actions disponibles, et on identifie ce qui se casse ou devient absurde.
+
+#### Ressources de départ (cochon niveau 1, rareté Commune)
+
+| Ressource | Valeur initiale |
+|-----------|----------------|
+| Energy | 80 |
+| Hunger | 60 |
+| Happiness | 70 |
+| BitGroins | 15 (daily login) |
+| XP | 0 |
+
+---
+
+#### Bloc 1 — Entraînement (la faille silencieuse)
+
+L'entraînement **n'a aucun cooldown**. La seule limite est l'énergie et la faim. Or la nourriture restaure l'énergie (Avoine : +15 énergie, Triticale : +10).
+
+**Cycle exploit :** Sprint (-25 énergie, -10 faim, +0.6 VIT) → Feed Avoine (+15 énergie, +15 faim, coût ~6 BitGroins) → Sprint → Feed → ...
+
+| Itération | Énergie avant | Énergie après sprint | Énergie après avoine | Faim après sprint | Faim après avoine | Coût |
+|-----------|--------------|---------------------|---------------------|-------------------|-------------------|------|
+| 1 | 80 | 55 | 70 | 60 | 50 | -6 BG |
+| 2 | 70 | 45 | 60 | 50 | 40 | -6 BG |
+| 3 | 60 | 35 | 50 | 40 | 30 | -6 BG |
+| 4 | 50 | 25 | 40 | 30 | 20 | -6 BG |
+| 5 | 40 | 15 | 30 | 20 | 10 | -6 BG |
+| 6 | 30 | 5 | 20 | 10 | 0 → bloqué faim | — |
+
+→ 5 cycles faisables avant d'être bloqué par la faim. Passage à d'autres céréales (Orge +30 faim, +8 énergie, ~8 BG).
+
+**Sur 24h, avec refeed constant :** ~40 sprints/jour théorique (limité par budget BitGroins). À 0.6 VIT/sprint → **+24 VIT en une journée**. Un casual fera 3 sprints max.
+
+**Problème identifié : l'entraînement est le farm le plus silencieux du jeu.** Aucun cooldown, stats non plafonnées par jour. Le cout en nourriture est le seul frein, mais les mini-jeux remplissent le porte-monnaie.
+
+---
+
+#### Bloc 2 — École + Typing Challenge (30 min partagés)
+
+Les deux actions partagent le même cooldown de 30 min. Impossible d'alterner pour doubler les gains.
+
+| Heure | Action | XP | Stat | BitGroins |
+|-------|--------|----|------|-----------|
+| H+0 | École (bonne réponse) | +24 | +0.5 INT | 0 |
+| H+0.5 | Typing (WPM > 40) | +20 | +1.5 VIT | 0 |
+| H+1 | École | +24 | +0.5 INT | 0 |
+| ... | ... | ... | ... | ... |
+| H+24 | 48 sessions total | **+1 056 XP** | mix stats | 0 |
+
+Comportement attendu, déjà documenté (Simulation 1 & 2 ci-dessus). Pas de nouvelle surprise ici.
+
+---
+
+#### Bloc 3 — Mini-jeux économiques (la vraie source d'argent infinie)
+
+| Mini-jeu | Limite | Gain/session | Gain/jour théorique | Problème |
+|----------|--------|-------------|---------------------|----------|
+| Cochon Pendu | **Aucune** | 50 BG (victoire) | **Illimité** | ⚠️ Faille majeure |
+| Truffes | 1 gratuit/jour, puis 2 BG/partie | 20 BG | ~10 BG net si bon | Marginal |
+| Agenda (GROSMOP) | 2/jour | 50 BG | 100 BG/jour | Raisonnable |
+| Blackjack/Poker | **Aucune** | Variable | **Illimité** | ⚠️ Faille majeure |
+
+**Cochon Pendu — simulation sur 1h de jeu intensif :**
+
+Le dictionnaire de mots est connu, les erreurs max sont 7. Un joueur qui connaît le jeu (ou note les mots) peut viser ~80% de taux de victoire.
+
+- 1 partie ≈ 2 minutes (mots courts, devinettes rapides)
+- 30 parties/heure × 80% win rate = 24 victoires
+- 24 × 50 BG = **1 200 BitGroins/heure**
+
+Comparaison : gagner toutes ses courses à la 1ère place avec 4 cochons = **1 200 BitGroins/semaine**. Le Cochon Pendu en génère autant en 1 heure.
+
+**En 24h de jeu (irréaliste mais révélateur) : 28 800 BitGroins** — soit l'équivalent économique de 240 semaines de courses.
+
+**Blackjack/Poker :** Avec la même logique, un joueur en avance peut farmer indéfiniment (si le moteur n'a pas de house edge suffisant ou de bankroll management). À vérifier séparément.
+
+---
+
+#### Bilan d'une journée marathon (joueur hardcore, 1 cochon)
+
+| Catégorie | Hardcore (8h de jeu actif) | Casual (1h) | Ratio |
+|-----------|---------------------------|-------------|-------|
+| XP école/typing | 480 XP (16 sessions) | 60 XP (2 sessions) | ×8 |
+| Stats entraînement | +12 VIT (20 sprints + refeed) | +1.2 VIT (2 sprints) | ×10 |
+| BitGroins mini-jeux | ~4 800 BG (Pendu) | 50 BG (1 partie) | **×96** |
+| BitGroins courses | +106 BG (1ère place + apparition) | +106 BG (idem) | ×1 |
+| Daily login | 15 BG | 15 BG | ×1 |
+| **Total BitGroins/jour** | **~5 000 BG** | **~171 BG** | **×29** |
+
+---
+
+#### Problèmes identifiés par criticité
+
+**🔴 CRITIQUE — Cochon Pendu sans limite de parties**
+- Gain : 50 BG/victoire, aucun cooldown, aucune limite quotidienne
+- Un joueur habile peut générer 1 000+ BG/heure
+- Rend toutes les autres mécaniques économiques obsolètes
+- Fix suggéré : 3 parties gratuites/jour, puis coût 5 BG/partie supplémentaire (similar aux Truffes)
+
+**🔴 CRITIQUE — Entraînement sans cooldown ni cap quotidien**
+- Stat gains illimités par jour si refeed en boucle
+- Le coût en nourriture est le seul frein, mais le Cochon Pendu supprime ce frein
+- À 40 sprints/jour : +24 VIT (un casual en fera +1.2 en une semaine → ×140 sur 30 jours)
+- Fix suggéré : cap à 5 entraînements/jour par type, ou cooldown de 20 min entre entraînements
+
+**🟡 IMPORTANT — Blackjack/Poker sans limite**
+- Permet en théorie d'accumuler des BitGroins illimités si le joueur est bon
+- L'edge de la maison doit être vérifiée ; si le jeu est équitable, la variance seule ne protège pas
+- Fix suggéré : limite quotidienne de mises totales (ex. 500 BG/jour max de gains nets)
+
+**🟡 IMPORTANT — Agenda GROSMOP : 100 BG/jour garanti**
+- 2 parties, 50 BG chacune, gagnable à chaque fois si bon réflexes
+- Génère plus que 1 course gagnée (100 BG vs 106 BG 1ère place) sans contrainte de cochon
+- Fix suggéré : garder tel quel (somme raisonnable), mais à surveiller si les autres sinks sont corrigés
+
+**🟢 OK — Truffes**
+- 1 gratuit/jour puis 2 BG/partie pour 20 BG de gain → marge nette s'érode vite
+- Mécanisme sain, auto-régulé par le coût de replay
+
+**🟢 OK — Courses**
+- Quota 3/semaine/cochon bien calibré
+- Gain plafonné naturellement (106 BG max/semaine/cochon)
+- Principal problème : l'écart vient des autres mécaniques, pas des courses
+
+---
+
+### Recommandations correctives (ordre de priorité)
+
+| # | Problème | Fix minimal | Fichiers |
+|---|----------|-------------|---------|
+| 1 | Cochon Pendu illimité | Max 3 parties gratuites/jour, puis coût croissant | `routes/cochon_pendu.py`, `data.py` |
+| 2 | Entraînement sans cap | Cap 5 sessions/jour par type d'entraînement | `routes/pig.py`, `models.py` (champ `daily_train_count`), `data.py` |
+| 3 | Blackjack/Poker sans limite | Plafond de gains nets journaliers (500 BG) | `routes/blackjack.py`, `routes/poker.py`, `services/finance_service.py` |

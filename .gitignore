@@ -8,5 +8,6 @@ instance/
 venv/
 error.txt
 .gemini/
+.claude/worktrees/
 test-results/
 tmp-*.png
