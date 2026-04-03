@@ -50,6 +50,22 @@ PRELOADED_PIG_NAMES = [
     "Justin Bridou",
 ]
 
+COCHON_PENDU_WORDS = [
+    'PURIN',
+    'TRUFFES',
+    'TIRELIRE',
+    'JAMBON',
+    'VETERINAIRE',
+    'AVOINE',
+    'COTE',
+    'PELOTON',
+    'SAUCISSON',
+    'ENDURANCE',
+    'PARIS',
+    'FERMIER',
+    'PRAIRIE',
+]
+
 PIG_ORIGINS = [
     {'country': 'France', 'flag': '🇫🇷', 'specialty': 'Moral', 'bonus_stat': 'moral', 'bonus': 5},
     {'country': 'Espagne', 'flag': '🇪🇸', 'specialty': 'Endurance', 'bonus_stat': 'endurance', 'bonus': 5},

@@ -8,10 +8,11 @@ import logging
 import os
 import re
 import secrets
+import unicodedata
 from zoneinfo import ZoneInfo
 
 from extensions import db
-from models import User, Race, Pig, Bet, BalanceTransaction, CerealItem, TrainingItem, SchoolLessonItem, PigAvatar, AuthEventLog
+from models import User, Race, Pig, Bet, BalanceTransaction, CerealItem, TrainingItem, SchoolLessonItem, HangmanWordItem, PigAvatar, AuthEventLog
 from data import JOURS_FR
 from helpers import (
     set_config, get_config, populate_race_participants, run_race_if_needed,
@@ -132,6 +133,14 @@ def _parse_race_npcs_from_lines(lines):
         seen.add(name)
         npcs.append({'name': name, 'emoji': emoji})
     return npcs
+
+
+def _normalize_hangman_word(raw_word):
+    normalized = unicodedata.normalize('NFD', (raw_word or '').strip().upper())
+    normalized = ''.join(ch for ch in normalized if unicodedata.category(ch) != 'Mn')
+    if not normalized or not normalized.isalpha() or len(normalized) > 40:
+        return None
+    return normalized
 
 
 def _get_bet_payout_balance_delta(bet):
@@ -946,7 +955,7 @@ def admin_truffes(user):
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# Donnees de jeu (CRUD cereales, entrainements, lecons)
+# Donnees de jeu (CRUD cereales, entrainements, lecons, mots du pendu)
 # ══════════════════════════════════════════════════════════════════════════════
 
 @admin_bp.route('/admin/data')
@@ -955,8 +964,9 @@ def admin_data(user):
     cereals = CerealItem.query.order_by(CerealItem.sort_order, CerealItem.id).all()
     trainings = TrainingItem.query.order_by(TrainingItem.sort_order, TrainingItem.id).all()
     lessons = SchoolLessonItem.query.order_by(SchoolLessonItem.sort_order, SchoolLessonItem.id).all()
+    hangman_words = HangmanWordItem.query.order_by(HangmanWordItem.sort_order, HangmanWordItem.id).all()
     return render_template('admin_data.html',
-        user=user, admin_tab='data', cereals=cereals, trainings=trainings, lessons=lessons,
+        user=user, admin_tab='data', cereals=cereals, trainings=trainings, lessons=lessons, hangman_words=hangman_words,
         stat_names=STAT_NAMES)
 
 
@@ -1189,6 +1199,97 @@ def admin_lesson_toggle(user, item_id):
     state = 'activee' if item.is_active else 'desactivee'
     flash(f"{item.emoji} {item.name} {state}.", "success")
     return redirect(url_for('admin.admin_data'))
+
+
+# ── Mots du Cochon Pendu ────────────────────────────────────────────────────
+
+@admin_bp.route('/admin/data/hangman-word/<int:item_id>', methods=['GET'])
+@admin_required
+def admin_hangman_word_edit(user, item_id):
+    item = HangmanWordItem.query.get_or_404(item_id)
+    return render_template(
+        'admin_data_form.html',
+        user=user,
+        admin_tab='data',
+        mode='edit',
+        item_type='hangman_word',
+        item=item,
+        stat_names=STAT_NAMES,
+    )
+
+
+@admin_bp.route('/admin/data/hangman-word/new', methods=['GET'])
+@admin_required
+def admin_hangman_word_new(user):
+    return render_template(
+        'admin_data_form.html',
+        user=user,
+        admin_tab='data',
+        mode='new',
+        item_type='hangman_word',
+        item=None,
+        stat_names=STAT_NAMES,
+    )
+
+
+@admin_bp.route('/admin/data/hangman-word/save', methods=['POST'])
+@admin_required
+def admin_hangman_word_save(user):
+    item_id = request.form.get('item_id', type=int)
+    redirect_target = (
+        url_for('admin.admin_hangman_word_edit', item_id=item_id)
+        if item_id else
+        url_for('admin.admin_hangman_word_new')
+    )
+
+    word = _normalize_hangman_word(request.form.get('word', ''))
+    if not word:
+        flash("Le mot doit contenir uniquement des lettres (accents autorises, sans espace ni tiret).", "warning")
+        return redirect(redirect_target)
+
+    if item_id:
+        item = HangmanWordItem.query.get_or_404(item_id)
+    else:
+        item = HangmanWordItem()
+        db.session.add(item)
+
+    duplicate = HangmanWordItem.query.filter(
+        HangmanWordItem.word == word,
+        HangmanWordItem.id != item.id,
+    ).first()
+    if duplicate:
+        flash(f"Le mot '{word}' existe deja.", "error")
+        return redirect(redirect_target)
+
+    item.word = word
+    item.sort_order = int(request.form.get('sort_order', 0))
+    item.is_active = 'is_active' in request.form
+
+    db.session.commit()
+    flash(f"Mot '{item.word}' sauvegarde !", "success")
+    return redirect(url_for('admin.admin_data') + '#hangman-words')
+
+
+@admin_bp.route('/admin/data/hangman-word/<int:item_id>/delete', methods=['POST'])
+@admin_required
+def admin_hangman_word_delete(user, item_id):
+    item = HangmanWordItem.query.get_or_404(item_id)
+    word = item.word
+    db.session.delete(item)
+    db.session.commit()
+    flash(f"Mot '{word}' supprime.", "success")
+    return redirect(url_for('admin.admin_data') + '#hangman-words')
+
+
+@admin_bp.route('/admin/data/hangman-word/<int:item_id>/toggle', methods=['POST'])
+@admin_required
+def admin_hangman_word_toggle(user, item_id):
+    item = HangmanWordItem.query.get_or_404(item_id)
+    item.is_active = not item.is_active
+    db.session.commit()
+    state = 'active' if item.is_active else 'desactive'
+    flash(f"Mot '{item.word}' {state}.", "success")
+    return redirect(url_for('admin.admin_data') + '#hangman-words')
 
 
 # ══════════════════════════════════════════════════════════════════════════════

@@ -54,9 +54,11 @@ from helpers.game_data import (
     get_cereals_dict,
     get_trainings_dict,
     get_school_lessons_dict,
+    get_hangman_words,
     get_all_cereals_dict,
     get_all_trainings_dict,
     get_all_school_lessons_dict,
+    get_all_hangman_words,
     invalidate_game_data_cache,
 )
 

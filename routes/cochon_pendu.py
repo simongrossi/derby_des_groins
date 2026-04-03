@@ -4,6 +4,7 @@ from flask import Blueprint, jsonify, redirect, render_template, request, sessio
 
 from extensions import db, limiter
 from helpers import get_user_active_pigs
+from helpers.game_data import get_hangman_words
 from models import User
 from services.finance_service import credit_user_balance
 
@@ -14,26 +15,10 @@ WIN_REWARD = 50
 LOSS_HAPPINESS_PENALTY = 20
 LOSS_ENERGY_PENALTY = 10
 
-WORDS = [
-    'PURIN',
-    'TRUFFES',
-    'TIRELIRE',
-    'JAMBON',
-    'VETERINAIRE',
-    'AVOINE',
-    'COTE',
-    'PELOTON',
-    'SAUCISSON',
-    'ENDURANCE',
-    'PARIS',
-    'FERMIER',
-    'PRAIRIE',
-]
-
-
 def _new_game_state():
+    words = get_hangman_words()
     return {
-        'word': random.choice(WORDS),
+        'word': random.choice(words),
         'guessed_letters': [],
         'errors': 0,
         'status': 'playing',

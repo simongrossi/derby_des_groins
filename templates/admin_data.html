@@ -41,11 +41,20 @@
     <h1 class="font-title text-3xl text-white">🗃️ Donnees de jeu</h1>
 </div>
 <p class="text-white/40 font-semibold text-sm mb-8">
-    Modifie cereales, entrainements et lecons sans redemarrer le serveur.
+    Modifie cereales, entrainements, lecons et mots du pendu sans redemarrer le serveur.
 </p>
 
+<div class="card p-3 mb-8">
+    <div class="flex flex-wrap gap-2">
+        <a href="#cereales" class="btn-admin btn-sm">🌾 Cereales</a>
+        <a href="#entrainements" class="btn-admin btn-sm">💪 Entrainements</a>
+        <a href="#lecons" class="btn-admin btn-sm">📚 Lecons</a>
+        <a href="#hangman-words" class="btn-admin btn-sm">🐽 Mots du pendu</a>
+    </div>
+</div>
+
 <!-- ══════════════════ CEREALES ══════════════════ -->
-<div class="card p-6 mb-8">
+<div id="cereales" class="card p-6 mb-8">
     <div class="flex items-center justify-between mb-4">
         <div>
             <h2 class="font-title text-2xl text-white">🌾 Cereales ({{ cereals | length }})</h2>
@@ -96,7 +105,7 @@
 </div>
 
 <!-- ══════════════════ ENTRAINEMENTS ══════════════════ -->
-<div class="card p-6 mb-8">
+<div id="entrainements" class="card p-6 mb-8">
     <div class="flex items-center justify-between mb-4">
         <div>
             <h2 class="font-title text-2xl text-white">💪 Entrainements ({{ trainings | length }})</h2>
@@ -148,7 +157,7 @@
 </div>
 
 <!-- ══════════════════ LECONS ══════════════════ -->
-<div class="card p-6 mb-8">
+<div id="lecons" class="card p-6 mb-8">
     <div class="flex items-center justify-between mb-4">
         <div>
             <h2 class="font-title text-2xl text-white">📚 Lecons d'ecole ({{ lessons | length }})</h2>
@@ -194,6 +203,55 @@
                     <button type="submit" class="btn-danger btn-sm">🗑️</button>
                 </form>
             </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- ══════════════════ COCHON PENDU ══════════════════ -->
+<div id="hangman-words" class="card p-6 mb-8">
+    <div class="flex items-center justify-between mb-4">
+        <div>
+            <h2 class="font-title text-2xl text-white">🐽 Mots du Cochon Pendu ({{ hangman_words | length }})</h2>
+            <p class="text-white/40 text-sm font-semibold">Liste des mots proposes dans le mini-jeu.</p>
+        </div>
+        <a href="{{ url_for('admin.admin_hangman_word_new') }}" class="btn-admin btn-sm">+ Ajouter</a>
+    </div>
+
+    <div class="space-y-2">
+        {% for word in hangman_words %}
+        <div class="item-row p-4 flex items-center justify-between gap-4">
+            <div class="flex items-center gap-3 flex-1 min-w-0">
+                <span class="text-2xl">🐷</span>
+                <div class="min-w-0">
+                    <p class="text-white font-bold text-sm truncate">
+                        {{ word.word }}
+                        {% if not word.is_active %}<span class="badge-inactive ml-1">OFF</span>{% endif %}
+                    </p>
+                    <p class="text-white/30 text-xs font-semibold truncate">
+                        {{ word.word|length }} lettres · Ordre {{ word.sort_order }}
+                    </p>
+                </div>
+            </div>
+            <div class="flex items-center gap-2 shrink-0">
+                <form method="POST" action="{{ url_for('admin.admin_hangman_word_toggle', item_id=word.id) }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn-sm {{ 'btn-toggle-on' if word.is_active else 'btn-toggle-off' }}" style="border:none;color:white;font-weight:800;cursor:pointer;">
+                        {{ '✅ Actif' if word.is_active else '⏸️ Inactif' }}
+                    </button>
+                </form>
+                <a href="{{ url_for('admin.admin_hangman_word_edit', item_id=word.id) }}" class="btn-admin btn-sm">Modifier</a>
+                <form method="POST" action="{{ url_for('admin.admin_hangman_word_delete', item_id=word.id) }}" onsubmit="return confirm('Supprimer {{ word.word }} ?');">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn-danger btn-sm">🗑️</button>
+                </form>
+            </div>
+        </div>
+        {% else %}
+        <div class="item-row p-4">
+            <p class="text-white/50 text-sm font-semibold">
+                Aucun mot en base pour le moment. Ajoute-en un pour personnaliser le Cochon Pendu.
+            </p>
         </div>
         {% endfor %}
     </div>

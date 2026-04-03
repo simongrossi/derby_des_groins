@@ -16,10 +16,10 @@ _session_interface = None
 from extensions import db, limiter, migrate
 from models import (
     GameConfig, User, Pig, BalanceTransaction, GrainMarket, Trophy,
-    CerealItem, TrainingItem, SchoolLessonItem, PigAvatar,
+    CerealItem, TrainingItem, SchoolLessonItem, HangmanWordItem, PigAvatar,
     PokerTable, PokerPlayer, PokerHandHistory,
 )
-from data import PIG_ORIGINS, CEREALS, TRAININGS, SCHOOL_LESSONS
+from data import PIG_ORIGINS, CEREALS, TRAININGS, SCHOOL_LESSONS, COCHON_PENDU_WORDS
 from helpers import init_default_config, ensure_next_race, get_first_injured_pig
 from services.finance_service import record_balance_transaction
 from services.auth_log_service import purge_old_auth_events, log_site_action
@@ -336,7 +336,7 @@ def ensure_balance_transaction_snapshots():
 
 
 def seed_game_data():
-    """Peuple les tables CerealItem, TrainingItem, SchoolLessonItem depuis data.py
+    """Peuple les tables CerealItem, TrainingItem, SchoolLessonItem, HangmanWordItem depuis data.py
     si elles sont vides (premier lancement uniquement)."""
     import json as _json
 
@@ -392,6 +392,11 @@ def seed_game_data():
             for stat in ('vitesse', 'endurance', 'agilite', 'force', 'intelligence', 'moral'):
                 setattr(item, f'stat_{stat}', l.get('stats', {}).get(stat, 0.0))
             db.session.add(item)
+        db.session.commit()
+
+    if not HangmanWordItem.query.first():
+        for i, word in enumerate(COCHON_PENDU_WORDS):
+            db.session.add(HangmanWordItem(word=word, sort_order=i))
         db.session.commit()
 
 

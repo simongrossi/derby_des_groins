@@ -15,9 +15,9 @@
     .toggle-checkbox { accent-color: #8b5cf6; width: 1.2rem; height: 1.2rem; cursor: pointer; }
 {% endblock %}
 
-{% set type_labels = {'cereal': 'Cereale', 'training': 'Entrainement', 'lesson': 'Lecon'} %}
+{% set type_labels = {'cereal': 'Cereale', 'training': 'Entrainement', 'lesson': 'Lecon', 'hangman_word': 'Mot du pendu'} %}
 {% set type_label = type_labels.get(item_type, 'Item') %}
-{% set type_emojis = {'cereal': '🌾', 'training': '💪', 'lesson': '📚'} %}
+{% set type_emojis = {'cereal': '🌾', 'training': '💪', 'lesson': '📚', 'hangman_word': '🐽'} %}
 {% set type_emoji = type_emojis.get(item_type, '📦') %}
 
 {% block content %}
@@ -26,10 +26,10 @@
         <h1 class="font-title text-3xl text-white">
             {{ type_emoji }} {{ 'Modifier' if mode == 'edit' else 'Nouveau' }} {{ type_label }}
         </h1>
-        <a href="{{ url_for('admin.admin_data') }}" class="btn-admin text-xs px-3 py-2">&larr; Retour</a>
+        <a href="{{ url_for('admin.admin_data') }}{{ '#hangman-words' if item_type == 'hangman_word' else '' }}" class="btn-admin text-xs px-3 py-2">&larr; Retour</a>
     </div>
 
-    <form method="POST" action="{{ url_for('admin.admin_cereal_save') if item_type == 'cereal' else url_for('admin.admin_training_save') if item_type == 'training' else url_for('admin.admin_lesson_save') }}">
+    <form method="POST" action="{{ url_for('admin.admin_cereal_save') if item_type == 'cereal' else url_for('admin.admin_training_save') if item_type == 'training' else url_for('admin.admin_lesson_save') if item_type == 'lesson' else url_for('admin.admin_hangman_word_save') }}">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         {% if mode == 'edit' and item %}
         <input type="hidden" name="item_id" value="{{ item.id }}">
@@ -37,6 +37,25 @@
 
         <div class="card p-6 mb-6">
             <p class="section-title">Informations generales</p>
+            {% if item_type == 'hangman_word' %}
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <div>
+                    <label>Mot</label>
+                    <input type="text" name="word" class="input-admin" value="{{ item.word if item else '' }}" placeholder="ex: VETERINAIRE" required>
+                    <p class="text-white/30 text-xs font-semibold mt-2">Lettres uniquement. Les accents sont normalises automatiquement.</p>
+                </div>
+                <div>
+                    <label>Ordre d'affichage</label>
+                    <input type="number" name="sort_order" class="input-admin" value="{{ item.sort_order if item else 0 }}">
+                </div>
+            </div>
+
+            <div class="flex items-center gap-3 mb-2">
+                <input type="checkbox" name="is_active" class="toggle-checkbox" id="is_active"
+                    {{ 'checked' if (not item or item.is_active) else '' }}>
+                <label for="is_active" class="mb-0 cursor-pointer text-white/80">Actif en jeu</label>
+            </div>
+            {% else %}
             <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
                 <div class="{{ 'col-span-2' if mode == 'new' else '' }}">
                     <label>Cle unique</label>
@@ -71,9 +90,11 @@
                     {{ 'checked' if (not item or item.is_active) else '' }}>
                 <label for="is_active" class="mb-0 cursor-pointer text-white/80">Actif en jeu</label>
             </div>
+            {% endif %}
         </div>
 
         <!-- PARAMETRES SPECIFIQUES -->
+        {% if item_type != 'hangman_word' %}
         <div class="card p-6 mb-6">
             {% if item_type == 'cereal' %}
             <p class="section-title">Parametres de la cereale</p>
@@ -189,8 +210,10 @@
             {% endfor %}
             {% endif %}
         </div>
+        {% endif %}
 
         <!-- STATS -->
+        {% if item_type != 'hangman_word' %}
         <div class="card p-6 mb-6">
             <p class="section-title">Bonus de stats {{ '(bonne reponse)' if item_type == 'lesson' else '' }}</p>
             <div class="grid grid-cols-3 md:grid-cols-6 gap-4">
@@ -203,8 +226,10 @@
                 {% endfor %}
             </div>
         </div>
+        {% endif %}
 
         <!-- SAISONNALITE -->
+        {% if item_type != 'hangman_word' %}
         <div class="card p-6 mb-6">
             <p class="section-title">Saisonnalite (optionnel)</p>
             <p class="text-white/30 text-xs font-semibold mb-3">
@@ -223,6 +248,7 @@
                 </div>
             </div>
         </div>
+        {% endif %}
 
         <button type="submit" class="btn-admin w-full text-center text-lg py-4">
             💾 {{ 'Sauvegarder' if mode == 'edit' else 'Creer' }} {{ type_label }}

@@ -8,8 +8,8 @@ import time
 from datetime import datetime
 
 from extensions import db
-from models import CerealItem, TrainingItem, SchoolLessonItem
-from data import CEREALS
+from models import CerealItem, TrainingItem, SchoolLessonItem, HangmanWordItem
+from data import CEREALS, COCHON_PENDU_WORDS
 
 # ── In-memory cache ───────────────────────────────────────────────────────
 _game_data_cache = {}
@@ -80,6 +80,19 @@ def get_school_lessons_dict():
     return _cached('school_lessons', _load)
 
 
+def get_hangman_words():
+    """Retourne la liste des mots actifs du Cochon Pendu.
+
+    Si aucun mot actif n'est disponible, on retombe sur la liste par defaut
+    pour eviter qu'une mauvaise config admin casse le mini-jeu.
+    """
+    def _load():
+        items = HangmanWordItem.query.order_by(HangmanWordItem.sort_order, HangmanWordItem.id).all()
+        active_words = [item.word for item in items if item.is_active]
+        return active_words or COCHON_PENDU_WORDS
+    return _cached('hangman_words', _load)
+
+
 def get_all_cereals_dict():
     """Comme get_cereals_dict() mais inclut les items inactifs (pour l'admin)."""
     items = CerealItem.query.order_by(CerealItem.sort_order, CerealItem.id).all()
@@ -96,3 +109,8 @@ def get_all_school_lessons_dict():
     """Comme get_school_lessons_dict() mais inclut les items inactifs (pour l'admin)."""
     items = SchoolLessonItem.query.order_by(SchoolLessonItem.sort_order, SchoolLessonItem.id).all()
     return {l.key: l for l in items}
+
+
+def get_all_hangman_words():
+    """Retourne tous les mots du Cochon Pendu (admin)."""
+    return HangmanWordItem.query.order_by(HangmanWordItem.sort_order, HangmanWordItem.id).all()

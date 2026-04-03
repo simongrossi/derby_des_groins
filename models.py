@@ -916,6 +916,15 @@ class SchoolLessonItem(db.Model):
             'wrong_happiness_penalty': self.wrong_happiness_penalty or 0,
         }
 
+
+class HangmanWordItem(db.Model):
+    """Mot utilisable dans le mini-jeu Cochon Pendu."""
+    __tablename__ = 'hangman_word_item'
+    id = db.Column(db.Integer, primary_key=True)
+    word = db.Column(db.String(40), unique=True, nullable=False)
+    is_active = db.Column(db.Boolean, default=True)
+    sort_order = db.Column(db.Integer, default=0)
+
 class Shop(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     nom = db.Column(db.String(100), nullable=False)

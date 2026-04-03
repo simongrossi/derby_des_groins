@@ -239,6 +239,9 @@
             <a href="{{ url_for('admin.admin_events') }}" class="flex flex-col items-center gap-0.5 px-2 py-1 rounded-lg text-[10px] font-bold {{ 'text-indigo-400' if admin_tab == 'events' else 'text-white/40' }}">
                 <span class="text-lg">🎭</span>Events
             </a>
+            <a href="{{ url_for('admin.admin_data') }}" class="flex flex-col items-center gap-0.5 px-2 py-1 rounded-lg text-[10px] font-bold {{ 'text-indigo-400' if admin_tab == 'data' else 'text-white/40' }}">
+                <span class="text-lg">🗃️</span>Data
+            </a>
             <a href="{{ url_for('admin.admin_notifications') }}" class="flex flex-col items-center gap-0.5 px-2 py-1 rounded-lg text-[10px] font-bold {{ 'text-indigo-400' if admin_tab == 'notifications' else 'text-white/40' }}">
                 <span class="text-lg">📧</span>SMTP
             </a>
