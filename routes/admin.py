@@ -1251,7 +1251,6 @@ def admin_hangman_word_save(user):
         item = HangmanWordItem.query.get_or_404(item_id)
     else:
         item = HangmanWordItem()
-        db.session.add(item)
 
     duplicate = HangmanWordItem.query.filter(
         HangmanWordItem.word == word,
@@ -1264,6 +1263,8 @@ def admin_hangman_word_save(user):
     item.word = word
     item.sort_order = int(request.form.get('sort_order', 0))
     item.is_active = 'is_active' in request.form
+    if not item_id:
+        db.session.add(item)
 
     db.session.commit()
     flash(f"Mot '{item.word}' sauvegarde !", "success")
