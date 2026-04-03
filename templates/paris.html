@@ -79,6 +79,68 @@
             -webkit-line-clamp:2;
             overflow:hidden;
         }
+        .runners-table {
+            border-collapse: separate;
+            border-spacing: 0 0.55rem;
+        }
+        .runners-table thead th {
+            padding: 0 0.85rem 0.3rem;
+        }
+        .runners-table thead button {
+            display:inline-flex;
+            align-items:center;
+            gap:.35rem;
+            font-size:.7rem;
+            line-height:1;
+            text-transform:uppercase;
+            letter-spacing:.16em;
+            font-weight:900;
+            color:rgba(255,255,255,.45);
+            transition:color .2s ease;
+        }
+        .runners-table thead button:hover {
+            color:rgba(255,255,255,.8);
+        }
+        .runners-table tbody td {
+            padding: .8rem .85rem;
+            background: rgba(255,244,247,.06);
+            border-top: 1px solid rgba(255, 205, 226, .18);
+            border-bottom: 1px solid rgba(255, 205, 226, .18);
+            vertical-align: middle;
+        }
+        .runners-table tbody td:first-child {
+            border-left: 1px solid rgba(255, 205, 226, .18);
+            border-radius: 1rem 0 0 1rem;
+        }
+        .runners-table tbody td:last-child {
+            border-right: 1px solid rgba(255, 205, 226, .18);
+            border-radius: 0 1rem 1rem 0;
+        }
+        .runners-table tbody tr {
+            cursor: pointer;
+            transition: transform .16s ease;
+        }
+        .runners-table tbody tr:hover td {
+            background: rgba(244,114,182,.12);
+            border-color: rgba(244,114,182,.26);
+        }
+        .runners-table tbody tr.selected td {
+            background: rgba(244,114,182,.16);
+            border-color: rgba(244,114,182,.42);
+        }
+        .runners-table tbody tr:focus-visible {
+            outline: none;
+        }
+        .runners-table tbody tr:focus-visible td {
+            border-color: #f9a8d4;
+            box-shadow: inset 0 0 0 1px rgba(249,168,212,.4);
+        }
+        .runners-table .selection-badge {
+            position: static;
+            width: 1.45rem;
+            height: 1.45rem;
+            font-size: .72rem;
+        }
         html[data-theme="light"] #bet-form-section {
             background-image: none !important;
             background-color: rgba(255, 252, 253, 0.97) !important;
@@ -247,18 +309,64 @@
             <p class="text-white/40 text-xs uppercase tracking-[0.22em] font-extrabold">📈 Cotes en direct</p>
             <h2 class="font-title text-2xl text-white mt-2">Partants de la course</h2>
             {% if participants %}
-            <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5 mt-4" id="pig-grid">
-                {% for pig in participants %}
-                {% set odds_class = 'odds-low' if pig.odds <= 2.5 else ('odds-mid' if pig.odds <= 4.0 else 'odds-high') %}
-                <div class="pig-card relative p-3 text-center {% if pig.pig_id %}ring-1 ring-pink-500/30{% endif %}" data-participant-id="{{ pig.id }}" data-pig-name="{{ pig.name }}" data-odds="{{ pig.odds }}" data-win-probability="{{ pig.win_probability }}" role="button" tabindex="0" aria-pressed="false">
-                    <span class="selection-badge" data-selection-badge></span>
-                    <div class="text-[1.9rem] leading-none">{{ pig.emoji }}</div>
-                    <p class="pig-name-clamp text-white font-bold mt-1.5 text-[15px] leading-tight min-h-[2.35rem]">{{ pig.name }}</p>
-                    <p class="text-[11px] leading-tight font-bold mt-1 {% if pig.owner_name %}text-pink-400/70{% else %}text-white/20{% endif %}">{% if pig.owner_name %}👤 {{ pig.owner_name }}{% else %}💻 Ordinateur{% endif %}</p>
-                    <div class="odds-badge {{ odds_class }} mt-2 inline-block text-[0.9rem] px-3 py-1">x{{ pig.odds }}</div>
-                    <p class="text-white/30 text-[11px] mt-1 leading-tight">{{ "%.0f"|format(pig.win_probability * 100) }}% de chance</p>
+            <div class="mt-4">
+                <div class="flex items-center justify-between gap-3 mb-2">
+                    <p class="text-white/35 text-[11px] font-bold">Clique sur une ligne pour la sélectionner dans ton ticket.</p>
+                    <p class="text-white/25 text-[10px] font-black uppercase tracking-[0.18em]">Triable</p>
                 </div>
-                {% endfor %}
+                <div class="overflow-x-auto" id="pig-grid">
+                    <table class="w-full min-w-[42rem] runners-table">
+                        <thead>
+                            <tr>
+                                <th class="w-[4.5rem] text-left">
+                                    <button type="button" data-runner-sort="number">N° <span class="text-white/25">↕</span></button>
+                                </th>
+                                <th class="text-left">
+                                    <button type="button" data-runner-sort="name">Cochon <span class="text-white/25">↕</span></button>
+                                </th>
+                                <th class="text-left">
+                                    <button type="button" data-runner-sort="owner">Proprio <span class="text-white/25">↕</span></button>
+                                </th>
+                                <th class="w-[8rem] text-left">
+                                    <button type="button" data-runner-sort="odds">Cote <span class="text-white/25">↕</span></button>
+                                </th>
+                                <th class="w-[9rem] text-left">
+                                    <button type="button" data-runner-sort="probability">Chance <span class="text-white/25">↕</span></button>
+                                </th>
+                                <th class="w-[4rem] text-center">
+                                    <button type="button" data-runner-sort="selection">Sel. <span class="text-white/25">↕</span></button>
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for pig in participants %}
+                            {% set odds_class = 'odds-low' if pig.odds <= 2.5 else ('odds-mid' if pig.odds <= 4.0 else 'odds-high') %}
+                            <tr class="pig-card {% if pig.pig_id %}ring-1 ring-pink-500/30{% endif %}" data-participant-id="{{ pig.id }}" data-pig-name="{{ pig.name }}" data-owner-name="{{ pig.owner_name or 'Ordinateur' }}" data-odds="{{ pig.odds }}" data-win-probability="{{ pig.win_probability }}" data-runner-number="{{ loop.index }}" role="button" tabindex="0" aria-pressed="false">
+                                <td class="text-white/35 text-sm font-black">{{ loop.index }}</td>
+                                <td>
+                                    <div class="flex items-center gap-3">
+                                        <span class="text-2xl leading-none shrink-0">{{ pig.emoji }}</span>
+                                        <div class="min-w-0">
+                                            <p class="text-white font-bold text-sm leading-tight">{{ pig.name }}</p>
+                                            <p class="text-white/25 text-[11px] font-semibold mt-1">ID partant #{{ pig.id }}</p>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="text-sm font-bold {% if pig.owner_name %}text-pink-300{% else %}text-white/35{% endif %}">
+                                    {% if pig.owner_name %}👤 {{ pig.owner_name }}{% else %}💻 Ordinateur{% endif %}
+                                </td>
+                                <td>
+                                    <span class="odds-badge {{ odds_class }} inline-block">x{{ pig.odds }}</span>
+                                </td>
+                                <td class="text-white/60 text-sm font-bold">{{ "%.0f"|format(pig.win_probability * 100) }}%</td>
+                                <td class="text-center">
+                                    <span class="selection-badge mx-auto" data-selection-badge></span>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
             </div>
             {% else %}
             <div class="soft p-8 mt-5 text-center"><p class="text-white/45 font-semibold">Aucun partant disponible pour le moment.</p></div>
@@ -467,9 +575,12 @@ const participantMap = Object.fromEntries(participantCards.map((card) => {
     return [participantId, { id: participantId, name: card.dataset.pigName, odds: Number(card.dataset.odds), winProbability: Number(card.dataset.winProbability), card }];
 }));
 const pigGrid = document.getElementById('pig-grid');
+const runnerTableBody = pigGrid?.querySelector('tbody');
+const runnerSortButtons = Array.from(document.querySelectorAll('[data-runner-sort]'));
 const betForm = document.getElementById('bet-form');
 let activeBetType = 'win';
 let selectedOrder = [];
+let runnerSortState = { key: 'probability', direction: 'desc' };
 function getRequiredSelectionCount() { return betTypes[activeBetType]?.selection_count || 1; }
 function getAmountInput() { return document.getElementById('bet-amount'); }
 function getAmountConstraints() {
@@ -545,6 +656,44 @@ function applyPayoutCap(amount, odds) {
     }
     return payout;
 }
+function updateRunnerSortButtons() {
+    runnerSortButtons.forEach((button) => {
+        const isActive = button.dataset.runnerSort === runnerSortState.key;
+        const arrow = isActive ? (runnerSortState.direction === 'asc' ? '↑' : '↓') : '↕';
+        button.classList.toggle('text-white', isActive);
+        button.classList.toggle('text-white/45', !isActive);
+        const indicator = button.querySelector('span');
+        if (indicator) indicator.textContent = arrow;
+    });
+}
+function getRunnerSortValue(row, key) {
+    if (key === 'name') return (row.dataset.pigName || '').toLowerCase();
+    if (key === 'owner') return (row.dataset.ownerName || '').toLowerCase();
+    if (key === 'odds') return Number(row.dataset.odds || 0);
+    if (key === 'probability') return Number(row.dataset.winProbability || 0);
+    if (key === 'selection') {
+        const selectionIndex = selectedOrder.indexOf(Number(row.dataset.participantId));
+        return selectionIndex === -1 ? Number.MAX_SAFE_INTEGER : selectionIndex + 1;
+    }
+    return Number(row.dataset.runnerNumber || 0);
+}
+function sortRunnerRows(key = runnerSortState.key, direction = runnerSortState.direction) {
+    if (!runnerTableBody) return;
+    const rows = Array.from(runnerTableBody.querySelectorAll('.pig-card'));
+    rows.sort((rowA, rowB) => {
+        const a = getRunnerSortValue(rowA, key);
+        const b = getRunnerSortValue(rowB, key);
+        if (typeof a === 'string' || typeof b === 'string') {
+            const compare = String(a).localeCompare(String(b), 'fr', { sensitivity: 'base' });
+            return direction === 'asc' ? compare : -compare;
+        }
+        const compare = Number(a) - Number(b);
+        return direction === 'asc' ? compare : -compare;
+    });
+    rows.forEach((row) => runnerTableBody.appendChild(row));
+    runnerSortState = { key, direction };
+    updateRunnerSortButtons();
+}
 function renderSelectionSummary() {
     const display = document.getElementById('selected-pig-display');
     const selectionInput = document.getElementById('selection-order-input');
@@ -586,6 +735,9 @@ function renderSelectionSummary() {
             feedback.textContent = 'Ticket pret. Clique sur Parier pour l envoyer.';
             feedback.className = 'mt-3 text-xs font-bold text-emerald-200';
         }
+    }
+    if (runnerSortState.key === 'selection') {
+        sortRunnerRows('selection', runnerSortState.direction);
     }
     updatePotentialWin();
 }
@@ -641,6 +793,13 @@ if (pigGrid) {
         toggleParticipantSelection(Number(card.dataset.participantId));
     });
 }
+runnerSortButtons.forEach((button) => {
+    button.addEventListener('click', () => {
+        const key = button.dataset.runnerSort;
+        const direction = runnerSortState.key === key && runnerSortState.direction === 'asc' ? 'desc' : 'asc';
+        sortRunnerRows(key, direction);
+    });
+});
 document.querySelectorAll('[data-bet-type-btn]').forEach((button) => button.addEventListener('click', () => { if (!button.disabled) setBetType(button.dataset.betType); }));
 if (betForm) {
     betForm.addEventListener('submit', (event) => {
@@ -660,6 +819,7 @@ if (betForm) {
         }
     });
 }
+sortRunnerRows('probability', 'desc');
 renderSelectionSummary();
 
 /* Countdown */
