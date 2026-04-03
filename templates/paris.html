@@ -200,6 +200,31 @@
         </article>
     </section>
 
+    <!-- ═══ PARIS EN COURS ═══ -->
+    {% if user and pending_bets %}
+    <section class="card p-5 border border-yellow-400/20 bg-yellow-500/5">
+        <div class="flex items-center gap-2 mb-3">
+            <p class="text-yellow-300/70 text-[10px] uppercase tracking-[0.25em] font-black">⏳ Paris en cours</p>
+            <span class="pill bg-yellow-500/15 text-yellow-200 border border-yellow-400/20 text-[10px]">{{ pending_bets|length }}</span>
+        </div>
+        <div class="space-y-2">
+            {% for bet in pending_bets %}
+            {% set bet_type_key = bet.bet_type if bet.bet_type in bet_types else 'win' %}
+            <div class="soft px-4 py-3 flex items-center justify-between gap-3">
+                <div class="min-w-0">
+                    <p class="text-white font-bold text-sm truncate">{{ bet_types[bet_type_key].icon }} {{ bet.pig_name }}</p>
+                    <p class="text-white/40 text-xs font-semibold">{{ bet_types[bet_type_key].label }} · Course #{{ bet.race_id }} · {{ bet.race.scheduled_at.strftime('%d/%m à %H:%M') }} · {{ bet.amount }} 🪙 @ x{{ bet.odds_at_bet }}</p>
+                </div>
+                <div class="text-right shrink-0">
+                    <p class="text-yellow-200 font-bold text-sm">+{{ "%.0f"|format(bet.amount * bet.odds_at_bet) }} 🪙</p>
+                    <p class="text-white/25 text-[10px] font-semibold">si gagné</p>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </section>
+    {% endif %}
+
     <!-- ═══ GRILLE DES PARTANTS + FORMULAIRE ═══ -->
     {% if next_race %}
     <section class="grid grid-cols-1 xl:grid-cols-[1.2fr_0.8fr] gap-6">

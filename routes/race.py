@@ -147,6 +147,7 @@ def paris():
     participants = []
     next_race_theme = None
     recent_bets = []
+    pending_bets = []
 
     if 'user_id' in session:
         user = User.query.get(session['user_id'])
@@ -164,6 +165,14 @@ def paris():
                 .all()
             )
             attach_bet_outcome_snapshots(recent_bets)
+            # Paris en cours (pending)
+            pending_bets = (
+                Bet.query
+                .join(Race, Bet.race_id == Race.id)
+                .filter(Bet.user_id == user.id, Bet.status == 'pending')
+                .order_by(Race.scheduled_at.asc())
+                .all()
+            )
 
     if next_race:
         participants = Participant.query.filter_by(race_id=next_race.id).order_by(Participant.odds).all()
@@ -182,6 +191,7 @@ def paris():
         participants=participants,
         user_bets=user_bets,
         recent_bets=recent_bets,
+        pending_bets=pending_bets,
         upcoming_elements=upcoming_elements,
         bacon_tickets_remaining=bacon_tickets_remaining,
         weekly_bacon_tickets=weekly_bacon_tickets,
