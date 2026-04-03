@@ -15,7 +15,11 @@ from models import Bet, CoursePlan, Participant, Pig, Race, User
 from race_engine import CourseManager
 
 from helpers.db import apply_row_lock
-from services.economy_service import get_configured_bet_types, get_weekly_race_quota_value
+from services.economy_service import (
+    apply_bet_bonus_to_odds,
+    get_configured_bet_types,
+    get_weekly_race_quota_value,
+)
 from services.finance_service import credit_user_balance
 from services.game_settings_service import get_game_settings
 from services.pig_service import calculate_pig_power, get_weight_profile, update_pig_state
@@ -172,7 +176,7 @@ def calculate_ordered_finish_probability(participants_by_id, ordered_ids):
     return combined_probability
 
 
-def calculate_bet_odds(participants_by_id, ordered_ids, bet_type):
+def calculate_bet_odds(participants_by_id, ordered_ids, bet_type, reward_multiplier=1.0):
     bet_types = get_configured_bet_types()
     bet_config = bet_types.get(normalize_bet_type(bet_type), bet_types['win'])
     
@@ -196,7 +200,8 @@ def calculate_bet_odds(participants_by_id, ordered_ids, bet_type):
     if final_prob <= 0:
         return 0.0
         
-    return max(1.1, math.floor(((1 / final_prob) / bet_config['house_edge']) * 10) / 10)
+    base_odds = max(1.1, math.floor(((1 / final_prob) / bet_config['house_edge']) * 10) / 10)
+    return apply_bet_bonus_to_odds(base_odds, bet_config, reward_multiplier=reward_multiplier)
 
 
 def build_weighted_finish_order(participants):
@@ -621,8 +626,14 @@ def populate_race_participants(race, respect_course_plans=True, allow_rebuild_if
         participant.win_probability = all_powers[index] / total_power
     db.session.flush()
     participants_by_id = {participant.id: participant for participant in participants_list}
+    reward_multiplier = float((get_course_theme(race.scheduled_at) or {}).get('reward_multiplier', 1) or 1)
     for participant in participants_list:
-        participant.odds = calculate_bet_odds(participants_by_id, [participant.id], 'win')
+        participant.odds = calculate_bet_odds(
+            participants_by_id,
+            [participant.id],
+            'win',
+            reward_multiplier=reward_multiplier,
+        )
     if commit:
         db.session.commit()
     return participants_list

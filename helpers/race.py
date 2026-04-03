@@ -53,8 +53,14 @@ def refresh_race_betting_lines(race):
     participants_by_id = {participant.id: participant for participant in participants}
     for participant in participants:
         participant.win_probability = participant.win_probability / total_prob
+    reward_multiplier = float((get_course_theme(race.scheduled_at) or {}).get('reward_multiplier', 1) or 1)
     for participant in participants:
-        participant.odds = calculate_bet_odds(participants_by_id, [participant.id], 'win')
+        participant.odds = calculate_bet_odds(
+            participants_by_id,
+            [participant.id],
+            'win',
+            reward_multiplier=reward_multiplier,
+        )
     db.session.commit()
 
 

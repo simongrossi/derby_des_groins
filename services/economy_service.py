@@ -335,6 +335,47 @@ def get_bet_limits(settings=None):
     }
 
 
+def get_bet_bonus_breakdown(bet_config, reward_multiplier=1.0):
+    selection_count = int((bet_config or {}).get('selection_count', 1) or 1)
+    order_matters = bool((bet_config or {}).get('order_matters', True))
+    sanitized_reward_multiplier = max(1.0, float(reward_multiplier or 1.0))
+
+    components = []
+    total_multiplier = 1.0
+
+    pack_bonus = round(1.0 + max(0, selection_count - 1) * 0.04, 3)
+    if pack_bonus > 1.0:
+        components.append({'label': 'Pack', 'multiplier': pack_bonus})
+        total_multiplier *= pack_bonus
+
+    precision_bonus = 1.08 if order_matters and selection_count > 1 else 1.0
+    if precision_bonus > 1.0:
+        components.append({'label': 'Ordre exact', 'multiplier': precision_bonus})
+        total_multiplier *= precision_bonus
+
+    event_bonus = round(1.0 + min(0.2, (sanitized_reward_multiplier - 1.0) * 0.05), 3)
+    if event_bonus > 1.0:
+        components.append({'label': 'Événement', 'multiplier': event_bonus})
+        total_multiplier *= event_bonus
+
+    return {
+        'components': components,
+        'total_multiplier': round(total_multiplier, 3),
+    }
+
+
+def apply_bet_bonus_to_odds(raw_odds, bet_config, reward_multiplier=1.0):
+    odds = max(0.0, float(raw_odds or 0.0))
+    if odds <= 0:
+        return 0.0
+    bonus_multiplier = get_bet_bonus_breakdown(
+        bet_config,
+        reward_multiplier=reward_multiplier,
+    )['total_multiplier']
+    boosted_odds = odds * bonus_multiplier
+    return max(1.1, math.floor(boosted_odds * 10) / 10)
+
+
 def get_race_reward_settings(settings=None):
     economy = settings or get_economy_settings()
     return {
@@ -725,12 +766,16 @@ def _calculate_equal_field_ticket_metrics(bet_key, field_size, amount, settings)
     final_prob = min(probability * multiplier, 0.99)
     if final_prob <= 0:
         return None
-    raw_odds = max(1.1, math.floor(((1 / final_prob) / bet_config['house_edge']) * 10) / 10)
+    base_odds = max(1.1, math.floor(((1 / final_prob) / bet_config['house_edge']) * 10) / 10)
+    bonus_breakdown = get_bet_bonus_breakdown(bet_config, reward_multiplier=1.0)
+    raw_odds = apply_bet_bonus_to_odds(base_odds, bet_config, reward_multiplier=1.0)
     effective_odds = get_effective_bet_odds(raw_odds, amount, settings=settings)
     expected_return_pct = round(((final_prob * effective_odds) - 1.0) * 100, 1)
     return {
         'probability': final_prob,
+        'base_odds': base_odds,
         'raw_odds': raw_odds,
+        'bonus_multiplier': bonus_breakdown['total_multiplier'],
         'effective_odds': effective_odds,
         'expected_return_pct': expected_return_pct,
         'payout': round(amount * effective_odds, 2),

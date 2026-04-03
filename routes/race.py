@@ -175,8 +175,18 @@ def paris():
             )
 
     if next_race:
-        participants = Participant.query.filter_by(race_id=next_race.id).order_by(Participant.odds).all()
         next_race_theme = get_course_theme(next_race.scheduled_at)
+        participants = Participant.query.filter_by(race_id=next_race.id).all()
+        reward_multiplier = float((next_race_theme or {}).get('reward_multiplier', 1) or 1)
+        participants_by_id = {participant.id: participant for participant in participants}
+        for participant in participants:
+            participant.odds = calculate_bet_odds(
+                participants_by_id,
+                [participant.id],
+                'win',
+                reward_multiplier=reward_multiplier,
+            )
+        participants = sorted(participants, key=lambda participant: participant.odds or 999.0)
         # Vérifier si un cochon du joueur participe
         if user and pigs:
             user_pig_ids = {pig.id for pig in pigs}
@@ -313,7 +323,13 @@ def place_bet():
             flash(f"Tu as déjà atteint la limite de {max_bets} ticket(s) sur cette course.", "warning")
         return redirect(url_for('race.paris'))
 
-    raw_odds = calculate_bet_odds(participants_by_id, selection_ids, bet_type)
+    reward_multiplier = float((get_course_theme(race.scheduled_at) or {}).get('reward_multiplier', 1) or 1)
+    raw_odds = calculate_bet_odds(
+        participants_by_id,
+        selection_ids,
+        bet_type,
+        reward_multiplier=reward_multiplier,
+    )
     if raw_odds <= 0:
         flash("Impossible de calculer la cote de ce ticket.", "error")
         return redirect(url_for('race.paris'))

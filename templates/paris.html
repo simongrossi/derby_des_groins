@@ -59,6 +59,46 @@
         .bet-type-btn:hover:not(:disabled) { background:rgba(255,232,240,.09); border-color:rgba(255, 205, 226, .22); transform:translateY(-1px); }
         .bet-type-btn.active { background:linear-gradient(135deg,rgba(244,114,182,.18),rgba(251,113,133,.15)); border-color:rgba(244,114,182,.38); }
         .bet-type-btn:disabled { opacity:.45; cursor:not-allowed; }
+        .builder-option-btn {
+            display:inline-flex;
+            align-items:center;
+            justify-content:center;
+            gap:.45rem;
+            border-radius:999px;
+            border:1px solid rgba(255,205,226,.16);
+            background:rgba(255,244,247,.05);
+            color:rgba(255,255,255,.78);
+            padding:.6rem .9rem;
+            font-size:.8rem;
+            font-weight:800;
+            transition:all .18s ease;
+        }
+        .builder-option-btn:hover:not(:disabled) {
+            background:rgba(255,232,240,.1);
+            border-color:rgba(255,205,226,.3);
+        }
+        .builder-option-btn.active {
+            background:linear-gradient(135deg,rgba(244,114,182,.24),rgba(251,113,133,.16));
+            color:#fff;
+            border-color:rgba(244,114,182,.46);
+            box-shadow:0 10px 24px rgba(244,114,182,.16);
+        }
+        .builder-option-btn:disabled {
+            opacity:.4;
+            cursor:not-allowed;
+        }
+        .builder-metric {
+            border-radius:1rem;
+            border:1px solid rgba(255,205,226,.12);
+            background:rgba(255,244,247,.05);
+            padding:.85rem .9rem;
+        }
+        .formula-card {
+            border-radius:1rem;
+            border:1px solid rgba(255,205,226,.12);
+            background:rgba(255,244,247,.04);
+            padding:1rem;
+        }
         .odds-badge { border-radius:.5rem; padding:.25rem .75rem; font-weight:800; font-size:1rem; }
         .odds-low { border:1px solid #16a34a; color:#86efac; background:linear-gradient(135deg,#052e16,#14532d); }
         .odds-mid { border:1px solid #d97706; color:#fcd34d; background:linear-gradient(135deg,#1c1007,#451a03); }
@@ -67,11 +107,15 @@
             font-family:'Lilita One', cursive;
             background:linear-gradient(135deg,#f472b6,#fb7185,#fdba74);
             -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;
-            font-size:clamp(3.2rem, 6vw, 4.6rem);
+            font-size:clamp(2.9rem, 5vw, 4.1rem);
             letter-spacing:-0.05em;
             white-space:nowrap;
-            max-width:100%;
-            overflow:hidden;
+            width:8ch;
+            min-width:8ch;
+            max-width:8ch;
+            overflow:clip;
+            font-variant-numeric:tabular-nums;
+            font-feature-settings:"tnum";
         }
         .pig-name-clamp {
             display:-webkit-box;
@@ -243,7 +287,7 @@
                         <a href="/regles#tickets-paris" class="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-black uppercase tracking-[0.14em] text-white/60 hover:text-white transition-colors">🎟️ Formats de tickets</a>
                     </div>
                 </div>
-                <div class="soft px-4 py-4 lg:px-5 lg:py-4 min-w-0 w-full lg:min-w-[17rem] lg:max-w-[19rem] overflow-hidden">
+                <div class="soft px-4 py-4 lg:px-5 lg:py-4 min-w-0 w-full lg:min-w-[18rem] lg:max-w-[20rem] overflow-hidden shrink-0">
                     <p class="text-white/40 text-xs uppercase tracking-[0.22em] font-extrabold">Depart dans</p>
                     <div id="countdown-display" class="leading-none mt-1">--:--:--</div>
                     <div id="race-running-msg" class="hidden mt-2 text-yellow-300 font-bold animate-pulse text-sm">La course est en cours...</div>
@@ -411,33 +455,52 @@
                     <input type="hidden" name="race_id" value="{{ next_race.id }}">
                     <input type="hidden" name="bet_type" id="bet-type-input" value="win">
                     <input type="hidden" name="selection_order" id="selection-order-input" value="">
-                    <div class="mb-4">
-                        <p class="text-white/60 text-sm font-bold mb-2">Format du ticket</p>
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 max-h-[20rem] overflow-y-auto pr-2" id="bet-type-switcher" style="scrollbar-width: thin; scrollbar-color: rgba(244,114,182,0.4) transparent;">
-                            {% for bet_key, bet_meta in bet_types.items() %}
-                            {% set needs_pig = bet_meta.selection_count >= 3 and not headline_status.participates %}
-                            {% set disabled = participants|length < bet_meta.selection_count or needs_pig %}
-                            <button type="button" class="bet-type-btn flex flex-col justify-between text-left min-h-[9.1rem] {% if bet_key == 'win' %}active{% endif %}" data-bet-type-btn data-bet-type="{{ bet_key }}" data-selection-count="{{ bet_meta.selection_count }}" {% if disabled %}disabled{% endif %}>
-                                <div>
-                                    <div class="flex items-start justify-between gap-1 mb-1">
-                                        <p class="text-white font-extrabold text-sm">{{ bet_meta.icon }} {{ bet_meta.label }}</p>
-                                        <span class="text-[9px] font-black uppercase bg-white/10 px-1.5 py-0.5 rounded-full text-white/50 shrink-0">
-                                            {{ bet_meta.selection_count }} 🐷
-                                        </span>
-                                    </div>
-                                    <p class="text-white/45 text-[11px] leading-snug font-semibold mt-1">{{ bet_meta.description }}</p>
-                                </div>
-                                {% if needs_pig %}
-                                <div class="mt-2 text-[9px] font-bold text-red-400/70 uppercase tracking-wider text-right">🔒 Ton cochon doit participer</div>
-                                {% elif bet_meta.order_matters %}
-                                <div class="mt-2 text-[9px] font-bold text-rose-300/60 uppercase tracking-wider text-right">Ordre exact</div>
-                                {% else %}
-                                <div class="mt-2 text-[9px] font-bold text-amber-300/60 uppercase tracking-wider text-right">Desordre accepte</div>
-                                {% endif %}
-                            </button>
-                            {% endfor %}
+                    <div class="soft p-3.5 mb-4">
+                        <div class="flex flex-wrap items-center justify-between gap-3">
+                            <div>
+                                <p class="text-white/60 text-[11px] font-black uppercase tracking-[0.18em]">Format du ticket</p>
+                                <p class="text-white text-sm font-bold mt-1">Active les options, puis sélectionne tes cochons.</p>
+                            </div>
+                            <span id="bet-builder-live-badge" class="pill bg-white/8 text-white/60 border border-white/10 text-[10px]">Ticket auto</span>
                         </div>
-                        <p id="bet-type-help" class="text-white/40 text-xs font-bold mt-3">Choisis le type de ticket, puis clique sur les cochons dans l'ordre d'arrivee.</p>
+                        <div class="space-y-3 mt-3">
+                            <div>
+                                <p class="text-white/35 text-[10px] font-black uppercase tracking-[0.18em] mb-2">1. Nombre de cochons</p>
+                                <div id="bet-builder-counts" class="flex flex-wrap gap-2"></div>
+                            </div>
+                            <div>
+                                <p class="text-white/35 text-[10px] font-black uppercase tracking-[0.18em] mb-2">2. Zone d'arrivée</p>
+                                <div id="bet-builder-goals" class="flex flex-wrap gap-2"></div>
+                            </div>
+                            <div>
+                                <p class="text-white/35 text-[10px] font-black uppercase tracking-[0.18em] mb-2">3. Validation</p>
+                                <div id="bet-builder-orders" class="flex flex-wrap gap-2"></div>
+                            </div>
+                        </div>
+                        <div class="rounded-2xl border border-white/10 bg-white/5 px-3.5 py-3 mt-4">
+                            <div class="flex items-start justify-between gap-3">
+                                <div class="min-w-0">
+                                    <p id="bet-builder-title" class="text-white font-extrabold text-sm">🥇 Groin Jackpot</p>
+                                    <p id="bet-builder-desc" class="text-white/45 text-[11px] font-semibold mt-1">Choisis un cochon. S'il termine 1er, tu gagnes le pactole de bacon.</p>
+                                </div>
+                                <span id="bet-builder-goal-badge" class="pill bg-white/8 text-white/60 border border-white/10 text-[10px] shrink-0">Top 1 · ordre</span>
+                            </div>
+                            <div class="grid grid-cols-3 gap-2 mt-3">
+                                <div class="builder-metric">
+                                    <p class="text-white/35 text-[10px] font-black uppercase tracking-[0.14em]">Coef base</p>
+                                    <p id="bet-builder-base-odds" class="font-title text-[1.35rem] leading-none text-white mt-1">--</p>
+                                </div>
+                                <div class="builder-metric">
+                                    <p class="text-white/35 text-[10px] font-black uppercase tracking-[0.14em]">Bonus</p>
+                                    <p id="bet-builder-bonus" class="font-title text-[1.35rem] leading-none text-cyan-200 mt-1">x1.00</p>
+                                </div>
+                                <div class="builder-metric">
+                                    <p class="text-white/35 text-[10px] font-black uppercase tracking-[0.14em]">Coef ticket</p>
+                                    <p id="bet-builder-final-odds" class="font-title text-[1.35rem] leading-none text-yellow-300 mt-1">--</p>
+                                </div>
+                            </div>
+                            <p id="bet-builder-bonus-note" class="text-white/35 text-[11px] font-semibold mt-3">Les bonus de complexité et d'événement s'appliquent au coefficient final.</p>
+                        </div>
                     </div>
                     <div class="mb-4 p-3.5 rounded-xl border border-white/10 bg-white/5" id="selected-pig-display">
                         <p class="text-white/40 text-sm font-semibold">Choisis un ticket, puis clique sur les partants dans l'ordre d'arrivee attendu.</p>
@@ -564,6 +627,43 @@
             </div>
         </article>
     </section>
+
+    <section class="card p-5 lg:p-6">
+        <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
+            <div>
+                <p class="text-white/40 text-xs uppercase tracking-[0.22em] font-extrabold">📚 Aide-mémoire</p>
+                <h2 class="font-title text-2xl text-white mt-1">Formules de paris</h2>
+                <p class="text-white/45 text-sm font-semibold mt-2">Le configurateur ci-dessus sert à jouer vite. Ici, tu retrouves toutes les formules et leurs règles.</p>
+            </div>
+            <p class="text-white/25 text-[11px] font-black uppercase tracking-[0.18em]">Bonus de coefficient inclus</p>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 mt-4">
+            {% for bet_key, bet_meta in bet_types.items() %}
+            {% set needs_pig = bet_meta.selection_count >= 3 %}
+            <article class="formula-card">
+                <div class="flex items-start justify-between gap-3">
+                    <div>
+                        <p class="text-white font-extrabold text-sm">{{ bet_meta.icon }} {{ bet_meta.label }}</p>
+                        <p class="text-white/35 text-[11px] font-black uppercase tracking-[0.16em] mt-1">
+                            {{ bet_meta.selection_count }} cochon{{ 's' if bet_meta.selection_count > 1 else '' }} · Top {{ bet_meta.top_n }} · {{ 'ordre exact' if bet_meta.order_matters else 'désordre accepté' }}
+                        </p>
+                    </div>
+                    <span class="pill bg-cyan-500/10 text-cyan-200 border border-cyan-400/20 text-[10px] shrink-0">
+                        x{{ '%.2f'|format((1 + (0.04 * (bet_meta.selection_count - 1 if bet_meta.selection_count > 1 else 0))) * (1.08 if bet_meta.order_matters and bet_meta.selection_count > 1 else 1.0) * (1 + (0.05 * ((next_race_theme.reward_multiplier if next_race_theme and next_race_theme.reward_multiplier > 1 else 1) - 1)))) }}
+                    </span>
+                </div>
+                <p class="text-white/50 text-sm font-semibold mt-3">{{ bet_meta.description }}</p>
+                <div class="flex flex-wrap gap-2 mt-3">
+                    <span class="pill bg-white/8 text-white/60 border border-white/10 text-[10px]">Top {{ bet_meta.top_n }}</span>
+                    <span class="pill bg-white/8 text-white/60 border border-white/10 text-[10px]">{{ 'Ordre exact' if bet_meta.order_matters else 'Désordre accepté' }}</span>
+                    {% if needs_pig %}
+                    <span class="pill bg-red-500/12 text-red-200 border border-red-400/20 text-[10px]">Ton cochon doit courir</span>
+                    {% endif %}
+                </div>
+            </article>
+            {% endfor %}
+        </div>
+    </section>
 </main>
 
 {% include '_footer.html' %}
@@ -571,6 +671,8 @@
 <script>
 const betTypes = {{ bet_types|tojson }};
 const maxPayoutRace = {{ max_payout_race|tojson }};
+const currentRewardMultiplier = {{ ((next_race_theme.reward_multiplier if next_race_theme else 1) or 1)|tojson }};
+const userHasPigInRace = {{ headline_status.participates|tojson }};
 const participantCards = Array.from(document.querySelectorAll('.pig-card'));
 const participantMap = Object.fromEntries(participantCards.map((card) => {
     const participantId = Number(card.dataset.participantId);
@@ -579,6 +681,17 @@ const participantMap = Object.fromEntries(participantCards.map((card) => {
 const pigGrid = document.getElementById('pig-grid');
 const runnerTableBody = pigGrid?.querySelector('tbody');
 const runnerSortButtons = Array.from(document.querySelectorAll('[data-runner-sort]'));
+const builderCountContainer = document.getElementById('bet-builder-counts');
+const builderGoalContainer = document.getElementById('bet-builder-goals');
+const builderOrderContainer = document.getElementById('bet-builder-orders');
+const builderTitle = document.getElementById('bet-builder-title');
+const builderDesc = document.getElementById('bet-builder-desc');
+const builderGoalBadge = document.getElementById('bet-builder-goal-badge');
+const builderBaseOdds = document.getElementById('bet-builder-base-odds');
+const builderBonus = document.getElementById('bet-builder-bonus');
+const builderFinalOdds = document.getElementById('bet-builder-final-odds');
+const builderBonusNote = document.getElementById('bet-builder-bonus-note');
+const builderLiveBadge = document.getElementById('bet-builder-live-badge');
 const betForm = document.getElementById('bet-form');
 let activeBetType = 'win';
 let selectedOrder = [];
@@ -615,6 +728,50 @@ function getAmountValidationState() {
     }
     return { valid: true, message: null };
 }
+function getBetEntries() {
+    return Object.entries(betTypes).map(([key, meta]) => ({ key, ...meta }));
+}
+function isBetEntryDisabled(entry) {
+    if (!entry) return true;
+    if (participantCards.length < Number(entry.selection_count || 1)) return true;
+    if (Number(entry.selection_count || 1) >= 3 && !userHasPigInRace) return true;
+    return false;
+}
+function getBetBonusBreakdown(betConfig) {
+    const selectionCount = Number(betConfig?.selection_count || 1);
+    const orderMatters = Boolean(betConfig?.order_matters);
+    const components = [];
+    let totalMultiplier = 1.0;
+
+    const packBonus = selectionCount > 1 ? 1 + ((selectionCount - 1) * 0.04) : 1.0;
+    if (packBonus > 1.0) {
+        components.push({ label: 'Pack', multiplier: packBonus });
+        totalMultiplier *= packBonus;
+    }
+
+    const precisionBonus = orderMatters && selectionCount > 1 ? 1.08 : 1.0;
+    if (precisionBonus > 1.0) {
+        components.push({ label: 'Ordre exact', multiplier: precisionBonus });
+        totalMultiplier *= precisionBonus;
+    }
+
+    const eventBonus = 1 + (Math.min(0.2, (Math.max(1, Number(currentRewardMultiplier || 1)) - 1) * 0.05));
+    if (eventBonus > 1.0) {
+        components.push({ label: 'Événement', multiplier: eventBonus });
+        totalMultiplier *= eventBonus;
+    }
+
+    return {
+        components,
+        totalMultiplier: Number(totalMultiplier.toFixed(3)),
+    };
+}
+function applyBetBonusToOdds(baseOdds, betConfig) {
+    const odds = Number(baseOdds || 0);
+    if (odds <= 0) return 0;
+    const boostedOdds = odds * getBetBonusBreakdown(betConfig).totalMultiplier;
+    return Math.max(1.1, Math.floor(boostedOdds * 10) / 10);
+}
 function calculateOrderedProbability(selectionIds) {
     const remainingProbabilities = {}; let remainingTotal = 0;
     Object.values(participantMap).forEach((participant) => { remainingProbabilities[participant.id] = participant.winProbability; remainingTotal += participant.winProbability; });
@@ -628,7 +785,7 @@ function calculateOrderedProbability(selectionIds) {
     }
     return combinedProbability;
 }
-function calculateSelectionOdds() {
+function calculateBaseSelectionOdds() {
     if (selectedOrder.length !== getRequiredSelectionCount()) return 0;
     const betConfig = betTypes[activeBetType];
     const probability = calculateOrderedProbability(selectedOrder);
@@ -650,6 +807,11 @@ function calculateSelectionOdds() {
     if (finalProb <= 0) return 0;
     const edge = betConfig.house_edge || 1.18;
     return Math.max(1.1, Math.floor(((1 / finalProb) / edge) * 10) / 10);
+}
+function calculateSelectionOdds() {
+    const baseOdds = calculateBaseSelectionOdds();
+    if (baseOdds <= 0) return 0;
+    return applyBetBonusToOdds(baseOdds, betTypes[activeBetType]);
 }
 function applyPayoutCap(amount, odds) {
     let payout = amount * odds;
@@ -696,6 +858,101 @@ function sortRunnerRows(key = runnerSortState.key, direction = runnerSortState.d
     runnerSortState = { key, direction };
     updateRunnerSortButtons();
 }
+function getBuilderStateFromActiveBet() {
+    const activeEntry = betTypes[activeBetType] || betTypes.win;
+    return {
+        selectionCount: Number(activeEntry.selection_count || 1),
+        topN: Number(activeEntry.top_n || activeEntry.selection_count || 1),
+        orderMatters: Boolean(activeEntry.order_matters),
+    };
+}
+function findEntryByConfig(selectionCount, topN, orderMatters) {
+    return getBetEntries().find((entry) => (
+        Number(entry.selection_count || 1) === Number(selectionCount)
+        && Number(entry.top_n || entry.selection_count || 1) === Number(topN)
+        && Boolean(entry.order_matters) === Boolean(orderMatters)
+    ));
+}
+function resolveAvailableEntry(selectionCount, topN, orderMatters) {
+    const directMatch = findEntryByConfig(selectionCount, topN, orderMatters);
+    if (directMatch && !isBetEntryDisabled(directMatch)) return directMatch;
+
+    const sameCount = getBetEntries().filter((entry) => (
+        Number(entry.selection_count || 1) === Number(selectionCount)
+        && !isBetEntryDisabled(entry)
+    ));
+    if (!sameCount.length) {
+        return getBetEntries().find((entry) => !isBetEntryDisabled(entry)) || null;
+    }
+
+    const sameGoal = sameCount.filter((entry) => Number(entry.top_n || entry.selection_count || 1) === Number(topN));
+    if (sameGoal.length) {
+        return sameGoal.find((entry) => Boolean(entry.order_matters) === Boolean(orderMatters)) || sameGoal[0];
+    }
+    return sameCount[0];
+}
+function renderBuilderOptions() {
+    if (!builderCountContainer || !builderGoalContainer || !builderOrderContainer) return;
+    const activeState = getBuilderStateFromActiveBet();
+    const entries = getBetEntries();
+    const selectionCounts = [...new Set(entries.map((entry) => Number(entry.selection_count || 1)))].sort((a, b) => a - b);
+
+    builderCountContainer.innerHTML = selectionCounts.map((count) => {
+        const hasEnabled = entries.some((entry) => Number(entry.selection_count || 1) === count && !isBetEntryDisabled(entry));
+        return `<button type="button" class="builder-option-btn ${activeState.selectionCount === count ? 'active' : ''}" data-builder-count="${count}" ${hasEnabled ? '' : 'disabled'}>${count} 🐷</button>`;
+    }).join('');
+
+    const goalOptions = [...new Set(entries
+        .filter((entry) => Number(entry.selection_count || 1) === activeState.selectionCount)
+        .map((entry) => Number(entry.top_n || entry.selection_count || 1))
+    )].sort((a, b) => a - b);
+    builderGoalContainer.innerHTML = goalOptions.map((topN) => {
+        const hasEnabled = entries.some((entry) => (
+            Number(entry.selection_count || 1) === activeState.selectionCount
+            && Number(entry.top_n || entry.selection_count || 1) === topN
+            && !isBetEntryDisabled(entry)
+        ));
+        return `<button type="button" class="builder-option-btn ${activeState.topN === topN ? 'active' : ''}" data-builder-top="${topN}" ${hasEnabled ? '' : 'disabled'}>Top ${topN}</button>`;
+    }).join('');
+
+    const orderOptions = [
+        { value: 'exact', label: 'Ordre exact', bool: true },
+        { value: 'any', label: 'Désordre', bool: false },
+    ];
+    builderOrderContainer.innerHTML = orderOptions.map((option) => {
+        const hasEnabled = entries.some((entry) => (
+            Number(entry.selection_count || 1) === activeState.selectionCount
+            && Number(entry.top_n || entry.selection_count || 1) === activeState.topN
+            && Boolean(entry.order_matters) === option.bool
+            && !isBetEntryDisabled(entry)
+        ));
+        return `<button type="button" class="builder-option-btn ${activeState.orderMatters === option.bool ? 'active' : ''}" data-builder-order="${option.value}" ${hasEnabled ? '' : 'disabled'}>${option.label}</button>`;
+    }).join('');
+}
+function renderBetBuilderSummary() {
+    const activeEntry = betTypes[activeBetType];
+    if (!activeEntry) return;
+    const bonusBreakdown = getBetBonusBreakdown(activeEntry);
+    const baseOdds = calculateBaseSelectionOdds();
+    const finalOdds = calculateSelectionOdds();
+    if (builderTitle) builderTitle.textContent = `${activeEntry.icon} ${activeEntry.label}`;
+    if (builderDesc) builderDesc.textContent = activeEntry.description;
+    if (builderGoalBadge) {
+        builderGoalBadge.textContent = `Top ${activeEntry.top_n} · ${activeEntry.order_matters ? 'ordre' : 'désordre'}`;
+    }
+    if (builderLiveBadge) {
+        builderLiveBadge.textContent = `${activeEntry.selection_count} 🐷 · ${activeEntry.order_matters ? 'exact' : 'souple'}`;
+    }
+    if (builderBaseOdds) builderBaseOdds.textContent = baseOdds > 0 ? `x${baseOdds.toFixed(baseOdds >= 10 ? 1 : 2)}` : '--';
+    if (builderBonus) builderBonus.textContent = `x${bonusBreakdown.totalMultiplier.toFixed(2)}`;
+    if (builderFinalOdds) builderFinalOdds.textContent = finalOdds > 0 ? `x${finalOdds.toFixed(finalOdds >= 10 ? 1 : 2)}` : '--';
+    if (builderBonusNote) {
+        const bonusLabels = bonusBreakdown.components.length
+            ? bonusBreakdown.components.map((item) => `${item.label} x${item.multiplier.toFixed(2)}`).join(' · ')
+            : 'Pas de bonus additionnel sur cette formule.';
+        builderBonusNote.textContent = bonusLabels;
+    }
+}
 function renderSelectionSummary() {
     const display = document.getElementById('selected-pig-display');
     const selectionInput = document.getElementById('selection-order-input');
@@ -741,15 +998,14 @@ function renderSelectionSummary() {
     if (runnerSortState.key === 'selection') {
         sortRunnerRows('selection', runnerSortState.direction);
     }
+    renderBetBuilderSummary();
     updatePotentialWin();
 }
 function setBetType(nextBetType) {
     if (!betTypes[nextBetType]) return;
     activeBetType = nextBetType;
     selectedOrder = [];
-    document.querySelectorAll('[data-bet-type-btn]').forEach((button) => button.classList.toggle('active', button.dataset.betType === nextBetType));
-    const help = document.getElementById('bet-type-help');
-    if (help) help.textContent = `${betTypes[nextBetType].description} Clique sur les cochons dans l'ordre d'arrivee prevu.`;
+    renderBuilderOptions();
     renderSelectionSummary();
 }
 function toggleParticipantSelection(participantId) {
@@ -795,6 +1051,46 @@ if (pigGrid) {
         toggleParticipantSelection(Number(card.dataset.participantId));
     });
 }
+if (builderCountContainer) {
+    builderCountContainer.addEventListener('click', (event) => {
+        const button = event.target.closest('[data-builder-count]');
+        if (!button || button.disabled) return;
+        const currentState = getBuilderStateFromActiveBet();
+        const nextEntry = resolveAvailableEntry(
+            Number(button.dataset.builderCount),
+            currentState.topN,
+            currentState.orderMatters,
+        );
+        if (nextEntry) setBetType(nextEntry.key);
+    });
+}
+if (builderGoalContainer) {
+    builderGoalContainer.addEventListener('click', (event) => {
+        const button = event.target.closest('[data-builder-top]');
+        if (!button || button.disabled) return;
+        const currentState = getBuilderStateFromActiveBet();
+        const nextEntry = resolveAvailableEntry(
+            currentState.selectionCount,
+            Number(button.dataset.builderTop),
+            currentState.orderMatters,
+        );
+        if (nextEntry) setBetType(nextEntry.key);
+    });
+}
+if (builderOrderContainer) {
+    builderOrderContainer.addEventListener('click', (event) => {
+        const button = event.target.closest('[data-builder-order]');
+        if (!button || button.disabled) return;
+        const currentState = getBuilderStateFromActiveBet();
+        const wantsExact = button.dataset.builderOrder === 'exact';
+        const nextEntry = resolveAvailableEntry(
+            currentState.selectionCount,
+            currentState.topN,
+            wantsExact,
+        );
+        if (nextEntry) setBetType(nextEntry.key);
+    });
+}
 runnerSortButtons.forEach((button) => {
     button.addEventListener('click', () => {
         const key = button.dataset.runnerSort;
@@ -802,7 +1098,6 @@ runnerSortButtons.forEach((button) => {
         sortRunnerRows(key, direction);
     });
 });
-document.querySelectorAll('[data-bet-type-btn]').forEach((button) => button.addEventListener('click', () => { if (!button.disabled) setBetType(button.dataset.betType); }));
 if (betForm) {
     betForm.addEventListener('submit', (event) => {
         const selectionState = getSelectionValidationState();
@@ -821,6 +1116,11 @@ if (betForm) {
         }
     });
 }
+if (isBetEntryDisabled(betTypes[activeBetType] ? { key: activeBetType, ...betTypes[activeBetType] } : null)) {
+    const firstAvailableEntry = getBetEntries().find((entry) => !isBetEntryDisabled(entry));
+    if (firstAvailableEntry) activeBetType = firstAvailableEntry.key;
+}
+renderBuilderOptions();
 sortRunnerRows('probability', 'desc');
 renderSelectionSummary();
 
