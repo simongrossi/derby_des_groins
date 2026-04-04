@@ -50,6 +50,29 @@ PRELOADED_PIG_NAMES = [
     "Justin Bridou",
 ]
 
+PENDU_FREE_PLAYS_PER_DAY = 3
+PENDU_EXTRA_PLAY_COST = 5
+TRAIN_DAILY_CAP = 10
+# Progressive tax on credits (anti-whale)
+TAX_THRESHOLD_1 = 2000.0
+TAX_RATE_1 = 0.20
+TAX_THRESHOLD_2 = 5000.0
+TAX_RATE_2 = 0.50
+# Reason codes exempt from progressive tax (welfare/base income)
+TAX_EXEMPT_REASON_CODES = frozenset({
+    'daily_reward', 'emergency_relief', 'challenge_payout',
+    'solidarity_relief', 'breed_refund',
+})
+# Casino daily win cap (net credits from casino per day)
+CASINO_REASON_CODES = frozenset({
+    'blackjack_win', 'blackjack_blackjack', 'blackjack_push',
+    'poker_win', 'poker_push',
+})
+CASINO_DAILY_WIN_CAP = 500.0
+# XP/stat decay for school: sessions 1-2 = 100%, session 3 = 50%, sessions 4+ = 10%
+SCHOOL_XP_DECAY_THRESHOLDS = [(2, 1.0), (3, 0.5)]
+SCHOOL_XP_DECAY_FLOOR = 0.1
+
 COCHON_PENDU_WORDS = [
     'PURIN',
     'TRUFFES',

@@ -330,6 +330,9 @@ def run_race_if_needed():
                 pig.xp += xp_gained
                 if p.finish_position == 1:
                     pig.races_won += 1
+                    comeback_active = bool(pig_comeback_bonus_flags.get(pig.id))
+                    win_stat_multiplier = progression.race_winner_stat_gain_multiplier * (2.0 if comeback_active else 1.0)
+
                     if (pig_start_freshness.get(pig.id, 100.0) < 80.0) and owner:
                         Trophy.award(
                             user_id=owner.id,
@@ -339,7 +342,9 @@ def run_race_if_needed():
                             description="Gagner une course en partant avec moins de 80% de fraicheur.",
                             pig_name=pig.name,
                         )
-                    if pig_comeback_bonus_flags.get(pig.id) and owner:
+                    if comeback_active and owner:
+                        xp_gained *= 2
+                        pig.happiness = min(100, pig.happiness + 10)
                         Trophy.award(
                             user_id=owner.id,
                             code='coup_de_collier',
@@ -350,11 +355,11 @@ def run_race_if_needed():
                         )
                     pig.vitesse = min(
                         100,
-                        pig.vitesse + (random.uniform(0.5, 1.5) * progression.race_winner_stat_gain_multiplier),
+                        pig.vitesse + (random.uniform(0.5, 1.5) * win_stat_multiplier),
                     )
                     pig.endurance = min(
                         100,
-                        pig.endurance + (random.uniform(0.5, 1.5) * progression.race_winner_stat_gain_multiplier),
+                        pig.endurance + (random.uniform(0.5, 1.5) * win_stat_multiplier),
                     )
                     pig.moral = min(100, pig.moral + 2)
                 elif p.finish_position <= 3:

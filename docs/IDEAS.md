@@ -13,9 +13,9 @@
   - ✅ durée de vie des cochons divisée par 2,
   - ✅ prime de pointage journalière (15 🪙),
   - ✅ moteur de course : récupération fatigue et aspiration nerfées,
-  - fatigue après sorties consécutives (à explorer),
-  - rendements décroissants à l'entraînement (à explorer),
-  - buffs de comeback pour les cochons frais ou les joueurs moins actifs.
+    - ✅ fatigue après sorties consécutives : cap quotidien entraînement (10 sessions/jour),
+  - ✅ rendements décroissants à l'école (sessions 1-2 = 100%, session 3 = 50%, 4+ = 10%),
+  - ✅ buffs de comeback pour les cochons frais ou les joueurs moins actifs (seuil 12h, ×2 XP/stats sur victoire).
 - Formaliser un **Hall of Fame** saisonnier :
   - vainqueur `Saint Grouin`,
   - meilleurs éleveurs,
@@ -209,7 +209,7 @@ L'excédent prélevé alimente une **Caisse de Solidarité** redistribuée aux j
 
 ### Groupe A — Anti-Farm
 
-#### A1. Rendement décroissant à l'école *(priorité HAUTE)*
+#### ✅ A1. Rendement décroissant à l'école *(implémenté avril 2026)*
 
 **Description :** Appliquer un multiplicateur XP dégressif par jour calendaire sur le cochon actif :
 - Sessions 1–2 : `school_xp_multiplier = 1.0` (100%)
@@ -258,7 +258,7 @@ Le compteur repart à zéro à minuit UTC.
 
 ### Groupe B — Rested XP / Aide Casuals
 
-#### B1. Bonus "Cochon Reposé" (Rested XP) *(priorité HAUTE)*
+#### ✅ B1. Bonus "Cochon Reposé" (Rested XP) *(implémenté avril 2026)*
 
 **Description :** Si aucune interaction avec le cochon depuis ≥ 12h, passer `pig.comeback_bonus_ready = True`. À la prochaine **victoire de course** : ×2 XP + ×2 gains stats + ×2 bonheur. Le flag se consomme en une fois.
 
@@ -301,7 +301,7 @@ Le champ `comeback_bonus_ready` existe déjà dans `models.py` — il suffit de 
 
 ### Groupe C — Money Sinks (vider les poches des riches)
 
-#### C1. Taxe progressive sur les gains *(priorité HAUTE)*
+#### ✅ C1. Taxe progressive sur les gains *(implémentée avril 2026)*
 
 **Description :** À chaque crédit de BitGroins (via `credit_user_balance` dans `finance_service.py`), vérifier le solde du joueur :
 - Solde > 2 000 → gain taxé à 20%
@@ -318,7 +318,7 @@ Les BitGroins prélevés sont versés dans une **Caisse de Solidarité** (solde 
 
 ---
 
-#### C2. Caisse de Solidarité IA *(priorité HAUTE — liée à C1)*
+#### ✅ C2. Caisse de Solidarité IA *(implémentée avril 2026 — liée à C1)*
 
 **Description :** Cagnotte alimentée par la taxe C1. Logique automatique :
 - Si `user.balance < 50 BitGroins` : attribuer un **"Ticket Bacon d'Or"** (inscription gratuite à la prochaine course)
@@ -387,10 +387,10 @@ Les BitGroins prélevés sont versés dans une **Caisse de Solidarité** (solde 
 
 | Priorité | Idée | Effort | Impact équité |
 |----------|------|--------|---------------|
-| 🔴 HAUTE | A1. Rendement décroissant école | Faible | Très fort (×24 → ×3.3) |
-| 🔴 HAUTE | B1. Rested XP (comeback_bonus_ready) | Très faible | Fort |
-| 🔴 HAUTE | C1. Taxe progressive | Moyen | Fort |
-| 🔴 HAUTE | C2. Caisse Solidarité IA | Moyen | Fort |
+| ✅ FAIT | A1. Rendement décroissant école | Faible | Très fort (×24 → ×3.3) |
+| ✅ FAIT | B1. Rested XP (comeback_bonus_ready) | Très faible | Fort |
+| ✅ FAIT | C1. Taxe progressive | Moyen | Fort |
+| ✅ FAIT | C2. Caisse Solidarité IA | Moyen | Fort |
 | 🟡 MOYENNE | A2. Surmenage / blessure exponentiel | Moyen | Moyen |
 | 🟡 MOYENNE | A3. Dette de carrière (max_races) | Faible | Moyen |
 | 🟡 MOYENNE | C3. High Roller weekend | Moyen | Moyen |
@@ -497,22 +497,14 @@ Comparaison : gagner toutes ses courses à la 1ère place avec 4 cochons = **1 2
 
 #### Problèmes identifiés par criticité
 
-**🔴 CRITIQUE — Cochon Pendu sans limite de parties**
-- Gain : 50 BG/victoire, aucun cooldown, aucune limite quotidienne
-- Un joueur habile peut générer 1 000+ BG/heure
-- Rend toutes les autres mécaniques économiques obsolètes
-- Fix suggéré : 3 parties gratuites/jour, puis coût 5 BG/partie supplémentaire (similar aux Truffes)
+**✅ CORRIGÉ — Cochon Pendu (avril 2026)**
+- 3 parties gratuites/jour, puis 5 BG/partie supplémentaire.
 
-**🔴 CRITIQUE — Entraînement sans cooldown ni cap quotidien**
-- Stat gains illimités par jour si refeed en boucle
-- Le coût en nourriture est le seul frein, mais le Cochon Pendu supprime ce frein
-- À 40 sprints/jour : +24 VIT (un casual en fera +1.2 en une semaine → ×140 sur 30 jours)
-- Fix suggéré : cap à 5 entraînements/jour par type, ou cooldown de 20 min entre entraînements
+**✅ CORRIGÉ — Entraînement sans cap quotidien (avril 2026)**
+- Cap de 10 sessions/jour par cochon (toutes disciplines). Alerte visuelle sous les 3 sessions restantes.
 
-**🟡 IMPORTANT — Blackjack/Poker sans limite**
-- Permet en théorie d'accumuler des BitGroins illimités si le joueur est bon
-- L'edge de la maison doit être vérifiée ; si le jeu est équitable, la variance seule ne protège pas
-- Fix suggéré : limite quotidienne de mises totales (ex. 500 BG/jour max de gains nets)
+**✅ CORRIGÉ — Blackjack/Poker (avril 2026)**
+- Plafond de 500 BG de gains nets journaliers. Au-delà, les crédits casino sont suspendus jusqu'au lendemain.
 
 **🟡 IMPORTANT — Agenda GROSMOP : 100 BG/jour garanti**
 - 2 parties, 50 BG chacune, gagnable à chaque fois si bon réflexes
@@ -530,10 +522,10 @@ Comparaison : gagner toutes ses courses à la 1ère place avec 4 cochons = **1 2
 
 ---
 
-### Recommandations correctives (ordre de priorité)
+### ✅ Corrections appliquées (avril 2026)
 
-| # | Problème | Fix minimal | Fichiers |
+| # | Problème | Fix appliqué | Fichiers |
 |---|----------|-------------|---------|
-| 1 | Cochon Pendu illimité | Max 3 parties gratuites/jour, puis coût croissant | `routes/cochon_pendu.py`, `data.py` |
-| 2 | Entraînement sans cap | Cap 5 sessions/jour par type d'entraînement | `routes/pig.py`, `models.py` (champ `daily_train_count`), `data.py` |
-| 3 | Blackjack/Poker sans limite | Plafond de gains nets journaliers (500 BG) | `routes/blackjack.py`, `routes/poker.py`, `services/finance_service.py` |
+| 1 | Cochon Pendu illimité | 3 parties gratuites/jour, puis 5 BG/partie | `routes/cochon_pendu.py`, `models.py`, `data.py` |
+| 2 | Entraînement sans cap | Cap 10 sessions/jour par cochon | `routes/pig.py`, `models.py` (`daily_train_count`), `data.py` |
+| 3 | Blackjack/Poker sans limite | Plafond 500 BG de gains nets journaliers | `services/finance_service.py`, `models.py` (`daily_casino_wins`) |

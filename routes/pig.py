@@ -5,7 +5,7 @@ import random
 from extensions import db, limiter
 from models import User, Pig, PigAvatar
 from data import (
-    SCHOOL_COOLDOWN_MINUTES,
+    SCHOOL_COOLDOWN_MINUTES, TRAIN_DAILY_CAP,
     PIG_EMOJIS, PIG_ORIGINS, STAT_LABELS, STAT_DESCRIPTIONS, RARITIES,
     OFFICE_SNACKS, SNACK_SHARE_DAILY_LIMIT, PIG_TYPING_WORDS,
 )
@@ -234,6 +234,16 @@ def train():
     if not pig.can_train:
         flash("Ton cochon est blessé. Passe d'abord par le vétérinaire.", "warning")
         return redirect(url_for('api.veterinaire', pig_id=pig.id))
+
+    from datetime import date as date_type
+    today = date_type.today()
+    if pig.last_train_date != today:
+        pig.daily_train_count = 0
+        pig.last_train_date = today
+    if (pig.daily_train_count or 0) >= TRAIN_DAILY_CAP:
+        flash(f"Ton cochon a atteint sa limite d'entraînement pour aujourd'hui ({TRAIN_DAILY_CAP} sessions). Reviens demain !", "warning")
+        return redirect(url_for('pig.mon_cochon'))
+
     trainings = get_trainings_dict()
     training_key = request.form.get('training')
     if training_key not in trainings:
@@ -249,8 +259,12 @@ def train():
         flash("Ton cochon n'est pas assez heureux !", "error")
         return redirect(url_for('pig.mon_cochon'))
     pig.train(training)
+    pig.daily_train_count = (pig.daily_train_count or 0) + 1
+    pig.last_train_date = today
     db.session.commit()
-    flash(f"{training['emoji']} {training['name']} terminé !", "success")
+    remaining = max(0, TRAIN_DAILY_CAP - pig.daily_train_count)
+    suffix = f" ({remaining} session{'s' if remaining != 1 else ''} restante{'s' if remaining != 1 else ''} aujourd'hui)" if remaining < 3 else ""
+    flash(f"{training['emoji']} {training['name']} terminé !{suffix}", "success")
     return redirect(url_for('pig.mon_cochon'))
 
 
@@ -299,6 +313,7 @@ def school():
         return redirect(url_for('pig.mon_cochon'))
 
     selected_answer = answers[answer_idx]
+    decay_before = pig._school_decay_multiplier()
     category = pig.study(lesson, correct=selected_answer['correct'])
     if category == 'success':
         feedback_prefix = "Cours valide avec mention groin-tres-bien."
@@ -306,7 +321,11 @@ def school():
         feedback_prefix = "Le cours etait plus complique que prevu."
 
     db.session.commit()
-    flash(f"{lesson['emoji']} {lesson['name']} - {feedback_prefix} {selected_answer['feedback']}", category)
+    decay_suffix = ""
+    if decay_before < 1.0:
+        pct = int(decay_before * 100)
+        decay_suffix = f" (rendement école réduit à {pct}% aujourd'hui)"
+    flash(f"{lesson['emoji']} {lesson['name']} - {feedback_prefix} {selected_answer['feedback']}{decay_suffix}", category)
     return redirect(url_for('pig.mon_cochon'))
 
 
