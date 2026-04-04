@@ -5,11 +5,13 @@ Liste des fonctionnalités et idées déjà implémentées dans le projet.
 > Note: pour les règles réellement actives et les réglages joueurs à jour, la référence n'est plus ce fichier mais [docs/regles_du_jeu.md](/D:/Programmation/derby_des_groins/docs/regles_du_jeu.md) et la page `/regles`.
 
 ## Architecture et découplage
-- **Découplage critique des modèles** : `models.py` a été allégé pour redevenir un fichier majoritairement déclaratif (colonnes, relations, propriétés simples).
+- **Découplage critique des modèles** : les modèles SQLAlchemy ont été découpés dans un package `models/` par domaine (`user.py`, `pig.py`, `race.py`, etc.) avec un `models/__init__.py` de compatibilité.
 - **Services métier extraits** : la logique de `User.pay()` / `User.earn()` / prime journalière vit désormais dans `services/finance_service.py`, et les actions `Pig.feed()` / `Pig.train()` / `Pig.study()` / vitals / mort / retraite dans `services/pig_service.py`.
 - **Exceptions métier partagées** : un nouveau fichier `exceptions.py` centralise les erreurs métier comme `InsufficientFundsError`, `PigTiredError`, `UserNotFoundError` et `PigNotFoundError`.
 - **Routes rebranchées** : les blueprints et helpers appellent maintenant explicitement les services, ce qui supprime les imports locaux dans les modèles et réduit les risques de dépendances circulaires.
 - **Inventaire de céréales** : nouveau modèle `UserCerealInventory` pour séparer l'achat des grains (Bourse) de leur consommation (Mon Cochon).
+- **Factory Flask nettoyée** : `app.py` s'appuie désormais sur `config/app_config.py` pour la configuration d'environnement, et les seeders/commandes CLI vivent dans `cli/seeders.py`.
+- **Service de paris dédié** : la création des tickets PMU est maintenant centralisée dans `services/bet_service.py`, avec une route `/bet` allégée.
 
 ## Gestion des Courses
 - **Gestion des courses vides / sous-peuplées** : Mise en place d'une règle configurable (`min_real_participants`) pour remplir automatiquement les courses avec des bots ou les annuler.

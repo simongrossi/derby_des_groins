@@ -6,6 +6,7 @@ import random
 
 from sqlalchemy import func
 
+from config.game_rules import RACE_PLANNING_RULES
 from data import (
     JOURS_FR, PIGS,
     PIG_COURSE_SEGMENT_TYPES,
@@ -485,7 +486,7 @@ def plan_pig_for_race(user_id, pig_id, scheduled_at_raw, strategy_profile):
     except ValueError as exc:
         raise InvalidRaceSlotError("Creneau de course invalide.") from exc
 
-    if scheduled_at <= datetime.now() + timedelta(seconds=30):
+    if scheduled_at <= datetime.now() + timedelta(seconds=RACE_PLANNING_RULES.lock_window_seconds):
         raise RaceLockedError("Cette course est trop proche pour modifier les inscriptions.")
 
     open_race = _get_open_race_for_slot(scheduled_at)
@@ -595,7 +596,11 @@ def populate_race_participants(race, respect_course_plans=True, allow_rebuild_if
         all_powers.append(power)
         owner = User.query.get(pig.user_id)
         plan = CoursePlan.query.filter_by(pig_id=pig.id, scheduled_at=race.scheduled_at).first()
-        plan_profile = plan.strategy_segments if plan else {'phase_1': 35, 'phase_2': 50, 'phase_3': 80}
+        plan_profile = (
+            plan.strategy_segments
+            if plan
+            else RACE_PLANNING_RULES.default_strategy_profile()
+        )
         participant = Participant(
             race_id=race.id,
             name=pig.name,
@@ -686,10 +691,10 @@ def build_course_schedule(user, pigs, days=30):
         slot_actual_pig_ids = {participant.pig_id for participant in slot_participants if participant.pig_id}
         seconds_to_start = (slot_time - now).total_seconds()
         bet_count = bet_counts_by_race.get(race.id, 0) if race else 0
-        slot_locked = seconds_to_start < 30 or bet_count > 0
+        slot_locked = seconds_to_start < RACE_PLANNING_RULES.lock_window_seconds or bet_count > 0
 
         lock_reason = None
-        if seconds_to_start < 30:
+        if seconds_to_start < RACE_PLANNING_RULES.lock_window_seconds:
             lock_reason = "Départ imminent"
         elif bet_count > 0:
             lock_reason = "Paris déjà placés"
@@ -701,7 +706,11 @@ def build_course_schedule(user, pigs, days=30):
         for pig in pigs:
             is_actual_participant = pig.id in slot_actual_pig_ids
             is_planned = pig.id in slot_user_plan_by_pig
-            current_strategy = slot_user_plan_by_pig[pig.id].strategy_segments if is_planned else {'phase_1': 35, 'phase_2': 50, 'phase_3': 80}
+            current_strategy = (
+                slot_user_plan_by_pig[pig.id].strategy_segments
+                if is_planned
+                else RACE_PLANNING_RULES.default_strategy_profile()
+            )
             weekly_commitments_pig = week_commitments.get(pig.id, 0)
             # If pig is already committed to this slot, don't double-count
             if is_actual_participant or is_planned:

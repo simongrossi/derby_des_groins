@@ -304,9 +304,17 @@ Le projet suit une architecture **Flask Blueprints** modulaire, découpée par d
 
 ```
 derby_des_groins/
-├── app.py                  # Factory create_app(), Flask-Session init, commandes CLI (seed)
+├── app.py                  # Factory create_app(), blueprints et bootstrap Flask
+├── config/
+│   ├── app_config.py       # Config Flask dev/test/prod
+│   └── game_rules.py       # Constantes de gameplay centralisées
 ├── extensions.py           # SQLAlchemy db, timezone partagés
-├── models.py               # 19 modèles SQLAlchemy (User, Pig, Race, Bet, GrainMarket…)
+├── models/                 # Modèles SQLAlchemy découpés par domaine
+│   ├── __init__.py         # Ré-exports de compatibilité
+│   ├── user.py
+│   ├── pig.py
+│   ├── race.py
+│   └── ...
 ├── data.py                 # Constantes de jeu (céréales, entraînements, raretés…)
 ├── race_engine.py          # Moteur de simulation de course
 ├── scheduler.py            # Tâches de fond APScheduler (courses, enchères, véto)
@@ -336,6 +344,10 @@ derby_des_groins/
 │   ├── api.py              # vétérinaire, countdown, pig API, live-state, avatars
 │   └── health.py           # Health check /health
 │
+├── cli/                    # Commandes Flask CLI
+│   ├── __init__.py
+│   └── seeders.py          # Seed explicite + maintenance auth logs
+│
 ├── helpers/                # Package helpers modulaire (8 modules)
 │   ├── __init__.py         # Re-exports pour compatibilité
 │   ├── config.py           # get_config, set_config, caching
@@ -346,7 +358,8 @@ derby_des_groins/
 │   ├── game_data.py        # Cache céréales/trainings/leçons (TTL 5min)
 │   └── market_helpers.py   # Statut unlock marché
 │
-├── services/               # Couche logique métier (8 modules)
+├── services/               # Couche logique métier
+│   ├── bet_service.py      # Validation métier et creation des tickets PMU
 │   ├── finance_service.py  # Transactions BitGroins atomiques
 │   ├── pig_service.py      # Création cochon, stats, poids
 │   ├── race_service.py     # Résolution courses, XP, récompenses
@@ -387,13 +400,13 @@ derby_des_groins/
 | Module | Rôle | Contenu |
 |--------|------|---------|
 | `extensions.py` | Objets partagés | `db = SQLAlchemy()`, `APP_TIMEZONE` |
-| `models.py` | Schéma de données | 20 modèles SQLAlchemy (dont PigAvatar) |
+| `models/` | Schéma de données | Modèles SQLAlchemy découpés par domaine avec ré-export central |
 | `data.py` | Données statiques | Céréales, entraînements, école, raretés, origines, constantes |
 | `helpers/` | Logique métier | 8 modules : config, DB, temps, véto, courses, game data, marché |
 | `services/` | Couche métier | 8 modules : finance, cochon, courses, enchères, boutiques, economie |
 | `scheduler.py` | Tâches de fond | Résolution courses, enchères, deadlines véto, historique marché |
 | `routes/` | 15 Blueprints | Chaque domaine a son fichier avec ses routes |
-| `app.py` | Point d'entrée | Factory `create_app()`, commandes CLI (`flask seed-db`) |
+| `app.py` | Point d'entrée | Factory `create_app()` et bootstrap Flask |
 
 ## ⚙️ Stack technique
 

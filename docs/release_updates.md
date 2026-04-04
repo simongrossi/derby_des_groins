@@ -9,6 +9,19 @@ Objectif:
 
 ## 2026-04-04
 
+### Phase 5 - Nettoyage du point d'entree, service paris et package models
+- extraction des seeders et commandes CLI hors de `app.py` vers `cli/seeders.py`;
+- ajout d'une configuration applicative a base de classes dans `config/app_config.py`;
+- creation de `services/bet_service.py` pour deplacer la logique metier de `/bet` hors du blueprint;
+- centralisation des constantes de verrouillage courses/paris dans `config/game_rules.py`;
+- decoupage du monolithe `models.py` en package `models/` par domaine, avec re-export de compatibilite dans `models/__init__.py`;
+- ajout d'un premier test de service pour les paris dans `tests/test_bet_service.py`.
+
+Verification locale:
+- `python3 -m py_compile` sur les fichiers modifies: OK;
+- `./.venv/bin/python -m unittest tests.test_bet_service`: OK;
+- creation de `create_app('testing')`: OK.
+
 ### Phase 4 - Achat et consommation de nourriture decouples
 - ajout du modele `UserCerealInventory` pour stocker les cereales par joueur;
 - la **Bourse aux Grains** devient l'unique point d'achat des cereales;

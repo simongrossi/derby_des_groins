@@ -9,9 +9,10 @@
 - **API Temps-RÉEL**: Endpoints JSON pour les countdowns, les flux de résultats et l'état détaillé des cochons.
 
 ## Principes d'Architecture
-- **Modèles SQLAlchemy anémiques** : `models.py` décrit désormais avant tout les colonnes, relations et quelques mutations locales triviales d'état.
+- **Modèles SQLAlchemy anémiques** : le package `models/` décrit désormais avant tout les colonnes, relations et quelques mutations locales triviales d'état, découpées par domaine.
 - **Logique métier en services** : les opérations financières et les actions Tamagotchi lourdes vivent dans `services/finance_service.py` et `services/pig_service.py`.
 - **Erreurs métier explicites** : les règles bloquantes remontent via `exceptions.py` (`InsufficientFundsError`, `PigTiredError`, etc.) au lieu de dépendre d'imports locaux dans les modèles.
+- **Factory plus propre** : `app.py` charge maintenant sa configuration via `config/app_config.py`, tandis que les seeders et commandes CLI ont été déplacés dans `cli/seeders.py`.
 
 ## Structure des Modèles (Database Schema)
 
@@ -60,12 +61,23 @@
 
 ```text
 derby_des_groins/
-├── app.py                  # Initialisation Flask, Flask-Session et migrations légères
-├── models.py               # Définition des modèles SQLAlchemy (DAO + relations)
+├── app.py                  # Factory Flask et enregistrement des blueprints/CLI
+├── config/
+│   ├── app_config.py       # Classes de configuration Flask (dev/test/prod)
+│   └── game_rules.py       # Constantes et règles de gameplay mutualisées
+├── models/
+│   ├── __init__.py         # Ré-export central pour compatibilité des imports
+│   ├── user.py             # Utilisateur, GameConfig
+│   ├── pig.py              # Cochons, avatars, trophées, inventaire céréales
+│   ├── race.py             # Courses, tickets, transactions, planification
+│   └── ...                 # Marché, notifications, poker, boutique, données de jeu
 ├── extensions.py           # Instance db shared pour éviter les cycles
 ├── helpers.py              # Logique métier : calcul power, reproduction, PMU, transactions
 ├── data.py                 # Constantes du monde, echeanciers, types de courses
 ├── scheduler.py            # Configuration APScheduler (tâches cron)
+├── cli/                    # Commandes Flask CLI (seeders, maintenance)
+│   ├── __init__.py
+│   └── seeders.py
 ├── routes/                 # Modules de routage par fonctionnalité
 │   ├── auth.py             # Login / Logout / Inscription
 │   ├── main.py             # Index, Classement, Historique, Légendes
@@ -81,6 +93,7 @@ derby_des_groins/
 │   ├── agenda.py           # Mini-jeu La Légende du COMOP (réflexe calendrier)
 │   └── api.py              # Endpoints JSON pour l'UI dynamique + replay course
 ├── services/               # Couche métier dédiée
+│   ├── bet_service.py      # Validation métier et création de tickets PMU
 │   ├── economy_service.py  # Réglages d'équilibrage, snapshots live et simulateur
 │   ├── finance_service.py  # Débits/crédits, transactions, aides et prime journalière
 │   ├── pig_service.py      # Actions cochons, vitals, école, retraite, abattoir

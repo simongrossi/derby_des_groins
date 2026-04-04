@@ -172,3 +172,32 @@ PIG_POWER_RULES = PigPowerRules()
 PIG_TROPHY_RULES = PigTrophyRules()
 PIG_HERITAGE_RULES = PigHeritageRules()
 PIG_OFFSPRING_RULES = PigOffspringRules()
+
+
+@dataclass(frozen=True)
+class BetRules:
+    """Cross-cutting betting limits shared by services and routes."""
+
+    closing_window_seconds: int = 30
+    default_bets_per_race_limit: int = 1
+
+
+@dataclass(frozen=True)
+class RacePlanningRules:
+    """Shared race-planning thresholds and default strategy values."""
+
+    lock_window_seconds: int = 30
+    default_strategy_phase_1: int = 35
+    default_strategy_phase_2: int = 50
+    default_strategy_phase_3: int = 80
+
+    def default_strategy_profile(self):
+        return {
+            'phase_1': self.default_strategy_phase_1,
+            'phase_2': self.default_strategy_phase_2,
+            'phase_3': self.default_strategy_phase_3,
+        }
+
+
+BET_RULES = BetRules()
+RACE_PLANNING_RULES = RacePlanningRules()
