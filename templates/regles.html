@@ -81,6 +81,36 @@
             background: var(--regles-table-hover);
         }
 
+        .compact-table th {
+            padding: 0.72rem 0.8rem;
+            font-size: 0.66rem;
+        }
+
+        .compact-table td {
+            padding: 0.78rem 0.8rem;
+            line-height: 1.35;
+        }
+
+        .compact-table td:first-child {
+            font-weight: 800;
+        }
+
+        .compact-table td:last-child {
+            font-size: 0.84rem;
+            color: rgba(255, 255, 255, 0.68);
+        }
+
+        .table-card-header {
+            padding: 1rem 1.1rem;
+        }
+
+        .table-card-subtitle {
+            margin-top: 0.25rem;
+            max-width: 38rem;
+            font-size: 0.92rem;
+            line-height: 1.5;
+        }
+
         html[data-theme="light"] {
             --regles-page-bg:
                 radial-gradient(circle at 10% 14%, rgba(251, 113, 133, 0.12), transparent 26%),
@@ -108,6 +138,10 @@
         html[data-theme="light"] .metric-card {
             backdrop-filter: blur(16px);
         }
+
+        html[data-theme="light"] .compact-table td:last-child {
+            color: rgba(90, 60, 79, 0.84);
+        }
     </style>
 </head>
 <body class="page-regles">
@@ -115,7 +149,7 @@
 
 {% include "_site_header.html" %}
 
-<main id="top" class="max-w-7xl mx-auto px-4 py-8 sm:py-10 space-y-8">
+<main id="top" class="max-w-7xl mx-auto px-4 py-8 sm:py-10 space-y-6">
     <section class="glass-card rounded-[2rem] p-6 sm:p-8 lg:p-10 overflow-hidden relative">
         <div class="absolute top-0 right-0 w-52 h-52 bg-pink-400/10 blur-3xl rounded-full pointer-events-none"></div>
         <div class="absolute bottom-0 left-0 w-52 h-52 bg-yellow-400/10 blur-3xl rounded-full pointer-events-none"></div>
@@ -181,7 +215,7 @@
         {% endfor %}
     </div>
 
-    <section id="sources-stats" class="section-shell rounded-[2rem] p-6 sm:p-8 space-y-6 scroll-mt-32">
+    <section id="sources-stats" class="section-shell rounded-[2rem] p-5 sm:p-6 space-y-5 scroll-mt-32">
         <div>
             <p class="text-[11px] font-black uppercase tracking-[0.22em] text-pink-200/60">🧪 Sources de progression</p>
             <h2 class="font-title text-3xl sm:text-4xl text-white mt-2">Comment faire monter un cochon</h2>
@@ -190,14 +224,14 @@
             </p>
         </div>
 
-        <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
-            <article class="glass-card rounded-3xl overflow-hidden xl:col-span-1">
-                <div class="px-5 py-4 border-b border-white/10">
+        <div class="grid grid-cols-1 xl:grid-cols-2 gap-5">
+            <article class="glass-card rounded-3xl overflow-hidden xl:col-span-2">
+                <div class="table-card-header border-b border-white/10">
                     <p class="font-title text-2xl text-white">🌽 Céréales</p>
-                    <p class="text-sm font-semibold text-white/45 mt-1">Nourrir agit surtout sur la satiété, l’énergie, le poids et quelques stats ciblées.</p>
+                    <p class="table-card-subtitle font-semibold text-white/45">Nourrir agit surtout sur la satiété, l’énergie, le poids et quelques stats ciblées.</p>
                 </div>
                 <div class="overflow-x-auto">
-                    <table class="data-table min-w-full">
+                    <table class="data-table compact-table min-w-[58rem] w-full">
                         <thead>
                             <tr>
                                 <th>Grain</th>
@@ -225,12 +259,12 @@
             </article>
 
             <article class="glass-card rounded-3xl overflow-hidden xl:col-span-1">
-                <div class="px-5 py-4 border-b border-white/10">
+                <div class="table-card-header border-b border-white/10">
                     <p class="font-title text-2xl text-white">🏋️ Entraînements</p>
-                    <p class="text-sm font-semibold text-white/45 mt-1">Chaque séance consomme de la forme. Le repos est aussi une vraie action utile.</p>
+                    <p class="table-card-subtitle font-semibold text-white/45">Chaque séance consomme de la forme. Le repos est aussi une vraie action utile.</p>
                 </div>
                 <div class="overflow-x-auto">
-                    <table class="data-table min-w-full">
+                    <table class="data-table compact-table min-w-[46rem] w-full">
                         <thead>
                             <tr>
                                 <th>Séance</th>
@@ -258,12 +292,12 @@
             </article>
 
             <article class="glass-card rounded-3xl overflow-hidden xl:col-span-1">
-                <div class="px-5 py-4 border-b border-white/10">
+                <div class="table-card-header border-b border-white/10">
                     <p class="font-title text-2xl text-white">🎓 École porcine</p>
-                    <p class="text-sm font-semibold text-white/45 mt-1">Une bonne réponse donne le boost complet. Une mauvaise réponse conserve un peu d’XP mais pénalise l’humeur.</p>
+                    <p class="table-card-subtitle font-semibold text-white/45">Une bonne réponse donne le boost complet. Une mauvaise réponse conserve un peu d’XP mais pénalise l’humeur.</p>
                 </div>
                 <div class="overflow-x-auto">
-                    <table class="data-table min-w-full">
+                    <table class="data-table compact-table min-w-[44rem] w-full">
                         <thead>
                             <tr>
                                 <th>Cours</th>
