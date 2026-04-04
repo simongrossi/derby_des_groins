@@ -1,19 +1,18 @@
 import unittest
 
-from app import create_app
 from extensions import db
 from models import AuthEventLog, User
 from services.auth_log_service import purge_old_auth_events
+from tests.support import build_test_app, reset_database
 
 
 class AuthLogsTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.app = create_app()
-        cls.app.config['TESTING'] = True
-        cls.app.config['WTF_CSRF_ENABLED'] = False
+        cls.app = build_test_app()
 
     def setUp(self):
+        reset_database(self.app)
         self.client = self.app.test_client()
 
     def test_failed_login_logs_ip_and_metadata(self):
@@ -104,7 +103,7 @@ class AuthLogsTests(unittest.TestCase):
             deleted = purge_old_auth_events(30)
             self.assertGreaterEqual(deleted, 1)
 
-            still_there = AuthEventLog.query.get(stale_id)
+            still_there = db.session.get(AuthEventLog, stale_id)
             self.assertIsNone(still_there)
 
 

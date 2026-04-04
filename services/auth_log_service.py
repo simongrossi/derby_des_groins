@@ -1,9 +1,13 @@
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 
 from flask import request
 
 from extensions import db
 from models import AuthEventLog, User
+
+
+def _utcnow_naive():
+    return datetime.now(UTC).replace(tzinfo=None)
 
 
 def _extract_client_ip() -> str:
@@ -41,7 +45,7 @@ def log_auth_event(
 def purge_old_auth_events(retention_days: int) -> int:
     """Supprime les logs auth plus anciens que la fenêtre de rétention."""
     safe_days = max(1, int(retention_days or 1))
-    threshold = datetime.utcnow() - timedelta(days=safe_days)
+    threshold = _utcnow_naive() - timedelta(days=safe_days)
     deleted = AuthEventLog.query.filter(AuthEventLog.occurred_at < threshold).delete(synchronize_session=False)
     db.session.commit()
     return int(deleted or 0)
@@ -62,7 +66,7 @@ def log_site_action(*, user_id: int | None, method: str, path: str, status_code:
         'user_agent': (request.user_agent.string[:300] if request.user_agent else None),
         'route': (path or '')[:120],
         'details': f'{(method or "-")[:10]} {int(status_code)}',
-        'occurred_at': datetime.utcnow(),
+        'occurred_at': _utcnow_naive(),
     }
     # Transaction séparée pour ne pas perturber la transaction métier courante.
     with db.engine.begin() as conn:

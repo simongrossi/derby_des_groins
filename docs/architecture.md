@@ -16,6 +16,7 @@
 - **Blueprints allégés progressivement** : `routes/pig.py`, `routes/race.py`, `routes/market.py`, `routes/bourse.py`, `routes/auth.py`, `routes/main.py` et la majeure partie de `routes/admin.py` délèguent désormais leur logique métier à la couche service.
 - **Pages de course et admin découpées par contexte** : les routes de consultation lourdes s'appuient maintenant sur des builders de contexte dédiés (`services/main_page_service.py`, `services/race_page_service.py`, `services/admin_race_service.py`, `services/admin_bet_service.py`) pour limiter les requêtes et le code de présentation dans les blueprints.
 - **Administration découpée par domaines** : le panneau admin est désormais réparti entre des services dédiés pour les utilisateurs, réglages, courses, tickets, cochons, événements, SMTP, Truffes, données de jeu et avatars.
+- **Tests moins couplés au dev local** : le mode `testing` pointe vers une base dédiée et `tests/support.py` reset désormais le schéma pour les suites routes/integration les plus sensibles.
 
 ## Structure des Modèles (Database Schema)
 
@@ -78,6 +79,9 @@ derby_des_groins/
 ├── helpers.py              # Logique métier : calcul power, reproduction, PMU, transactions
 ├── data.py                 # Constantes du monde, echeanciers, types de courses
 ├── scheduler.py            # Configuration APScheduler (tâches cron)
+├── tests/
+│   ├── __init__.py
+│   └── support.py          # Factory de test + reset de schema + seed minimal reutilisable
 ├── cli/                    # Commandes Flask CLI (seeders, maintenance)
 │   ├── __init__.py
 │   └── seeders.py

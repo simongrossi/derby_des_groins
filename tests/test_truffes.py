@@ -1,18 +1,21 @@
 import unittest
 import uuid
 
-from app import create_app
 from extensions import db
 from helpers import set_config
 from models import User
 from routes.truffes import GRID_SIZE, MAX_CLICKS, TRUFFE_REWARD
+from tests.support import build_test_app, ensure_user, reset_database
 
 
 class TruffesRouteTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.app = create_app()
-        cls.app.config['TESTING'] = True
+        cls.app = build_test_app()
+
+    def setUp(self):
+        reset_database(self.app)
+        ensure_user(self.app, username='Simon')
 
     def test_constants_match_expected_game_shape(self):
         self.assertEqual(GRID_SIZE, 20)
@@ -43,10 +46,9 @@ class TruffesRouteTests(unittest.TestCase):
         self.assertEqual(payload['reward'], TRUFFE_REWARD)
 
         with self.app.app_context():
-            refreshed = User.query.get(user_id)
+            refreshed = db.session.get(User, user_id)
             self.assertEqual(round(refreshed.balance or 0.0, 2), round(before + TRUFFE_REWARD, 2))
             refreshed.balance = before
-            from extensions import db
             db.session.commit()
 
     def test_play_route_decrements_remaining_free_plays_for_regular_user(self):
@@ -71,7 +73,7 @@ class TruffesRouteTests(unittest.TestCase):
         self.assertEqual(payload['remaining_free_plays'], 4)
 
         with self.app.app_context():
-            refreshed = User.query.get(user_id)
+            refreshed = db.session.get(User, user_id)
             self.assertEqual(refreshed.truffe_plays_today, 1)
             db.session.delete(refreshed)
             db.session.commit()
@@ -98,7 +100,7 @@ class TruffesRouteTests(unittest.TestCase):
         self.assertEqual(payload['remaining_free_plays'], 4)
 
         with self.app.app_context():
-            refreshed = User.query.get(admin_id)
+            refreshed = db.session.get(User, admin_id)
             self.assertEqual(refreshed.truffe_plays_today, 1)
             db.session.delete(refreshed)
             db.session.commit()

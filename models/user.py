@@ -1,7 +1,11 @@
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 
 from data import WEEKLY_BACON_TICKETS
 from extensions import db
+
+
+def utcnow_naive():
+    return datetime.now(UTC).replace(tzinfo=None)
 
 
 class GameConfig(db.Model):
@@ -17,7 +21,7 @@ class User(db.Model):
     balance = db.Column(db.Float, default=100.0)
     email = db.Column(db.String(200), nullable=True)
     is_admin = db.Column(db.Boolean, default=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=utcnow_naive)
     last_relief_at = db.Column(db.DateTime, nullable=True)
     barn_heritage_bonus = db.Column(db.Float, default=0.0)
     snack_shares_today = db.Column(db.Integer, default=0)
@@ -61,7 +65,7 @@ class User(db.Model):
     def bacon_tickets(self) -> int:
         from models.race import Bet
 
-        current_dt = datetime.utcnow()
+        current_dt = utcnow_naive()
         week_start = datetime.combine(
             (current_dt - timedelta(days=current_dt.weekday())).date(),
             datetime.min.time(),

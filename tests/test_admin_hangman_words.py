@@ -1,22 +1,19 @@
 import unittest
 import uuid
 
-from app import create_app
 from extensions import db
 from helpers.game_data import get_hangman_words, invalidate_game_data_cache
 from models import HangmanWordItem, User
+from tests.support import build_test_app, reset_database
 
 
 class AdminHangmanWordsTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.app = create_app()
-        cls.app.config['TESTING'] = True
-        cls.app.config['WTF_CSRF_ENABLED'] = False
-        with cls.app.app_context():
-            HangmanWordItem.__table__.create(bind=db.engine, checkfirst=True)
+        cls.app = build_test_app()
 
     def setUp(self):
+        reset_database(self.app)
         self.client = self.app.test_client()
 
     def test_admin_can_create_hangman_phrase_from_admin_form(self):
@@ -46,7 +43,7 @@ class AdminHangmanWordsTests(unittest.TestCase):
             self.assertEqual(created.sort_order, 12)
             self.assertTrue(created.is_active)
             db.session.delete(created)
-            admin = User.query.get(admin_id)
+            admin = db.session.get(User, admin_id)
             db.session.delete(admin)
             db.session.commit()
 
@@ -86,7 +83,7 @@ class AdminHangmanWordsTests(unittest.TestCase):
             HangmanWordItem.query.delete()
             for item in previous_words:
                 db.session.add(HangmanWordItem(**item))
-            admin = User.query.get(admin_id)
+            admin = db.session.get(User, admin_id)
             db.session.delete(admin)
             db.session.commit()
 

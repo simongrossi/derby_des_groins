@@ -18,6 +18,8 @@ Liste des fonctionnalités et idées déjà implémentées dans le projet.
 - **Routes courses/admin encore amincies** : `services/race_page_service.py`, `services/admin_race_service.py` et `services/admin_bet_service.py` portent maintenant une partie des contextes lourds et actions admin liées aux courses, PNJ et tickets.
 - **Panneau admin largement sorti en services** : les actions admin cochons, événements, notifications SMTP, réglages Truffes, CRUD des données de jeu et gestion des avatars délèguent désormais à `services/admin_pig_service.py`, `services/admin_event_service.py`, `services/admin_notification_service.py`, `services/admin_truffes_service.py`, `services/admin_game_data_service.py` et `services/admin_avatar_service.py`.
 - **Validations admin homogénéisées** : les erreurs de parsing et de validation côté admin remontent maintenant via `ValidationError` / `BusinessRuleError` au lieu de branches inline et `ValueError` bruts dans `routes/admin.py`.
+- **Infra de test isolée** : le mode `testing` s'appuie désormais sur une base SQLite dédiée et les suites routes les plus fragiles utilisent `tests/support.py` pour repartir d'un schéma propre au lieu de dépendre de la base locale de dev.
+- **Maintenance technique continue** : plusieurs chemins critiques (`auth`, `truffes`, `paris`, accueil, finance) ont été modernisés pour réduire les appels SQLAlchemy dépréciés et clarifier les horodatages UTC.
 
 ## Gestion des Courses
 - **Gestion des courses vides / sous-peuplées** : Mise en place d'une règle configurable (`min_real_participants`) pour remplir automatiquement les courses avec des bots ou les annuler.

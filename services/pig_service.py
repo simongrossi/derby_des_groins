@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 import json
 import math
 import random
@@ -26,6 +26,10 @@ from data import (
     SCHOOL_XP_DECAY_THRESHOLDS, SCHOOL_COOLDOWN_MINUTES, TRAIN_DAILY_CAP, VET_RESPONSE_MINUTES,
 )
 from exceptions import InsufficientFundsError, PigNotFoundError, PigTiredError, ValidationError
+
+
+def _utcnow_naive():
+    return datetime.now(UTC).replace(tzinfo=None)
 
 
 @dataclass(frozen=True)
@@ -214,7 +218,7 @@ def get_winning_track_profiles(pig) -> set[str]:
 def award_longevity_trophies(pig):
     if not pig or not pig.owner or not pig.created_at:
         return
-    months_alive = max(0, (datetime.utcnow() - pig.created_at).days // PIG_TROPHY_RULES.longevity_days_per_trophy_step)
+    months_alive = max(0, (_utcnow_naive() - pig.created_at).days // PIG_TROPHY_RULES.longevity_days_per_trophy_step)
     for month_index in range(1, months_alive + 1):
         Trophy.award(
             user_id=pig.owner.id,
@@ -229,7 +233,7 @@ def award_longevity_trophies(pig):
 def maybe_award_memorial_trophies(pig):
     if not pig or not pig.owner:
         return
-    if pig.created_at and (datetime.utcnow() - pig.created_at).days >= PIG_TROPHY_RULES.elder_days_threshold:
+    if pig.created_at and (_utcnow_naive() - pig.created_at).days >= PIG_TROPHY_RULES.elder_days_threshold:
         Trophy.award(
             user_id=pig.owner.id,
             code='office_elder',
@@ -238,7 +242,7 @@ def maybe_award_memorial_trophies(pig):
             description='Un cochon a tenu plus de 30 jours reels avant son post-mortem.',
             pig_name=pig.name,
         )
-    if pig.created_at and (datetime.utcnow() - pig.created_at).days >= PIG_TROPHY_RULES.pillar_days_threshold:
+    if pig.created_at and (_utcnow_naive() - pig.created_at).days >= PIG_TROPHY_RULES.pillar_days_threshold:
         Trophy.award(
             user_id=pig.owner.id,
             code='office_pillar',
@@ -590,7 +594,7 @@ def kill_pig(pig_or_id, cause='abattoir', commit=True):
     pig.is_alive = False
     pig.is_injured = False
     pig.vet_deadline = None
-    pig.death_date = datetime.utcnow()
+    pig.death_date = _utcnow_naive()
     pig.death_cause = cause
     pig.charcuterie_type = charcuterie['name']
     pig.charcuterie_emoji = charcuterie['emoji']
@@ -625,7 +629,7 @@ def retire_pig(pig_or_id, commit=True):
 
 def update_pig_vitals(pig_or_id, force_commit=False):
     pig = get_pig_record(pig_or_id)
-    now = datetime.utcnow()
+    now = _utcnow_naive()
     progression = get_progression_settings()
     min_commit_interval = PIG_VITALS_RULES.min_commit_interval_seconds
     if has_app_context():

@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import func, or_, update, Numeric
 
@@ -15,6 +15,10 @@ from services.economy_service import get_daily_login_reward_value
 
 DEFAULT_SOLIDARITY_RELIEF_THRESHOLD = 50.0
 DEFAULT_SOLIDARITY_RELIEF_AMOUNT = 30.0
+
+
+def _utcnow_naive():
+    return datetime.now(UTC).replace(tzinfo=None)
 
 
 @dataclass(frozen=True)
@@ -121,7 +125,7 @@ def save_finance_settings(settings):
 def get_user_record(user_or_id):
     if isinstance(user_or_id, User):
         return user_or_id
-    user = User.query.get(user_or_id)
+    user = db.session.get(User, user_or_id)
     if not user:
         raise UserNotFoundError("Utilisateur introuvable.")
     return user
@@ -220,7 +224,7 @@ def _apply_progressive_tax(user_id, amount, reason_code):
     Tax is 0 for exempt reason codes and admin users."""
     if reason_code in TAX_EXEMPT_REASON_CODES:
         return amount, 0.0
-    user = User.query.get(user_id)
+    user = db.session.get(User, user_id)
     if not user or getattr(user, 'is_admin', False):
         return amount, 0.0
     balance = float(user.balance or 0.0)
@@ -251,7 +255,7 @@ def _apply_casino_cap(user_id, amount, reason_code):
     """Cap casino credits to casino_daily_cap per day. Returns effective credit amount."""
     if reason_code not in CASINO_REASON_CODES:
         return amount
-    user = User.query.get(user_id)
+    user = db.session.get(User, user_id)
     if not user or getattr(user, 'is_admin', False):
         return amount
     from datetime import date as date_type
@@ -313,12 +317,12 @@ def credit_user(user_or_id, amount, reason_code='credit', reason_label='Crédit 
 
 def claim_daily_reward(user_or_id):
     user = get_user_record(user_or_id)
-    today = datetime.utcnow().date()
+    today = _utcnow_naive().date()
     if user.last_daily_reward_at and user.last_daily_reward_at.date() >= today:
         return 0.0
 
     reward_amount = get_daily_login_reward_value()
-    user.last_daily_reward_at = datetime.utcnow()
+    user.last_daily_reward_at = _utcnow_naive()
     db.session.flush()
     credit_user_balance(
         user.id,
@@ -344,7 +348,7 @@ def reserve_pig_challenge_slot(pig_id, wager):
 
 
 def release_pig_challenge_slot(pig_id):
-    pig = Pig.query.get(pig_id)
+    pig = db.session.get(Pig, pig_id)
     if not pig or pig.challenge_mort_wager <= 0:
         return 0.0
 
@@ -372,7 +376,7 @@ def maybe_grant_solidarity_relief(user):
         return 0.0
 
     fs = get_finance_settings()
-    now = datetime.utcnow()
+    now = _utcnow_naive()
     cooldown_limit = now - timedelta(hours=fs.emergency_hours)
 
     # Only trigger if user has had no recent relief and balance is low
@@ -431,7 +435,7 @@ def maybe_grant_emergency_relief(user):
         return solidarity
 
     fs = get_finance_settings()
-    now = datetime.utcnow()
+    now = _utcnow_naive()
     cooldown_limit = now - timedelta(hours=fs.emergency_hours)
     result = db.session.execute(
         update(User)

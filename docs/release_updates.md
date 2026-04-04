@@ -9,6 +9,29 @@ Objectif:
 
 ## 2026-04-04
 
+### Phase 9 - Stabilisation de l'infra de test et finitions UI/maintenance
+- ajout de `tests/support.py` et `tests/__init__.py` pour fournir:
+  - une factory de test isolee;
+  - un reset de schema base par base;
+  - un seed minimal reutilisable pour les tests routes/integration;
+- `config/app_config.py` utilise maintenant une base SQLite dediee en mode `testing` au lieu de retomber sur la base locale par defaut;
+- rebranchement des suites fragiles vers cette infra isolee:
+  - `tests/test_truffes.py`;
+  - `tests/test_betting.py`;
+  - `tests/test_auth_logs.py`;
+  - `tests/test_admin_auth_logs.py`;
+  - `tests/test_admin_hangman_words.py`;
+- correction des hypotheses de test PMU pour planifier des courses encore ouvertes au moment de la prise de ticket;
+- correction du quota Truffes pour qu'il descende aussi sur les comptes admin et arret des dependances implicites a la vieille SQLite locale;
+- polissage du menu mobile en mode clair dans `templates/_site_header.html` et `templates/_theme_assets.html`;
+- passe de maintenance sur quelques appels deprecias:
+  - `db.session.get(...)` a la place de `Query.get(...)` sur plusieurs chemins critiques;
+  - horodatages UTC naifs centralises dans plusieurs modules metier.
+
+Verification locale:
+- `python3 -m py_compile config/app_config.py tests/support.py tests/test_betting.py tests/test_auth_logs.py tests/test_admin_auth_logs.py tests/test_admin_hangman_words.py tests/test_truffes.py helpers/auth.py services/bet_service.py services/finance_service.py services/auth_log_service.py routes/truffes.py services/main_page_service.py models/user.py services/pig_service.py`: OK;
+- `./.venv/bin/python -m unittest tests.test_truffes tests.test_betting tests.test_auth_logs tests.test_admin_auth_logs tests.test_admin_hangman_words`: OK.
+
 ### Phase 8 - Amincissement final du panneau admin (cochons, evenements, notifications, truffes, donnees, avatars)
 - creation de `services/admin_pig_service.py` pour sortir de `routes/admin.py`:
   - le toggle vie/mort des cochons admin;

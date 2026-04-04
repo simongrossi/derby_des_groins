@@ -27,7 +27,7 @@ from services.race_service import (
 
 
 def place_bet_for_user(user_or_id, race_id, bet_type_raw, selection_raw, amount):
-    user = user_or_id if isinstance(user_or_id, User) else User.query.get(user_or_id)
+    user = user_or_id if isinstance(user_or_id, User) else db.session.get(User, user_or_id)
     if not user:
         raise ValidationError("Utilisateur introuvable.")
 

@@ -1,18 +1,17 @@
 import unittest
 
-from app import create_app
 from extensions import db
 from models import AuthEventLog, User
+from tests.support import build_test_app, reset_database
 
 
 class AdminAuthLogsRouteTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.app = create_app()
-        cls.app.config['TESTING'] = True
-        cls.app.config['WTF_CSRF_ENABLED'] = False
+        cls.app = build_test_app()
 
     def setUp(self):
+        reset_database(self.app)
         self.client = self.app.test_client()
 
     def test_admin_auth_logs_requires_admin(self):

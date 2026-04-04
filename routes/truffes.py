@@ -1,4 +1,4 @@
-from datetime import date, datetime
+from datetime import UTC, date, datetime
 
 from flask import Blueprint, jsonify, redirect, render_template, request, session, url_for
 
@@ -11,6 +11,10 @@ truffes_bp = Blueprint('truffes', __name__)
 TRUFFE_REWARD = 20
 MAX_CLICKS = 7
 GRID_SIZE = 20
+
+
+def _utcnow_naive():
+    return datetime.now(UTC).replace(tzinfo=None)
 
 
 def _get_truffe_config():
@@ -51,7 +55,7 @@ def truffes():
     if not user_id:
         return redirect(url_for('auth.login'))
 
-    user = User.query.get(user_id)
+    user = db.session.get(User, user_id)
     already_played = _already_played_today(user)
     limit, replay_cost = _get_truffe_config()
     remaining = _get_remaining_free_plays(user, limit=limit)
@@ -78,7 +82,7 @@ def truffes_play():
     if not user_id:
         return jsonify({'ok': False, 'error': 'Non connecté'}), 401
 
-    user = User.query.get(user_id)
+    user = db.session.get(User, user_id)
     if not user:
         return jsonify({'ok': False, 'error': 'Utilisateur introuvable'}), 404
 
@@ -107,7 +111,7 @@ def truffes_play():
         else:
             return jsonify({'ok': False, 'error': 'Limite quotidienne atteinte'}), 429
 
-    user.last_truffe_at = datetime.utcnow()
+    user.last_truffe_at = _utcnow_naive()
     user.truffe_plays_today += 1
     db.session.commit()
     db.session.refresh(user)
@@ -126,7 +130,7 @@ def truffes_win():
     if not user_id:
         return jsonify({'ok': False, 'error': 'Non connecté'}), 401
 
-    user = User.query.get(user_id)
+    user = db.session.get(User, user_id)
     if not user:
         return jsonify({'ok': False, 'error': 'Utilisateur introuvable'}), 404
 

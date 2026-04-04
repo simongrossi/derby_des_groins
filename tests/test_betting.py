@@ -1,26 +1,30 @@
 import unittest
+from datetime import datetime, timedelta
 
-from app import create_app
 from exceptions import BusinessRuleError
 from extensions import db
 from helpers import ensure_next_race
 from models import Bet, Participant, Race, User
 from services.bet_service import place_bet_for_user
+from tests.support import build_test_app, ensure_user, reset_database
 
 
 class BettingRouteTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.app = create_app()
-        cls.app.config['TESTING'] = True
+        cls.app = build_test_app()
 
     def setUp(self):
+        reset_database(self.app)
+        ensure_user(self.app, username='Simon')
         self.client = self.app.test_client()
 
     def test_place_bet_creates_ticket_and_debits_balance(self):
         with self.app.app_context():
             user = User.query.filter_by(username='Simon').first()
             race = ensure_next_race()
+            race.scheduled_at = datetime.now() + timedelta(minutes=5)
+            db.session.commit()
             participant = Participant.query.filter_by(race_id=race.id).order_by(Participant.odds.asc()).first()
             self.assertIsNotNone(participant)
 
@@ -46,7 +50,7 @@ class BettingRouteTests(unittest.TestCase):
 
         with self.app.app_context():
             bet = Bet.query.filter_by(user_id=user_id, race_id=race_id).first()
-            refreshed_user = User.query.get(user_id)
+            refreshed_user = db.session.get(User, user_id)
 
             self.assertIsNotNone(bet)
             self.assertEqual(bet.bet_type, 'win')
@@ -61,6 +65,8 @@ class BettingRouteTests(unittest.TestCase):
         with self.app.app_context():
             user = User.query.filter_by(username='Simon').first()
             race = ensure_next_race()
+            race.scheduled_at = datetime.now() + timedelta(minutes=5)
+            db.session.commit()
             participant = Participant.query.filter_by(race_id=race.id).order_by(Participant.odds.asc()).first()
             self.assertIsNotNone(participant)
 
@@ -81,7 +87,7 @@ class BettingRouteTests(unittest.TestCase):
                 self.fail(f"Le service de pari a leve une erreur inattendue: {exc}")
 
             bet = Bet.query.filter_by(user_id=user.id, race_id=race.id).first()
-            refreshed_user = User.query.get(user.id)
+            refreshed_user = db.session.get(User, user.id)
 
             self.assertIsNotNone(bet)
             self.assertEqual(result['category'], 'success')

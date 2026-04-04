@@ -199,7 +199,7 @@ def build_homepage_context(user_id=None):
         .all()
     )
 
-    user = User.query.get(user_id) if user_id else None
+    user = db.session.get(User, user_id) if user_id else None
     user_bets = []
     pigs = []
     pigs_data = []

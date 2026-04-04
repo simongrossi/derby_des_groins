@@ -65,6 +65,7 @@ class TestingConfig(BaseConfig):
     DEBUG = True
     TEMPLATES_AUTO_RELOAD = True
     SCHEDULER_ENABLED = False
+    SQLALCHEMY_DATABASE_URI = os.environ.get('TEST_DATABASE_URL', 'sqlite:///derby_test.db')
 
 
 class ProductionConfig(BaseConfig):
