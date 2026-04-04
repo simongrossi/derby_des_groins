@@ -199,6 +199,7 @@
             </div>
             <div class="mt-5 flex flex-wrap gap-3">
                 <form method="POST" action="/feed">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <input type="hidden" name="pig_id" value="{{ pig.id }}">
                     <input type="hidden" name="cereal" value="avoine">
                     <button type="submit" class="btn-primary">🍬 Donner une friandise</button>

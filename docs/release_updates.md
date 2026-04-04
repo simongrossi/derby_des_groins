@@ -24,6 +24,7 @@ Objectif:
 - correction des hypotheses de test PMU pour planifier des courses encore ouvertes au moment de la prise de ticket;
 - correction du quota Truffes pour qu'il descende aussi sur les comptes admin et arret des dependances implicites a la vieille SQLite locale;
 - polissage du menu mobile en mode clair dans `templates/_site_header.html` et `templates/_theme_assets.html`;
+- correction d'un oubli CSRF sur l'action rapide `Donner une friandise` de la page d'accueil (`templates/index.html`);
 - passe de maintenance sur quelques appels deprecias:
   - `db.session.get(...)` a la place de `Query.get(...)` sur plusieurs chemins critiques;
   - horodatages UTC naifs centralises dans plusieurs modules metier.
