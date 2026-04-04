@@ -18,6 +18,7 @@ from data import (
     PIG_ORIGINS,
     MAX_INJURY_RISK, MIN_INJURY_RISK, VET_RESPONSE_MINUTES,
 )
+from services.pig_service import get_pig_settings
 from race_engine import CourseManager
 
 from helpers.config import get_config
@@ -386,9 +387,10 @@ def run_race_if_needed():
                 career_races = max(0, int(pig.races_entered or 0))
                 career_ramp = min(1.0, career_races / 8.0)
                 rookie_protection_multiplier = 0.3 + (career_ramp * 0.7)
+                _ps = get_pig_settings()
                 base_risk_points = min(
-                    MAX_INJURY_RISK,
-                    max(MIN_INJURY_RISK, float(pig.injury_risk or MIN_INJURY_RISK)),
+                    _ps.injury_max_risk,
+                    max(_ps.injury_min_risk, float(pig.injury_risk or _ps.injury_min_risk)),
                 )
                 base_risk = (base_risk_points / 100.0) * rookie_protection_multiplier
                 fatigue_factor = 1.0 + max(0, (50 - pig.energy) / 100)
@@ -400,12 +402,12 @@ def run_race_if_needed():
                 )
                 if random.random() < effective_risk and not pig.is_injured:
                     pig.is_injured = True
-                    pig.vet_deadline = datetime.utcnow() + timedelta(minutes=VET_RESPONSE_MINUTES)
+                    pig.vet_deadline = datetime.utcnow() + timedelta(minutes=_ps.vet_response_minutes)
                     pig.challenge_mort_wager = 0
                 else:
                     pig.injury_risk = min(
-                        MAX_INJURY_RISK,
-                        max(MIN_INJURY_RISK, float(pig.injury_risk or MIN_INJURY_RISK)) + random.uniform(0.1, 0.3),
+                        _ps.injury_max_risk,
+                        max(_ps.injury_min_risk, float(pig.injury_risk or _ps.injury_min_risk)) + random.uniform(0.1, 0.3),
                     )
 
                 if pig.max_races and pig.races_entered >= pig.max_races:

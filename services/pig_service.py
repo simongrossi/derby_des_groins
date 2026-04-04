@@ -8,8 +8,51 @@ from data import (
     FRESHNESS_MORAL_BONUS, IDEAL_WEIGHT_MALUS_THRESHOLD_RATIO,
     MAX_INJURY_RISK, MAX_PIG_SLOTS, MAX_PIG_WEIGHT_KG, MAX_WEIGHT_PERFORMANCE_MALUS,
     MIN_INJURY_RISK, MIN_PIG_WEIGHT_KG, PIG_EMOJIS, PIG_ORIGINS,
-    PRELOADED_PIG_NAMES, RETIREMENT_HERITAGE_MIN_WINS,
+    PRELOADED_PIG_NAMES, RETIREMENT_HERITAGE_MIN_WINS, VET_RESPONSE_MINUTES,
 )
+
+
+@dataclass(frozen=True)
+class PigSettings:
+    max_slots: int
+    retirement_min_wins: int
+    weight_default_kg: float
+    weight_min_kg: float
+    weight_max_kg: float
+    weight_malus_ratio: float
+    weight_malus_max: float
+    injury_min_risk: float
+    injury_max_risk: float
+    vet_response_minutes: int
+
+
+def get_pig_settings():
+    from helpers.config import get_config
+
+    def _f(key, default):
+        try:
+            return float(get_config(key, str(default)))
+        except (TypeError, ValueError):
+            return float(default)
+
+    def _i(key, default):
+        try:
+            return int(float(get_config(key, str(default))))
+        except (TypeError, ValueError):
+            return int(default)
+
+    return PigSettings(
+        max_slots=_i('pig_max_slots', MAX_PIG_SLOTS),
+        retirement_min_wins=_i('pig_retirement_min_wins', RETIREMENT_HERITAGE_MIN_WINS),
+        weight_default_kg=_f('pig_weight_default_kg', DEFAULT_PIG_WEIGHT_KG),
+        weight_min_kg=_f('pig_weight_min_kg', MIN_PIG_WEIGHT_KG),
+        weight_max_kg=_f('pig_weight_max_kg', MAX_PIG_WEIGHT_KG),
+        weight_malus_ratio=_f('pig_weight_malus_ratio', IDEAL_WEIGHT_MALUS_THRESHOLD_RATIO),
+        weight_malus_max=_f('pig_weight_malus_max', MAX_WEIGHT_PERFORMANCE_MALUS),
+        injury_min_risk=_f('pig_injury_min_risk', MIN_INJURY_RISK),
+        injury_max_risk=_f('pig_injury_max_risk', MAX_INJURY_RISK),
+        vet_response_minutes=_i('pig_vet_response_minutes', VET_RESPONSE_MINUTES),
+    )
 from extensions import db
 from models import Auction, Pig
 from services.economy_service import (
@@ -58,7 +101,8 @@ def get_freshness_bonus(pig):
 
 
 def clamp_pig_weight(weight):
-    return round(min(MAX_PIG_WEIGHT_KG, max(MIN_PIG_WEIGHT_KG, weight)), 1)
+    ps = get_pig_settings()
+    return round(min(ps.weight_max_kg, max(ps.weight_min_kg, weight)), 1)
 
 
 def get_weight_stat(source, stat_name, default=10.0):
@@ -88,12 +132,12 @@ def generate_weight_kg_for_profile(source, level=None):
 
 
 def adjust_pig_weight(pig, delta):
-    pig.weight_kg = clamp_pig_weight((pig.weight_kg or DEFAULT_PIG_WEIGHT_KG) + delta)
+    pig.weight_kg = clamp_pig_weight((pig.weight_kg or get_pig_settings().weight_default_kg) + delta)
     return pig.weight_kg
 
 
 def get_weight_profile(pig):
-    current_weight = clamp_pig_weight(pig.weight_kg or DEFAULT_PIG_WEIGHT_KG)
+    current_weight = clamp_pig_weight(pig.weight_kg or get_pig_settings().weight_default_kg)
     ideal_weight = calculate_target_weight_kg(pig)
     tolerance = round(10.0 + (pig.endurance * 0.08) + (pig.force * 0.04), 1)
     delta = round(current_weight - ideal_weight, 1)
@@ -153,7 +197,7 @@ def get_pig_performance_flags(pig):
     deviation_ratio = abs(weight_profile['current_weight'] - ideal_weight) / ideal_weight
     return {
         'hungry_penalty': (pig.hunger or 0) < 10,
-        'weight_penalty': deviation_ratio > IDEAL_WEIGHT_MALUS_THRESHOLD_RATIO,
+        'weight_penalty': deviation_ratio > get_pig_settings().weight_malus_ratio,
         'weight_status': weight_profile['status'],
     }
 
@@ -172,11 +216,12 @@ def calculate_pig_power(pig):
     if (pig.hunger or 0) < 10:
         effective_force *= 0.7
         effective_endurance *= 0.7
+    ps = get_pig_settings()
     ideal_weight = max(1.0, profile['ideal_weight'])
     deviation_ratio = abs(profile['current_weight'] - ideal_weight) / ideal_weight
-    if deviation_ratio > IDEAL_WEIGHT_MALUS_THRESHOLD_RATIO:
-        excess_ratio = deviation_ratio - IDEAL_WEIGHT_MALUS_THRESHOLD_RATIO
-        penalty = min(MAX_WEIGHT_PERFORMANCE_MALUS, excess_ratio / IDEAL_WEIGHT_MALUS_THRESHOLD_RATIO * 0.2)
+    if deviation_ratio > ps.weight_malus_ratio:
+        excess_ratio = deviation_ratio - ps.weight_malus_ratio
+        penalty = min(ps.weight_malus_max, excess_ratio / ps.weight_malus_ratio * 0.2)
         modifier = 1.0 - penalty
         effective_vitesse *= modifier
         effective_agilite *= modifier
@@ -216,7 +261,7 @@ def get_pig_slot_count(user):
 
 
 def get_max_pig_slots(user=None):
-    return MAX_PIG_SLOTS
+    return get_pig_settings().max_slots
 
 
 def get_adoption_cost(user):
@@ -243,7 +288,7 @@ def get_pig_heritage_value(pig):
 
 
 def can_retire_into_heritage(pig):
-    return bool(pig and pig.is_alive and not pig.retired_into_heritage and ((pig.races_won or 0) >= RETIREMENT_HERITAGE_MIN_WINS or (pig.rarity == 'legendaire')))
+    return bool(pig and pig.is_alive and not pig.retired_into_heritage and ((pig.races_won or 0) >= get_pig_settings().retirement_min_wins or (pig.rarity == 'legendaire')))
 
 
 def retire_pig_into_heritage(user, pig):

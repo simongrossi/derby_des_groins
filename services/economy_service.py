@@ -31,6 +31,15 @@ DEFAULT_WELCOME_BONUS = 100.0
 DEFAULT_ADDITIONAL_PIG_STEP_COST = 15.0
 DEFAULT_MAX_PAYOUT_RACE = 0.0
 MAX_PARTICIPANTS_PER_RACE = 8
+
+
+def _get_pig_max_slots():
+    """Lit le plafond de cochons depuis la config DB (fallback: constante data.py)."""
+    from helpers.config import get_config
+    try:
+        return max(1, int(float(get_config('pig_max_slots', str(MAX_PIG_SLOTS)))))
+    except (TypeError, ValueError):
+        return int(MAX_PIG_SLOTS)
 ECONOMY_POSITION_KEYS = (1, 2, 3)
 SIMULATION_STRATEGIES = {
     'spread': 'Etale sur la semaine',
@@ -609,7 +618,7 @@ def build_live_economy_snapshot(settings=None, reward_multiplier_overrides=None)
         cheapest_cereal = min(cereals, key=lambda cereal: float(cereal.get('cost') or 0.0))
 
     adoption_costs = []
-    for active_count in range(MAX_PIG_SLOTS):
+    for active_count in range(_get_pig_max_slots()):
         adoption_costs.append({
             'from_active_count': active_count,
             'to_active_count': active_count + 1,
@@ -649,7 +658,7 @@ def get_default_simulation_inputs(snapshot, settings=None):
     )
     return SimulationInputs(
         active_users=max(1, snapshot['users'] or 1),
-        pigs_per_user=max(1, min(MAX_PIG_SLOTS, int(round(snapshot['avg_alive_pigs_per_user'] or 1)) or 1)),
+        pigs_per_user=max(1, min(_get_pig_max_slots(), int(round(snapshot['avg_alive_pigs_per_user'] or 1)) or 1)),
         active_days_per_week=7,
         races_per_pig_per_week=float(min(economy.weekly_race_quota, 3)),
         strategy='spread',
@@ -675,7 +684,7 @@ def build_simulation_inputs_from_form(form, snapshot, settings=None):
         strategy = defaults.strategy
     return SimulationInputs(
         active_users=_coerce_int(form.get('sim_active_users', defaults.active_users), defaults.active_users, minimum=1, maximum=5000),
-        pigs_per_user=_coerce_int(form.get('sim_pigs_per_user', defaults.pigs_per_user), defaults.pigs_per_user, minimum=1, maximum=MAX_PIG_SLOTS),
+        pigs_per_user=_coerce_int(form.get('sim_pigs_per_user', defaults.pigs_per_user), defaults.pigs_per_user, minimum=1, maximum=_get_pig_max_slots()),
         active_days_per_week=_coerce_int(form.get('sim_active_days', defaults.active_days_per_week), defaults.active_days_per_week, minimum=0, maximum=7),
         races_per_pig_per_week=_coerce_float(form.get('sim_races_per_pig', defaults.races_per_pig_per_week), defaults.races_per_pig_per_week, minimum=0.0, maximum=20.0),
         strategy=strategy,
@@ -876,7 +885,7 @@ def build_profile_matrix(settings=None, snapshot=None):
     economy = settings or get_economy_settings()
     live_snapshot = snapshot or build_live_economy_snapshot(economy)
     rows = []
-    for pig_count in range(1, MAX_PIG_SLOTS + 1):
+    for pig_count in range(1, _get_pig_max_slots() + 1):
         spread = _simulate_profile(
             pig_count=pig_count,
             active_users=1,

@@ -36,7 +36,19 @@ from services.economy_service import (
     save_economy_settings,
     save_progression_settings,
 )
-from services.finance_service import adjust_user_balance
+from services.finance_service import (
+    adjust_user_balance,
+    build_finance_settings_from_form,
+    get_finance_settings,
+    save_finance_settings,
+)
+from services.pig_service import get_pig_settings
+from services.race_engine_service import (
+    get_race_engine_settings,
+    reset_race_engine_settings,
+    save_race_engine_settings,
+    RaceEngineSettings,
+)
 from services.game_settings_service import get_game_settings
 from services.race_service import attach_bet_outcome_snapshots, get_configured_npcs
 
@@ -345,6 +357,112 @@ def admin_progression(user):
         admin_tab='progression',
         admin_page='progression',
         **context,
+    )
+
+
+@admin_bp.route('/admin/balance', methods=['GET', 'POST'])
+@admin_required
+def admin_balance(user):
+    finance = get_finance_settings()
+    pig = get_pig_settings()
+    engine = get_race_engine_settings()
+
+    if request.method == 'POST':
+        action = request.form.get('action')
+
+        if action == 'save_finance':
+            finance = build_finance_settings_from_form(request.form, current_settings=finance)
+            save_finance_settings(finance)
+            flash("Paramètres financiers sauvegardés.", "success")
+
+        elif action == 'save_pig':
+            from helpers.config import invalidate_config_cache
+
+            def _fi(k, d):
+                try:
+                    return max(1, int(float(request.form.get(k, d))))
+                except (TypeError, ValueError):
+                    return int(d)
+
+            def _ff(k, d):
+                try:
+                    return float(request.form.get(k, d))
+                except (TypeError, ValueError):
+                    return float(d)
+
+            pig_payload = {
+                'pig_max_slots': str(_fi('pig_max_slots', pig.max_slots)),
+                'pig_retirement_min_wins': str(_fi('pig_retirement_min_wins', pig.retirement_min_wins)),
+                'pig_weight_default_kg': str(_ff('pig_weight_default_kg', pig.weight_default_kg)),
+                'pig_weight_min_kg': str(_ff('pig_weight_min_kg', pig.weight_min_kg)),
+                'pig_weight_max_kg': str(_ff('pig_weight_max_kg', pig.weight_max_kg)),
+                'pig_weight_malus_ratio': str(_ff('pig_weight_malus_ratio', pig.weight_malus_ratio)),
+                'pig_weight_malus_max': str(_ff('pig_weight_malus_max', pig.weight_malus_max)),
+                'pig_injury_min_risk': str(_ff('pig_injury_min_risk', pig.injury_min_risk)),
+                'pig_injury_max_risk': str(_ff('pig_injury_max_risk', pig.injury_max_risk)),
+                'pig_vet_response_minutes': str(_fi('pig_vet_response_minutes', pig.vet_response_minutes)),
+            }
+            existing = {
+                e.key: e
+                for e in GameConfig.query.filter(GameConfig.key.in_(list(pig_payload.keys()))).all()
+            }
+            for k, v in pig_payload.items():
+                entry = existing.get(k)
+                if entry:
+                    entry.value = v
+                else:
+                    db.session.add(GameConfig(key=k, value=v))
+            db.session.commit()
+            invalidate_config_cache()
+            pig = get_pig_settings()
+            flash("Paramètres cochons sauvegardés.", "success")
+
+        elif action == 'save_engine':
+            raw_json = request.form.get('race_engine_json', '')
+            try:
+                json.loads(raw_json)  # Valide le JSON
+                from helpers.config import set_config
+                set_config('race_engine_config', raw_json)
+                engine = get_race_engine_settings()
+                flash("Moteur de course sauvegardé.", "success")
+            except (ValueError, TypeError) as e:
+                flash(f"JSON invalide : {e}", "error")
+
+        elif action == 'reset_engine':
+            reset_race_engine_settings()
+            engine = get_race_engine_settings()
+            flash("Moteur de course réinitialisé aux valeurs par défaut.", "success")
+
+        elif action == 'save_bourse':
+            from helpers.config import set_config, invalidate_config_cache
+            try:
+                sf = float(request.form.get('bourse_surcharge_factor', 0.05))
+                md = max(1, int(float(request.form.get('bourse_movement_divisor', 10))))
+                set_config('bourse_surcharge_factor', str(sf))
+                set_config('bourse_movement_divisor', str(md))
+                invalidate_config_cache()
+                flash("Paramètres bourse sauvegardés.", "success")
+            except (TypeError, ValueError) as e:
+                flash(f"Valeur invalide : {e}", "error")
+
+        # Reload after save
+        finance = get_finance_settings()
+        pig = get_pig_settings()
+        engine = get_race_engine_settings()
+
+    from helpers.config import get_config
+    from data import BOURSE_SURCHARGE_FACTOR, BOURSE_MOVEMENT_DIVISOR, TAX_EXEMPT_REASON_CODES, CASINO_REASON_CODES
+    return render_template(
+        'admin_balance.html',
+        user=user,
+        admin_tab='balance',
+        finance=finance,
+        pig=pig,
+        engine_json=engine.to_json(),
+        bourse_surcharge_factor=float(get_config('bourse_surcharge_factor', str(BOURSE_SURCHARGE_FACTOR))),
+        bourse_movement_divisor=int(float(get_config('bourse_movement_divisor', str(BOURSE_MOVEMENT_DIVISOR)))),
+        tax_exempt_codes=sorted(TAX_EXEMPT_REASON_CODES),
+        casino_reason_codes=sorted(CASINO_REASON_CODES),
     )
 
 

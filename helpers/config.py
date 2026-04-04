@@ -1,5 +1,6 @@
 """Configuration helpers — get/set GameConfig + cache TTL."""
 
+import json
 import time
 
 from extensions import db
@@ -79,6 +80,7 @@ DEFAULT_RACE_THEMES = {
 
 def init_default_config():
     defaults = {
+        # Planification des courses et du marché
         'race_hour': '14',
         'race_minute': '00',
         'market_day': '4',
@@ -88,7 +90,40 @@ def init_default_config():
         'min_real_participants': '2',
         'empty_race_mode': 'fill',
         'timezone': 'Europe/Paris',
+        # Système financier (anti-baleine, secours, solidarité)
+        'balance_emergency_threshold': '10.0',
+        'balance_emergency_amount': '20.0',
+        'balance_emergency_hours': '12',
+        'balance_casino_daily_cap': '500.0',
+        'balance_tax_threshold_1': '2000.0',
+        'balance_tax_rate_1': '0.20',
+        'balance_tax_threshold_2': '5000.0',
+        'balance_tax_rate_2': '0.50',
+        'balance_solidarity_threshold': '50.0',
+        'balance_solidarity_amount': '30.0',
+        # Cochons — biologie et limites
+        'pig_max_slots': '4',
+        'pig_retirement_min_wins': '3',
+        'pig_weight_default_kg': '112.0',
+        'pig_weight_min_kg': '75.0',
+        'pig_weight_max_kg': '190.0',
+        'pig_weight_malus_ratio': '0.20',
+        'pig_weight_malus_max': '0.45',
+        'pig_injury_min_risk': '2.0',
+        'pig_injury_max_risk': '18.0',
+        'pig_vet_response_minutes': '20',
+        # Bourse aux grains
+        'bourse_surcharge_factor': '0.05',
+        'bourse_movement_divisor': '10',
     }
+    # Moteur de course : JSON blob (inséré séparément pour éviter un import circulaire)
+    if not GameConfig.query.filter_by(key='race_engine_config').first():
+        try:
+            from services.race_engine_service import RaceEngineSettings
+            race_engine_json = RaceEngineSettings.defaults().to_json()
+            db.session.add(GameConfig(key='race_engine_config', value=race_engine_json))
+        except Exception:
+            pass  # Ne jamais bloquer le démarrage
     for k, v in defaults.items():
         if not GameConfig.query.filter_by(key=k).first():
             db.session.add(GameConfig(key=k, value=v))

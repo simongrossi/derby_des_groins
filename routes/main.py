@@ -9,14 +9,9 @@ from data import (
     BOURSE_MIN_MOVEMENT,
     BOURSE_MOVEMENT_DIVISOR,
     COMPLEX_BET_MIN_SELECTIONS,
-    MAX_INJURY_RISK,
-    MAX_PIG_SLOTS,
-    MIN_INJURY_RISK,
-    RETIREMENT_HERITAGE_MIN_WINS,
     SCHOOL_COOLDOWN_MINUTES,
     SNACK_SHARE_DAILY_LIMIT,
     STAT_LABELS,
-    VET_RESPONSE_MINUTES,
 )
 from extensions import db
 from models import User, Pig, Race, Participant, Bet, BalanceTransaction, CoursePlan, Trophy
@@ -43,7 +38,7 @@ from services.economy_service import (
     xp_for_level_value,
 )
 from services.market_service import get_prix_moyen_groin, is_market_open, get_next_market_time
-from services.pig_service import calculate_pig_power, get_weight_profile
+from services.pig_service import calculate_pig_power, get_pig_settings, get_weight_profile
 from services.race_service import (
     attach_bet_outcome_snapshots,
     build_course_schedule,
@@ -317,7 +312,7 @@ def _build_rules_page_context():
         {'label': 'Prime quotidienne', 'value': f"{get_daily_login_reward_value(economy):.0f} 🪙", 'note': "Versée à la première connexion du jour."},
         {'label': 'Quota de courses', 'value': f"{get_weekly_race_quota_value(economy)} / semaine", 'note': "Par cochon vivant."},
         {'label': 'Tickets Bacon', 'value': f"{economy.weekly_bacon_tickets} / semaine", 'note': "Un seul ticket par course."},
-        {'label': 'Fenêtre vétérinaire', 'value': f"{VET_RESPONSE_MINUTES} min", 'note': "Au-delà, le cochon peut mourir."},
+        {'label': 'Fenêtre vétérinaire', 'value': f"{get_pig_settings().vet_response_minutes} min", 'note': "Au-delà, le cochon peut mourir."},
         {
             'label': 'Mise par ticket',
             'value': f"{bet_limits['min_bet_race']:.0f} à {bet_limits['max_bet_race']:.0f} 🪙",
@@ -326,14 +321,15 @@ def _build_rules_page_context():
     ]
 
     adoption_rows = []
-    for active_count in range(MAX_PIG_SLOTS):
+    _pig_max_slots = get_pig_settings().max_slots
+    for active_count in range(_pig_max_slots):
         adoption_rows.append({
             'label': f"Passer à {active_count + 1} cochon{'s' if active_count + 1 > 1 else ''}",
             'cost': get_adoption_cost_for_active_count(active_count, settings=economy),
         })
 
     feeding_rows = []
-    for active_count in range(1, MAX_PIG_SLOTS + 1):
+    for active_count in range(1, _pig_max_slots + 1):
         feeding_rows.append({
             'stable_size': active_count,
             'multiplier': get_feeding_multiplier_for_count(active_count, settings=economy),
@@ -473,12 +469,12 @@ def _build_rules_page_context():
             'title': 'Blessures, vétérinaire, mort et retraite',
             'summary': "La mort rapide ne vient pas de l’âge seul: elle est surtout liée aux blessures non soignées à temps.",
             'bullets': [
-                f"Le risque de blessure est maintenant borné entre {MIN_INJURY_RISK:.0f}% et {MAX_INJURY_RISK:.0f}% avant modificateurs.",
+                f"Le risque de blessure est maintenant borné entre {get_pig_settings().injury_min_risk:.0f}% et {get_pig_settings().injury_max_risk:.0f}% avant modificateurs.",
                 "Les 8 premières courses bénéficient d’une vraie protection de début de carrière: le risque réel monte progressivement pour éviter les morts absurdes trop tôt.",
                 "Fatigue, faim et mauvais poids aggravent ensuite ce risque à chaque arrivée.",
-                f"En cas de blessure, le cochon est bloqué pour les courses, l’entraînement, l’école et le Challenge de la Mort tant qu’il n’est pas soigné. La fenêtre vétérinaire active est de {VET_RESPONSE_MINUTES} minutes.",
+                f"En cas de blessure, le cochon est bloqué pour les courses, l’entraînement, l’école et le Challenge de la Mort tant qu’il n’est pas soigné. La fenêtre vétérinaire active est de {get_pig_settings().vet_response_minutes} minutes.",
                 f"Une opération réussie réduit maintenant le risque de blessure du cochon de 2 points et coûte {progression.vet_energy_cost:.0f} énergie / {progression.vet_happiness_cost:.0f} humeur.",
-                f"Un champion peut aussi quitter la piste volontairement en retraite d’honneur dès {RETIREMENT_HERITAGE_MIN_WINS} victoires, ou immédiatement s’il est légendaire.",
+                f"Un champion peut aussi quitter la piste volontairement en retraite d’honneur dès {get_pig_settings().retirement_min_wins} victoires, ou immédiatement s’il est légendaire.",
             ],
         },
         {
@@ -501,7 +497,7 @@ def _build_rules_page_context():
             'title': 'Économie, élevage et circulation des BitGroins',
             'summary': "L’économie ne repose pas que sur les paris: connexion, courses, coût des cochons et pression de nourrissage comptent autant.",
             'bullets': [
-                f"Le deuxième cochon et les suivants coûtent de plus en plus cher. La porcherie est plafonnée à {MAX_PIG_SLOTS} cochons.",
+                f"Le deuxième cochon et les suivants coûtent de plus en plus cher. La porcherie est plafonnée à {get_pig_settings().max_slots} cochons.",
                 f"La portée coûte actuellement {economy.breeding_cost:.0f} 🪙 et mélange stats, origine, rareté et lignée des parents.",
                 f"Chaque cochon supplémentaire augmente le coût de nourrissage de +{economy.feeding_pressure_per_pig * 100:.0f}% sur tous les achats.",
                 "💸 Taxe progressive anti-baleine : solde > 2 000 🪙 → 20% de taxe sur chaque crédit entrant ; > 5 000 🪙 → 50%. Les revenus de base (prime quotidienne, secours d’urgence) sont exempts.",

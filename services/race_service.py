@@ -7,8 +7,8 @@ import random
 from sqlalchemy import func
 
 from data import (
-    JOURS_FR, MAX_INJURY_RISK, MIN_INJURY_RISK, PIGS,
-    PIG_COURSE_SEGMENT_TYPES, VET_RESPONSE_MINUTES,
+    JOURS_FR, PIGS,
+    PIG_COURSE_SEGMENT_TYPES,
 )
 from extensions import db
 from models import Bet, CoursePlan, Participant, Pig, Race, User

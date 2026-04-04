@@ -3,22 +3,7 @@ import random
 from dataclasses import dataclass, field
 from typing import Optional
 
-from data import (
-    RACE_ATTACK_FATIGUE_EXPONENT, RACE_ATTACK_THRESHOLD, RACE_BASE_SPEED_CONSTANT,
-    RACE_BOUE_AGI_MULT, RACE_BOUE_SPEED_CAP, RACE_BOUE_TERRAIN_MOD,
-    RACE_DRAFT_BONUS_MAX, RACE_DRAFT_BONUS_MIN, RACE_DRAFT_MAX_DIST,
-    RACE_DRAFT_MIN_DIST, RACE_DRAFT_NO_FATIGUE_BONUS, RACE_ENDURANCE_FATIGUE_DIVISOR,
-    RACE_FATIGUE_HEADWIND_PENALTY, RACE_FATIGUE_SPEED_PENALTY_DIVISOR,
-    RACE_FATIGUE_SPEED_PENALTY_FLOOR, RACE_MAX_TURNS, RACE_MIN_FINAL_SPEED,
-    RACE_MONTEE_FORCE_MULT, RACE_MONTEE_SPEED_MULT, RACE_MONTEE_TERRAIN_MOD,
-    RACE_NEUTRAL_MAX, RACE_RECENT_RACE_PENALTY_FLOOR, RACE_SEGMENT_SPEED_CAP,
-    RACE_STUMBLE_BASE_CHANCE_DESCENTE, RACE_STUMBLE_BASE_CHANCE_VIRAGE,
-    RACE_STUMBLE_SPEED_MULT, RACE_STRATEGY_ATTACK_MAX_MULT,
-    RACE_STRATEGY_ECONOMY_MIN_MULT, RACE_STRATEGY_ECONOMY_RECOVERY,
-    RACE_STRATEGY_NEUTRAL_FATIGUE, RACE_VARIANCE_MAX, RACE_VARIANCE_MIN,
-    RACE_VIRAGE_AGI_MULT, RACE_VIRAGE_SPEED_CAP, RACE_VIRAGE_TERRAIN_MOD,
-    RACE_DESCENTE_AGI_RISK_REDUCTION, RACE_DESCENTE_SPEED_MULT, RACE_DESCENTE_TERRAIN_MOD,
-)
+from services.race_engine_service import RaceEngineSettings
 
 DEFAULT_STRATEGY_PROFILE = {'phase_1': 35, 'phase_2': 50, 'phase_3': 80}
 
@@ -83,11 +68,12 @@ class CourseManager:
         self.history: list[dict] = []
         self.current_turn: int = 0
         self.rng = rng or random.Random()
+        self._engine = RaceEngineSettings.load()
 
     def run(self):
         # Pour une course de 50 secondes avec un affichage a 0.5s par tour, on vise environ 100 tours.
         # On ajuste donc la vitesse de simulation pour que 3000m soient parcourus en ~100 tours.
-        while not all(p.is_finished for p in self.participants) and self.current_turn < 120:
+        while not all(p.is_finished for p in self.participants) and self.current_turn < self._engine.max_turns:
             self.current_turn += 1
             self.simulate_turn()
             self.record_history()
@@ -97,10 +83,10 @@ class CourseManager:
         for p in self.participants:
             if p.is_finished:
                 p.current_speed = 0.0; p.visual_event = 'finished'; continue
-            
+
             # Vitesse moyenne cible : 3000m / 100 tours = 30m/tour
             # On booste les stats de base pour atteindre cette moyenne
-            base_speed = (p.vitesse * 1.5 + p.endurance * 0.5 + RACE_BASE_SPEED_CONSTANT + 15)
+            base_speed = (p.vitesse * 1.5 + p.endurance * 0.5 + self._engine.base_speed_constant + 15)
             
             # Application des multiplicateurs classiques
             strategy_mult = 0.8 + (p.strategy / 100.0) * 0.4 # 0.8 a 1.2

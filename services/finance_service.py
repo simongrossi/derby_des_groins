@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from datetime import datetime, timedelta
 
 from sqlalchemy import func, or_, update, Numeric
@@ -9,6 +10,110 @@ from data import (
 )
 from extensions import db
 from models import BalanceTransaction, GameConfig, Pig, User
+
+DEFAULT_SOLIDARITY_RELIEF_THRESHOLD = 50.0
+DEFAULT_SOLIDARITY_RELIEF_AMOUNT = 30.0
+
+
+@dataclass(frozen=True)
+class FinanceSettings:
+    emergency_threshold: float
+    emergency_amount: float
+    emergency_hours: int
+    casino_daily_cap: float
+    tax_threshold_1: float
+    tax_rate_1: float
+    tax_threshold_2: float
+    tax_rate_2: float
+    solidarity_threshold: float
+    solidarity_amount: float
+
+
+def get_finance_settings():
+    from helpers.config import get_config
+
+    def _f(key, default):
+        try:
+            return float(get_config(key, str(default)))
+        except (TypeError, ValueError):
+            return float(default)
+
+    def _i(key, default):
+        try:
+            return int(float(get_config(key, str(default))))
+        except (TypeError, ValueError):
+            return int(default)
+
+    return FinanceSettings(
+        emergency_threshold=_f('balance_emergency_threshold', EMERGENCY_RELIEF_THRESHOLD),
+        emergency_amount=_f('balance_emergency_amount', EMERGENCY_RELIEF_AMOUNT),
+        emergency_hours=_i('balance_emergency_hours', EMERGENCY_RELIEF_HOURS),
+        casino_daily_cap=_f('balance_casino_daily_cap', CASINO_DAILY_WIN_CAP),
+        tax_threshold_1=_f('balance_tax_threshold_1', TAX_THRESHOLD_1),
+        tax_rate_1=_f('balance_tax_rate_1', TAX_RATE_1),
+        tax_threshold_2=_f('balance_tax_threshold_2', TAX_THRESHOLD_2),
+        tax_rate_2=_f('balance_tax_rate_2', TAX_RATE_2),
+        solidarity_threshold=_f('balance_solidarity_threshold', DEFAULT_SOLIDARITY_RELIEF_THRESHOLD),
+        solidarity_amount=_f('balance_solidarity_amount', DEFAULT_SOLIDARITY_RELIEF_AMOUNT),
+    )
+
+
+def build_finance_settings_from_form(form, current_settings=None):
+    s = current_settings or get_finance_settings()
+    def _f(key, default):
+        try:
+            return float(form.get(key, default))
+        except (TypeError, ValueError):
+            return float(default)
+
+    def _i(key, default):
+        try:
+            return int(float(form.get(key, default)))
+        except (TypeError, ValueError):
+            return int(default)
+
+    return FinanceSettings(
+        emergency_threshold=_f('balance_emergency_threshold', s.emergency_threshold),
+        emergency_amount=_f('balance_emergency_amount', s.emergency_amount),
+        emergency_hours=_i('balance_emergency_hours', s.emergency_hours),
+        casino_daily_cap=_f('balance_casino_daily_cap', s.casino_daily_cap),
+        tax_threshold_1=_f('balance_tax_threshold_1', s.tax_threshold_1),
+        tax_rate_1=_f('balance_tax_rate_1', s.tax_rate_1),
+        tax_threshold_2=_f('balance_tax_threshold_2', s.tax_threshold_2),
+        tax_rate_2=_f('balance_tax_rate_2', s.tax_rate_2),
+        solidarity_threshold=_f('balance_solidarity_threshold', s.solidarity_threshold),
+        solidarity_amount=_f('balance_solidarity_amount', s.solidarity_amount),
+    )
+
+
+def save_finance_settings(settings):
+    from helpers.config import set_config, invalidate_config_cache
+
+    payload = {
+        'balance_emergency_threshold': settings.emergency_threshold,
+        'balance_emergency_amount': settings.emergency_amount,
+        'balance_emergency_hours': settings.emergency_hours,
+        'balance_casino_daily_cap': settings.casino_daily_cap,
+        'balance_tax_threshold_1': settings.tax_threshold_1,
+        'balance_tax_rate_1': settings.tax_rate_1,
+        'balance_tax_threshold_2': settings.tax_threshold_2,
+        'balance_tax_rate_2': settings.tax_rate_2,
+        'balance_solidarity_threshold': settings.solidarity_threshold,
+        'balance_solidarity_amount': settings.solidarity_amount,
+    }
+    existing = {
+        entry.key: entry
+        for entry in GameConfig.query.filter(GameConfig.key.in_(list(payload.keys()))).all()
+    }
+    for key, value in payload.items():
+        entry = existing.get(key)
+        str_value = str(value)
+        if entry:
+            entry.value = str_value
+        else:
+            db.session.add(GameConfig(key=key, value=str_value))
+    db.session.commit()
+    invalidate_config_cache()
 
 
 def record_balance_transaction(user_id, amount, balance_before, balance_after,
@@ -86,10 +191,11 @@ def _apply_progressive_tax(user_id, amount, reason_code):
     if not user or getattr(user, 'is_admin', False):
         return amount, 0.0
     balance = float(user.balance or 0.0)
-    if balance >= TAX_THRESHOLD_2:
-        tax_rate = TAX_RATE_2
-    elif balance >= TAX_THRESHOLD_1:
-        tax_rate = TAX_RATE_1
+    fs = get_finance_settings()
+    if balance >= fs.tax_threshold_2:
+        tax_rate = fs.tax_rate_2
+    elif balance >= fs.tax_threshold_1:
+        tax_rate = fs.tax_rate_1
     else:
         return amount, 0.0
     tax_amount = round(amount * tax_rate, 2)
@@ -109,7 +215,7 @@ def _add_to_solidarity_fund(tax_amount):
 
 
 def _apply_casino_cap(user_id, amount, reason_code):
-    """Cap casino credits to CASINO_DAILY_WIN_CAP per day. Returns effective credit amount."""
+    """Cap casino credits to casino_daily_cap per day. Returns effective credit amount."""
     if reason_code not in CASINO_REASON_CODES:
         return amount
     user = User.query.get(user_id)
@@ -121,7 +227,8 @@ def _apply_casino_cap(user_id, amount, reason_code):
         user.daily_casino_wins = 0.0
         user.last_casino_date = today
     already_won = float(user.daily_casino_wins or 0.0)
-    remaining_cap = max(0.0, CASINO_DAILY_WIN_CAP - already_won)
+    casino_daily_cap = get_finance_settings().casino_daily_cap
+    remaining_cap = max(0.0, casino_daily_cap - already_won)
     effective = min(amount, remaining_cap)
     user.daily_casino_wins = round(already_won + effective, 2)
     return effective
@@ -180,10 +287,6 @@ def release_pig_challenge_slot(pig_id):
     return refund
 
 
-SOLIDARITY_RELIEF_THRESHOLD = 50.0   # déclenche si balance < 50 BG
-SOLIDARITY_RELIEF_AMOUNT = 30.0      # montant prélevé sur la caisse
-
-
 def _get_solidarity_fund_balance():
     fund = GameConfig.query.filter_by(key='solidarity_fund').first()
     return float(fund.value or '0') if fund else 0.0
@@ -194,29 +297,30 @@ def maybe_grant_solidarity_relief(user):
     if not user or getattr(user, 'is_admin', False):
         return 0.0
 
+    fs = get_finance_settings()
     now = datetime.utcnow()
-    cooldown_limit = now - timedelta(hours=EMERGENCY_RELIEF_HOURS)
+    cooldown_limit = now - timedelta(hours=fs.emergency_hours)
 
     # Only trigger if user has had no recent relief and balance is low
     balance = float(user.balance or 0.0)
-    if balance >= SOLIDARITY_RELIEF_THRESHOLD:
+    if balance >= fs.solidarity_threshold:
         return 0.0
     if user.last_relief_at and user.last_relief_at > cooldown_limit:
         return 0.0
 
     fund_balance = _get_solidarity_fund_balance()
-    if fund_balance < SOLIDARITY_RELIEF_AMOUNT:
+    if fund_balance < fs.solidarity_amount:
         return 0.0
 
     # Deduct from solidarity fund
     fund = GameConfig.query.filter_by(key='solidarity_fund').first()
-    fund.value = str(round(fund_balance - SOLIDARITY_RELIEF_AMOUNT, 2))
+    fund.value = str(round(fund_balance - fs.solidarity_amount, 2))
 
     result = db.session.execute(
         update(User)
         .where(User.id == user.id)
         .values(
-            balance=func.round((User.balance + SOLIDARITY_RELIEF_AMOUNT).cast(Numeric), 2),
+            balance=func.round((User.balance + fs.solidarity_amount).cast(Numeric), 2),
             last_relief_at=now,
         )
         .returning(User.balance)
@@ -227,10 +331,10 @@ def maybe_grant_solidarity_relief(user):
         return 0.0
 
     balance_after = round(float(row[0] or 0.0), 2)
-    balance_before = round(balance_after - SOLIDARITY_RELIEF_AMOUNT, 2)
+    balance_before = round(balance_after - fs.solidarity_amount, 2)
     record_balance_transaction(
         user_id=user.id,
-        amount=SOLIDARITY_RELIEF_AMOUNT,
+        amount=fs.solidarity_amount,
         balance_before=balance_before,
         balance_after=balance_after,
         reason_code='solidarity_relief',
@@ -240,7 +344,7 @@ def maybe_grant_solidarity_relief(user):
         reference_id=user.id,
     )
     db.session.commit()
-    return SOLIDARITY_RELIEF_AMOUNT
+    return fs.solidarity_amount
 
 
 def maybe_grant_emergency_relief(user):
@@ -252,17 +356,18 @@ def maybe_grant_emergency_relief(user):
     if solidarity > 0:
         return solidarity
 
+    fs = get_finance_settings()
     now = datetime.utcnow()
-    cooldown_limit = now - timedelta(hours=EMERGENCY_RELIEF_HOURS)
+    cooldown_limit = now - timedelta(hours=fs.emergency_hours)
     result = db.session.execute(
         update(User)
         .where(
             User.id == user.id,
-            User.balance < EMERGENCY_RELIEF_THRESHOLD,
+            User.balance < fs.emergency_threshold,
             or_(User.last_relief_at.is_(None), User.last_relief_at <= cooldown_limit),
         )
         .values(
-            balance=func.round((User.balance + EMERGENCY_RELIEF_AMOUNT).cast(Numeric), 2),
+            balance=func.round((User.balance + fs.emergency_amount).cast(Numeric), 2),
             last_relief_at=now,
         )
         .returning(User.balance)
@@ -273,10 +378,10 @@ def maybe_grant_emergency_relief(user):
         return 0.0
 
     balance_after = round(float(row[0] or 0.0), 2)
-    balance_before = round(balance_after - EMERGENCY_RELIEF_AMOUNT, 2)
+    balance_before = round(balance_after - fs.emergency_amount, 2)
     record_balance_transaction(
         user_id=user.id,
-        amount=EMERGENCY_RELIEF_AMOUNT,
+        amount=fs.emergency_amount,
         balance_before=balance_before,
         balance_after=balance_after,
         reason_code='emergency_relief',
@@ -287,4 +392,4 @@ def maybe_grant_emergency_relief(user):
     )
 
     db.session.commit()
-    return EMERGENCY_RELIEF_AMOUNT
+    return fs.emergency_amount
