@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta
 import json
 
+from config.game_rules import PIG_DEFAULTS, PIG_INTERACTION_RULES, PIG_LIMITS
 from data import WEEKLY_BACON_TICKETS
 from extensions import db
 
@@ -80,19 +81,19 @@ class Pig(db.Model):
     avatar = db.relationship('PigAvatar', lazy='joined')
 
     # Compétences (0-100)
-    vitesse = db.Column(db.Float, default=10.0)
-    endurance = db.Column(db.Float, default=10.0)
-    agilite = db.Column(db.Float, default=10.0)
-    force = db.Column(db.Float, default=10.0)
-    intelligence = db.Column(db.Float, default=10.0)
-    moral = db.Column(db.Float, default=10.0)
+    vitesse = db.Column(db.Float, default=PIG_DEFAULTS.stat)
+    endurance = db.Column(db.Float, default=PIG_DEFAULTS.stat)
+    agilite = db.Column(db.Float, default=PIG_DEFAULTS.stat)
+    force = db.Column(db.Float, default=PIG_DEFAULTS.stat)
+    intelligence = db.Column(db.Float, default=PIG_DEFAULTS.stat)
+    moral = db.Column(db.Float, default=PIG_DEFAULTS.stat)
 
     # État Tamagotchi (0-100)
-    energy = db.Column(db.Float, default=80.0)
-    hunger = db.Column(db.Float, default=60.0)
-    happiness = db.Column(db.Float, default=70.0)
-    weight_kg = db.Column(db.Float, default=112.0)
-    freshness = db.Column(db.Float, default=100.0)
+    energy = db.Column(db.Float, default=PIG_DEFAULTS.energy)
+    hunger = db.Column(db.Float, default=PIG_DEFAULTS.hunger)
+    happiness = db.Column(db.Float, default=PIG_DEFAULTS.happiness)
+    weight_kg = db.Column(db.Float, default=PIG_DEFAULTS.weight_kg)
+    freshness = db.Column(db.Float, default=PIG_DEFAULTS.freshness)
     ever_bad_state = db.Column(db.Boolean, default=False)
 
     # Progression
@@ -103,7 +104,7 @@ class Pig(db.Model):
     school_sessions_completed = db.Column(db.Integer, default=0)
 
     # Durée de vie & Rareté & Origine
-    max_races = db.Column(db.Integer, default=80)
+    max_races = db.Column(db.Integer, default=PIG_DEFAULTS.max_races)
     rarity = db.Column(db.String(20), default='commun')
     origin_country = db.Column(db.String(30), default='France')
     origin_flag = db.Column(db.String(10), default='🇫🇷')
@@ -121,7 +122,7 @@ class Pig(db.Model):
 
     # Blessures & Vétérinaire
     is_injured = db.Column(db.Boolean, default=False)
-    injury_risk = db.Column(db.Float, default=4.0)
+    injury_risk = db.Column(db.Float, default=PIG_DEFAULTS.injury_risk)
     vet_deadline = db.Column(db.DateTime, nullable=True)
 
     # Timestamps
@@ -160,13 +161,14 @@ class Pig(db.Model):
     @property
     def races_remaining(self) -> int:
         """Nombre de courses restantes avant la retraite."""
-        return max(0, (self.max_races or 80) - self.races_entered)
+        return max(0, (self.max_races or PIG_DEFAULTS.max_races) - self.races_entered)
 
     @property
     def can_race(self) -> bool:
         """Le cochon est-il apte à courir ?"""
         return (self.is_alive and not self.is_injured
-                and self.energy > 20 and self.hunger > 20)
+                and self.energy > PIG_INTERACTION_RULES.race_ready_energy_threshold
+                and self.hunger > PIG_INTERACTION_RULES.race_ready_hunger_threshold)
 
     @property
     def can_train(self) -> bool:
@@ -185,17 +187,17 @@ class Pig(db.Model):
         for stat, boost in stats.items():
             current = getattr(self, stat, None)
             if current is not None:
-                setattr(self, stat, min(100, current + boost))
+                setattr(self, stat, min(PIG_LIMITS.max_value, current + boost))
 
     def reset_freshness(self):
         """Remet la fraicheur a fond apres une interaction positive."""
-        self.freshness = 100.0
+        self.freshness = PIG_DEFAULTS.freshness
 
     def register_positive_interaction(self, interacted_at: datetime | None = None):
         """Enregistre une interaction joueur et prepare le bonus de retrouvailles."""
         interaction_time = interacted_at or datetime.utcnow()
         previous_interaction = self.last_interaction_at or self.last_updated or self.created_at
-        if previous_interaction and (interaction_time - previous_interaction).total_seconds() > 12 * 3600:
+        if previous_interaction and (interaction_time - previous_interaction) > timedelta(hours=PIG_INTERACTION_RULES.comeback_bonus_idle_hours):
             self.comeback_bonus_ready = True
         self.last_interaction_at = interaction_time
         self.last_updated = interaction_time
@@ -203,7 +205,10 @@ class Pig(db.Model):
 
     def mark_bad_state_if_needed(self):
         """Memorise si le cochon est deja passe par un mauvais etat."""
-        if (self.hunger or 0) < 20 or (self.energy or 0) < 20:
+        if (
+            (self.hunger or 0) < PIG_INTERACTION_RULES.bad_state_hunger_threshold
+            or (self.energy or 0) < PIG_INTERACTION_RULES.bad_state_energy_threshold
+        ):
             self.ever_bad_state = True
 
     def heal(self):
