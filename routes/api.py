@@ -2,7 +2,7 @@ from flask import Blueprint, render_template, request, redirect, url_for, sessio
 from datetime import datetime, timedelta
 import json as _json
 
-from extensions import db, limiter
+from extensions import db, limiter, APP_TIMEZONE # Import APP_TIMEZONE
 from models import User, Pig, Race, Participant, Bet, UserNotification, ChatMessage
 from data import SCHOOL_COOLDOWN_MINUTES, MIN_INJURY_RISK, DEFAULT_PIG_WEIGHT_KG
 from helpers import (
@@ -88,8 +88,6 @@ def vet_solve():
         return jsonify({'error': 'Cochon introuvable'}), 404
     if not pig.is_alive:
         return jsonify({'dead': True, 'message': "Trop tard... il est passé de l'autre côté."}), 200
-    if not pig.is_injured:
-        return jsonify({'already_healed': True}), 200
     if pig.vet_deadline and datetime.utcnow() > pig.vet_deadline:
         pig.kill(cause='blessure')
         db.session.commit()
@@ -259,7 +257,8 @@ def api_race_live_state():
     Returns the current phase of the race lifecycle so all connected clients
     can show the same overlay at the same time.
     """
-    now = datetime.now()
+    # Utiliser l'heure du serveur avec le fuseau horaire configuré
+    now = datetime.now(APP_TIMEZONE)
 
     # Latest finished race (for replay)
     last_finished = Race.query.filter_by(status='finished').order_by(Race.finished_at.desc()).first()
@@ -274,25 +273,31 @@ def api_race_live_state():
 
     if next_scheduled_race:
         race_id_for_display = next_scheduled_race.id
-        seconds_to_start = int((next_scheduled_race.scheduled_at - now).total_seconds())
+        # Convertir scheduled_at en timezone aware si ce n'est pas déjà le cas
+        # Assumer que next_scheduled_race.scheduled_at est déjà en UTC ou dans le fuseau de l'app
+        scheduled_at_aware = next_scheduled_race.scheduled_at
+        if scheduled_at_aware.tzinfo is None:
+            scheduled_at_aware = APP_TIMEZONE.localize(scheduled_at_aware) # Localize naive datetime
 
-        if next_scheduled_race.status == 'finished': # Should not happen with the filter, but as a safeguard
-            phase = 'idle' # Or 'replay_available' if we want to force replay
-        elif seconds_to_start > 50: # More than 50 seconds to start, show idle/lobby
+        seconds_to_start = int((scheduled_at_aware - now).total_seconds())
+
+        if next_scheduled_race.status == 'finished':
             phase = 'idle'
-        elif seconds_to_start > 10: # Between 10 and 50 seconds, show pre-race lobby
+        elif seconds_to_start > 50:
+            phase = 'idle'
+        elif seconds_to_start > 10:
             phase = 'pre_race'
-        elif seconds_to_start > 0: # Last 10 seconds, show countdown
+        elif seconds_to_start > 0:
             phase = 'countdown'
-        else: # Scheduled time passed, race should be running or just finished
-            phase = 'racing' # Race is due/running, waiting for replay
+        else:
+            phase = 'racing'
 
     return jsonify({
         'phase': phase,
         'race_id': race_id_for_display,
         'seconds_to_start': max(0, seconds_to_start) if seconds_to_start is not None else None,
         'finished_race_id': finished_race_id,
-        'server_time': now.isoformat(),
+        'server_time': now.isoformat(), # Retourner l'heure du serveur
     })
 
 

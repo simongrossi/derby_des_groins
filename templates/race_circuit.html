@@ -15,7 +15,7 @@
     #stats-panel { width: 300px; flex-shrink: 0; background: linear-gradient(180deg, rgba(15,10,30,0.98), rgba(8,6,18,0.99)); border-left: 1px solid rgba(255,255,255,0.06); overflow-y: auto; padding: 1rem; }
     @media (max-width: 767px) { #circuit-wrap { flex-direction: column; } #svg-area { flex: 1; min-height: 0; } #stats-panel { width: 100%; height: 40vh; border-left: none; border-top: 1px solid rgba(255,255,255,0.06); } }
     .track-bg { fill: none; stroke: rgba(255,255,255,0.06); stroke-linecap: round; }
-    .pig-marker { transition: transform 0.45s linear; }
+    .pig-marker { transition: transform 0.1s linear; }
     .pig-label { font-size: 10px; fill: white; text-anchor: middle; dominant-baseline: hanging; opacity: 0.7; }
     #countdown-overlay { position: fixed; inset: 0; z-index: 50; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.85); pointer-events: none; }
     #countdown-text { font-size: clamp(4rem, 20vw, 12rem); font-weight: 900; background: linear-gradient(135deg, #fbbf24, #f97316); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
@@ -161,11 +161,16 @@
 <script>
 const PIG_COLORS = ['#f87171','#fb923c','#facc15','#4ade80','#22d3ee','#818cf8','#e879f9','#f472b6','#a3e635','#fca5a5','#fdba74','#fde68a'];
 const LAP_DISTANCE = 600; const TOTAL_LAPS = 5; const TOTAL_RACE_DISTANCE = LAP_DISTANCE * TOTAL_LAPS;
-const TARGET_RACE_DURATION_MS = 50000; // 50 secondes
+const TARGET_RACE_DURATION_MS = 50000;
 
-let replayData = null; let turnIndex = 0; let isPlaying = false; let playInterval = null;
-let lastAnimatedRaceId = null; let pathElement = null; let pathLength = 0;
+let replayData = null;
+let animationStartTime = null;
+let animationFrameId = null;
+let lastAnimatedRaceId = null;
+let pathElement = null;
+let pathLength = 0;
 let resultsRaceId = null;
+let raceTargetTime = null; // Temps de départ cible (Date)
 
 function initTrack() {
   pathElement = document.getElementById('track-bg-path');
@@ -173,7 +178,7 @@ function initTrack() {
 }
 
 function formatTime(seconds) {
-  if (seconds === null || seconds < 0) return '--:--';
+  if (seconds === null || seconds < 0) return '00:00';
   const m = Math.floor(seconds / 60), s = seconds % 60;
   return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 }
@@ -198,8 +203,8 @@ function createPigMarkers(pigsData) {
   });
 }
 
-function updatePositions(turnData) {
-  turnData.pigs.forEach((pig, i) => {
+function updatePigPositions(pigs) {
+  pigs.forEach((pig, i) => {
     const el = document.getElementById(`pig-${pig.id}`); if (!el) return;
     const distanceInLap = pig.distance % LAP_DISTANCE;
     const ratio = distanceInLap / LAP_DISTANCE;
@@ -209,10 +214,36 @@ function updatePositions(turnData) {
   });
 }
 
-async function startAnimation(replay) {
-  if (isPlaying || lastAnimatedRaceId === replay.race_id) return;
+function updateStatsPanel(pigs) {
+  const sortedPigs = [...pigs].sort((a, b) => b.distance - a.distance);
+  pigs.forEach(p => {
+    const pEl = document.getElementById(`stat-pos-${p.id}`);
+    if (pEl) {
+      const pos = sortedPigs.findIndex(s => s.id === p.id) + 1;
+      pEl.textContent = p.is_finished ? '🏁' : `#${pos}`;
+    }
+    const barEl = document.getElementById(`bar-${p.id}`);
+    if (barEl) {
+      barEl.style.width = `${Math.min(100, (p.distance / TOTAL_RACE_DISTANCE) * 100)}%`;
+    }
+  });
+}
 
-  replayData = replay; turnIndex = 0; isPlaying = true; lastAnimatedRaceId = replay.race_id;
+function updateLapDisplay(pigs) {
+  const infoTurnEl = document.getElementById('info-turn');
+  if (infoTurnEl && pigs.length > 0) {
+    const maxDistance = Math.max(...pigs.map(p => p.distance));
+    const currentLap = Math.min(TOTAL_LAPS, Math.floor(maxDistance / LAP_DISTANCE) + 1);
+    infoTurnEl.textContent = `Tour ${currentLap} / ${TOTAL_LAPS}`;
+  }
+}
+
+async function startAnimation(replay) {
+  if (lastAnimatedRaceId === replay.race_id) return;
+
+  replayData = replay;
+  animationStartTime = performance.now();
+  lastAnimatedRaceId = replay.race_id;
 
   const pigs = replay.turns[0].pigs.map(p => ({ id: p.id, name: p.name, emoji: '🐷' }));
   if (replay.participant_meta) {
@@ -233,56 +264,51 @@ async function startAnimation(replay) {
       </div>
     </div>`).join('');
 
-  // Masquer les overlays et afficher le circuit
   document.getElementById('lobby-overlay').style.display = 'none';
   document.getElementById('results-overlay').style.display = 'none';
   document.getElementById('circuit-wrap').style.display = 'flex';
   document.getElementById('info-race').textContent = `Course #${replay.race_id}`;
 
-  // Calculer l'intervalle pour que la course dure 50s
-  const numTurns = replay.turns.length;
-  const interval = TARGET_RACE_DURATION_MS / numTurns;
-
-  playTick(interval);
+  animationFrameId = requestAnimationFrame(animate);
 }
 
-function playTick(interval) {
-  if (!isPlaying || !replayData || turnIndex >= replayData.turns.length) {
-    setTimeout(finishAnimation, 1000);
-    return;
-  }
+function animate(currentTime) {
+  const elapsedTime = currentTime - animationStartTime;
+  const progress = Math.min(1, elapsedTime / TARGET_RACE_DURATION_MS);
 
-  const turn = replayData.turns[turnIndex];
-  updatePositions(turn);
+  const numTurns = replayData.turns.length;
+  const virtualTurnIndex = progress * (numTurns - 1);
+  const turnAIndex = Math.floor(virtualTurnIndex);
+  const turnBIndex = Math.min(turnAIndex + 1, numTurns - 1);
 
-  const sorted = [...turn.pigs].sort((a,b) => b.distance - a.distance);
-  turn.pigs.forEach(p => {
-    const pEl = document.getElementById(`stat-pos-${p.id}`); if (!pEl) return;
-    const pos = sorted.findIndex(s => s.id === p.id) + 1;
-    pEl.textContent = p.is_finished ? '🏁' : `#${pos}`;
-    document.getElementById(`bar-${p.id}`).style.width = `${Math.min(100, (p.distance / TOTAL_RACE_DISTANCE) * 100)}%`;
+  const turnA = replayData.turns[turnAIndex];
+  const turnB = replayData.turns[turnBIndex];
+  const lerpFactor = virtualTurnIndex - turnAIndex;
+
+  const interpolatedPigs = turnA.pigs.map((pigA, i) => {
+      const pigB = turnB.pigs[i];
+      const interpolatedDistance = pigA.distance + (pigB.distance - pigA.distance) * lerpFactor;
+      return { ...pigA, distance: interpolatedDistance };
   });
 
-  const currentLap = Math.min(TOTAL_LAPS, Math.floor(sorted[0].distance / LAP_DISTANCE) + 1);
-  document.getElementById('info-turn').textContent = `Tour ${currentLap} / ${TOTAL_LAPS}`;
+  updatePigPositions(interpolatedPigs);
+  updateStatsPanel(interpolatedPigs);
+  updateLapDisplay(interpolatedPigs);
 
-  turnIndex++;
-  playInterval = setTimeout(() => playTick(interval), interval);
+  if (progress < 1) {
+    animationFrameId = requestAnimationFrame(animate);
+  } else {
+    setTimeout(finishAnimation, 1500);
+  }
 }
 
 async function finishAnimation() {
-  isPlaying = false;
   const raceId = replayData.race_id;
   resultsRaceId = raceId;
-
-  // Masquer le circuit
   document.getElementById('circuit-wrap').style.display = 'none';
-
-  // Charger et afficher les résultats
   document.getElementById('results-race-id').textContent = raceId;
   document.getElementById('results-overlay').style.display = 'flex';
 
-  // Remplir podium cochons
   const lastTurn = replayData.turns[replayData.turns.length - 1];
   const winners = [...lastTurn.pigs].sort((a,b) => b.distance - a.distance);
 
@@ -293,12 +319,11 @@ async function finishAnimation() {
       <tr>
         <td><span class="text-xl">${i === 0 ? '🥇' : (i === 1 ? '🥈' : (i === 2 ? '🥉' : i + 1))}</span></td>
         <td><div class="flex items-center gap-3"><span>${meta?.emoji || '🐷'}</span> <span>${p.name}</span></div></td>
-        <td class="text-right text-emerald-400">? 🪙</td>
+        <td class="text-right text-emerald-400">Podium</td>
       </tr>
     `;
   }).join('');
 
-  // Charger profits parieurs
   try {
     const res = await fetch(`/api/race/${raceId}/bettor-results`);
     const data = await res.json();
@@ -312,15 +337,14 @@ async function finishAnimation() {
       </tr>
     `).join('');
     if (data.bettor_results.length === 0) {
-      bettorsBody.innerHTML = '<tr><td colspan="2" class="text-center text-white/30">Aucun pari sur cette course.</td></tr>';
+      bettorsBody.innerHTML = '<tr><td colspan="2" class="text-center text-white/30">Aucun pari.</td></tr>';
     }
   } catch(e) { console.error("Erreur resultats parieurs", e); }
 }
 
 function closeCircuit() {
-  isPlaying = false;
-  if (window.parent && window.parent !== window) window.parent.postMessage('close-global-circuit', '*');
-  else window.location.href = '/';
+  cancelAnimationFrame(animationFrameId);
+  window.location.href = '/';
 }
 
 async function updateLobbyData(raceId) {
@@ -337,10 +361,7 @@ async function updateLobbyData(raceId) {
     betsData.bets.forEach(b => {
       totalEnjeux += b.amount;
       const ids = (b.selection_order || "").split(',').map(Number).filter(id => !isNaN(id));
-      if (ids.length > 0) {
-        const primaryId = ids[0];
-        stakesByParticipantId[primaryId] = (stakesByParticipantId[primaryId] || 0) + b.amount;
-      }
+      if (ids.length > 0) { stakesByParticipantId[ids[0]] = (stakesByParticipantId[ids[0]] || 0) + b.amount; }
     });
 
     const tbody = document.getElementById('lobby-runners-body');
@@ -363,55 +384,62 @@ async function updateLobbyData(raceId) {
 }
 
 async function pollState() {
-  if (isPlaying || resultsRaceId) return;
+  if (animationFrameId || resultsRaceId) {
+      // Si un décompte est en cours, on le met à jour sans attendre le poll
+      if (raceTargetTime) {
+          const now = Date.now();
+          const diff = Math.max(0, Math.floor((raceTargetTime - now) / 1000));
+          document.getElementById('lobby-countdown').textContent = formatTime(diff);
+      }
+  }
 
   try {
-    const r = await fetch('/api/race/live-state'); const s = await r.json();
+    const r = await fetch('/api/race/live-state');
+    const s = await r.json();
     if (document.getElementById('loading-overlay')) document.getElementById('loading-overlay').style.display = 'none';
 
-    // Phase RACING : On attend que la course soit générée
     if (s.phase === 'racing') {
-      document.getElementById('lobby-overlay').style.display = 'none';
-      document.getElementById('circuit-wrap').style.display = 'flex';
-      document.getElementById('race-status-banner').style.display = 'block';
-
-      // Si on n'anime pas encore mais qu'une course vient de finir
-      if (s.finished_race_id && s.finished_race_id !== lastAnimatedRaceId) {
-        const repR = await fetch(`/api/race/${s.finished_race_id}/replay`);
-        const rep = await repR.json();
-        if (rep.turns) {
-          document.getElementById('race-status-banner').style.display = 'none';
-          startAnimation(rep);
-          return;
-        }
+      if (!animationFrameId) {
+          document.getElementById('lobby-overlay').style.display = 'none';
+          document.getElementById('circuit-wrap').style.display = 'flex';
+          document.getElementById('race-status-banner').style.display = 'block';
+          if (s.finished_race_id && s.finished_race_id !== lastAnimatedRaceId) {
+            const repR = await fetch(`/api/race/${s.finished_race_id}/replay`);
+            const rep = await repR.json();
+            if (rep.turns) {
+              document.getElementById('race-status-banner').style.display = 'none';
+              startAnimation(rep);
+            }
+          }
       }
       return;
     }
 
-    // Autres phases : Lobby ou Idle
-    document.getElementById('circuit-wrap').style.display = 'none';
-    document.getElementById('results-overlay').style.display = 'none';
-
     if (s.race_id) {
       document.getElementById('lobby-overlay').style.display = 'flex';
       document.getElementById('lobby-race-id').textContent = s.race_id;
-      document.getElementById('lobby-countdown').textContent = formatTime(s.seconds_to_start);
+
+      // Synchronisation du chronomètre
+      const serverNow = s.server_time ? new Date(s.server_time).getTime() : Date.now();
+      const localNow = Date.now();
+      const offset = serverNow - localNow;
+      raceTargetTime = localNow + (s.seconds_to_start * 1000) - offset;
+
       document.getElementById('lobby-label').textContent = s.phase === 'countdown' ? "Décollage imminent" : "Prochaine course";
 
       if (!window._lastLobbyRaceId || window._lastLobbyRaceId !== s.race_id) {
         window._lastLobbyRaceId = s.race_id;
         updateLobbyData(s.race_id);
       }
-    } else {
-      // Cas rare : aucune course même dans le futur proche
-      document.getElementById('lobby-overlay').style.display = 'flex';
-      document.getElementById('lobby-countdown').textContent = "PAUSE";
-      document.getElementById('lobby-runners-body').innerHTML = '<tr><td colspan="4" class="text-center text-white/30">Aucun cochon sur la piste...</td></tr>';
     }
   } catch(e) {}
 }
 
-document.addEventListener('DOMContentLoaded', () => { initTrack(); pollState(); setInterval(pollState, 3000); });
+document.addEventListener('DOMContentLoaded', () => {
+  initTrack();
+  pollState();
+  setInterval(pollState, 1000); // Poll plus fréquent pour le chronomètre
+});
 </script>
 </body>
 </html>

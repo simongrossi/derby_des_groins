@@ -18,11 +18,12 @@ def run_scheduler_job(app, job_name, callback):
     with app.app_context():
         try:
             callback()
+            db.session.commit() # S'assurer que tout est committé à la fin du job
         except Exception:
             app.logger.exception("Scheduler job failed: %s", job_name)
-            db.session.rollback()
+            db.session.rollback() # Rollback en cas d'erreur
         finally:
-            db.session.remove()
+            db.session.remove() # Toujours nettoyer la session
 
 
 def start_scheduler(app):
@@ -31,13 +32,13 @@ def start_scheduler(app):
         return
 
     scheduler = BackgroundScheduler(timezone=APP_TIMEZONE)
-    # On reduit a 5 secondes pour une reaction plus rapide au depart des courses
+    # Augmenter l'intervalle et max_instances pour race_tick
     scheduler.add_job(
         lambda: run_scheduler_job(app, 'race_tick', lambda: (run_race_if_needed(), ensure_next_race())),
-        IntervalTrigger(seconds=5, timezone=APP_TIMEZONE),
+        IntervalTrigger(seconds=10, timezone=APP_TIMEZONE), # Intervalle augmenté à 10 secondes
         id='race-tick',
         replace_existing=True,
-        max_instances=1,
+        max_instances=2, # Permettre 2 instances pour plus de souplesse
         coalesce=True,
     )
     scheduler.add_job(
@@ -78,7 +79,7 @@ def start_scheduler(app):
     )
     scheduler.start()
     atexit.register(lambda: scheduler.shutdown(wait=False) if scheduler and scheduler.running else None)
-    app.logger.info("Background scheduler started (race interval: 5s)")
+    app.logger.info("Background scheduler started (race interval: 10s)")
 
 
 def stop_scheduler():
