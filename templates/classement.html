@@ -71,7 +71,7 @@
         }
     </style>
 </head>
-<body>
+<body class="page-classement">
 
 {% include '_site_header.html' %}
 
@@ -642,34 +642,87 @@
     const allWinRate = {{ chart_data.all_win_rate | tojson }};
     const allRaces = {{ chart_data.all_races | tojson }};
 
-    const chartOpts = (display_legend = false) => ({
-        plugins: { legend: { display: display_legend, labels: { color: 'rgba(255,255,255,0.5)', font: { size: 11 } } } },
-        scales: {
-            y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: 'rgba(255,255,255,0.3)' } },
-            x: { grid: { display: false }, ticks: { color: 'rgba(255,255,255,0.3)' } }
-        }
-    });
+    const classementCharts = [];
 
-    // Cache chartOpts() — évite les appels répétés dans chaque options spread
+    function isLightTheme() {
+        return (document.documentElement.getAttribute('data-theme') || 'dark') === 'light';
+    }
+
+    function getChartTokens() {
+        if (isLightTheme()) {
+            return {
+                legend: 'rgba(75, 49, 67, 0.72)',
+                ticks: 'rgba(75, 49, 67, 0.68)',
+                grid: 'rgba(214, 170, 191, 0.24)',
+            };
+        }
+        return {
+            legend: 'rgba(255,255,255,0.5)',
+            ticks: 'rgba(255,255,255,0.3)',
+            grid: 'rgba(255,255,255,0.05)',
+        };
+    }
+
+    const chartOpts = (displayLegend = false) => {
+        const tokens = getChartTokens();
+        return {
+            plugins: {
+                legend: {
+                    display: displayLegend,
+                    labels: { color: tokens.legend, font: { size: 11 } }
+                }
+            },
+            scales: {
+                y: { grid: { color: tokens.grid }, ticks: { color: tokens.ticks } },
+                x: { grid: { display: false }, ticks: { color: tokens.ticks } }
+            }
+        };
+    };
+
     const _opts = chartOpts();
     const _optsLegend = chartOpts(true);
 
+    function registerChart(chart) {
+        classementCharts.push(chart);
+        return chart;
+    }
+
+    function refreshClassementChartsTheme() {
+        const tokens = getChartTokens();
+        classementCharts.forEach((chart) => {
+            if (!chart || !chart.options) return;
+            if (chart.options.plugins && chart.options.plugins.legend && chart.options.plugins.legend.labels) {
+                chart.options.plugins.legend.labels.color = tokens.legend;
+            }
+            if (chart.options.scales) {
+                if (chart.options.scales.y) {
+                    if (chart.options.scales.y.grid) chart.options.scales.y.grid.color = tokens.grid;
+                    if (chart.options.scales.y.ticks) chart.options.scales.y.ticks.color = tokens.ticks;
+                }
+                if (chart.options.scales.x) {
+                    if (chart.options.scales.x.ticks) chart.options.scales.x.ticks.color = tokens.ticks;
+                }
+            }
+            chart.update();
+        });
+    }
+
     // Balance chart
-    new Chart(document.getElementById('balanceChart').getContext('2d'), {
+    registerChart(new Chart(document.getElementById('balanceChart').getContext('2d'), {
         type: 'bar',
         data: { labels: chartLabels, datasets: [{ label: 'Fortune (BitGroins)', data: balanceData, backgroundColor: 'rgba(251, 191, 36, 0.4)', borderColor: '#fbbf24', borderWidth: 2, borderRadius: 8 }] },
         options: _opts
-    });
+    }));
 
     // Wins chart
-    new Chart(document.getElementById('winsChart').getContext('2d'), {
+    registerChart(new Chart(document.getElementById('winsChart').getContext('2d'), {
         type: 'bar',
         data: { labels: chartLabels, datasets: [{ label: 'Victoires', data: winsData, backgroundColor: 'rgba(59, 130, 246, 0.4)', borderColor: '#3b82f6', borderWidth: 2, borderRadius: 8 }] },
         options: { ..._opts, scales: { ..._opts.scales, y: { ..._opts.scales.y, ticks: { ..._opts.scales.y.ticks, stepSize: 1 } } } }
-    });
+    }));
 
     // Deaths stacked bar chart
-    new Chart(document.getElementById('deathsChart').getContext('2d'), {
+    registerChart(new Chart(document.getElementById('deathsChart').getContext('2d'), {
         type: 'bar',
         data: {
             labels: allLabels,
@@ -681,14 +734,14 @@
             ]
         },
         options: { ..._optsLegend, scales: { ..._opts.scales, x: { ..._opts.scales.x, stacked: true }, y: { ..._opts.scales.y, stacked: true, ticks: { ..._opts.scales.y.ticks, stepSize: 1 } } } }
-    });
+    }));
 
     // Death causes doughnut
     const totalChallenge = allChallenge.reduce((a, b) => a + b, 0);
     const totalBlessure = allBlessure.reduce((a, b) => a + b, 0);
     const totalSacrifice = allSacrifice.reduce((a, b) => a + b, 0);
     const totalVieillesse = allVieillesse.reduce((a, b) => a + b, 0);
-    new Chart(document.getElementById('deathCausesChart').getContext('2d'), {
+    registerChart(new Chart(document.getElementById('deathCausesChart').getContext('2d'), {
         type: 'doughnut',
         data: {
             labels: ['Challenge', 'Blessure', 'Sacrifice', 'Vieillesse'],
@@ -700,13 +753,13 @@
         },
         options: {
             plugins: {
-                legend: { position: 'bottom', labels: { color: 'rgba(255,255,255,0.5)', padding: 15, font: { size: 12, weight: 'bold' } } }
+                legend: { position: 'bottom', labels: { color: getChartTokens().legend, padding: 15, font: { size: 12, weight: 'bold' } } }
             }
         }
-    });
+    }));
 
     // Bet profit chart
-    new Chart(document.getElementById('betProfitChart').getContext('2d'), {
+    registerChart(new Chart(document.getElementById('betProfitChart').getContext('2d'), {
         type: 'bar',
         data: {
             labels: allLabels,
@@ -720,14 +773,14 @@
             }]
         },
         options: _opts
-    });
+    }));
 
     // Bet win rate chart
     const betWinRates = {{ chart_data.all_labels | tojson }}.map((_, i) => {
         const r = {{ rankings | map(attribute='bet_win_rate') | list | tojson }}[i];
         return r || 0;
     });
-    new Chart(document.getElementById('betWinRateChart').getContext('2d'), {
+    registerChart(new Chart(document.getElementById('betWinRateChart').getContext('2d'), {
         type: 'bar',
         data: {
             labels: allLabels,
@@ -741,10 +794,10 @@
             }]
         },
         options: { ..._opts, scales: { ..._opts.scales, y: { ..._opts.scales.y, max: 100 } } }
-    });
+    }));
 
     // Races chart
-    new Chart(document.getElementById('racesChart').getContext('2d'), {
+    registerChart(new Chart(document.getElementById('racesChart').getContext('2d'), {
         type: 'bar',
         data: {
             labels: allLabels,
@@ -758,10 +811,10 @@
             }]
         },
         options: { ..._opts, scales: { ..._opts.scales, y: { ..._opts.scales.y, ticks: { ..._opts.scales.y.ticks, stepSize: 1 } } } }
-    });
+    }));
 
     // Win rate chart
-    new Chart(document.getElementById('winRateChart').getContext('2d'), {
+    registerChart(new Chart(document.getElementById('winRateChart').getContext('2d'), {
         type: 'bar',
         data: {
             labels: allLabels,
@@ -775,7 +828,9 @@
             }]
         },
         options: { ..._opts, scales: { ..._opts.scales, y: { ..._opts.scales.y, max: 100 } } }
-    });
+    }));
+
+    document.addEventListener('derby-theme-change', refreshClassementChartsTheme);
 </script>
 
 {% include '_footer.html' %}
