@@ -1,10 +1,10 @@
-{% set nav_base = "inline-flex w-full min-h-[2.7rem] items-center justify-center gap-2 rounded-xl border px-2.5 py-1.5 text-[13px] font-bold transition-all whitespace-nowrap sm:min-h-0 sm:w-auto sm:px-3 sm:py-2 sm:text-sm" %}
+{% set nav_base = "inline-flex items-center justify-center gap-2 rounded-2xl border px-3 py-2 text-sm font-bold transition-all whitespace-nowrap" %}
 {% set nav_active = "border-pink-300/45 bg-pink-400/16 text-pink-100 shadow-[0_10px_26px_rgba(244,114,182,0.16)]" %}
-{% set nav_idle = "border-pink-100/10 bg-pink-200/[0.035] text-white/70 hover:border-pink-200/20 hover:bg-pink-200/[0.08] hover:text-white" %}
-{% set util_base = "inline-flex items-center gap-2 rounded-2xl border px-3 py-1.5 text-sm font-bold transition-all whitespace-nowrap" %}
-{% set util_idle = "border-pink-100/10 bg-pink-200/[0.035] text-white/70 hover:border-pink-200/20 hover:bg-pink-200/[0.08] hover:text-white" %}
+{% set nav_idle = "border-pink-100/10 bg-pink-200/[0.035] text-white/72 hover:border-pink-200/20 hover:bg-pink-200/[0.08] hover:text-white" %}
+{% set util_base = "inline-flex items-center gap-2 rounded-2xl border px-3 py-2 text-sm font-bold transition-all whitespace-nowrap" %}
+{% set util_idle = "border-pink-100/10 bg-pink-200/[0.035] text-white/72 hover:border-pink-200/20 hover:bg-pink-200/[0.08] hover:text-white" %}
 {% include "_theme_assets.html" %}
-{% set section_trigger_base = "flex w-full cursor-pointer list-none items-center gap-2 rounded-xl border px-2.5 py-2 text-left text-sm font-bold transition-all sm:gap-2.5 sm:px-3 sm:py-2.5 lg:w-auto lg:min-w-[11.75rem]" %}
+{% set section_trigger_base = "flex cursor-pointer list-none items-center gap-2 rounded-2xl border px-3 py-2 text-left text-sm font-bold transition-all min-w-[10.75rem]" %}
 {% set section_trigger_active = "border-pink-300/30 bg-pink-400/12 text-pink-100 shadow-[0_10px_24px_rgba(244,114,182,0.14)]" %}
 {% set section_trigger_idle = "border-pink-100/10 bg-white/[0.025] text-white/[0.72] hover:border-pink-200/[0.18] hover:bg-white/[0.05] hover:text-white" %}
 {% set section_link_base = "flex items-center justify-between gap-3 rounded-xl border px-2.5 py-2 text-[13px] font-bold transition-all sm:px-3 sm:py-2.5 sm:text-sm" %}
@@ -14,9 +14,7 @@
     {'href': '/courses', 'label': 'Courses', 'icon': '📅', 'key': 'courses'},
     {'href': '/paris', 'label': 'Paris', 'icon': '💰', 'key': 'paris'},
     {'href': '/mon-cochon', 'label': 'Ma Porcherie', 'icon': '🛖', 'key': 'mon_cochon'},
-    {'href': '/classement', 'label': 'Classement', 'icon': '🏆', 'key': 'classement'},
-    {'href': '/profil', 'label': 'Profil', 'icon': '👤', 'key': 'profil'},
-    {'href': '/history', 'label': 'Historique', 'icon': '📋', 'key': 'history'}
+    {'href': '/classement', 'label': 'Classement', 'icon': '🏆', 'key': 'classement'}
 ] %}
 {% set nav_groups = [
     {
@@ -61,133 +59,102 @@
 
 <header id="site-header" class="border-b border-pink-200/10 sticky top-0 z-[100]" style="background: linear-gradient(180deg, rgba(39, 13, 49, 0.96) 0%, rgba(28, 11, 41, 0.94) 100%); box-shadow: inset 0 1px 0 rgba(255,255,255,0.04); backdrop-filter: blur(20px);">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <div class="max-w-6xl mx-auto px-4 py-2.5">
-        <div class="flex flex-col gap-2.5">
-
-            <!-- ── Ligne 1 : Logo + résumé utilisateur + hamburger ── -->
-            <div class="flex flex-wrap items-center justify-between gap-2">
-
-                <!-- Logo -->
-                <a href="/" class="flex max-w-full min-w-0 items-center gap-2 transition-opacity hover:opacity-90 sm:shrink-0">
-                    <span class="flex h-11 w-11 items-center justify-center rounded-2xl border border-pink-200/10 bg-white/[0.04] text-[1.6rem] drop-shadow-[0_0_12px_rgba(244,114,182,0.35)]">🐷</span>
+    <div class="max-w-6xl mx-auto px-4 py-3">
+        <div class="flex flex-col gap-3">
+            <div class="flex items-center justify-between gap-3">
+                <a href="/" class="flex min-w-0 items-center gap-3 transition-opacity hover:opacity-90">
+                    <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-pink-200/10 bg-white/[0.04] text-[1.65rem] drop-shadow-[0_0_12px_rgba(244,114,182,0.28)]">🐷</span>
                     <div class="min-w-0">
-                        <p class="font-title text-[1.25rem] sm:text-[1.45rem] text-pink-200 leading-none drop-shadow-[0_0_18px_rgba(251,113,133,0.18)]">Derby des Groins</p>
-                        <p class="text-[11px] text-pink-100/42 font-semibold mt-0.5 hidden sm:block">Le pari le plus porcin de l'internet</p>
+                        <p class="font-title truncate text-[1.3rem] leading-none text-pink-200 sm:text-[1.5rem]">Derby des Groins</p>
+                        <p class="mt-0.5 truncate text-[11px] font-semibold text-pink-100/44">Le pari le plus porcin de l'internet</p>
                     </div>
                 </a>
 
                 {% if user %}
-                <!-- Droite : balance (sm+), admin/quitter (lg+), hamburger (< lg) -->
-                <div class="flex items-center gap-1.5 sm:ml-auto">
-
-                    <!-- Balance + Tickets : visible dès sm -->
-                    <div class="hidden sm:inline-flex items-center gap-2 rounded-[1.4rem] border border-pink-200/12 bg-[linear-gradient(135deg,rgba(244,114,182,0.08),rgba(255,255,255,0.035))] px-3 py-1.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]">
-                        <div>
-                            <p class="text-[9px] uppercase tracking-[0.18em] text-pink-100/30 font-bold">BitGroins</p>
-                            <div class="mt-0.5 flex items-center gap-1">
-                                <span class="font-title text-base leading-none text-yellow-400">{{ "%.0f"|format(user.balance) }}</span>
-                                <span class="text-xs font-bold text-pink-100/45">🪙</span>
-                            </div>
-                        </div>
-                        <div class="h-5 w-px bg-pink-100/10"></div>
-                        <div class="cursor-help group relative" title="Chaque pari consomme 1 ticket. Ton quota de 3 tickets se réinitialise chaque lundi matin.">
-                            <p class="text-[9px] uppercase tracking-[0.18em] text-pink-100/30 font-bold group-hover:text-pink-300 transition-colors">Tickets</p>
-                            <div class="mt-0.5 flex items-center gap-1">
-                                <span class="font-title text-base leading-none text-pink-400">{{ user.bacon_tickets }}</span>
-                                <span class="text-xs font-bold text-pink-100/45">🎟️</span>
-                            </div>
-                        </div>
-                        <div class="h-5 w-px bg-pink-100/10 hidden md:block"></div>
-                        <div class="hidden md:block">
-                            <p class="text-[9px] uppercase tracking-[0.18em] text-pink-100/30 font-bold">Compte</p>
-                            <p class="mt-0.5 text-sm font-bold text-white/85 leading-none">{{ user.username }}</p>
-                        </div>
+                <div class="flex items-center gap-2 sm:ml-auto">
+                    <div class="hidden lg:inline-flex items-center gap-3 rounded-[1.35rem] border border-pink-200/12 bg-[linear-gradient(135deg,rgba(244,114,182,0.08),rgba(255,255,255,0.035))] px-4 py-2 text-sm font-bold text-white/78 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]">
+                        <span class="text-yellow-400">{{ "%.0f"|format(user.balance) }} 🪙 <span class="ml-1 text-pink-100/55 uppercase tracking-[0.14em] text-[11px]">BitGroins</span></span>
+                        <span class="h-4 w-px bg-pink-100/10"></span>
+                        <span class="text-pink-300">{{ user.bacon_tickets }} 🎟️ <span class="ml-1 text-pink-100/55 uppercase tracking-[0.14em] text-[11px]">Tickets</span></span>
                     </div>
 
-                    <button type="button" data-theme-toggle aria-pressed="false" class="theme-toggle-btn hidden sm:inline-flex {{ util_base }} {{ util_idle }}">
+                    <button type="button" data-theme-toggle aria-pressed="false" class="theme-toggle-btn hidden lg:inline-flex {{ util_base }} {{ util_idle }}">
                         <span data-theme-toggle-icon>☀️</span>
                         <span data-theme-toggle-label>Clair</span>
                     </button>
 
-                    <!-- Admin + Quitter : desktop seulement -->
-                    {% if user.is_admin %}
-                    <a href="/admin" class="hidden lg:inline-flex {{ util_base }} {{ 'border-fuchsia-400/35 bg-fuchsia-400/12 text-fuchsia-200' if active_page == 'admin' else util_idle }}">🔧 Admin</a>
-                    {% endif %}
-                    <a href="/logout" class="hidden lg:inline-flex {{ util_base }} border-red-400/20 bg-red-400/10 text-red-200 hover:border-red-400/35 hover:bg-red-400/15 hover:text-red-100">Quitter</a>
+                    <details class="account-menu relative hidden lg:block">
+                        <summary class="{{ util_base }} {{ 'border-pink-300/30 bg-pink-400/12 text-pink-100' if active_page in ['profil', 'history', 'admin'] else util_idle }}">
+                            <span>Compte {{ user.username }}</span>
+                            <svg class="account-menu-chevron h-4 w-4 text-current/70 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m6 9 6 6 6-6"></path>
+                            </svg>
+                        </summary>
+                        <div class="account-menu-panel absolute right-0 top-[calc(100%+0.55rem)] z-30 hidden w-56 rounded-2xl border border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,8,26,0.96),rgba(29,14,43,0.94))] p-2 shadow-[0_24px_56px_rgba(10,4,18,0.4)]">
+                            <div class="grid gap-1.5">
+                                <a href="/profil" class="{{ section_link_base }} {{ section_link_active if active_page == 'profil' else section_link_idle }}"><span class="flex items-center gap-2"><span>👤</span><span>Profil</span></span><span class="text-[10px] uppercase tracking-[0.18em] text-white/30">Ouvrir</span></a>
+                                <a href="/history" class="{{ section_link_base }} {{ section_link_active if active_page == 'history' else section_link_idle }}"><span class="flex items-center gap-2"><span>📋</span><span>Historique</span></span><span class="text-[10px] uppercase tracking-[0.18em] text-white/30">Voir</span></a>
+                                {% if user.is_admin %}
+                                <a href="/admin" class="{{ section_link_base }} {{ 'border-fuchsia-400/35 bg-fuchsia-400/12 text-fuchsia-100' if active_page == 'admin' else section_link_idle }}"><span class="flex items-center gap-2"><span>🔧</span><span>Admin</span></span><span class="text-[10px] uppercase tracking-[0.18em] text-white/30">Panel</span></a>
+                                {% endif %}
+                                <a href="/logout" class="{{ section_link_base }} border-red-400/20 bg-red-400/10 text-red-100 hover:border-red-400/35 hover:bg-red-400/15 hover:text-red-50"><span class="flex items-center gap-2"><span>🚪</span><span>Quitter</span></span><span class="text-[10px] uppercase tracking-[0.18em] text-red-200/70">Sortir</span></a>
+                            </div>
+                        </div>
+                    </details>
 
-                    <!-- Hamburger (mobile & tablette) -->
                     <button id="nav-hamburger" aria-label="Menu navigation" aria-expanded="false"
-                        class="lg:hidden inline-flex items-center justify-center w-10 h-10 rounded-2xl border border-pink-200/15 bg-pink-200/[0.04] text-white/70 hover:text-white hover:bg-pink-200/[0.08] transition-all">
+                        class="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-pink-200/15 bg-pink-200/[0.04] text-white/70 transition-all hover:bg-pink-200/[0.08] hover:text-white lg:hidden">
                         <svg id="icon-open" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
-                        <svg id="icon-close" class="w-5 h-5 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                        <svg id="icon-close" class="hidden w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                     </button>
                 </div>
-
                 {% else %}
-                <div class="flex flex-wrap items-center gap-2">
+                <div class="flex items-center gap-2">
                     <button type="button" data-theme-toggle aria-pressed="false" class="theme-toggle-btn {{ util_base }} {{ util_idle }}">
                         <span data-theme-toggle-icon>☀️</span>
                         <span data-theme-toggle-label>Clair</span>
                     </button>
-                    <a href="/regles" class="{{ util_base }} {{ util_idle }}">Règles</a>
                     <a href="/login" class="{{ util_base }} {{ util_idle }}">Connexion</a>
-                    <a href="/register" class="inline-flex items-center gap-2 rounded-xl px-4 py-3 text-sm font-bold text-white transition-all bg-gradient-to-r from-pink-500 via-rose-500 to-orange-400 hover:translate-y-[-1px] hover:shadow-[0_8px_24px_rgba(244,114,182,0.28)]">S'inscrire</a>
+                    <a href="/register" class="inline-flex items-center gap-2 rounded-2xl px-4 py-2 text-sm font-bold text-white transition-all bg-gradient-to-r from-pink-500 via-rose-500 to-orange-400 hover:translate-y-[-1px] hover:shadow-[0_8px_24px_rgba(244,114,182,0.28)]">S'inscrire</a>
                 </div>
                 {% endif %}
             </div>
 
             {% if user %}
-            <!-- ── Nav hiérarchisée : accès rapides + sections ── -->
-            <nav id="main-nav" class="hidden flex-col gap-2 rounded-[1.5rem] border border-pink-200/10 bg-[linear-gradient(180deg,rgba(39,13,49,0.98),rgba(28,11,41,0.95))] p-2 shadow-2xl max-h-[calc(100dvh-6rem)] overflow-y-auto lg:flex lg:rounded-[1.5rem] lg:border-pink-200/[0.08] lg:bg-[linear-gradient(180deg,rgba(255,255,255,0.03),rgba(255,255,255,0.01))] lg:max-h-none lg:overflow-visible lg:p-2.5 lg:shadow-[0_24px_80px_rgba(10,4,18,0.28)]">
-                <div class="flex flex-col gap-1.5 sm:gap-2">
-                    <div class="px-1">
-                        <p class="text-[9px] uppercase tracking-[0.24em] text-pink-100/28 font-black">Accès rapides</p>
-                    </div>
-
-                    <div class="grid grid-cols-2 gap-1.5 sm:flex sm:flex-wrap">
-                        <button id="chat-toggle" data-nav-close class="{{ nav_base }} border-indigo-400/30 bg-indigo-500/10 text-indigo-100 hover:bg-indigo-500/20">💬 Chat</button>
-                        {% for item in primary_links %}
-                        <a href="{{ item.href }}" data-nav-close class="{{ nav_base }} {{ nav_active if active_page == item.key else nav_idle }}">
-                            <span>{{ item.icon }}</span>
-                            <span>{{ item.label }}</span>
-                        </a>
-                        {% endfor %}
-                    </div>
+            <div class="hidden lg:flex items-center gap-2">
+                <div class="flex flex-wrap items-center gap-2">
+                    <button id="chat-toggle" class="{{ nav_base }} border-indigo-400/30 bg-indigo-500/10 text-indigo-100 hover:bg-indigo-500/20">💬 Chat</button>
+                    {% for item in primary_links %}
+                    <a href="{{ item.href }}" class="{{ nav_base }} {{ nav_active if active_page == item.key else nav_idle }}">
+                        <span>{{ item.icon }}</span>
+                        <span>{{ item.label }}</span>
+                    </a>
+                    {% endfor %}
                 </div>
 
-                <div class="grid grid-cols-1 gap-1.5 sm:gap-2 xl:grid-cols-3">
+                <div class="ml-auto flex items-center gap-2">
                     {% for group in nav_groups %}
                     {% set group_active = active_page in group.active_keys %}
                     <details class="nav-group relative">
                         <summary class="{{ section_trigger_base }} {{ section_trigger_active if group_active else section_trigger_idle }}">
-                            <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-white/[0.08] bg-white/[0.045] text-[15px] sm:h-9 sm:w-9 sm:text-base">{{ group.icon }}</span>
-                            <span class="min-w-0 flex-1">
-                                <span class="block text-[8px] uppercase tracking-[0.18em] text-white/30 sm:text-[9px] sm:tracking-[0.2em]">{{ group.eyebrow }}</span>
-                                <span class="mt-0.5 block text-[0.92rem] text-white/90 sm:text-[0.95rem]">{{ group.label }}</span>
-                            </span>
-                            <span class="inline-flex h-6 min-w-[1.6rem] items-center justify-center rounded-full border border-white/[0.08] bg-white/[0.05] px-1.5 text-[10px] font-black text-white/50">{{ group.links|length }}</span>
+                            <span class="text-base">{{ group.icon }}</span>
+                            <span class="flex-1">{{ group.label }}</span>
+                            <span class="inline-flex h-6 min-w-[1.65rem] items-center justify-center rounded-full border border-white/[0.08] bg-white/[0.05] px-1.5 text-[10px] font-black text-white/55">{{ group.links|length }}</span>
                             <svg class="nav-group-chevron h-4 w-4 shrink-0 text-white/35 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m6 9 6 6 6-6"></path>
                             </svg>
                         </summary>
-
-                        <div class="nav-group-panel mt-1 rounded-2xl border border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,8,26,0.96),rgba(29,14,43,0.94))] p-1.5 shadow-[0_24px_56px_rgba(10,4,18,0.4)] sm:mt-1.5 sm:p-2 lg:absolute lg:left-0 lg:right-0 lg:top-[calc(100%+0.45rem)] lg:z-20 lg:mt-0">
-                            <div class="grid gap-1.5 sm:grid-cols-2 xl:grid-cols-1">
+                        <div class="nav-group-panel absolute right-0 top-[calc(100%+0.55rem)] z-30 hidden w-72 rounded-2xl border border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,8,26,0.96),rgba(29,14,43,0.94))] p-2 shadow-[0_24px_56px_rgba(10,4,18,0.4)]">
+                            <div class="grid gap-1.5">
                                 {% for item in group.links %}
                                 {% if item.key == 'veterinaire' and injured_pig_nav_id %}
-                                <a href="{{ item.href }}" data-nav-close class="{{ section_link_base }} border-red-400/35 bg-red-500/15 text-red-100 shadow-[0_8px_24px_rgba(248,113,113,0.12)]">
-                                    <span class="flex items-center gap-2">
-                                        <span>{{ item.icon }}</span>
-                                        <span>Véto urgent</span>
-                                    </span>
+                                <a href="{{ item.href }}" class="{{ section_link_base }} border-red-400/35 bg-red-500/15 text-red-100 shadow-[0_8px_24px_rgba(248,113,113,0.12)]">
+                                    <span class="flex items-center gap-2"><span>{{ item.icon }}</span><span>Véto urgent</span></span>
                                     <span class="text-[10px] uppercase tracking-[0.18em] text-red-200/70">Soins</span>
                                 </a>
                                 {% else %}
-                                <a href="{{ item.href }}" data-nav-close class="{{ section_link_base }} {{ section_link_active if active_page == item.key else section_link_idle }}">
-                                    <span class="flex items-center gap-2">
-                                        <span>{{ item.icon }}</span>
-                                        <span>{{ item.label }}</span>
-                                    </span>
+                                <a href="{{ item.href }}" class="{{ section_link_base }} {{ section_link_active if active_page == item.key else section_link_idle }}">
+                                    <span class="flex items-center gap-2"><span>{{ item.icon }}</span><span>{{ item.label }}</span></span>
                                     <span class="text-[10px] uppercase tracking-[0.18em] {{ 'text-pink-200/65' if active_page == item.key else 'text-white/30' }}">Ouvrir</span>
                                 </a>
                                 {% endif %}
@@ -197,14 +164,59 @@
                     </details>
                     {% endfor %}
                 </div>
+            </div>
 
-                <div class="flex flex-col gap-1.5 border-t border-pink-200/[0.08] pt-2.5 lg:hidden">
-                    <p class="px-1 text-[9px] uppercase tracking-[0.22em] text-pink-100/30 font-black">Compte</p>
-                    <div class="grid grid-cols-2 gap-1.5">
+            <nav id="main-nav" class="hidden flex-col gap-3 rounded-[1.5rem] border border-pink-200/10 bg-[linear-gradient(180deg,rgba(39,13,49,0.98),rgba(28,11,41,0.95))] p-3 shadow-2xl max-h-[calc(100dvh-5.5rem)] overflow-y-auto lg:hidden">
+                <div class="grid grid-cols-2 gap-2">
+                    <button id="chat-toggle-mobile" data-nav-close class="{{ nav_base }} border-indigo-400/30 bg-indigo-500/10 text-indigo-100 hover:bg-indigo-500/20">💬 Chat</button>
+                    {% for item in primary_links %}
+                    <a href="{{ item.href }}" data-nav-close class="{{ nav_base }} {{ nav_active if active_page == item.key else nav_idle }}">
+                        <span>{{ item.icon }}</span>
+                        <span>{{ item.label }}</span>
+                    </a>
+                    {% endfor %}
+                </div>
+
+                <div class="grid gap-2">
+                    {% for group in nav_groups %}
+                    {% set group_active = active_page in group.active_keys %}
+                    <details class="nav-group">
+                        <summary class="{{ section_trigger_base }} {{ section_trigger_active if group_active else section_trigger_idle }} min-w-0">
+                            <span class="text-base">{{ group.icon }}</span>
+                            <span class="flex-1">{{ group.label }}</span>
+                            <span class="inline-flex h-6 min-w-[1.65rem] items-center justify-center rounded-full border border-white/[0.08] bg-white/[0.05] px-1.5 text-[10px] font-black text-white/55">{{ group.links|length }}</span>
+                            <svg class="nav-group-chevron h-4 w-4 shrink-0 text-white/35 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m6 9 6 6 6-6"></path>
+                            </svg>
+                        </summary>
+                        <div class="nav-group-panel mt-2 rounded-2xl border border-white/[0.08] bg-[linear-gradient(180deg,rgba(17,8,26,0.96),rgba(29,14,43,0.94))] p-2">
+                            <div class="grid gap-1.5">
+                                {% for item in group.links %}
+                                <a href="{{ item.href }}" data-nav-close class="{{ section_link_base }} {{ section_link_active if active_page == item.key else section_link_idle }}">
+                                    <span class="flex items-center gap-2"><span>{{ item.icon }}</span><span>{{ item.label }}</span></span>
+                                    <span class="text-[10px] uppercase tracking-[0.18em] {{ 'text-pink-200/65' if active_page == item.key else 'text-white/30' }}">Ouvrir</span>
+                                </a>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </details>
+                    {% endfor %}
+                </div>
+
+                <div class="grid gap-2 border-t border-pink-200/[0.08] pt-3">
+                    <div class="rounded-2xl border border-pink-200/12 bg-[linear-gradient(135deg,rgba(244,114,182,0.08),rgba(255,255,255,0.035))] px-3 py-2 text-sm font-bold text-white/78">
+                        <div class="flex items-center justify-between gap-3">
+                            <span class="text-yellow-400">{{ "%.0f"|format(user.balance) }} 🪙 <span class="ml-1 text-pink-100/55 uppercase tracking-[0.14em] text-[11px]">BitGroins</span></span>
+                            <span class="text-pink-300">{{ user.bacon_tickets }} 🎟️ <span class="ml-1 text-pink-100/55 uppercase tracking-[0.14em] text-[11px]">Tickets</span></span>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
                         <button type="button" data-theme-toggle aria-pressed="false" class="theme-toggle-btn inline-flex items-center justify-center gap-2 rounded-2xl border border-pink-200/15 bg-pink-200/[0.04] px-3 py-2.5 text-sm font-bold text-white/75">
                             <span data-theme-toggle-icon>☀️</span>
                             <span data-theme-toggle-label>Clair</span>
                         </button>
+                        <a href="/profil" data-nav-close class="inline-flex items-center justify-center gap-2 rounded-2xl border border-pink-200/15 bg-pink-200/[0.04] px-3 py-2.5 text-sm font-bold text-white/75">👤 Profil</a>
+                        <a href="/history" data-nav-close class="inline-flex items-center justify-center gap-2 rounded-2xl border border-pink-200/15 bg-pink-200/[0.04] px-3 py-2.5 text-sm font-bold text-white/75">📋 Historique</a>
                         {% if user.is_admin %}
                         <a href="/admin" data-nav-close class="inline-flex items-center justify-center gap-2 rounded-2xl border border-fuchsia-400/20 bg-fuchsia-400/10 px-3 py-2.5 text-sm font-bold text-fuchsia-100">🔧 Admin</a>
                         {% endif %}
@@ -213,7 +225,6 @@
                 </div>
             </nav>
             {% endif %}
-
         </div>
     </div>
 </header>
@@ -272,17 +283,21 @@
 .message-bubble:hover .chat-reply-btn { opacity: 1; }
 .nav-group > summary::-webkit-details-marker { display: none; }
 .nav-group > summary { list-style: none; }
+.account-menu > summary::-webkit-details-marker { display: none; }
+.account-menu > summary { list-style: none; }
 .nav-group[open] .nav-group-chevron { transform: rotate(180deg); }
-@media (min-width: 1024px) {
-    .nav-group-panel { display: none; }
-    .nav-group[open] .nav-group-panel { display: block; }
-}
+.account-menu[open] .account-menu-chevron { transform: rotate(180deg); }
+.nav-group-panel,
+.account-menu-panel { display: none; }
+.nav-group[open] .nav-group-panel,
+.account-menu[open] .account-menu-panel { display: block; }
 </style>
 
 <script>
 (function() {
     const sidebar = document.getElementById('chat-sidebar');
     const toggle = document.getElementById('chat-toggle');
+    const toggleMobile = document.getElementById('chat-toggle-mobile');
     const close = document.getElementById('chat-close');
     const sendBtn = document.getElementById('chat-send');
     const input = document.getElementById('chat-input');
@@ -296,7 +311,7 @@
     let pollInterval = null;
     let replyToId = null;
 
-    if (!sidebar || !toggle) return;
+    if (!sidebar || (!toggle && !toggleMobile)) return;
 
     function toggleChat() {
         const isOpen = sidebar.classList.toggle('open');
@@ -309,7 +324,8 @@
         }
     }
 
-    toggle.onclick = toggleChat;
+    if (toggle) toggle.onclick = toggleChat;
+    if (toggleMobile) toggleMobile.onclick = toggleChat;
     close.onclick = toggleChat;
 
     // Emojis
@@ -469,7 +485,7 @@
     var backdrop = document.getElementById('nav-backdrop');
     var iconOpen = document.getElementById('icon-open');
     var iconClose = document.getElementById('icon-close');
-    var navGroups = Array.prototype.slice.call(document.querySelectorAll('.nav-group'));
+    var navGroups = Array.prototype.slice.call(document.querySelectorAll('.nav-group, .account-menu'));
     if (!btn || !nav) return;
 
     function closeAllNavGroups() {
