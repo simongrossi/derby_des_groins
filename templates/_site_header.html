@@ -166,8 +166,8 @@
                 </div>
             </div>
 
-            <nav id="main-nav" class="hidden flex-col gap-3 rounded-[1.5rem] border border-pink-200/10 bg-[linear-gradient(180deg,rgba(39,13,49,0.98),rgba(28,11,41,0.95))] p-3 shadow-2xl max-h-[calc(100dvh-5.5rem)] overflow-y-auto lg:hidden">
-                <div class="grid grid-cols-2 gap-2">
+            <nav id="main-nav" class="mobile-nav-shell hidden flex-col gap-3 rounded-[1.5rem] border border-pink-200/10 bg-[linear-gradient(180deg,rgba(39,13,49,0.98),rgba(28,11,41,0.95))] p-3 shadow-2xl max-h-[calc(100dvh-5.5rem)] overflow-y-auto lg:hidden">
+                <div class="mobile-nav-primary grid grid-cols-2 gap-2">
                     <button id="chat-toggle-mobile" data-nav-close class="{{ nav_base }} border-indigo-400/30 bg-indigo-500/10 text-indigo-100 hover:bg-indigo-500/20">💬 Chat</button>
                     {% for item in primary_links %}
                     <a href="{{ item.href }}" data-nav-close class="{{ nav_base }} {{ nav_active if active_page == item.key else nav_idle }}">
@@ -203,24 +203,24 @@
                     {% endfor %}
                 </div>
 
-                <div class="grid gap-2 border-t border-pink-200/[0.08] pt-3">
-                    <div class="rounded-2xl border border-pink-200/12 bg-[linear-gradient(135deg,rgba(244,114,182,0.08),rgba(255,255,255,0.035))] px-3 py-2 text-sm font-bold text-white/78">
+                <div class="mobile-nav-account grid gap-2 border-t border-pink-200/[0.08] pt-3">
+                    <div class="mobile-nav-balance rounded-2xl border border-pink-200/12 bg-[linear-gradient(135deg,rgba(244,114,182,0.08),rgba(255,255,255,0.035))] px-3 py-2 text-sm font-bold text-white/78">
                         <div class="flex items-center justify-between gap-3">
                             <span class="text-yellow-400">{{ "%.0f"|format(user.balance) }} 🪙 <span class="ml-1 text-pink-100/55 uppercase tracking-[0.14em] text-[11px]">BitGroins</span></span>
                             <span class="text-pink-300">{{ user.bacon_tickets }} 🎟️ <span class="ml-1 text-pink-100/55 uppercase tracking-[0.14em] text-[11px]">Tickets</span></span>
                         </div>
                     </div>
-                    <div class="grid grid-cols-2 gap-2">
-                        <button type="button" data-theme-toggle aria-pressed="false" class="theme-toggle-btn inline-flex items-center justify-center gap-2 rounded-2xl border border-pink-200/15 bg-pink-200/[0.04] px-3 py-2.5 text-sm font-bold text-white/75">
+                    <div class="mobile-nav-utilities grid grid-cols-2 gap-2">
+                        <button type="button" data-theme-toggle aria-pressed="false" class="mobile-nav-utility-link theme-toggle-btn inline-flex items-center justify-center gap-2 rounded-2xl border border-pink-200/15 bg-pink-200/[0.04] px-3 py-2.5 text-sm font-bold text-white/75">
                             <span data-theme-toggle-icon>☀️</span>
                             <span data-theme-toggle-label>Clair</span>
                         </button>
-                        <a href="/profil" data-nav-close class="inline-flex items-center justify-center gap-2 rounded-2xl border border-pink-200/15 bg-pink-200/[0.04] px-3 py-2.5 text-sm font-bold text-white/75">👤 Profil</a>
-                        <a href="/history" data-nav-close class="inline-flex items-center justify-center gap-2 rounded-2xl border border-pink-200/15 bg-pink-200/[0.04] px-3 py-2.5 text-sm font-bold text-white/75">📋 Historique</a>
+                        <a href="/profil" data-nav-close class="mobile-nav-utility-link inline-flex items-center justify-center gap-2 rounded-2xl border border-pink-200/15 bg-pink-200/[0.04] px-3 py-2.5 text-sm font-bold text-white/75">👤 Profil</a>
+                        <a href="/history" data-nav-close class="mobile-nav-utility-link inline-flex items-center justify-center gap-2 rounded-2xl border border-pink-200/15 bg-pink-200/[0.04] px-3 py-2.5 text-sm font-bold text-white/75">📋 Historique</a>
                         {% if user.is_admin %}
-                        <a href="/admin" data-nav-close class="inline-flex items-center justify-center gap-2 rounded-2xl border border-fuchsia-400/20 bg-fuchsia-400/10 px-3 py-2.5 text-sm font-bold text-fuchsia-100">🔧 Admin</a>
+                        <a href="/admin" data-nav-close class="mobile-nav-utility-link inline-flex items-center justify-center gap-2 rounded-2xl border border-fuchsia-400/20 bg-fuchsia-400/10 px-3 py-2.5 text-sm font-bold text-fuchsia-100">🔧 Admin</a>
                         {% endif %}
-                        <a href="/logout" data-nav-close class="inline-flex items-center justify-center gap-2 rounded-2xl border border-red-400/20 bg-red-400/10 px-3 py-2.5 text-sm font-bold text-red-100 {% if user.is_admin %}col-span-2{% endif %}">Quitter</a>
+                        <a href="/logout" data-nav-close class="mobile-nav-logout inline-flex items-center justify-center gap-2 rounded-2xl border border-red-400/20 bg-red-400/10 px-3 py-2.5 text-sm font-bold text-red-100 {% if user.is_admin %}col-span-2{% endif %}">Quitter</a>
                     </div>
                 </div>
             </nav>

@@ -76,7 +76,7 @@ class TruffesRouteTests(unittest.TestCase):
             db.session.delete(refreshed)
             db.session.commit()
 
-    def test_play_route_keeps_admin_remaining_free_plays_at_limit(self):
+    def test_play_route_decrements_remaining_free_plays_for_admin_too(self):
         client = self.app.test_client()
         username = f"truffes-admin-{uuid.uuid4().hex[:8]}"
 
@@ -95,7 +95,7 @@ class TruffesRouteTests(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertTrue(payload['ok'])
-        self.assertEqual(payload['remaining_free_plays'], 5)
+        self.assertEqual(payload['remaining_free_plays'], 4)
 
         with self.app.app_context():
             refreshed = User.query.get(admin_id)

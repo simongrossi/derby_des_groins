@@ -65,6 +65,65 @@
             transition: all 0.2s;
         }
 
+        html[data-theme="light"] body.page-mon-cochon {
+            background:
+                radial-gradient(circle at 12% 12%, rgba(251, 113, 133, 0.12), transparent 28%),
+                radial-gradient(circle at 88% 10%, rgba(251, 191, 36, 0.12), transparent 24%),
+                radial-gradient(circle at 50% 100%, rgba(236, 72, 153, 0.08), transparent 30%),
+                linear-gradient(180deg, #fffafc 0%, #fff3f8 100%) !important;
+            color: #54384a;
+        }
+
+        html[data-theme="light"] body.page-mon-cochon .card {
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.92) 0%, rgba(255, 246, 250, 0.9) 100%);
+            border-color: rgba(214, 170, 191, 0.55);
+            box-shadow: 0 24px 60px rgba(214, 132, 173, 0.14);
+            backdrop-filter: blur(16px);
+        }
+
+        html[data-theme="light"] body.page-mon-cochon .stat-bar {
+            background: rgba(184, 77, 121, 0.12);
+        }
+
+        html[data-theme="light"] body.page-mon-cochon .tab-switcher-btn {
+            color: rgba(84, 56, 74, 0.72);
+        }
+
+        html[data-theme="light"] body.page-mon-cochon .tab-switcher-btn.active {
+            background: rgba(255, 255, 255, 0.86);
+            color: #8e3461;
+        }
+
+        html[data-theme="light"] body.page-mon-cochon .emoji-picker-btn {
+            background: rgba(255, 250, 252, 0.88);
+            border-color: rgba(214, 170, 191, 0.36);
+        }
+
+        html[data-theme="light"] body.page-mon-cochon .emoji-picker-btn.selected {
+            border-color: #d5528b;
+            background: rgba(248, 179, 210, 0.3);
+        }
+
+        html[data-theme="light"] body.page-mon-cochon .pig-tab-btn {
+            background: rgba(255, 248, 251, 0.92) !important;
+            border-color: rgba(236, 72, 153, 0.24) !important;
+            color: #8e3461 !important;
+            box-shadow: 0 16px 36px rgba(214, 132, 173, 0.1);
+        }
+
+        html[data-theme="light"] body.page-mon-cochon .pig-tab-btn:hover {
+            background: rgba(255, 239, 246, 0.98) !important;
+        }
+
+        html[data-theme="light"] body.page-mon-cochon .weight-card,
+        html[data-theme="light"] body.page-mon-cochon .freshness-card,
+        html[data-theme="light"] body.page-mon-cochon .lineage-card,
+        html[data-theme="light"] body.page-mon-cochon .challenge-card,
+        html[data-theme="light"] body.page-mon-cochon .share-snack-card,
+        html[data-theme="light"] body.page-mon-cochon .injury-risk-card {
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
+        }
+
         .tab-switcher-btn {
             flex: 1;
             padding: 0.85rem 0.5rem;

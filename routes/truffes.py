@@ -25,9 +25,6 @@ def _get_truffe_config():
 
 def _sync_truffe_daily_counter(user):
     """Reset the daily counter when the stored play date is from a previous day."""
-    if getattr(user, 'is_admin', False):
-        return
-
     today = date.today()
     if user.last_truffe_at and user.last_truffe_at.date() < today and user.truffe_plays_today:
         user.truffe_plays_today = 0
@@ -36,9 +33,6 @@ def _sync_truffe_daily_counter(user):
 
 
 def _get_remaining_free_plays(user, limit=None):
-    if getattr(user, 'is_admin', False):
-        return limit if limit is not None else _get_truffe_config()[0]
-
     applied_limit = limit if limit is not None else _get_truffe_config()[0]
     _sync_truffe_daily_counter(user)
     return max(0, applied_limit - (user.truffe_plays_today or 0))
@@ -46,9 +40,6 @@ def _get_remaining_free_plays(user, limit=None):
 
 def _already_played_today(user):
     """Return whether the user has exhausted today's free plays."""
-    if getattr(user, 'is_admin', False):
-        return False
-
     limit, _ = _get_truffe_config()
     remaining = _get_remaining_free_plays(user, limit=limit)
     return remaining <= 0
