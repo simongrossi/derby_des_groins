@@ -2,7 +2,7 @@ from flask import Blueprint, jsonify, render_template, request, redirect, url_fo
 from datetime import datetime
 import random
 
-from exceptions import InsufficientFundsError, PigTiredError
+from exceptions import BusinessRuleError, InsufficientFundsError
 from extensions import db, limiter
 from models import User, Pig, PigAvatar
 from data import (
@@ -19,8 +19,7 @@ from services.economy_service import get_breeding_cost_value, get_progression_se
 from utils.time_utils import is_weekend_truce_active
 
 from services.finance_service import (
-    credit_user, debit_user, maybe_grant_emergency_relief,
-    reserve_pig_challenge_slot, release_pig_challenge_slot,
+    credit_user, debit_user, maybe_grant_emergency_relief, release_pig_challenge_slot,
 )
 from services.pig_service import (
     calculate_pig_power, xp_for_level, get_weight_profile, get_adoption_cost,
@@ -30,8 +29,8 @@ from services.pig_service import (
     apply_origin_bonus, generate_weight_kg_for_profile, get_freshness_bonus,
     get_pig_performance_flags, reset_snack_share_limit_if_needed,
     is_pig_name_taken, build_unique_pig_name, check_level_up,
-    feed_pig, get_school_decay_multiplier, kill_pig, study_pig,
-    train_pig, update_pig_vitals,
+    enter_pig_death_challenge, feed_pig_for_user, kill_pig,
+    study_pig_for_user, train_pig_for_user, update_pig_vitals,
 )
 
 pig_bp = Blueprint('pig', __name__)
@@ -152,46 +151,15 @@ def adopt_second_pig():
 def feed():
     if 'user_id' not in session:
         return redirect(url_for('auth.login'))
-    user = User.query.get(session['user_id'])
-    pig_id = request.form.get('pig_id', type=int)
-    pig = Pig.query.get(pig_id)
-    if not pig or pig.user_id != user.id or not pig.is_alive:
-        flash("Cochon introuvable !", "error")
-        return redirect(url_for('pig.mon_cochon'))
-
-    update_pig_vitals(pig)
-    cereals = get_cereals_dict()
-    cereal_key = request.form.get('cereal')
-    if cereal_key not in cereals:
-        return redirect(url_for('pig.mon_cochon'))
-    cereal = cereals[cereal_key]
-    if pig.hunger >= 95:
-        flash("Ton cochon n'a plus faim !", "warning")
-        return redirect(url_for('pig.mon_cochon'))
-    feeding_multiplier = get_feeding_cost_multiplier(user)
-    effective_cost = round(cereal['cost'] * feeding_multiplier, 2)
     try:
-        debit_user(
-            user,
-            effective_cost,
-            reason_code='feed_purchase',
-            reason_label='Nourriture achetee',
-            details=f"{cereal['name']} pour {pig.name}. Cout x{feeding_multiplier:.2f} avec {user.pig_count} cochon(s).",
-            reference_type='pig',
-            reference_id=pig.id,
-            commit=False,
+        result = feed_pig_for_user(
+            session['user_id'],
+            request.form.get('pig_id', type=int),
+            request.form.get('cereal'),
         )
-    except InsufficientFundsError:
-        flash("Pas assez de BitGroins !", "error")
-        return redirect(url_for('pig.mon_cochon'))
-    try:
-        feed_pig(pig, cereal, commit=False)
-    except PigTiredError as exc:
-        db.session.rollback()
-        flash(str(exc), "warning")
-        return redirect(url_for('pig.mon_cochon'))
-    db.session.commit()
-    flash(f"{cereal['emoji']} {cereal['name']} donné ! Miam ! Coût réel: {effective_cost:.0f} 🪙 (x{feeding_multiplier:.2f} de pression d'élevage).", "success")
+        flash(result['message'], result.get('category', 'success'))
+    except BusinessRuleError as exc:
+        flash(str(exc), "error")
     return redirect(url_for('pig.mon_cochon'))
 
 
@@ -239,52 +207,15 @@ def share_snack():
 def train():
     if 'user_id' not in session:
         return redirect(url_for('auth.login'))
-    user = User.query.get(session['user_id'])
-    pig_id = request.form.get('pig_id', type=int)
-    pig = Pig.query.get(pig_id)
-    if not pig or pig.user_id != user.id or not pig.is_alive:
-        flash("Cochon introuvable !", "error")
-        return redirect(url_for('pig.mon_cochon'))
-
-    update_pig_vitals(pig)
-    if not pig.can_train:
-        flash("Ton cochon est blessé. Passe d'abord par le vétérinaire.", "warning")
-        return redirect(url_for('api.veterinaire', pig_id=pig.id))
-
-    from datetime import date as date_type
-    today = date_type.today()
-    if pig.last_train_date != today:
-        pig.daily_train_count = 0
-        pig.last_train_date = today
-    if (pig.daily_train_count or 0) >= TRAIN_DAILY_CAP:
-        flash(f"Ton cochon a atteint sa limite d'entraînement pour aujourd'hui ({TRAIN_DAILY_CAP} sessions). Reviens demain !", "warning")
-        return redirect(url_for('pig.mon_cochon'))
-
-    trainings = get_trainings_dict()
-    training_key = request.form.get('training')
-    if training_key not in trainings:
-        return redirect(url_for('pig.mon_cochon'))
-    training = trainings[training_key]
-    if training['energy_cost'] > 0 and pig.energy < training['energy_cost']:
-        flash("Ton cochon est trop fatigué !", "error")
-        return redirect(url_for('pig.mon_cochon'))
-    if pig.hunger < training.get('hunger_cost', 0):
-        flash("Ton cochon a trop faim pour s'entraîner !", "error")
-        return redirect(url_for('pig.mon_cochon'))
-    if pig.happiness < training.get('min_happiness', 0):
-        flash("Ton cochon n'est pas assez heureux !", "error")
-        return redirect(url_for('pig.mon_cochon'))
     try:
-        train_pig(pig, training, commit=False)
-    except PigTiredError as exc:
+        result = train_pig_for_user(
+            session['user_id'],
+            request.form.get('pig_id', type=int),
+            request.form.get('training'),
+        )
+        flash(result['message'], result.get('category', 'success'))
+    except BusinessRuleError as exc:
         flash(str(exc), "error")
-        return redirect(url_for('pig.mon_cochon'))
-    pig.daily_train_count = (pig.daily_train_count or 0) + 1
-    pig.last_train_date = today
-    db.session.commit()
-    remaining = max(0, TRAIN_DAILY_CAP - pig.daily_train_count)
-    suffix = f" ({remaining} session{'s' if remaining != 1 else ''} restante{'s' if remaining != 1 else ''} aujourd'hui)" if remaining < 3 else ""
-    flash(f"{training['emoji']} {training['name']} terminé !{suffix}", "success")
     return redirect(url_for('pig.mon_cochon'))
 
 
@@ -293,63 +224,17 @@ def train():
 def school():
     if 'user_id' not in session:
         return redirect(url_for('auth.login'))
-    user = User.query.get(session['user_id'])
-    pig_id = request.form.get('pig_id', type=int)
-    pig = Pig.query.get(pig_id)
-    if not pig or pig.user_id != user.id or not pig.is_alive:
-        flash("Cochon introuvable !", "error")
-        return redirect(url_for('pig.mon_cochon'))
-
-    update_pig_vitals(pig)
-    if not pig.can_school:
-        flash("L'école attendra. Ton cochon doit d'abord passer au vétérinaire.", "warning")
-        return redirect(url_for('api.veterinaire', pig_id=pig.id))
-    school_lessons = get_school_lessons_dict()
-    lesson_key = request.form.get('lesson')
-    if lesson_key not in school_lessons:
-        flash("Cours introuvable !", "error")
-        return redirect(url_for('pig.mon_cochon'))
-
-    lesson = school_lessons[lesson_key]
-    cooldown = get_cooldown_remaining(pig.last_school_at, SCHOOL_COOLDOWN_MINUTES)
-    if cooldown > 0:
-        flash(f"La salle de classe est fermee pour l'instant. Reviens dans {format_duration_short(cooldown)}.", "warning")
-        return redirect(url_for('pig.mon_cochon'))
-
-    answer_idx = request.form.get('answer_idx', type=int)
-    answers = lesson['answers']
-    if answer_idx is None or answer_idx < 0 or answer_idx >= len(answers):
-        flash("Reponse invalide !", "error")
-        return redirect(url_for('pig.mon_cochon'))
-
-    if pig.energy < lesson['energy_cost']:
-        flash("Ton cochon est trop fatigue pour suivre ce cours.", "error")
-        return redirect(url_for('pig.mon_cochon'))
-    if pig.hunger < lesson['hunger_cost']:
-        flash("Ton cochon a trop faim pour se concentrer.", "error")
-        return redirect(url_for('pig.mon_cochon'))
-    if pig.happiness < lesson['min_happiness']:
-        flash("Ton cochon boude l'ecole aujourd'hui. Remonte-lui le moral d'abord.", "warning")
-        return redirect(url_for('pig.mon_cochon'))
-
-    selected_answer = answers[answer_idx]
-    decay_before = get_school_decay_multiplier(pig)
     try:
-        category = study_pig(pig, lesson, correct=selected_answer['correct'], commit=False)
-    except PigTiredError as exc:
-        flash(str(exc), "warning")
-        return redirect(url_for('pig.mon_cochon'))
-    if category == 'success':
-        feedback_prefix = "Cours valide avec mention groin-tres-bien."
-    else:
-        feedback_prefix = "Le cours etait plus complique que prevu."
-
-    db.session.commit()
-    decay_suffix = ""
-    if decay_before < 1.0:
-        pct = int(decay_before * 100)
-        decay_suffix = f" (rendement école réduit à {pct}% aujourd'hui)"
-    flash(f"{lesson['emoji']} {lesson['name']} - {feedback_prefix} {selected_answer['feedback']}{decay_suffix}", category)
+        result = study_pig_for_user(
+            session['user_id'],
+            request.form.get('pig_id', type=int),
+            request.form.get('lesson'),
+            request.form.get('answer_idx', type=int),
+            cooldown_minutes=SCHOOL_COOLDOWN_MINUTES,
+        )
+        flash(result['message'], result.get('category', 'success'))
+    except BusinessRuleError as exc:
+        flash(str(exc), "error")
     return redirect(url_for('pig.mon_cochon'))
 
 
@@ -407,49 +292,15 @@ def choose_avatar():
 def challenge_mort():
     if 'user_id' not in session:
         return redirect(url_for('auth.login'))
-    user = User.query.get(session['user_id'])
-    pig_id = request.form.get('pig_id', type=int)
-    pig = Pig.query.get(pig_id)
-    if not pig or pig.user_id != user.id or not pig.is_alive:
-        flash("Cochon introuvable !", "error")
-        return redirect(url_for('pig.mon_cochon'))
-
-    update_pig_vitals(pig)
-    if pig.is_injured:
-        flash("Impossible d'inscrire un cochon blessé au Challenge de la Mort.", "error")
-        return redirect(url_for('api.veterinaire', pig_id=pig.id))
-    wager = request.form.get('wager', type=float)
-    if not wager or wager < 10:
-        flash("Mise minimum : 10 🪙 pour le Challenge de la Mort !", "error")
-        return redirect(url_for('pig.mon_cochon'))
-    if pig.challenge_mort_wager > 0:
-        flash("Tu es déjà inscrit au Challenge de la Mort !", "warning")
-        return redirect(url_for('pig.mon_cochon'))
-    if pig.energy <= 20 or pig.hunger <= 20:
-        flash("Ton cochon est trop faible pour le Challenge !", "error")
-        return redirect(url_for('pig.mon_cochon'))
-
     try:
-        debit_user(
-            user,
-            wager,
-            reason_code='challenge_entry',
-            reason_label='Inscription Challenge de la Mort',
-            details=f"{pig.name} engagé pour {wager:.0f} 🪙.",
-            reference_type='pig',
-            reference_id=pig.id,
-            commit=False,
+        result = enter_pig_death_challenge(
+            session['user_id'],
+            request.form.get('pig_id', type=int),
+            request.form.get('wager', type=float),
         )
-    except InsufficientFundsError:
-        flash("T'as pas les moyens de jouer avec la vie de ton cochon !", "error")
-        return redirect(url_for('pig.mon_cochon'))
-    if not reserve_pig_challenge_slot(pig.id, wager):
-        db.session.rollback()
-        flash("Tu es déjà inscrit au Challenge de la Mort !", "warning")
-        return redirect(url_for('pig.mon_cochon'))
-
-    db.session.commit()
-    flash(f"💀 {pig.name} inscrit au Challenge de la Mort ({wager:.0f} 🪙) ! Bonne chance...", "success")
+        flash(result['message'], result.get('category', 'success'))
+    except BusinessRuleError as exc:
+        flash(str(exc), "error")
     return redirect(url_for('pig.mon_cochon'))
 
 

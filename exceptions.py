@@ -20,3 +20,7 @@ class InsufficientFundsError(BusinessRuleError):
 
 class PigTiredError(BusinessRuleError):
     """Raised when a pig cannot perform an action because of its state."""
+
+
+class ValidationError(BusinessRuleError):
+    """Raised when user input or action preconditions are invalid."""

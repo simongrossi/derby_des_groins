@@ -22,9 +22,9 @@ from data import (
     MAX_INJURY_RISK, MAX_PIG_SLOTS, MAX_PIG_WEIGHT_KG, MAX_WEIGHT_PERFORMANCE_MALUS,
     MIN_INJURY_RISK, MIN_PIG_WEIGHT_KG, PIG_EMOJIS, PIG_ORIGINS,
     PRELOADED_PIG_NAMES, RETIREMENT_HERITAGE_MIN_WINS, SCHOOL_XP_DECAY_FLOOR,
-    SCHOOL_XP_DECAY_THRESHOLDS, VET_RESPONSE_MINUTES,
+    SCHOOL_XP_DECAY_THRESHOLDS, SCHOOL_COOLDOWN_MINUTES, TRAIN_DAILY_CAP, VET_RESPONSE_MINUTES,
 )
-from exceptions import PigNotFoundError, PigTiredError
+from exceptions import InsufficientFundsError, PigNotFoundError, PigTiredError, ValidationError
 
 
 @dataclass(frozen=True)
@@ -71,7 +71,7 @@ def get_pig_settings():
 
 
 from extensions import db
-from models import Auction, Participant, Pig, Race, Trophy
+from models import Auction, Participant, Pig, Race, Trophy, User
 from services.economy_service import (
     calculate_adoption_cost_for_counts,
     get_feeding_multiplier_for_count,
@@ -80,6 +80,7 @@ from services.economy_service import (
     scale_stat_gains,
     xp_for_level_value,
 )
+from services.finance_service import debit_user, reserve_pig_challenge_slot
 
 from utils.time_utils import calculate_weekend_truce_hours
 
@@ -114,6 +115,22 @@ def get_pig_record(pig_or_id):
     pig = Pig.query.get(pig_or_id)
     if not pig:
         raise PigNotFoundError("Cochon introuvable.")
+    return pig
+
+
+def get_user_record(user_or_id):
+    if isinstance(user_or_id, User):
+        return user_or_id
+    user = User.query.get(user_or_id)
+    if not user:
+        raise ValidationError("Utilisateur introuvable.")
+    return user
+
+
+def get_owned_alive_pig(user_id, pig_id):
+    pig = Pig.query.get(pig_id)
+    if not pig or pig.user_id != user_id or not pig.is_alive:
+        raise PigNotFoundError("Cochon introuvable !")
     return pig
 
 
@@ -315,6 +332,172 @@ def study_pig(pig_or_id, lesson, correct, commit=True) -> str:
     if commit:
         db.session.commit()
     return category
+
+
+def feed_pig_for_user(user_or_id, pig_id, cereal_key):
+    from helpers.game_data import get_cereals_dict
+
+    user = get_user_record(user_or_id)
+    pig = get_owned_alive_pig(user.id, pig_id)
+    update_pig_vitals(pig)
+
+    cereals = get_cereals_dict()
+    cereal = cereals.get(cereal_key)
+    if not cereal:
+        raise ValidationError("Cereale introuvable !")
+
+    feeding_multiplier = get_feeding_cost_multiplier(user)
+    effective_cost = round(cereal['cost'] * feeding_multiplier, 2)
+
+    try:
+        debit_user(
+            user,
+            effective_cost,
+            reason_code='feed_purchase',
+            reason_label='Nourriture achetee',
+            details=f"{cereal['name']} pour {pig.name}. Cout x{feeding_multiplier:.2f} avec {user.pig_count} cochon(s).",
+            reference_type='pig',
+            reference_id=pig.id,
+            commit=False,
+        )
+    except InsufficientFundsError:
+        raise InsufficientFundsError("Pas assez de BitGroins !") from None
+
+    try:
+        feed_pig(pig, cereal, commit=False)
+    except ValidationError:
+        db.session.rollback()
+        raise
+    except PigTiredError:
+        db.session.rollback()
+        raise
+    db.session.commit()
+    return {
+        'category': 'success',
+        'message': (
+            f"{cereal['emoji']} {cereal['name']} donne ! Miam ! "
+            f"Cout reel: {effective_cost:.0f} 🪙 (x{feeding_multiplier:.2f} de pression d'elevage)."
+        ),
+    }
+
+
+def train_pig_for_user(user_or_id, pig_id, training_key):
+    from datetime import date as date_type
+    from helpers.game_data import get_trainings_dict
+
+    user = get_user_record(user_or_id)
+    pig = get_owned_alive_pig(user.id, pig_id)
+    update_pig_vitals(pig)
+
+    trainings = get_trainings_dict()
+    training = trainings.get(training_key)
+    if not training:
+        raise ValidationError("Entrainement introuvable !")
+
+    today = date_type.today()
+    if pig.last_train_date != today:
+        pig.daily_train_count = 0
+        pig.last_train_date = today
+    if (pig.daily_train_count or 0) >= TRAIN_DAILY_CAP:
+        raise ValidationError(
+            f"Ton cochon a atteint sa limite d'entrainement pour aujourd'hui ({TRAIN_DAILY_CAP} sessions). Reviens demain !"
+        )
+
+    train_pig(pig, training, commit=False)
+    pig.daily_train_count = (pig.daily_train_count or 0) + 1
+    pig.last_train_date = today
+    db.session.commit()
+
+    remaining = max(0, TRAIN_DAILY_CAP - pig.daily_train_count)
+    suffix = (
+        f" ({remaining} session{'s' if remaining != 1 else ''} restante{'s' if remaining != 1 else ''} aujourd'hui)"
+        if remaining < 3 else ""
+    )
+    return {
+        'category': 'success',
+        'message': f"{training['emoji']} {training['name']} termine !{suffix}",
+    }
+
+
+def study_pig_for_user(user_or_id, pig_id, lesson_key, answer_idx, cooldown_minutes=SCHOOL_COOLDOWN_MINUTES):
+    from helpers.game_data import get_school_lessons_dict
+    from helpers.time_helpers import format_duration_short, get_cooldown_remaining
+
+    user = get_user_record(user_or_id)
+    pig = get_owned_alive_pig(user.id, pig_id)
+    update_pig_vitals(pig)
+
+    lessons = get_school_lessons_dict()
+    lesson = lessons.get(lesson_key)
+    if not lesson:
+        raise ValidationError("Cours introuvable !")
+
+    cooldown = get_cooldown_remaining(pig.last_school_at, cooldown_minutes)
+    if cooldown > 0:
+        raise ValidationError(
+            f"La salle de classe est fermee pour l'instant. Reviens dans {format_duration_short(cooldown)}."
+        )
+
+    answers = lesson.get('answers', [])
+    if answer_idx is None or answer_idx < 0 or answer_idx >= len(answers):
+        raise ValidationError("Reponse invalide !")
+
+    selected_answer = answers[answer_idx]
+    decay_before = get_school_decay_multiplier(pig)
+    category = study_pig(pig, lesson, correct=selected_answer['correct'], commit=False)
+    db.session.commit()
+
+    feedback_prefix = (
+        "Cours valide avec mention groin-tres-bien."
+        if category == 'success'
+        else "Le cours etait plus complique que prevu."
+    )
+    decay_suffix = ""
+    if decay_before < 1.0:
+        decay_suffix = f" (rendement ecole reduit a {int(decay_before * 100)}% aujourd'hui)"
+    return {
+        'category': category,
+        'message': f"{lesson['emoji']} {lesson['name']} - {feedback_prefix} {selected_answer['feedback']}{decay_suffix}",
+    }
+
+
+def enter_pig_death_challenge(user_or_id, pig_id, wager):
+    user = get_user_record(user_or_id)
+    pig = get_owned_alive_pig(user.id, pig_id)
+    update_pig_vitals(pig)
+
+    if pig.is_injured:
+        raise ValidationError("Impossible d'inscrire un cochon blesse au Challenge de la Mort.")
+    if not wager or wager < 10:
+        raise ValidationError("Mise minimum : 10 🪙 pour le Challenge de la Mort !")
+    if pig.challenge_mort_wager > 0:
+        raise ValidationError("Tu es deja inscrit au Challenge de la Mort !")
+    if pig.energy <= PIG_INTERACTION_RULES.race_ready_energy_threshold or pig.hunger <= PIG_INTERACTION_RULES.race_ready_hunger_threshold:
+        raise PigTiredError("Ton cochon est trop faible pour le Challenge !")
+
+    try:
+        debit_user(
+            user,
+            wager,
+            reason_code='challenge_entry',
+            reason_label='Inscription Challenge de la Mort',
+            details=f"{pig.name} engage pour {wager:.0f} 🪙.",
+            reference_type='pig',
+            reference_id=pig.id,
+            commit=False,
+        )
+    except InsufficientFundsError:
+        raise InsufficientFundsError("T'as pas les moyens de jouer avec la vie de ton cochon !") from None
+
+    if not reserve_pig_challenge_slot(pig.id, wager):
+        db.session.rollback()
+        raise ValidationError("Tu es deja inscrit au Challenge de la Mort !")
+
+    db.session.commit()
+    return {
+        'category': 'success',
+        'message': f"💀 {pig.name} inscrit au Challenge de la Mort ({wager:.0f} 🪙) ! Bonne chance...",
+    }
 
 
 def kill_pig(pig_or_id, cause='abattoir', commit=True):
