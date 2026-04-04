@@ -31,7 +31,7 @@ from models import Auction, BalanceTransaction, GrainMarket, MarketHistory, Pig,
 from helpers.db import apply_row_lock
 from services.game_settings_service import get_game_settings
 from services.finance_service import credit_user_balance
-from services.pig_service import build_unique_pig_name, generate_weight_kg_for_profile, kill_pig
+from services.pig_service import build_unique_pig_name, generate_weight_kg_for_profile, kill_pig, random_pig_sex
 
 
 def get_prix_moyen_groin():
@@ -102,6 +102,7 @@ def generate_auction_pig():
     stats[origin['bonus_stat']] = min(100, stats[origin['bonus_stat']] + origin['bonus'])
     return Auction(
         pig_name=f"{random.choice(PIG_NAME_PREFIXES)} {random.choice(PIG_NAME_SUFFIXES)}", pig_emoji=random.choice(PIG_EMOJIS),
+        pig_sex=random_pig_sex(),
         pig_vitesse=stats['vitesse'], pig_endurance=stats['endurance'], pig_agilite=stats['agilite'], pig_force=stats['force'],
         pig_intelligence=stats['intelligence'], pig_moral=stats['moral'], pig_weight=generate_weight_kg_for_profile(stats),
         pig_rarity=rarity_key, pig_max_races=random.randint(min_r, max_r), pig_origin=origin['country'], pig_origin_flag=origin['flag'],
@@ -125,6 +126,7 @@ def resolve_auctions():
                     kill_pig(active_pigs[0], cause='sacrifice', commit=False)
                 new_pig = Pig(
                     user_id=winner.id, name=build_unique_pig_name(auction.pig_name, fallback_prefix='Champion du marche'), emoji=auction.pig_emoji,
+                    sex=auction.pig_sex or random_pig_sex(),
                     vitesse=auction.pig_vitesse, endurance=auction.pig_endurance, agilite=auction.pig_agilite, force=auction.pig_force,
                     intelligence=auction.pig_intelligence, moral=auction.pig_moral, weight_kg=auction.pig_weight or DEFAULT_PIG_WEIGHT_KG,
                     max_races=auction.pig_max_races, rarity=auction.pig_rarity, origin_country=auction.pig_origin, origin_flag=auction.pig_origin_flag,

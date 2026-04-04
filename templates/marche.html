@@ -209,7 +209,7 @@
                     <div class="flex items-center gap-4">
                         <span>{{ pig_display(pig, 'text-4xl', 56) }}</span>
                         <div>
-                            <p class="text-white font-bold text-lg">{{ pig.name }}</p>
+                            <p class="text-white font-bold text-lg">{{ pig.name }} {{ '♂️' if (pig.sex or 'M') == 'M' else '♀️' }}</p>
                             <p class="text-white/40 text-xs font-semibold">
                                 {{ pig.origin_flag }} {{ pig.origin_country }} — Niv. {{ pig.level }} — Puissance: {{ "%.0f"|format((pig.vitesse + pig.endurance + pig.agilite + pig.force + pig.intelligence + pig.moral) / 6) }}
                             </p>
@@ -311,7 +311,7 @@
                                 <span class="text-3xl">{{ auction.pig_emoji }}</span>
                                 {% endif %}
                                 <div>
-                                    <p class="font-bold text-base">{{ auction.pig_name }}</p>
+                                    <p class="font-bold text-base">{{ auction.pig_name }} {{ '♂️' if (auction.pig_sex or 'M') == 'M' else '♀️' }}</p>
                                     <p class="text-white/40 text-[10px]">Origine : {{ auction.pig_origin_flag }} {{ auction.pig_origin }}</p>
                                 </div>
                             </div>
@@ -431,7 +431,7 @@
                 {% endif %}
                 <div>
                     <p class="text-white font-bold text-sm">
-                        {{ sale.pig_name }}
+                        {{ sale.pig_name }} {{ '♂️' if (sale.pig_sex or 'M') == 'M' else '♀️' }}
                         <span class="text-xs font-bold" style="color: {{ rarity.color }};">{{ rarity.emoji }} {{ rarity.name }}</span>
                         <span class="origin-badge ml-1">{{ sale.pig_origin_flag }} {{ sale.pig_origin }}</span>
                     </p>

@@ -23,7 +23,7 @@ from data import PIG_ORIGINS, CEREALS, TRAININGS, SCHOOL_LESSONS, COCHON_PENDU_W
 from helpers import init_default_config, ensure_next_race, get_first_injured_pig
 from services.finance_service import record_balance_transaction
 from services.auth_log_service import purge_old_auth_events, log_site_action
-from services.pig_service import apply_origin_bonus, generate_weight_kg_for_profile, clamp_pig_weight, create_preloaded_admin_pigs, build_unique_pig_name
+from services.pig_service import apply_origin_bonus, generate_weight_kg_for_profile, clamp_pig_weight, create_preloaded_admin_pigs, build_unique_pig_name, random_pig_sex
 from routes import all_blueprints
 from scheduler import start_scheduler, should_autostart_scheduler
 
@@ -286,6 +286,7 @@ def seed_users():
             db.session.flush()
             pig = Pig(
                 user_id=user.id, name=build_unique_pig_name(u['pig_name'], fallback_prefix='Cochon'), emoji=u['emoji'],
+                sex=random_pig_sex(),
                 origin_country=origin_data['country'], origin_flag=origin_data['flag'],
                 lineage_name=f"Maison {u['username']}",
             )
@@ -307,6 +308,7 @@ def seed_users():
                 user_id=demo_owner.id,
                 name='Patient Zero',
                 emoji='🩹',
+                sex=random_pig_sex(),
                 origin_country=origin_data['country'],
                 origin_flag=origin_data['flag'],
                 energy=62,

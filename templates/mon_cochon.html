@@ -173,6 +173,7 @@
                     class="pig-tab-btn flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold transition-all border border-pink-500/30 bg-pink-500/10 text-pink-200 hover:bg-pink-500/20 hover:-translate-y-1">
                 <span class="text-xl">{{ pd.pig.emoji }}</span>
                 <span>{{ pd.pig.name }}</span>
+                <span class="text-xs">{{ '♂️' if (pd.pig.sex or 'M') == 'M' else '♀️' }}</span>
                 {% if pd.pig.is_injured %}
                 <span class="text-red-500 text-xs animate-pulse" title="Blessé">🚨</span>
                 {% endif %}
@@ -220,6 +221,8 @@
                         </div>
                         <h2 class="font-title text-3xl md:text-4xl text-white mb-2">{{ pig.name }}</h2>
                         <div class="flex items-center justify-center gap-2 text-white/40 text-sm font-bold">
+                            <span>{{ '♂️ Mâle' if (pig.sex or 'M') == 'M' else '♀️ Femelle' }}</span>
+                            <span>•</span>
                             <span>{{ pd.rarity_info.emoji }} {{ pd.rarity_info.name | upper }}</span>
                             <span>•</span>
                             <span>{{ pig.origin_flag }} {{ pig.origin_country }}</span>
@@ -479,19 +482,22 @@
                         <span class="text-[10px] px-2 py-0.5 rounded bg-amber-500/15 border border-amber-400/20 text-amber-200 font-bold">G{{ pig.generation or 1 }}</span>
                     </div>
                     <p class="text-white/70 text-[11px] font-bold mb-3">{{ pig.name }} appartient à la lignée <span class="text-amber-300">{{ pd.lineage_label }}</span>. Le bonus héréditaire actuel est de +{{ "%.1f"|format(pig.lineage_boost or 0) }}.</p>
-                    {% if pigs_data|length > 1 and pigs_data|length < max_slots %}
+                    {% set eligible_partners = pigs_data | selectattr('pig.id', 'ne', pig.id) | selectattr('pig.sex', 'ne', pig.sex) | list %}
+                    {% if pigs_data|length > 1 and pigs_data|length < max_slots and eligible_partners %}
                     <form method="POST" action="/breed-pig" class="space-y-2">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <input type="hidden" name="pig_id" value="{{ pig.id }}">
                         <select name="partner_id" class="w-full bg-white/5 border border-amber-500/20 rounded-lg px-3 py-2 text-white text-xs font-bold">
-                            {% for other in pigs_data if other.pig.id != pig.id %}
-                            <option value="{{ other.pig.id }}">{{ other.pig.name }} • {{ other.lineage_label }} • G{{ other.pig.generation or 1 }}</option>
+                            {% for other in pigs_data if other.pig.id != pig.id and other.pig.sex != pig.sex %}
+                            <option value="{{ other.pig.id }}">{{ other.pig.name }} {{ '♂️' if (other.pig.sex or 'M') == 'M' else '♀️' }} • {{ other.lineage_label }} • G{{ other.pig.generation or 1 }}</option>
                             {% endfor %}
                         </select>
                         <input type="text" name="child_name" maxlength="30" placeholder="Nom du porcelet (optionnel)" class="w-full bg-white/5 border border-amber-500/20 rounded-lg px-3 py-2 text-white text-xs font-bold">
                         {% set breed_confirm = "Lancer une portée pour %.0f 🪙 ? Plus tu as de cochons, plus les repas suivants coûteront cher."|format(breeding_cost) %}
                         <button type="submit" class="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 py-2 rounded-lg text-[10px] font-black uppercase" onclick="return confirm('{{ breed_confirm }}');">Lancer une portée</button>
                     </form>
+                    {% elif pigs_data|length > 1 and pigs_data|length < max_slots %}
+                    <p class="text-amber-100/80 text-[10px] font-bold mb-3">Aucun partenaire du sexe opposé disponible dans la porcherie.</p>
                     {% else %}
                     <p class="text-amber-100/80 text-[10px] font-bold mb-3">Il faut au moins deux cochons actifs, et un emplacement libre, pour lancer une nouvelle portée.</p>
                     {% endif %}

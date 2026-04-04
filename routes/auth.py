@@ -13,7 +13,7 @@ from helpers import get_config, get_market_unlock_progress, get_market_lock_reas
 from services.economy_service import get_configured_bet_types, get_welcome_bonus_value
 from services.finance_service import record_balance_transaction
 from services.auth_log_service import log_auth_event
-from services.pig_service import apply_origin_bonus, generate_weight_kg_for_profile, get_active_listing_count, build_unique_pig_name
+from services.pig_service import apply_origin_bonus, generate_weight_kg_for_profile, get_active_listing_count, build_unique_pig_name, random_pig_sex
 
 auth_bp = Blueprint('auth', __name__)
 
@@ -47,7 +47,7 @@ def register():
         )
         origin = random.choice(PIG_ORIGINS)
         pig = Pig(user_id=user.id, name=build_unique_pig_name(f"Cochon de {username}", fallback_prefix='Cochon'), emoji='🐷',
-                  origin_country=origin['country'], origin_flag=origin['flag'])
+                  sex=random_pig_sex(), origin_country=origin['country'], origin_flag=origin['flag'])
         apply_origin_bonus(pig, origin)
         pig.weight_kg = generate_weight_kg_for_profile(pig)
         db.session.add(pig)

@@ -128,6 +128,10 @@ def get_user_record(user_or_id):
     return user
 
 
+def random_pig_sex():
+    return random.choice(['M', 'F'])
+
+
 def get_user_cereal_inventory_entry(user_id, cereal_key):
     return UserCerealInventory.query.filter_by(user_id=user_id, cereal_key=cereal_key).first()
 
@@ -1032,19 +1036,25 @@ def apply_origin_bonus(pig, origin):
 
 
 def create_offspring(user, parent_a, parent_b, name=None):
+    if parent_a.sex == parent_b.sex:
+        raise ValidationError("La reproduction nécessite un mâle et une femelle !")
+
+    sire = parent_a if parent_a.sex == 'M' else parent_b
+    dam = parent_a if parent_a.sex == 'F' else parent_b
     lineage_name = parent_a.lineage_name or parent_b.lineage_name or f"Maison {user.username}"
     barn_bonus = user.barn_heritage_bonus or 0.0
     child = Pig(
         user_id=user.id,
         name=build_unique_pig_name(name or f"Porcelet {lineage_name}", fallback_prefix='Porcelet'),
         emoji=random.choice(PIG_EMOJIS),
+        sex=random_pig_sex(),
         rarity=parent_a.rarity if parent_a.rarity == parent_b.rarity else random.choice([parent_a.rarity, parent_b.rarity, 'commun']),
         origin_country=random.choice([parent_a.origin_country, parent_b.origin_country]),
         origin_flag=random.choice([parent_a.origin_flag, parent_b.origin_flag]),
         lineage_name=lineage_name,
         generation=max(parent_a.generation or 1, parent_b.generation or 1) + 1,
-        sire_id=parent_a.id,
-        dam_id=parent_b.id,
+        sire_id=sire.id,
+        dam_id=dam.id,
         lineage_boost=round(
             ((parent_a.lineage_boost or 0.0) + (parent_b.lineage_boost or 0.0)) * PIG_OFFSPRING_RULES.parent_lineage_factor
             + (barn_bonus * PIG_OFFSPRING_RULES.barn_bonus_factor),
@@ -1088,7 +1098,15 @@ def create_preloaded_admin_pigs(admin_user):
         if is_pig_name_taken(pig_name):
             continue
         origin = PIG_ORIGINS[index % len(PIG_ORIGINS)]
-        pig = Pig(user_id=admin_user.id, name=pig_name, emoji=PIG_EMOJIS[index % len(PIG_EMOJIS)], origin_country=origin['country'], origin_flag=origin['flag'], lineage_name='Maison Admin')
+        pig = Pig(
+            user_id=admin_user.id,
+            name=pig_name,
+            emoji=PIG_EMOJIS[index % len(PIG_EMOJIS)],
+            sex=random_pig_sex(),
+            origin_country=origin['country'],
+            origin_flag=origin['flag'],
+            lineage_name='Maison Admin',
+        )
         apply_origin_bonus(pig, origin)
         pig.weight_kg = generate_weight_kg_for_profile(pig)
         db.session.add(pig)

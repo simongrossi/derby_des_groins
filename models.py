@@ -83,6 +83,7 @@ class Pig(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     name = db.Column(db.String(80), nullable=False, default='Mon Cochon')
     emoji = db.Column(db.String(10), default='🐷')
+    sex = db.Column(db.String(1), nullable=False, default='M')
     avatar_id = db.Column(db.Integer, db.ForeignKey('pig_avatar.id'), nullable=True)
     avatar = db.relationship('PigAvatar', lazy='joined')
 
@@ -414,6 +415,7 @@ class Auction(db.Model):
     # Cochon en vente
     pig_name = db.Column(db.String(80), nullable=False)
     pig_emoji      = db.Column(db.String(10), default='🐷')
+    pig_sex = db.Column(db.String(1), nullable=False, default='M')
     pig_avatar_url = db.Column(db.String(500), nullable=True)
     pig_vitesse = db.Column(db.Float, default=10.0)
     pig_endurance = db.Column(db.Float, default=10.0)

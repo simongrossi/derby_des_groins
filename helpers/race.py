@@ -33,6 +33,7 @@ from services.finance_service import credit_user_balance
 from services.pig_service import (
     apply_origin_bonus, build_unique_pig_name, generate_weight_kg_for_profile,
     get_weight_profile,
+    random_pig_sex,
 )
 from services.race_service import (
     calculate_bet_odds, generate_course_segments,
@@ -77,6 +78,7 @@ def get_user_active_pigs(user):
             user_id=user.id,
             name=build_unique_pig_name(f"Cochon de {user.username}", fallback_prefix='Cochon'),
             emoji='\U0001f437',
+            sex=random_pig_sex(),
             origin_country=origin_country,
             origin_flag=origin_flag,
             lineage_name=f"Maison {user.username}",

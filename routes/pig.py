@@ -30,7 +30,7 @@ from services.pig_service import (
     get_pig_performance_flags, reset_snack_share_limit_if_needed,
     is_pig_name_taken, build_unique_pig_name, check_level_up,
     enter_pig_death_challenge, feed_pig_for_user, kill_pig,
-    get_user_cereal_inventory_dict, study_pig_for_user, train_pig_for_user, update_pig_vitals,
+    get_user_cereal_inventory_dict, random_pig_sex, study_pig_for_user, train_pig_for_user, update_pig_vitals,
 )
 
 pig_bp = Blueprint('pig', __name__)
@@ -131,6 +131,7 @@ def adopt_second_pig():
         user_id=user.id,
         name=build_unique_pig_name(f"Recrue de {user.username}" if active_pigs else f"Rescapé de {user.username}", fallback_prefix='Recrue'),
         emoji='🐖',
+        sex=random_pig_sex(),
         origin_country=origin['country'],
         origin_flag=origin['flag'],
         lineage_name=f"Maison {user.username}",
@@ -353,6 +354,9 @@ def breed_pig():
         return redirect(url_for('pig.mon_cochon'))
     if not parent_a.is_alive or not parent_b.is_alive:
         flash("La reproduction exige deux cochons actifs.", "warning")
+        return redirect(url_for('pig.mon_cochon'))
+    if parent_a.sex == parent_b.sex:
+        flash("La reproduction nécessite un mâle et une femelle !", "warning")
         return redirect(url_for('pig.mon_cochon'))
     if get_pig_slot_count(user) >= get_max_pig_slots(user):
         flash("La porcherie est pleine. Vends, retire ou perds un cochon avant de lancer une nouvelle portée.", "warning")

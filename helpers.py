@@ -29,6 +29,7 @@ from data import (
 )
 from race_engine import CourseManager
 from services.finance_service import credit_user_balance
+from services.pig_service import random_pig_sex
 
 
 # ─── HELPERS CONFIG ─────────────────────────────────────────────────────────
@@ -180,7 +181,15 @@ def get_user_active_pigs(user):
     if not pigs:
         if Pig.query.filter_by(user_id=user.id).count() > 0: return []
         origin = random.choice(PIG_ORIGINS)
-        pig = Pig(user_id=user.id, name=build_unique_pig_name(f"Cochon de {user.username}"), emoji='🐷', origin_country=origin['country'], origin_flag=origin['flag'], lineage_name=f"Maison {user.username}")
+        pig = Pig(
+            user_id=user.id,
+            name=build_unique_pig_name(f"Cochon de {user.username}"),
+            emoji='🐷',
+            sex=random_pig_sex(),
+            origin_country=origin['country'],
+            origin_flag=origin['flag'],
+            lineage_name=f"Maison {user.username}",
+        )
         base_val = getattr(pig, origin['bonus_stat']) or 10.0
         setattr(pig, origin['bonus_stat'], base_val + origin['bonus'])
         pig.weight_kg = generate_weight_kg_for_profile(pig)
