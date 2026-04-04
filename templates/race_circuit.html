@@ -5,9 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Derby des Groins — Circuit Live</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
   <style>
     * { box-sizing: border-box; }
-    body { margin: 0; overflow: hidden; background: #080d1a; color: white; font-family: system-ui, sans-serif; }
+    body { margin: 0; overflow: hidden; background: #080d1a; color: white; font-family: 'Nunito', sans-serif; }
+    .font-title { font-family: 'Lilita One', cursive; }
     #circuit-wrap { position: fixed; inset: 0; z-index: 1; display: flex; }
     #svg-area { flex: 1; min-width: 0; display: flex; align-items: center; justify-content: center; background: radial-gradient(ellipse at 60% 40%, rgba(22,57,96,0.35), transparent 70%), #080d1a; }
     #stats-panel { width: 300px; flex-shrink: 0; background: linear-gradient(180deg, rgba(15,10,30,0.98), rgba(8,6,18,0.99)); border-left: 1px solid rgba(255,255,255,0.06); overflow-y: auto; padding: 1rem; }
@@ -17,15 +19,39 @@
     .pig-label { font-size: 10px; fill: white; text-anchor: middle; dominant-baseline: hanging; opacity: 0.7; }
     #countdown-overlay { position: fixed; inset: 0; z-index: 50; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.85); pointer-events: none; }
     #countdown-text { font-size: clamp(4rem, 20vw, 12rem); font-weight: 900; background: linear-gradient(135deg, #fbbf24, #f97316); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-    #victory-overlay { position: fixed; inset: 0; z-index: 60; display: none; align-items: center; justify-content: center; background: rgba(0,0,0,0.8); }
-    #victory-overlay.active { display: flex; }
-    .victory-card { text-align: center; }
-    #lobby-overlay { position: fixed; inset: 0; z-index: 40; display: flex; flex-direction: column; align-items: center; justify-content: center; background: radial-gradient(ellipse at center, rgba(39,13,49,0.97), rgba(8,6,18,0.99)); }
-    .pig-stat-card { border: 1px solid rgba(255,255,255,0.06); border-radius: 0.75rem; padding: 0.6rem 0.75rem; margin-bottom: 0.5rem; background: rgba(255,255,255,0.02); }
+
+    .overlay-full { position: fixed; inset: 0; z-index: 40; display: flex; flex-direction: column; align-items: center; justify-content: center; background: radial-gradient(ellipse at center, rgba(39,13,49,0.97), rgba(8,6,18,0.99)); }
+
+    /* Style Tableau en Bois */
+    .wood-board {
+      background: #5d4037;
+      background-image: url('https://www.transparenttextures.com/patterns/wood-pattern.png');
+      border: 12px solid #3e2723;
+      border-radius: 1rem;
+      box-shadow: 0 20px 50px rgba(0,0,0,0.5), inset 0 0 100px rgba(0,0,0,0.2);
+      padding: 2rem;
+      color: white;
+      max-width: 900px;
+      width: 95%;
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+    .wood-table { width: 100%; border-collapse: separate; border-spacing: 0 0.5rem; }
+    .wood-table th { text-transform: uppercase; font-size: 0.75rem; letter-spacing: 0.1em; color: rgba(255,255,255,0.6); padding: 0.5rem 1rem; text-align: left; }
+    .wood-table td { background: rgba(0,0,0,0.2); padding: 0.75rem 1rem; font-weight: 800; }
+    .wood-table tr td:first-child { border-radius: 0.5rem 0 0 0.5rem; }
+    .wood-table tr td:last-child { border-radius: 0 0.5rem 0.5rem 0; }
+    .wood-timer { font-family: 'Lilita One', cursive; font-size: 5rem; text-shadow: 0 4px 0 rgba(0,0,0,0.3); line-height: 1; margin-bottom: 1rem; }
+
+    .btn-wood {
+      padding: 0.75rem 2rem; border-radius: 0.75rem; font-family: 'Lilita One', cursive; font-size: 1.25rem;
+      background: #795548; border: 4px solid #3e2723; color: white; cursor: pointer; transition: transform 0.1s;
+    }
+    .btn-wood:hover { transform: scale(1.05); background: #8d6e63; }
+
+    #stats-cards .pig-stat-card { border: 1px solid rgba(255,255,255,0.06); border-radius: 0.75rem; padding: 0.6rem 0.75rem; margin-bottom: 0.5rem; background: rgba(255,255,255,0.02); }
     .stat-mini-bar { height: 3px; border-radius: 2px; transition: width 0.4s ease; }
     .stat-mini-bar-bg { background: rgba(255,255,255,0.06); }
-    #toolbar { position: fixed; bottom: 1rem; left: 50%; transform: translateX(-50%); z-index: 30; display: flex; gap: 0.5rem; padding: 0.5rem; border-radius: 1rem; background: rgba(0,0,0,0.7); border: 1px solid rgba(255,255,255,0.1); backdrop-filter: blur(12px); }
-    .tb-btn { padding: 0.4rem 0.8rem; border-radius: 0.5rem; font-size: 0.75rem; font-weight: 700; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.05); color: rgba(255,255,255,0.7); cursor: pointer; }
   </style>
 </head>
 <body>
@@ -34,27 +60,81 @@
     <p style="margin-top:1rem;color:rgba(255,255,255,0.4);font-size:0.85rem;">Chargement du circuit…</p>
   </div>
 
-  <div id="lobby-overlay" style="display:none;">
-    <div class="text-center space-y-6 max-w-xl px-4">
-      <p class="text-sm uppercase tracking-[0.35em] text-amber-200/60">Prochaine course (5 tours)</p>
-      <h1 class="text-5xl font-black text-amber-100">🏁 Course #<span id="lobby-race-id">—</span></h1>
-      <div id="lobby-countdown" class="text-7xl font-black text-amber-300">—</div>
-      <div id="lobby-participants" class="grid grid-cols-2 gap-2 mt-6 text-left"></div>
-      <div id="lobby-bets" class="mt-4 text-left space-y-1"></div>
+  <!-- OVERLAY LOBBY (Attente / Inscriptions) -->
+  <div id="lobby-overlay" class="overlay-full" style="display:none;">
+    <div class="wood-board text-center">
+      <p id="lobby-label" class="text-xs uppercase tracking-[0.3em] text-white/50 mb-2">Prochaine course</p>
+      <div id="lobby-countdown" class="wood-timer text-amber-200">--:--</div>
+      <h2 class="font-title text-2xl mb-6">Course #<span id="lobby-race-id">?</span></h2>
+
+      <div class="overflow-hidden rounded-xl">
+        <table class="wood-table">
+          <thead>
+            <tr>
+              <th>Cochon</th>
+              <th>Propriétaire</th>
+              <th class="text-right">BitGroins misés</th>
+              <th class="text-right">Cote</th>
+            </tr>
+          </thead>
+          <tbody id="lobby-runners-body"></tbody>
+        </table>
+      </div>
+
+      <div id="lobby-total-staked" class="mt-6 text-sm font-bold text-white/40">
+        Total des enjeux : <span class="text-amber-200">0 🪙</span>
+      </div>
+      <div class="mt-8">
+        <button onclick="closeCircuit()" class="btn-wood">✕ FERMER</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- OVERLAY RESULTATS (Fin de course) -->
+  <div id="results-overlay" class="overlay-full" style="display:none;">
+    <div class="wood-board">
+      <h1 class="font-title text-4xl text-center text-amber-200 mb-8">🏆 RESULTATS DE LA COURSE #<span id="results-race-id">?</span></h1>
+
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <!-- Tableau Cochons -->
+        <div>
+          <h2 class="font-title text-xl mb-4 text-white/70 tracking-widest">🏁 CLASSEMENT</h2>
+          <table class="wood-table">
+            <thead>
+              <tr>
+                <th class="w-12">Pos</th>
+                <th>Cochon</th>
+                <th class="text-right">Gain Proprio</th>
+              </tr>
+            </thead>
+            <tbody id="results-runners-body"></tbody>
+          </table>
+        </div>
+
+        <!-- Tableau Parieurs -->
+        <div>
+          <h2 class="font-title text-xl mb-4 text-white/70 tracking-widest">💰 PROFITS DES PARIEURS</h2>
+          <table class="wood-table">
+            <thead>
+              <tr>
+                <th>Joueur</th>
+                <th class="text-right">Bilan Net</th>
+              </tr>
+            </thead>
+            <tbody id="results-bettors-body"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="mt-10 text-center">
+        <button onclick="closeCircuit()" class="btn-wood">RETOURNER A L'ACCUEIL</button>
+      </div>
     </div>
   </div>
 
   <div id="countdown-overlay" style="display:none;"><div id="countdown-text">3</div></div>
 
-  <div id="idle-overlay" style="position:fixed;inset:0;z-index:35;display:none;flex-direction:column;align-items:center;justify-content:center;background:#080d1a;">
-    <div class="text-center space-y-6">
-      <div style="font-size:5rem;">🐷</div>
-      <h1 class="text-4xl font-black text-white/80">Aucune course en cours</h1>
-      <div id="idle-next-info" class="text-sm text-white/30"></div>
-      <button onclick="closeCircuit()" class="px-5 py-2.5 rounded-xl border border-white/10 bg-white/5 text-white/60 font-bold">✕ Fermer</button>
-    </div>
-  </div>
-
+  <!-- CIRCUIT LIVE (Pendant l'animation) -->
   <div id="circuit-wrap" style="display:none;">
     <div id="svg-area">
       <svg id="circuit-svg" viewBox="0 0 900 600" preserveAspectRatio="xMidYMid meet" style="width:95%; height:95%;">
@@ -64,40 +144,38 @@
           <g id="pigs-g"></g>
         </g>
       </svg>
-      <div style="position:absolute; top:1rem; left:1rem; font-size:0.7rem; color:rgba(255,255,255,0.4);">
-        <span id="info-race">—</span> · <span id="info-turn">Tour 0</span> · 🏁 5 tours
+      <div style="position:absolute; top:1.5rem; left:1.5rem; background: rgba(0,0,0,0.6); padding: 0.5rem 1rem; border-radius: 0.5rem; border: 1px solid rgba(255,255,255,0.1);">
+        <div id="info-race" class="font-title text-amber-200">Course #—</div>
+        <div id="info-turn" class="text-xs font-bold text-white/60 mt-1 uppercase tracking-widest">Tour 0 / 5</div>
+      </div>
+      <div id="race-status-banner" style="position:absolute; bottom:2rem; left:50%; transform:translateX(-50%); display:none;">
+        <span class="pill bg-amber-500 text-black px-6 py-2 text-lg font-black animate-pulse">COURSE EN COURS...</span>
       </div>
     </div>
     <div id="stats-panel">
       <div class="text-xs uppercase tracking-[0.3em] text-white/30 mb-3">Participants</div>
       <div id="stats-cards"></div>
-      <div id="stats-bets" class="text-xs text-white/50 space-y-1 mt-4"></div>
     </div>
-  </div>
-
-  <div id="victory-overlay">
-    <div class="victory-card space-y-4">
-      <div id="victory-emoji" style="font-size:6rem;"></div>
-      <div class="text-4xl font-black text-amber-200" id="victory-name"></div>
-      <div id="victory-podium" class="mt-6 space-y-1 text-sm"></div>
-      <button onclick="closeCircuit()" class="mt-6 tb-btn">Fermer</button>
-    </div>
-  </div>
-
-  <div id="toolbar" style="display:none;">
-    <button class="tb-btn" onclick="cycleSpeed()" id="btn-speed">⏩ x1</button>
-    <button class="tb-btn" onclick="closeCircuit()">✕ Fermer</button>
   </div>
 
 <script>
 const PIG_COLORS = ['#f87171','#fb923c','#facc15','#4ade80','#22d3ee','#818cf8','#e879f9','#f472b6','#a3e635','#fca5a5','#fdba74','#fde68a'];
-let replayData = null; let totalLength = 3000; let turnIndex = 0; let isPlaying = false; let playInterval = null; let speedMultiplier = 1;
-let lastFinishedRaceId = null; let currentPhase = 'idle'; let pathElement = null; let pathLength = 0;
-let victoryHold = false; // Flag pour empêcher le polling de masquer l'écran de victoire
+const LAP_DISTANCE = 600; const TOTAL_LAPS = 5; const TOTAL_RACE_DISTANCE = LAP_DISTANCE * TOTAL_LAPS;
+const TARGET_RACE_DURATION_MS = 50000; // 50 secondes
+
+let replayData = null; let turnIndex = 0; let isPlaying = false; let playInterval = null;
+let lastAnimatedRaceId = null; let pathElement = null; let pathLength = 0;
+let resultsRaceId = null;
 
 function initTrack() {
   pathElement = document.getElementById('track-bg-path');
-  pathLength = pathElement.getTotalLength();
+  if (pathElement) pathLength = pathElement.getTotalLength();
+}
+
+function formatTime(seconds) {
+  if (seconds === null || seconds < 0) return '--:--';
+  const m = Math.floor(seconds / 60), s = seconds % 60;
+  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 }
 
 function pigVisualHTML(pig, size = 24) {
@@ -106,15 +184,16 @@ function pigVisualHTML(pig, size = 24) {
 }
 
 function createPigMarkers(pigsData) {
-  const g = document.getElementById('pigs-g'); g.innerHTML = '';
+  const g = document.getElementById('pigs-g'); if (!g) return;
+  g.innerHTML = '';
   pigsData.forEach((pig, i) => {
     const group = document.createElementNS('http://www.w3.org/2000/svg', 'g');
     group.setAttribute('class', 'pig-marker'); group.setAttribute('id', `pig-${pig.id}`);
     const emoji = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-    emoji.setAttribute('font-size', '22'); emoji.setAttribute('text-anchor', 'middle'); emoji.setAttribute('dominant-baseline', 'central');
+    emoji.setAttribute('font-size', '24'); emoji.setAttribute('text-anchor', 'middle'); emoji.setAttribute('dominant-baseline', 'central');
     emoji.textContent = pig.emoji || '🐷';
     const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-    label.setAttribute('class', 'pig-label'); label.setAttribute('dy', '18'); label.textContent = (pig.name || '').substring(0, 10);
+    label.setAttribute('class', 'pig-label'); label.setAttribute('dy', '20'); label.textContent = (pig.name || '').substring(0, 12);
     group.append(emoji, label); g.append(group);
   });
 }
@@ -122,102 +201,212 @@ function createPigMarkers(pigsData) {
 function updatePositions(turnData) {
   turnData.pigs.forEach((pig, i) => {
     const el = document.getElementById(`pig-${pig.id}`); if (!el) return;
-    const lapDistance = 600;
-    const distanceInLap = pig.distance % lapDistance;
-    const ratio = distanceInLap / lapDistance;
+    const distanceInLap = pig.distance % LAP_DISTANCE;
+    const ratio = distanceInLap / LAP_DISTANCE;
     const pt = pathElement.getPointAtLength(ratio * pathLength);
-    const offset = (i - 4) * 4;
+    const offset = (i - 4) * 5;
     el.setAttribute('transform', `translate(${pt.x}, ${pt.y + offset})`);
   });
 }
 
-function startAnimation(replay) {
-  replayData = replay; turnIndex = 0; totalLength = 3000; isPlaying = true; victoryHold = true;
+async function startAnimation(replay) {
+  if (isPlaying || lastAnimatedRaceId === replay.race_id) return;
+
+  replayData = replay; turnIndex = 0; isPlaying = true; lastAnimatedRaceId = replay.race_id;
+
   const pigs = replay.turns[0].pigs.map(p => ({ id: p.id, name: p.name, emoji: '🐷' }));
   if (replay.participant_meta) {
     pigs.forEach(p => { const m = replay.participant_meta[String(p.id)]; if (m) { p.emoji = m.emoji; p.avatar_url = m.avatar_url; } });
   }
-  createPigMarkers(pigs);
-  const container = document.getElementById('stats-cards'); container.innerHTML = pigs.map((p, i) => `<div class="pig-stat-card" id="stat-${p.id}"><div class="flex items-center gap-2">${pigVisualHTML(p, 20)} <span class="text-xs font-bold" style="color:${PIG_COLORS[i%12]}">${p.name}</span> <span class="ml-auto text-[10px]" id="stat-pos-${p.id}">#—</span></div><div class="stat-mini-bar-bg mt-2"><div class="stat-mini-bar" id="bar-${p.id}" style="width:0%; background:#22d3ee"></div></div></div>`).join('');
 
-  document.getElementById('idle-overlay').style.display = 'none';
+  createPigMarkers(pigs);
+  const container = document.getElementById('stats-cards');
+  if (container) container.innerHTML = pigs.map((p, i) => `
+    <div class="pig-stat-card" id="stat-${p.id}">
+      <div class="flex items-center gap-2">
+        ${pigVisualHTML(p, 20)}
+        <span class="text-xs font-bold" style="color:${PIG_COLORS[i%12]}">${p.name}</span>
+        <span class="ml-auto text-[10px] font-black" id="stat-pos-${p.id}">#—</span>
+      </div>
+      <div class="stat-mini-bar-bg mt-2">
+        <div class="stat-mini-bar" id="bar-${p.id}" style="width:0%; background:#22d3ee"></div>
+      </div>
+    </div>`).join('');
+
+  // Masquer les overlays et afficher le circuit
   document.getElementById('lobby-overlay').style.display = 'none';
+  document.getElementById('results-overlay').style.display = 'none';
   document.getElementById('circuit-wrap').style.display = 'flex';
-  document.getElementById('toolbar').style.display = 'flex';
-  document.getElementById('info-race').textContent = `Course #${replay.race_id || '?'}`;
-  playTick();
+  document.getElementById('info-race').textContent = `Course #${replay.race_id}`;
+
+  // Calculer l'intervalle pour que la course dure 50s
+  const numTurns = replay.turns.length;
+  const interval = TARGET_RACE_DURATION_MS / numTurns;
+
+  playTick(interval);
 }
 
-function playTick() {
-  if (!isPlaying || !replayData || turnIndex >= replayData.turns.length) { finishAnimation(); return; }
+function playTick(interval) {
+  if (!isPlaying || !replayData || turnIndex >= replayData.turns.length) {
+    setTimeout(finishAnimation, 1000);
+    return;
+  }
+
   const turn = replayData.turns[turnIndex];
   updatePositions(turn);
+
   const sorted = [...turn.pigs].sort((a,b) => b.distance - a.distance);
   turn.pigs.forEach(p => {
     const pEl = document.getElementById(`stat-pos-${p.id}`); if (!pEl) return;
     const pos = sorted.findIndex(s => s.id === p.id) + 1;
     pEl.textContent = p.is_finished ? '🏁' : `#${pos}`;
-    document.getElementById(`bar-${p.id}`).style.width = `${(p.distance / 3000) * 100}%`;
+    document.getElementById(`bar-${p.id}`).style.width = `${Math.min(100, (p.distance / TOTAL_RACE_DISTANCE) * 100)}%`;
   });
-  document.getElementById('info-turn').textContent = `Tour ${Math.min(5, Math.floor(sorted[0].distance / 600) + 1)} / 5`;
+
+  const currentLap = Math.min(TOTAL_LAPS, Math.floor(sorted[0].distance / LAP_DISTANCE) + 1);
+  document.getElementById('info-turn').textContent = `Tour ${currentLap} / ${TOTAL_LAPS}`;
+
   turnIndex++;
-  playInterval = setTimeout(playTick, 500 / speedMultiplier);
+  playInterval = setTimeout(() => playTick(interval), interval);
 }
 
-function finishAnimation() {
+async function finishAnimation() {
   isPlaying = false;
-  const last = replayData.turns[replayData.turns.length - 1];
-  const winner = [...last.pigs].sort((a,b) => b.distance - a.distance)[0];
-  document.getElementById('victory-name').textContent = `${winner.name} GAGNE !`;
-  document.getElementById('victory-overlay').classList.add('active');
+  const raceId = replayData.race_id;
+  resultsRaceId = raceId;
 
-  // On maintient l'écran de victoire pendant 15 secondes avant de laisser le polling reprendre la main
-  setTimeout(() => { victoryHold = false; }, 15000);
+  // Masquer le circuit
+  document.getElementById('circuit-wrap').style.display = 'none';
+
+  // Charger et afficher les résultats
+  document.getElementById('results-race-id').textContent = raceId;
+  document.getElementById('results-overlay').style.display = 'flex';
+
+  // Remplir podium cochons
+  const lastTurn = replayData.turns[replayData.turns.length - 1];
+  const winners = [...lastTurn.pigs].sort((a,b) => b.distance - a.distance);
+
+  const runnersBody = document.getElementById('results-runners-body');
+  runnersBody.innerHTML = winners.map((p, i) => {
+    const meta = replayData.participant_meta[String(p.id)];
+    return `
+      <tr>
+        <td><span class="text-xl">${i === 0 ? '🥇' : (i === 1 ? '🥈' : (i === 2 ? '🥉' : i + 1))}</span></td>
+        <td><div class="flex items-center gap-3"><span>${meta?.emoji || '🐷'}</span> <span>${p.name}</span></div></td>
+        <td class="text-right text-emerald-400">? 🪙</td>
+      </tr>
+    `;
+  }).join('');
+
+  // Charger profits parieurs
+  try {
+    const res = await fetch(`/api/race/${raceId}/bettor-results`);
+    const data = await res.json();
+    const bettorsBody = document.getElementById('results-bettors-body');
+    bettorsBody.innerHTML = data.bettor_results.map(r => `
+      <tr>
+        <td>${r.username}</td>
+        <td class="text-right ${r.profit > 0 ? 'text-emerald-400' : (r.profit < 0 ? 'text-rose-400' : 'text-white/40')}">
+          ${r.profit > 0 ? '+' : ''}${r.profit.toFixed(0)} 🪙
+        </td>
+      </tr>
+    `).join('');
+    if (data.bettor_results.length === 0) {
+      bettorsBody.innerHTML = '<tr><td colspan="2" class="text-center text-white/30">Aucun pari sur cette course.</td></tr>';
+    }
+  } catch(e) { console.error("Erreur resultats parieurs", e); }
 }
 
-function cycleSpeed() { speedMultiplier = speedMultiplier === 1 ? 2 : (speedMultiplier === 2 ? 4 : 1); document.getElementById('btn-speed').textContent = `⏩ x${speedMultiplier}`; }
 function closeCircuit() {
-  isPlaying = false; victoryHold = false;
+  isPlaying = false;
   if (window.parent && window.parent !== window) window.parent.postMessage('close-global-circuit', '*');
   else window.location.href = '/';
 }
 
+async function updateLobbyData(raceId) {
+  try {
+    const [preR, betsR] = await Promise.all([
+      fetch(`/api/race/${raceId}/pre-race`),
+      fetch(`/api/race/${raceId}/bets-spectator`)
+    ]);
+    const pre = await preR.json();
+    const betsData = await betsR.json();
+
+    const stakesByParticipantId = {};
+    let totalEnjeux = 0;
+    betsData.bets.forEach(b => {
+      totalEnjeux += b.amount;
+      const ids = (b.selection_order || "").split(',').map(Number).filter(id => !isNaN(id));
+      if (ids.length > 0) {
+        const primaryId = ids[0];
+        stakesByParticipantId[primaryId] = (stakesByParticipantId[primaryId] || 0) + b.amount;
+      }
+    });
+
+    const tbody = document.getElementById('lobby-runners-body');
+    if (tbody) {
+      tbody.innerHTML = pre.participants.sort((a,b) => (a.odds||99)-(b.odds||99)).map(p => {
+        const betAmount = stakesByParticipantId[p.id] || 0;
+        return `
+          <tr>
+            <td><div class="flex items-center gap-3"><span>${p.emoji}</span> <span>${p.name}</span></div></td>
+            <td class="text-white/40 font-semibold">${p.owner_name || '💻 IA'}</td>
+            <td class="text-right text-amber-200">${betAmount > 0 ? betAmount.toFixed(0) + ' 🪙' : '—'}</td>
+            <td class="text-right text-white/80">x${p.odds ? p.odds.toFixed(1) : '--'}</td>
+          </tr>
+        `;
+      }).join('');
+    }
+    const totalEl = document.getElementById('lobby-total-staked');
+    if (totalEl) totalEl.innerHTML = `Total des enjeux : <span class="text-amber-200 text-lg">${totalEnjeux.toFixed(0)} 🪙</span>`;
+  } catch(e) { console.error("Erreur update lobby", e); }
+}
+
 async function pollState() {
-  // Si on est en train de jouer l'animation ou de montrer la victoire, on ne touche à rien
-  if (isPlaying || victoryHold) return;
+  if (isPlaying || resultsRaceId) return;
 
   try {
     const r = await fetch('/api/race/live-state'); const s = await r.json();
     if (document.getElementById('loading-overlay')) document.getElementById('loading-overlay').style.display = 'none';
 
-    // Si une nouvelle course vient de finir, on lance l'animation
-    if (s.finished_race_id && s.finished_race_id !== lastFinishedRaceId) {
-      lastFinishedRaceId = s.finished_race_id;
-      const repR = await fetch(`/api/race/${s.finished_race_id}/replay`); const rep = await repR.json();
-      if (rep.turns) {
-        startAnimation(rep);
-        return; // On sort pour laisser l'animation prendre le contrôle
+    // Phase RACING : On attend que la course soit générée
+    if (s.phase === 'racing') {
+      document.getElementById('lobby-overlay').style.display = 'none';
+      document.getElementById('circuit-wrap').style.display = 'flex';
+      document.getElementById('race-status-banner').style.display = 'block';
+
+      // Si on n'anime pas encore mais qu'une course vient de finir
+      if (s.finished_race_id && s.finished_race_id !== lastAnimatedRaceId) {
+        const repR = await fetch(`/api/race/${s.finished_race_id}/replay`);
+        const rep = await repR.json();
+        if (rep.turns) {
+          document.getElementById('race-status-banner').style.display = 'none';
+          startAnimation(rep);
+          return;
+        }
       }
+      return;
     }
 
-    // Gestion des overlays de transition (seulement si on ne joue pas)
-    currentPhase = s.phase;
-    if (s.phase === 'idle') {
-      document.getElementById('idle-overlay').style.display = 'flex';
-      document.getElementById('lobby-overlay').style.display = 'none';
-      document.getElementById('victory-overlay').classList.remove('active');
-      document.getElementById('circuit-wrap').style.display = 'none';
-      document.getElementById('idle-next-info').textContent = s.seconds_to_start ? `Prochaine course dans ${Math.floor(s.seconds_to_start/60)}m ${s.seconds_to_start%60}s` : 'Aucune course prévue';
-    } else if (s.phase === 'pre_race' || s.phase === 'countdown') {
-      document.getElementById('idle-overlay').style.display = 'none';
-      document.getElementById('victory-overlay').classList.remove('active');
-      document.getElementById('circuit-wrap').style.display = 'none';
+    // Autres phases : Lobby ou Idle
+    document.getElementById('circuit-wrap').style.display = 'none';
+    document.getElementById('results-overlay').style.display = 'none';
+
+    if (s.race_id) {
       document.getElementById('lobby-overlay').style.display = 'flex';
       document.getElementById('lobby-race-id').textContent = s.race_id;
-      document.getElementById('lobby-countdown').textContent = `${s.seconds_to_start}s`;
-    } else if (s.phase === 'racing') {
-      document.getElementById('lobby-overlay').style.display = 'none';
-      // Attente de la fin de course serveur
+      document.getElementById('lobby-countdown').textContent = formatTime(s.seconds_to_start);
+      document.getElementById('lobby-label').textContent = s.phase === 'countdown' ? "Décollage imminent" : "Prochaine course";
+
+      if (!window._lastLobbyRaceId || window._lastLobbyRaceId !== s.race_id) {
+        window._lastLobbyRaceId = s.race_id;
+        updateLobbyData(s.race_id);
+      }
+    } else {
+      // Cas rare : aucune course même dans le futur proche
+      document.getElementById('lobby-overlay').style.display = 'flex';
+      document.getElementById('lobby-countdown').textContent = "PAUSE";
+      document.getElementById('lobby-runners-body').innerHTML = '<tr><td colspan="4" class="text-center text-white/30">Aucun cochon sur la piste...</td></tr>';
     }
   } catch(e) {}
 }
