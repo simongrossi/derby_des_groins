@@ -2,7 +2,7 @@ from flask import Blueprint, render_template, request, redirect, url_for, sessio
 from datetime import datetime, timedelta
 import json as _json
 
-from extensions import db, limiter, APP_TIMEZONE # Import APP_TIMEZONE
+from extensions import db, limiter, APP_TIMEZONE
 from models import User, Pig, Race, Participant, Bet, UserNotification, ChatMessage
 from data import SCHOOL_COOLDOWN_MINUTES, MIN_INJURY_RISK, DEFAULT_PIG_WEIGHT_KG
 from helpers import (
@@ -88,6 +88,8 @@ def vet_solve():
         return jsonify({'error': 'Cochon introuvable'}), 404
     if not pig.is_alive:
         return jsonify({'dead': True, 'message': "Trop tard... il est passé de l'autre côté."}), 200
+    if not pig.is_injured:
+        return jsonify({'already_healed': True}), 200
     if pig.vet_deadline and datetime.utcnow() > pig.vet_deadline:
         pig.kill(cause='blessure')
         db.session.commit()
@@ -273,11 +275,9 @@ def api_race_live_state():
 
     if next_scheduled_race:
         race_id_for_display = next_scheduled_race.id
-        # Convertir scheduled_at en timezone aware si ce n'est pas déjà le cas
-        # Assumer que next_scheduled_race.scheduled_at est déjà en UTC ou dans le fuseau de l'app
         scheduled_at_aware = next_scheduled_race.scheduled_at
         if scheduled_at_aware.tzinfo is None:
-            scheduled_at_aware = APP_TIMEZONE.localize(scheduled_at_aware) # Localize naive datetime
+            scheduled_at_aware = scheduled_at_aware.replace(tzinfo=APP_TIMEZONE)
 
         seconds_to_start = int((scheduled_at_aware - now).total_seconds())
 
@@ -297,7 +297,7 @@ def api_race_live_state():
         'race_id': race_id_for_display,
         'seconds_to_start': max(0, seconds_to_start) if seconds_to_start is not None else None,
         'finished_race_id': finished_race_id,
-        'server_time': now.isoformat(), # Retourner l'heure du serveur
+        'server_time': now.isoformat(),
     })
 
 
