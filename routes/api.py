@@ -5,6 +5,7 @@ import json as _json
 from extensions import db, limiter
 from models import User, Pig, Race, Participant, Bet, UserNotification, ChatMessage
 from data import SCHOOL_COOLDOWN_MINUTES, MIN_INJURY_RISK, DEFAULT_PIG_WEIGHT_KG
+from services.pig_service import get_pig_settings
 from helpers import (
     get_user_active_pigs, calculate_pig_power,
     get_weight_profile, get_seconds_until, get_cooldown_remaining,
@@ -51,7 +52,7 @@ def veterinaire_index():
     pigs_data = []
     for pig in pigs:
         pig.update_vitals()
-        injury_risk = round(pig.injury_risk or MIN_INJURY_RISK, 1)
+        injury_risk = round(pig.injury_risk or get_pig_settings().injury_min_risk, 1)
         pigs_data.append({
             'pig': pig,
             'injury_risk': injury_risk,
@@ -97,9 +98,10 @@ def vet_solve():
 
     progression = get_progression_settings()
     pig.heal()
+    _min_risk = get_pig_settings().injury_min_risk
     pig.injury_risk = max(
-        MIN_INJURY_RISK,
-        round(max(MIN_INJURY_RISK, float(pig.injury_risk or MIN_INJURY_RISK)) - 2.0, 1),
+        _min_risk,
+        round(max(_min_risk, float(pig.injury_risk or _min_risk)) - 2.0, 1),
     )
     pig.energy = max(0, pig.energy - progression.vet_energy_cost)
     pig.happiness = max(0, pig.happiness - progression.vet_happiness_cost)
@@ -186,7 +188,7 @@ def api_pig():
         'school_sessions_completed': pig.school_sessions_completed or 0,
         'school_cooldown': get_cooldown_remaining(pig.last_school_at, SCHOOL_COOLDOWN_MINUTES),
         'is_injured': pig.is_injured,
-        'injury_risk': round(pig.injury_risk or MIN_INJURY_RISK, 1),
+        'injury_risk': round(pig.injury_risk or get_pig_settings().injury_min_risk, 1),
         'vet_seconds_left': get_seconds_until(pig.vet_deadline) if pig.is_injured else 0,
         'avatar_url': pig.avatar_url,
     })

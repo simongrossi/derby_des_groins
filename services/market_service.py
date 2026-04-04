@@ -9,6 +9,22 @@ from data import (
     BOURSE_SURCHARGE_FACTOR, CEREALS, DEFAULT_PIG_WEIGHT_KG, PIG_EMOJIS,
     PIG_NAME_PREFIXES, PIG_NAME_SUFFIXES, PIG_ORIGINS, RARITIES,
 )
+
+
+def _get_bourse_surcharge_factor():
+    from helpers.config import get_config
+    try:
+        return float(get_config('bourse_surcharge_factor', str(BOURSE_SURCHARGE_FACTOR)))
+    except (TypeError, ValueError):
+        return float(BOURSE_SURCHARGE_FACTOR)
+
+
+def _get_bourse_movement_divisor():
+    from helpers.config import get_config
+    try:
+        return max(1, int(float(get_config('bourse_movement_divisor', str(BOURSE_MOVEMENT_DIVISOR)))))
+    except (TypeError, ValueError):
+        return int(BOURSE_MOVEMENT_DIVISOR)
 from extensions import db
 from models import Auction, BalanceTransaction, GrainMarket, MarketHistory, Pig, User
 
@@ -157,7 +173,7 @@ def get_grain_grid_pos(market, dx, dy):
 
 
 def get_grain_surcharge(gx, gy):
-    return 1.0 + (_cell_value(gx) + _cell_value(gy)) * BOURSE_SURCHARGE_FACTOR
+    return 1.0 + (_cell_value(gx) + _cell_value(gy)) * _get_bourse_surcharge_factor()
 
 
 def get_all_grain_surcharges(market):
@@ -174,7 +190,7 @@ def get_bourse_movement_points(user_id):
     if user and user.is_admin:
         return 99
     total_purchases = db.session.query(func.count(BalanceTransaction.id)).filter(BalanceTransaction.user_id == user_id, BalanceTransaction.reason_code == 'feed_purchase').scalar() or 0
-    return max(BOURSE_MIN_MOVEMENT, total_purchases // BOURSE_MOVEMENT_DIVISOR)
+    return max(BOURSE_MIN_MOVEMENT, total_purchases // _get_bourse_movement_divisor())
 
 
 def move_bourse_cursor(market, dx, dy, max_points):
@@ -269,6 +285,6 @@ def get_bourse_grid_data(market):
         for x in range(BOURSE_GRID_SIZE):
             cell_value = BOURSE_GRID_VALUES[x] + BOURSE_GRID_VALUES[y]
             grain_key = block_grains.get((x, y))
-            row.append({'x': x, 'y': y, 'val_x': BOURSE_GRID_VALUES[x], 'val_y': BOURSE_GRID_VALUES[y], 'cell_value': cell_value, 'surcharge': round(1.0 + cell_value * BOURSE_SURCHARGE_FACTOR, 2), 'is_block': (abs(x - bx) <= 1 and abs(y - by) <= 1), 'is_center': (x == bx and y == by), 'grain_key': grain_key, 'grain_emoji': cereals[grain_key]['emoji'] if grain_key in cereals else None, 'grain_name': cereals[grain_key]['name'] if grain_key in cereals else None})
+            row.append({'x': x, 'y': y, 'val_x': BOURSE_GRID_VALUES[x], 'val_y': BOURSE_GRID_VALUES[y], 'cell_value': cell_value, 'surcharge': round(1.0 + cell_value * _get_bourse_surcharge_factor(), 2), 'is_block': (abs(x - bx) <= 1 and abs(y - by) <= 1), 'is_center': (x == bx and y == by), 'grain_key': grain_key, 'grain_emoji': cereals[grain_key]['emoji'] if grain_key in cereals else None, 'grain_name': cereals[grain_key]['name'] if grain_key in cereals else None})
         grid.append(row)
     return grid
