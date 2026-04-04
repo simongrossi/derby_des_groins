@@ -54,6 +54,14 @@
             border: 1px solid var(--regles-anchor-border);
         }
 
+        .regles-anchor-link {
+            color: rgba(255, 255, 255, 0.78);
+        }
+
+        .regles-anchor-link:hover {
+            color: #ffffff;
+        }
+
         .metric-card {
             background: var(--regles-metric-bg);
             border: 1px solid var(--regles-metric-border);
@@ -111,6 +119,34 @@
             line-height: 1.5;
         }
 
+        .dense-card-title {
+            font-size: 1.75rem;
+            line-height: 1.05;
+        }
+
+        .dense-table th {
+            padding: 0.58rem 0.65rem;
+            font-size: 0.6rem;
+            letter-spacing: 0.1em;
+        }
+
+        .dense-table td {
+            padding: 0.62rem 0.65rem;
+            font-size: 0.9rem;
+            line-height: 1.22;
+        }
+
+        .dense-table td:first-child {
+            font-size: 0.86rem;
+            max-width: 10rem;
+        }
+
+        .dense-table td:last-child {
+            font-size: 0.72rem;
+            line-height: 1.28;
+            max-width: 8.5rem;
+        }
+
         html[data-theme="light"] {
             --regles-page-bg:
                 radial-gradient(circle at 10% 14%, rgba(251, 113, 133, 0.12), transparent 26%),
@@ -137,6 +173,16 @@
         html[data-theme="light"] .anchor-chip,
         html[data-theme="light"] .metric-card {
             backdrop-filter: blur(16px);
+        }
+
+        html[data-theme="light"] .regles-anchor-link {
+            color: rgba(75, 49, 67, 0.84) !important;
+        }
+
+        html[data-theme="light"] .regles-anchor-link:hover {
+            color: rgba(75, 49, 67, 1) !important;
+            background: rgba(251, 208, 224, 0.34) !important;
+            border-color: rgba(214, 170, 191, 0.62) !important;
         }
 
         html[data-theme="light"] .compact-table td:last-child {
@@ -185,7 +231,7 @@
     <nav class="glass-card rounded-3xl p-3 overflow-x-auto">
         <div class="flex gap-2 min-w-max">
             {% for section in sections %}
-            <a href="#{{ section.id }}" class="anchor-chip inline-flex items-center gap-2 rounded-2xl px-4 py-2 text-sm font-black text-white/75 hover:text-white hover:border-pink-300/20 hover:bg-pink-400/10 transition-all">
+            <a href="#{{ section.id }}" class="anchor-chip regles-anchor-link inline-flex items-center gap-2 rounded-2xl px-4 py-2 text-sm font-black hover:border-pink-300/20 hover:bg-pink-400/10 transition-all">
                 <span>{{ section.emoji }}</span>
                 <span>{{ section.title }}</span>
             </a>
@@ -224,14 +270,14 @@
             </p>
         </div>
 
-        <div class="grid grid-cols-1 xl:grid-cols-2 gap-5">
+        <div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
             <article class="glass-card rounded-3xl overflow-hidden xl:col-span-2">
                 <div class="table-card-header border-b border-white/10">
-                    <p class="font-title text-2xl text-white">🌽 Céréales</p>
+                    <p class="font-title dense-card-title text-white">🌽 Céréales</p>
                     <p class="table-card-subtitle font-semibold text-white/45">Nourrir agit surtout sur la satiété, l’énergie, le poids et quelques stats ciblées.</p>
                 </div>
                 <div class="overflow-x-auto">
-                    <table class="data-table compact-table min-w-[58rem] w-full">
+                    <table class="data-table compact-table dense-table min-w-[54rem] w-full">
                         <thead>
                             <tr>
                                 <th>Grain</th>
@@ -260,17 +306,17 @@
 
             <article class="glass-card rounded-3xl overflow-hidden xl:col-span-1">
                 <div class="table-card-header border-b border-white/10">
-                    <p class="font-title text-2xl text-white">🏋️ Entraînements</p>
+                    <p class="font-title dense-card-title text-white">🏋️ Entraînements</p>
                     <p class="table-card-subtitle font-semibold text-white/45">Chaque séance consomme de la forme. Le repos est aussi une vraie action utile.</p>
                 </div>
                 <div class="overflow-x-auto">
-                    <table class="data-table compact-table min-w-[46rem] w-full">
+                    <table class="data-table compact-table dense-table min-w-[35rem] w-full">
                         <thead>
                             <tr>
                                 <th>Séance</th>
                                 <th>Énergie</th>
                                 <th>Satiété</th>
-                                <th>Humeur mini</th>
+                                <th>Hum. mini</th>
                                 <th>Poids</th>
                                 <th>Boosts</th>
                             </tr>
@@ -293,18 +339,18 @@
 
             <article class="glass-card rounded-3xl overflow-hidden xl:col-span-1">
                 <div class="table-card-header border-b border-white/10">
-                    <p class="font-title text-2xl text-white">🎓 École porcine</p>
+                    <p class="font-title dense-card-title text-white">🎓 École porcine</p>
                     <p class="table-card-subtitle font-semibold text-white/45">Une bonne réponse donne le boost complet. Une mauvaise réponse conserve un peu d’XP mais pénalise l’humeur.</p>
                 </div>
                 <div class="overflow-x-auto">
-                    <table class="data-table compact-table min-w-[44rem] w-full">
+                    <table class="data-table compact-table dense-table min-w-[35rem] w-full">
                         <thead>
                             <tr>
                                 <th>Cours</th>
                                 <th>XP</th>
-                                <th>XP erreur</th>
+                                <th>XP err.</th>
                                 <th>Énergie</th>
-                                <th>Satiété</th>
+                                <th>Sat.</th>
                                 <th>Boosts</th>
                             </tr>
                         </thead>
