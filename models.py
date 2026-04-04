@@ -36,6 +36,12 @@ class User(db.Model):
     balance_transactions = db.relationship('BalanceTransaction', backref='user', lazy=True)
     course_plans = db.relationship('CoursePlan', backref='user', lazy=True)
     trophies = db.relationship('Trophy', backref='user', lazy=True, cascade='all, delete-orphan')
+    cereal_inventory = db.relationship(
+        'UserCerealInventory',
+        backref='user',
+        lazy=True,
+        cascade='all, delete-orphan',
+    )
 
     # ── Méthodes métier ─────────────────────────────────────────────────
 
@@ -221,6 +227,17 @@ class Pig(db.Model):
         self.is_injured = True
         self.vet_deadline = deadline
 
+
+
+class UserCerealInventory(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
+    cereal_key = db.Column(db.String(30), nullable=False)
+    quantity = db.Column(db.Integer, default=0, nullable=False)
+
+    __table_args__ = (
+        db.UniqueConstraint('user_id', 'cereal_key', name='uq_user_cereal'),
+    )
 
 
 class Trophy(db.Model):

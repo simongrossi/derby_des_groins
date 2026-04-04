@@ -114,7 +114,7 @@
     <div class="flex items-center justify-between mb-8">
         <div>
             <h1 class="font-title text-3xl md:text-4xl text-white">Mes Champions</h1>
-            <p class="text-white/50 text-xs font-bold mt-2">Héritage porcherie: +{{ "%.1f"|format(user.barn_heritage_bonus or 0) }} • Pression nourriture actuelle x{{ "%.2f"|format(feeding_multiplier) }} • Capacité {{ pigs_data|length }}/{{ max_slots }} • En-cas solidaires restants {{ pigs_data[0].share_snacks_remaining if pigs_data else 3 }}/3</p>
+            <p class="text-white/50 text-xs font-bold mt-2">Héritage porcherie: +{{ "%.1f"|format(user.barn_heritage_bonus or 0) }} • Capacité {{ pigs_data|length }}/{{ max_slots }} • En-cas solidaires restants {{ pigs_data[0].share_snacks_remaining if pigs_data else 3 }}/3</p>
         </div>
         {% if adoption_cost is not none %}
         {% set adopt_msg = "Adopter un cochon de secours" if not pigs_data else "Adopter une recrue" %}
@@ -140,8 +140,8 @@
                 <p class="text-white/65 font-semibold mt-2">Un cochon légendaire ou victorieux peut être retiré pour injecter un bonus permanent dans sa lignée et dans la porcherie du joueur.</p>
             </div>
             <div>
-                <p class="text-emerald-300 font-bold uppercase tracking-wider text-[11px]">Coût de nourrissage</p>
-                <p class="text-white/65 font-semibold mt-2">Chaque cochon supplémentaire augmente le prix des céréales. Plus on a de cochons, plus il devient difficile et coûteux de nourrir tout le monde.</p>
+                <p class="text-emerald-300 font-bold uppercase tracking-wider text-[11px]">Approvisionnement</p>
+                <p class="text-white/65 font-semibold mt-2">La Bourse aux Grains sert maintenant à acheter les céréales. Ici, tu utilises simplement ton stock pour nourrir ton cochon sans repayer.</p>
             </div>
         </div>
         <div class="mt-4 flex flex-wrap gap-2">
@@ -572,23 +572,23 @@
                                 <p class="text-white/40 text-[10px]">{{ cer.description }}</p>
                                 <p class="text-green-400 font-bold text-[10px] mt-1">{% for st, b in cer.stats.items() %}<span class="cursor-help" title="{{ stat_descriptions[st] }}">+{{b}} {{st[:3]|upper}}</span> {% endfor %}</p>
                                 <p class="text-cyan-300 font-bold text-[10px] mt-1">⚖️ {{ '+' if cer.weight_delta >= 0 else '' }}{{ "%.1f"|format(cer.weight_delta) }} kg</p>
-                                <p class="text-yellow-300 font-bold text-[10px] mt-1">🐖 Pression porcherie x{{ "%.2f"|format(feeding_multiplier) }}</p>
+                                <p class="text-yellow-300 font-bold text-[10px] mt-1">Stock : {{ user_inventory.get(k, 0) }}</p>
                             </div>
                             <form method="POST" action="/feed" class="flex flex-col items-end gap-1">
                                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                 <input type="hidden" name="pig_id" value="{{ pig.id }}">
                                 <input type="hidden" name="cereal" value="{{ k }}">
-                                {% set effective_feed_cost = cer.cost * feeding_multiplier %}
-                                {% set too_expensive = user.balance < effective_feed_cost %}
                                 {% set too_full = pig.hunger >= 95 %}
-                                <button type="submit" class="bg-green-600 hover:bg-green-500 px-3 py-1.5 rounded-lg font-bold text-[10px] text-white h-fit transition-all"
-                                        {% if too_expensive or too_full %}disabled{% endif %}>
-                                    {{ "%.0f"|format(effective_feed_cost) }} 🪙
+                                {% set out_of_stock = (user_inventory.get(k, 0) <= 0) %}
+                                <button type="submit"
+                                        class="{% if out_of_stock %}bg-white/10 text-white/35 cursor-not-allowed{% else %}bg-green-600 hover:bg-green-500 text-white{% endif %} px-3 py-1.5 rounded-lg font-bold text-[10px] h-fit transition-all"
+                                        {% if too_full or out_of_stock %}disabled{% endif %}>
+                                    {% if out_of_stock %}Rupture de stock{% elif user_inventory.get(k, 0) > 1 %}Donner (1){% else %}Nourrir{% endif %}
                                 </button>
                                 {% if too_full %}
                                 <span class="text-[8px] text-white/30 font-bold uppercase">Rassasié</span>
-                                {% elif too_expensive %}
-                                <span class="text-[8px] text-red-400 font-bold uppercase">Manque {{ "%.0f"|format(effective_feed_cost - user.balance) }} 🪙</span>
+                                {% elif out_of_stock %}
+                                <a href="/bourse" class="text-[8px] text-cyan-300 font-bold uppercase hover:text-cyan-200 transition-colors">🛒 Acheter à la Bourse</a>
                                 {% endif %}
                             </form>
                         </div>

@@ -441,21 +441,7 @@
     <section class="mt-8">
         <h2 class="font-title text-2xl text-green-400 mb-5 flex items-center gap-3">
             <span class="text-3xl">🌾</span> Acheter du grain
-            {% if active_pigs %}
-            <span class="text-white/30 text-sm font-bold ml-auto">pour</span>
-            <select id="pig-selector" class="ml-2 bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-sm text-white font-bold focus:outline-none focus:border-pink-400/40">
-                {% for pig in active_pigs %}
-                <option value="{{ pig.id }}">{{ pig.emoji }} {{ pig.name }} (Faim {{ "%.0f"|format(pig.hunger) }}%)</option>
-                {% endfor %}
-            </select>
-            {% endif %}
         </h2>
-
-        {% if not active_pigs %}
-        <div class="card p-8 text-center">
-            <p class="text-white/40 text-sm font-bold">Aucun cochon actif. Adopte d'abord un cochon !</p>
-        </div>
-        {% else %}
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {% for key, cer in cereals.items() %}
             <div class="card grain-card p-5 {% if cer.is_blocked %}grain-blocked{% endif %}">
@@ -514,7 +500,6 @@
                     <form method="POST" action="/bourse/buy" class="cereal-form">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <input type="hidden" name="cereal" value="{{ key }}">
-                        <input type="hidden" name="pig_id" value="{{ active_pigs[0].id }}" class="pig-id-input">
                         <button type="submit"
                                 class="bg-green-600 hover:bg-green-500 px-4 py-2 rounded-xl font-bold text-xs transition-all"
                                 {% if user.balance < cer.effective_cost %}disabled title="Pas assez de BitGroins"{% endif %}>
@@ -528,7 +513,6 @@
             </div>
             {% endfor %}
         </div>
-        {% endif %}
     </section>
 
     <!-- ===== VUE GRAPHIQUES (Hidden by default) ===== -->
@@ -581,16 +565,6 @@
 </main>
 
 <script>
-    // Synchroniser le selecteur de cochon avec tous les formulaires d'achat
-    const pigSelector = document.getElementById('pig-selector');
-    if (pigSelector) {
-        pigSelector.addEventListener('change', () => {
-            document.querySelectorAll('.pig-id-input').forEach(input => {
-                input.value = pigSelector.value;
-            });
-        });
-    }
-
     // Gestion des Onglets
     function switchTab(tab) {
         const viewMarket = document.getElementById('view-market');

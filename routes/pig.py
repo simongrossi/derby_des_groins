@@ -24,13 +24,13 @@ from services.finance_service import (
 from services.pig_service import (
     calculate_pig_power, xp_for_level, get_weight_profile, get_adoption_cost,
     get_active_listing_count, get_pig_slot_count, get_max_pig_slots,
-    get_feeding_cost_multiplier, get_lineage_label, get_pig_heritage_value,
+    get_lineage_label, get_pig_heritage_value,
     can_retire_into_heritage, retire_pig_into_heritage, create_offspring,
     apply_origin_bonus, generate_weight_kg_for_profile, get_freshness_bonus,
     get_pig_performance_flags, reset_snack_share_limit_if_needed,
     is_pig_name_taken, build_unique_pig_name, check_level_up,
     enter_pig_death_challenge, feed_pig_for_user, kill_pig,
-    study_pig_for_user, train_pig_for_user, update_pig_vitals,
+    get_user_cereal_inventory_dict, study_pig_for_user, train_pig_for_user, update_pig_vitals,
 )
 
 pig_bp = Blueprint('pig', __name__)
@@ -50,9 +50,9 @@ def mon_cochon():
     pigs = get_user_active_pigs(user)
     adoption_cost = get_adoption_cost(user)
     active_listing_count = get_active_listing_count(user)
-    feeding_multiplier = get_feeding_cost_multiplier(user)
     max_slots = get_max_pig_slots(user)
     breeding_cost = get_breeding_cost_value()
+    user_inventory = get_user_cereal_inventory_dict(user.id)
 
     pigs_data = []
     for p in pigs:
@@ -91,7 +91,7 @@ def mon_cochon():
         school_lessons=get_school_lessons_dict(), school_cooldown_minutes=SCHOOL_COOLDOWN_MINUTES,
         pig_emojis=PIG_EMOJIS, stat_labels=STAT_LABELS, stat_descriptions=STAT_DESCRIPTIONS,
         adoption_cost=adoption_cost, active_listing_count=active_listing_count,
-        feeding_multiplier=feeding_multiplier, max_slots=max_slots, breeding_cost=breeding_cost,
+        user_inventory=user_inventory, max_slots=max_slots, breeding_cost=breeding_cost,
         available_avatars=available_avatars,
     )
 

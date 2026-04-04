@@ -18,6 +18,7 @@ from config.game_rules import (
     PIG_WEIGHT_RULES,
 )
 from data import (
+    BOURSE_GRAIN_LAYOUT,
     CHARCUTERIE, CHARCUTERIE_PREMIUM, EPITAPHS, IDEAL_WEIGHT_MALUS_THRESHOLD_RATIO,
     MAX_INJURY_RISK, MAX_PIG_SLOTS, MAX_PIG_WEIGHT_KG, MAX_WEIGHT_PERFORMANCE_MALUS,
     MIN_INJURY_RISK, MIN_PIG_WEIGHT_KG, PIG_EMOJIS, PIG_ORIGINS,
@@ -71,7 +72,7 @@ def get_pig_settings():
 
 
 from extensions import db
-from models import Auction, Participant, Pig, Race, Trophy, User
+from models import Auction, Participant, Pig, Race, Trophy, User, UserCerealInventory
 from services.economy_service import (
     calculate_adoption_cost_for_counts,
     get_feeding_multiplier_for_count,
@@ -125,6 +126,52 @@ def get_user_record(user_or_id):
     if not user:
         raise ValidationError("Utilisateur introuvable.")
     return user
+
+
+def get_user_cereal_inventory_entry(user_id, cereal_key):
+    return UserCerealInventory.query.filter_by(user_id=user_id, cereal_key=cereal_key).first()
+
+
+def get_user_cereal_inventory_dict(user_or_id):
+    from helpers.game_data import get_cereals_dict
+
+    user = get_user_record(user_or_id)
+    cereals = get_cereals_dict()
+    inventory = {key: 0 for key in cereals.keys()}
+    rows = UserCerealInventory.query.filter_by(user_id=user.id).all()
+    for row in rows:
+        inventory[row.cereal_key] = max(0, int(row.quantity or 0))
+    return inventory
+
+
+def add_cereal_to_inventory(user_or_id, cereal_key, quantity=1, commit=True):
+    user = get_user_record(user_or_id)
+    if quantity <= 0:
+        raise ValidationError("Quantite invalide.")
+
+    entry = get_user_cereal_inventory_entry(user.id, cereal_key)
+    if entry is None:
+        entry = UserCerealInventory(user_id=user.id, cereal_key=cereal_key, quantity=0)
+        db.session.add(entry)
+    entry.quantity = int(entry.quantity or 0) + int(quantity)
+    if commit:
+        db.session.commit()
+    return entry
+
+
+def consume_cereal_from_inventory(user_or_id, cereal_key, quantity=1, commit=True):
+    user = get_user_record(user_or_id)
+    if quantity <= 0:
+        raise ValidationError("Quantite invalide.")
+
+    entry = get_user_cereal_inventory_entry(user.id, cereal_key)
+    if not entry or (entry.quantity or 0) < quantity:
+        raise ValidationError("Tu n'as plus cette céréale en stock ! Va à la Bourse.")
+
+    entry.quantity = max(0, int(entry.quantity or 0) - int(quantity))
+    if commit:
+        db.session.commit()
+    return entry
 
 
 def get_owned_alive_pig(user_id, pig_id):
@@ -334,6 +381,59 @@ def study_pig(pig_or_id, lesson, correct, commit=True) -> str:
     return category
 
 
+def buy_cereal_from_bourse_for_user(user_or_id, cereal_key):
+    from helpers.game_data import get_cereals_dict
+    from services.market_service import get_all_grain_surcharges, get_grain_market, is_grain_blocked, update_vitrine
+
+    user = get_user_record(user_or_id)
+    if cereal_key not in [key for key in BOURSE_GRAIN_LAYOUT.values() if key]:
+        raise ValidationError("Cereale inconnue ou pas dans le bloc.")
+
+    cereals = get_cereals_dict()
+    cereal = cereals.get(cereal_key)
+    if not cereal:
+        raise ValidationError("Cereale introuvable !")
+
+    market = get_grain_market()
+    if is_grain_blocked(cereal_key, market):
+        raise ValidationError(f"{cereal['name']} est en vitrine ! Achete autre chose pour debloquer.")
+
+    surcharges = get_all_grain_surcharges(market)
+    surcharge = surcharges.get(cereal_key, 1.0)
+    feeding_multiplier = get_feeding_cost_multiplier(user)
+    effective_cost = round(cereal['cost'] * surcharge * feeding_multiplier, 2)
+
+    try:
+        debit_user(
+            user,
+            effective_cost,
+            reason_code='feed_purchase',
+            reason_label='Achat Bourse aux Grains',
+            details=(
+                f"{cereal['name']} ajoute au stock. "
+                f"Surcout Bourse x{surcharge:.2f}, "
+                f"Pression x{feeding_multiplier:.2f}."
+            ),
+            reference_type='user',
+            reference_id=user.id,
+            commit=False,
+        )
+    except InsufficientFundsError:
+        raise InsufficientFundsError("Pas assez de BitGroins !") from None
+
+    add_cereal_to_inventory(user.id, cereal_key, quantity=1, commit=False)
+    update_vitrine(market, cereal_key, user.id)
+    db.session.commit()
+
+    return {
+        'category': 'success',
+        'message': (
+            f"{cereal['emoji']} x1 {cereal['name']} ajouté à l'inventaire ! "
+            f"Prix: {effective_cost:.1f} 🪙"
+        ),
+    }
+
+
 def feed_pig_for_user(user_or_id, pig_id, cereal_key):
     from helpers.game_data import get_cereals_dict
 
@@ -346,38 +446,17 @@ def feed_pig_for_user(user_or_id, pig_id, cereal_key):
     if not cereal:
         raise ValidationError("Cereale introuvable !")
 
-    feeding_multiplier = get_feeding_cost_multiplier(user)
-    effective_cost = round(cereal['cost'] * feeding_multiplier, 2)
-
     try:
-        debit_user(
-            user,
-            effective_cost,
-            reason_code='feed_purchase',
-            reason_label='Nourriture achetee',
-            details=f"{cereal['name']} pour {pig.name}. Cout x{feeding_multiplier:.2f} avec {user.pig_count} cochon(s).",
-            reference_type='pig',
-            reference_id=pig.id,
-            commit=False,
-        )
-    except InsufficientFundsError:
-        raise InsufficientFundsError("Pas assez de BitGroins !") from None
-
-    try:
+        consume_cereal_from_inventory(user.id, cereal_key, quantity=1, commit=False)
         feed_pig(pig, cereal, commit=False)
-    except ValidationError:
+    except (ValidationError, PigTiredError):
         db.session.rollback()
         raise
-    except PigTiredError:
-        db.session.rollback()
-        raise
+
     db.session.commit()
     return {
         'category': 'success',
-        'message': (
-            f"{cereal['emoji']} {cereal['name']} donne ! Miam ! "
-            f"Cout reel: {effective_cost:.0f} 🪙 (x{feeding_multiplier:.2f} de pression d'elevage)."
-        ),
+        'message': f"{cereal['emoji']} {cereal['name']} donné ! Miam !",
     }
 
 
