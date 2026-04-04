@@ -4,7 +4,7 @@ from werkzeug.security import generate_password_hash
 from datetime import datetime, timedelta
 import os
 import logging
-from sqlalchemy import inspect
+from sqlalchemy import inspect, event
 
 logger = logging.getLogger(__name__)
 
@@ -63,7 +63,10 @@ def create_app():
     app.config['SESSION_SQLALCHEMY_TABLE'] = 'flask_sessions'
     db_url = app.config['SQLALCHEMY_DATABASE_URI']
     if 'sqlite' in db_url:
-        app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {'pool_pre_ping': True}
+        app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
+            'pool_pre_ping': True,
+            'connect_args': {'timeout': 30},
+        }
     else:
         app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
             'pool_pre_ping': True,
@@ -79,6 +82,15 @@ def create_app():
     app.config['AUTH_LOG_RETENTION_DAYS'] = int(os.environ.get('AUTH_LOG_RETENTION_DAYS', '180'))
 
     db.init_app(app)
+    if 'sqlite' in db_url:
+        with app.app_context():
+            @event.listens_for(db.engine, "connect")
+            def set_sqlite_pragma(dbapi_connection, connection_record):
+                cursor = dbapi_connection.cursor()
+                cursor.execute("PRAGMA journal_mode=WAL")
+                cursor.execute("PRAGMA synchronous=NORMAL")
+                cursor.close()
+
     migrate.init_app(app, db)
     limiter.init_app(app)
     from flask_wtf.csrf import CSRFProtect
@@ -136,6 +148,7 @@ def create_app():
             '/health',
             '/admin/auth-logs',  # Eviter l'auto-bruit de la page de consultation.
             '/api/notifications/poll',
+            '/api/race/live-state',
         )
         if request.path.startswith(ignored_prefixes) or request.path.startswith('/chat'):
             return response
