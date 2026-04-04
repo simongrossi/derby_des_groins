@@ -17,6 +17,11 @@ from services.economy_service import get_progression_settings
 api_bp = Blueprint('api', __name__)
 
 
+def _get_next_open_race():
+    """Single source of truth for the next race exposed to public countdown UIs."""
+    return Race.query.filter_by(status='open').order_by(Race.scheduled_at).first()
+
+
 @api_bp.route('/veterinaire/<int:pig_id>')
 def veterinaire(pig_id):
     if 'user_id' not in session:
@@ -132,7 +137,7 @@ def vet_timeout():
 @api_bp.route('/api/countdown')
 @limiter.limit("30 per minute")
 def api_countdown():
-    next_race = Race.query.filter_by(status='open').order_by(Race.scheduled_at).first()
+    next_race = _get_next_open_race()
     if not next_race:
         return jsonify({'seconds': 86400, 'race_id': None})
     now = datetime.now()
@@ -267,8 +272,8 @@ def api_race_live_state():
     last_finished = Race.query.filter_by(status='finished').order_by(Race.finished_at.desc()).first()
     finished_race_id = last_finished.id if last_finished else None
 
-    # Next scheduled race that is not yet finished
-    next_scheduled_race = Race.query.filter(Race.status != 'finished').order_by(Race.scheduled_at).first()
+    # Keep the circuit aligned with the public countdown shown elsewhere on the site.
+    next_scheduled_race = _get_next_open_race()
 
     race_id_for_display = None
     seconds_to_start = None
@@ -278,9 +283,7 @@ def api_race_live_state():
         race_id_for_display = next_scheduled_race.id
         seconds_to_start = int((next_scheduled_race.scheduled_at - now).total_seconds())
 
-        if next_scheduled_race.status == 'finished': # Should not happen with the filter, but as a safeguard
-            phase = 'idle' # Or 'replay_available' if we want to force replay
-        elif seconds_to_start > 50: # More than 50 seconds to start, show idle/lobby
+        if seconds_to_start > 50: # More than 50 seconds to start, show idle/lobby
             phase = 'idle'
         elif seconds_to_start > 10: # Between 10 and 50 seconds, show pre-race lobby
             phase = 'pre_race'

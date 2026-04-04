@@ -173,9 +173,11 @@ function initTrack() {
 }
 
 function formatTime(seconds) {
-  if (seconds === null || seconds < 0) return '--:--';
-  const m = Math.floor(seconds / 60), s = seconds % 60;
-  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+  if (seconds === null || seconds < 0) return '--:--:--';
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const s = seconds % 60;
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 }
 
 function pigVisualHTML(pig, size = 24) {
