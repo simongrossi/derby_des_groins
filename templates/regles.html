@@ -136,6 +136,19 @@
             line-height: 1.22;
         }
 
+        .dense-table th:first-child,
+        .dense-table td:first-child,
+        .dense-table th:last-child,
+        .dense-table td:last-child {
+            text-align: left;
+        }
+
+        .dense-table th:not(:first-child):not(:last-child),
+        .dense-table td:not(:first-child):not(:last-child) {
+            text-align: center;
+            font-variant-numeric: tabular-nums;
+        }
+
         .dense-table td:first-child {
             font-size: 0.86rem;
             max-width: 10rem;
