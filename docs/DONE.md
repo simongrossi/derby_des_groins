@@ -53,6 +53,46 @@ Liste des fonctionnalités et idées déjà implémentées dans le projet.
   - Récupération de fatigue en stratégie Économie (strat < 25) nerfée : de -0.5 à -0.1 par tour.
   - Bonus d'aspiration (drafting) réduit : de +1.5 à +0.8, pour éviter que les cochons endurants en Économie dominent systématiquement.
 
+## Anti-farm et équité hardcore/casual (v3 — avril 2026)
+
+Corrections de failles économiques majeures identifiées par simulation (voir `docs/IDEAS.md` section "Équilibrage Hardcore vs Casuals").
+
+### Cochon Pendu limité
+- **3 parties gratuites par joueur par jour**, puis 5 🪙 par partie supplémentaire.
+- Avant : illimité, permettant ~1 200 🪙/heure (soit 1 semaine de courses en 1h).
+- Fichiers : `routes/cochon_pendu.py`, `models.py` (`User.pendu_plays_today` + `User.last_pendu_at`).
+
+### Cap quotidien d'entraînement
+- **10 sessions par cochon par jour** (toutes disciplines confondues), avec alerte visuelle sous les 3 sessions restantes.
+- Avant : illimité, permettant +24 VIT/jour avec refeed en boucle (ratio ×140 sur 30 jours vs casual).
+- Fichiers : `routes/pig.py`, `models.py` (`Pig.daily_train_count` + `Pig.last_train_date`).
+
+### Rendement décroissant à l'école
+- Sessions 1–2 : 100% XP/stats ; session 3 : 50% ; sessions 4+ : 10%.
+- Réduit le ratio XP école de ×24 à ×3.3 entre hardcore et casual.
+- Fichiers : `models.py` (`Pig.study()`, `Pig._school_decay_multiplier()`), `data.py` (`SCHOOL_XP_DECAY_THRESHOLDS`).
+
+### Comeback Bonus / Rested XP activé
+- Seuil abaissé de 3 jours → **12 heures** d'inactivité pour déclencher `comeback_bonus_ready = True`.
+- Sur la prochaine **victoire** avec le flag actif : ×2 XP, ×2 gains de stats, +10 bonheur.
+- Avant : le flag était positionné mais les bonus ×2 n'étaient pas appliqués sur victoire (juste un trophée).
+- Fichiers : `models.py` (`register_positive_interaction()`), `helpers/race.py`.
+
+### Taxe progressive sur les crédits
+- Solde > 2 000 🪙 → 20% de taxe sur chaque gain ; > 5 000 🪙 → 50%.
+- Revenus de base exempts : prime quotidienne, secours d'urgence, remboursement portée.
+- Fichiers : `services/finance_service.py` (`credit_user_balance()`), `data.py` (`TAX_THRESHOLD_*`, `TAX_RATE_*`).
+
+### Caisse de Solidarité Porcine
+- Les BitGroins taxés alimentent une cagnotte commune (`GameConfig.solidarity_fund`).
+- Redistribution automatique de 30 🪙 aux joueurs tombant sous 50 🪙 (priorité sur l'emergency_relief de 20 🪙).
+- Fichiers : `services/finance_service.py` (`maybe_grant_solidarity_relief()`).
+
+### Plafond casino journalier
+- **500 🪙 de gains nets maximum par joueur par jour** depuis le Blackjack et le Poker.
+- Au-delà, les crédits casino sont suspendus jusqu'au lendemain.
+- Fichiers : `services/finance_service.py` (`_apply_casino_cap()`), `models.py` (`User.daily_casino_wins` + `User.last_casino_date`).
+
 ## Mini-Jeux
 
 ### Groin Jack (`/blackjack`)

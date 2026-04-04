@@ -72,7 +72,16 @@
           <p class="pixel-font text-[10px] text-pink-200">MINI-JEU ARCADE</p>
           <h1 class="pixel-font text-xl sm:text-2xl text-pink-100 mt-3">🐷 COCHON PENDU</h1>
         </div>
-        <button id="restart-btn" class="pixel-btn pixel-font text-[11px] bg-[#6a2a43] hover:bg-[#7f3551] px-4 py-3">Rejouer</button>
+        <div class="text-right space-y-1">
+          <button id="restart-btn" class="pixel-btn pixel-font text-[11px] bg-[#6a2a43] hover:bg-[#7f3551] px-4 py-3">Rejouer</button>
+          <p id="quota-info" class="pixel-font text-[9px] text-pink-300">
+            {% if pendu_info.remaining_free > 0 %}
+              {{ pendu_info.remaining_free }}/{{ free_plays }} parties gratuites
+            {% else %}
+              +{{ extra_cost }} 🪙 par partie supp.
+            {% endif %}
+          </p>
+        </div>
       </div>
 
       <div class="mt-6 grid gap-6 lg:grid-cols-[1.15fr_1fr] relative z-10">
@@ -319,8 +328,51 @@
       }
     }
 
-    function restart() {
-      window.location.href = '/cochon-pendu';
+    const EXTRA_COST = {{ extra_cost }};
+    let remainingFree = {{ pendu_info.remaining_free }};
+
+    function updateQuotaInfo(remaining) {
+      const el = document.getElementById('quota-info');
+      if (!el) return;
+      if (remaining > 0) {
+        el.textContent = `${remaining}/{{ free_plays }} parties gratuites`;
+      } else {
+        el.textContent = `+${EXTRA_COST} 🪙 par partie supp.`;
+      }
+    }
+
+    async function restart() {
+      const btn = document.getElementById('restart-btn');
+      const modalBtn = document.getElementById('modal-restart');
+      if (btn) btn.disabled = true;
+      if (modalBtn) modalBtn.disabled = true;
+
+      try {
+        const response = await fetch('/api/cochon-pendu/new-game', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+          },
+          body: JSON.stringify({}),
+        });
+        const data = await response.json();
+        if (!response.ok || !data.ok) {
+          statusText.textContent = data.error || 'Erreur serveur';
+          statusText.className = 'pixel-font text-[11px] text-yellow-300';
+          if (btn) btn.disabled = false;
+          if (modalBtn) modalBtn.disabled = false;
+          return;
+        }
+        remainingFree = data.remaining_free;
+        updateQuotaInfo(remainingFree);
+        window.location.href = '/cochon-pendu';
+      } catch (err) {
+        statusText.textContent = 'Erreur de connexion';
+        statusText.className = 'pixel-font text-[11px] text-yellow-300';
+        if (btn) btn.disabled = false;
+        if (modalBtn) modalBtn.disabled = false;
+      }
     }
 
     document.getElementById('restart-btn').addEventListener('click', restart);

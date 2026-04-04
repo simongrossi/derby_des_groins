@@ -27,6 +27,10 @@ class User(db.Model):
     truffe_plays_today = db.Column(db.Integer, default=0, nullable=False, server_default='0')
     last_agenda_at = db.Column(db.DateTime, nullable=True)
     agenda_plays_today = db.Column(db.Integer, default=0, nullable=False, server_default='0')
+    pendu_plays_today = db.Column(db.Integer, default=0, nullable=False, server_default='0')
+    last_pendu_at = db.Column(db.DateTime, nullable=True)
+    daily_casino_wins = db.Column(db.Float, default=0.0, nullable=False, server_default='0')
+    last_casino_date = db.Column(db.Date, nullable=True)
     bets = db.relationship('Bet', backref='user', lazy=True)
     balance_transactions = db.relationship('BalanceTransaction', backref='user', lazy=True)
     course_plans = db.relationship('CoursePlan', backref='user', lazy=True)
@@ -163,6 +167,10 @@ class Pig(db.Model):
     last_fed_at = db.Column(db.DateTime, nullable=True)
     last_interaction_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=True)
     comeback_bonus_ready = db.Column(db.Boolean, default=False)
+    daily_train_count = db.Column(db.Integer, default=0, nullable=False, server_default='0')
+    last_train_date = db.Column(db.Date, nullable=True)
+    daily_school_sessions = db.Column(db.Integer, default=0, nullable=False, server_default='0')
+    last_school_date = db.Column(db.Date, nullable=True)
 
     lineage_name = db.Column(db.String(80), nullable=True)
     generation = db.Column(db.Integer, default=1)
@@ -252,7 +260,7 @@ class Pig(db.Model):
         """Enregistre une interaction joueur et prepare le bonus de retrouvailles."""
         interaction_time = interacted_at or datetime.utcnow()
         previous_interaction = self.last_interaction_at or self.last_updated or self.created_at
-        if previous_interaction and (interaction_time - previous_interaction).total_seconds() > 3 * 24 * 3600:
+        if previous_interaction and (interaction_time - previous_interaction).total_seconds() > 12 * 3600:
             self.comeback_bonus_ready = True
         self.last_interaction_at = interaction_time
         self.last_updated = interaction_time
@@ -385,12 +393,34 @@ class Pig(db.Model):
         self.register_positive_interaction(datetime.utcnow())
         self.mark_bad_state_if_needed()
 
+    def _school_decay_multiplier(self) -> float:
+        """Return XP/stat decay multiplier based on daily school sessions already done today."""
+        from data import SCHOOL_XP_DECAY_THRESHOLDS, SCHOOL_XP_DECAY_FLOOR
+        today = datetime.utcnow().date()
+        if self.last_school_date != today:
+            sessions = 0
+        else:
+            sessions = self.daily_school_sessions or 0
+        for threshold, multiplier in SCHOOL_XP_DECAY_THRESHOLDS:
+            if sessions < threshold:
+                return multiplier
+        return SCHOOL_XP_DECAY_FLOOR
+
     def study(self, lesson: dict, correct: bool) -> str:
         """Suivre un cours (dict issu de data.SCHOOL_LESSONS).
         Renvoie 'success' ou 'warning' selon la réponse."""
         from services.economy_service import get_progression_settings, scale_stat_gains
 
         progression = get_progression_settings()
+        decay = self._school_decay_multiplier()
+
+        # Update daily session counter before anything else
+        today = datetime.utcnow().date()
+        if self.last_school_date != today:
+            self.daily_school_sessions = 0
+            self.last_school_date = today
+        self.daily_school_sessions = (self.daily_school_sessions or 0) + 1
+
         self.energy = max(0, float(self.energy or 0.0) - lesson['energy_cost'])
         self.hunger = max(0, float(self.hunger or 0.0) - lesson['hunger_cost'])
         self.last_school_at = datetime.utcnow()
@@ -398,16 +428,16 @@ class Pig(db.Model):
 
         if correct:
             self.apply_stat_boosts(
-                scale_stat_gains(lesson.get('stats', {}), progression.school_stat_gain_multiplier)
+                scale_stat_gains(lesson.get('stats', {}), progression.school_stat_gain_multiplier * decay)
             )
-            self.xp = int(self.xp or 0) + int(round(lesson['xp'] * progression.school_xp_multiplier))
+            self.xp = int(self.xp or 0) + int(round(lesson['xp'] * progression.school_xp_multiplier * decay))
             self.happiness = min(
                 100,
                 float(self.happiness or 0.0) + (lesson.get('happiness_bonus', 0) * progression.school_happiness_multiplier),
             )
             category = 'success'
         else:
-            self.xp = int(self.xp or 0) + int(round(lesson.get('wrong_xp', 0) * progression.school_wrong_xp_multiplier))
+            self.xp = int(self.xp or 0) + int(round(lesson.get('wrong_xp', 0) * progression.school_wrong_xp_multiplier * decay))
             self.happiness = max(
                 0,
                 float(self.happiness or 0.0) - (lesson.get('wrong_happiness_penalty', 0) * progression.school_wrong_happiness_multiplier),

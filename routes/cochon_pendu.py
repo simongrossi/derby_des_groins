@@ -1,12 +1,14 @@
 import random
+from datetime import date, datetime
 
 from flask import Blueprint, jsonify, redirect, render_template, request, session, url_for
 
+from data import PENDU_FREE_PLAYS_PER_DAY, PENDU_EXTRA_PLAY_COST
 from extensions import db, limiter
 from helpers import get_user_active_pigs
 from helpers.game_data import get_hangman_words
 from models import User
-from services.finance_service import credit_user_balance
+from services.finance_service import credit_user_balance, debit_user_balance
 
 cochon_pendu_bp = Blueprint('cochon_pendu', __name__)
 
@@ -14,6 +16,7 @@ MAX_ERRORS = 7
 WIN_REWARD = 50
 LOSS_HAPPINESS_PENALTY = 20
 LOSS_ENERGY_PENALTY = 10
+
 
 def _new_game_state():
     words = get_hangman_words()
@@ -61,18 +64,47 @@ def _serialize_state(state):
     }
 
 
+def _sync_pendu_daily_counter(user):
+    """Reset the daily counter when the stored play date is from a previous day."""
+    if getattr(user, 'is_admin', False):
+        return
+    today = date.today()
+    if user.last_pendu_at and user.last_pendu_at.date() < today and user.pendu_plays_today:
+        user.pendu_plays_today = 0
+        db.session.commit()
+        db.session.refresh(user)
+
+
+def _get_pendu_info(user):
+    """Return dict with remaining free plays and extra play cost."""
+    if getattr(user, 'is_admin', False):
+        return {'remaining_free': PENDU_FREE_PLAYS_PER_DAY, 'extra_cost': 0, 'plays_today': 0}
+    _sync_pendu_daily_counter(user)
+    plays = user.pendu_plays_today or 0
+    remaining = max(0, PENDU_FREE_PLAYS_PER_DAY - plays)
+    return {
+        'remaining_free': remaining,
+        'extra_cost': PENDU_EXTRA_PLAY_COST,
+        'plays_today': plays,
+    }
+
+
 @cochon_pendu_bp.route('/cochon-pendu')
 def cochon_pendu():
     user_id = session.get('user_id')
     if not user_id:
         return redirect(url_for('auth.login'))
 
+    user = User.query.get(user_id)
+    pendu_info = _get_pendu_info(user)
+
     current_state = session.get('cochon_pendu_game')
-    if not current_state or current_state.get('status') in ('won', 'lost'):
+    if not current_state:
+        # First ever visit: auto-start a free game
+        _record_new_game(user)
         session['cochon_pendu_game'] = _new_game_state()
         session.modified = True
 
-    user = User.query.get(user_id)
     return render_template(
         'cochon_pendu.html',
         user=user,
@@ -81,7 +113,68 @@ def cochon_pendu():
         reward=WIN_REWARD,
         happiness_penalty=LOSS_HAPPINESS_PENALTY,
         energy_penalty=LOSS_ENERGY_PENALTY,
+        pendu_info=pendu_info,
+        free_plays=PENDU_FREE_PLAYS_PER_DAY,
+        extra_cost=PENDU_EXTRA_PLAY_COST,
     )
+
+
+def _record_new_game(user):
+    """Increment the daily play counter."""
+    user.last_pendu_at = datetime.utcnow()
+    user.pendu_plays_today = (user.pendu_plays_today or 0) + 1
+    db.session.commit()
+
+
+@cochon_pendu_bp.route('/api/cochon-pendu/new-game', methods=['POST'])
+@limiter.limit('20 per minute')
+def cochon_pendu_new_game():
+    """Start a new game. Free up to PENDU_FREE_PLAYS_PER_DAY/day, then costs PENDU_EXTRA_PLAY_COST BG."""
+    user_id = session.get('user_id')
+    if not user_id:
+        return jsonify({'ok': False, 'error': 'Non connecté'}), 401
+
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify({'ok': False, 'error': 'Utilisateur introuvable'}), 404
+
+    info = _get_pendu_info(user)
+
+    if info['remaining_free'] <= 0 and not getattr(user, 'is_admin', False):
+        # Paid replay
+        cost = PENDU_EXTRA_PLAY_COST
+        if (user.balance or 0) < cost:
+            return jsonify({
+                'ok': False,
+                'error': f'Fonds insuffisants. Une partie supplémentaire coûte {cost} 🪙.',
+                'extra_cost': cost,
+            }), 400
+
+        debit_ok = debit_user_balance(
+            user.id,
+            cost,
+            reason_code='pendu_replay',
+            reason_label='Rejouer au Cochon Pendu',
+            details=f'Rejeu payant du Cochon Pendu ({cost} 🪙).',
+            reference_type='user',
+            reference_id=user.id,
+        )
+        if not debit_ok:
+            db.session.rollback()
+            return jsonify({'ok': False, 'error': 'Fonds insuffisants'}), 400
+
+    _record_new_game(user)
+    db.session.refresh(user)
+    session['cochon_pendu_game'] = _new_game_state()
+    session.modified = True
+
+    info_after = _get_pendu_info(user)
+    return jsonify({
+        'ok': True,
+        'new_balance': round(user.balance or 0.0, 2),
+        'remaining_free': info_after['remaining_free'],
+        'extra_cost': PENDU_EXTRA_PLAY_COST,
+    })
 
 
 @cochon_pendu_bp.route('/api/cochon-pendu/guess', methods=['POST'])
