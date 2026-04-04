@@ -265,32 +265,32 @@ def api_race_live_state():
     last_finished = Race.query.filter_by(status='finished').order_by(Race.finished_at.desc()).first()
     finished_race_id = last_finished.id if last_finished else None
 
-    # Next open race
-    next_race = Race.query.filter_by(status='open').order_by(Race.scheduled_at).first()
-    if not next_race:
-        return jsonify({
-            'phase': 'idle',
-            'race_id': None,
-            'seconds_to_start': None,
-            'finished_race_id': finished_race_id,
-            'server_time': now.isoformat(),
-        })
+    # Next scheduled race that is not yet finished
+    next_scheduled_race = Race.query.filter(Race.status != 'finished').order_by(Race.scheduled_at).first()
 
-    seconds = int((next_race.scheduled_at - now).total_seconds())
+    race_id_for_display = None
+    seconds_to_start = None
+    phase = 'idle'
 
-    if seconds > 50:
-        phase = 'idle'
-    elif seconds > 10:
-        phase = 'pre_race'
-    elif seconds > 0:
-        phase = 'countdown'
-    else:
-        phase = 'racing'  # Race is due but not yet processed by scheduler
+    if next_scheduled_race:
+        race_id_for_display = next_scheduled_race.id
+        seconds_to_start = int((next_scheduled_race.scheduled_at - now).total_seconds())
+
+        if next_scheduled_race.status == 'finished': # Should not happen with the filter, but as a safeguard
+            phase = 'idle' # Or 'replay_available' if we want to force replay
+        elif seconds_to_start > 50: # More than 50 seconds to start, show idle/lobby
+            phase = 'idle'
+        elif seconds_to_start > 10: # Between 10 and 50 seconds, show pre-race lobby
+            phase = 'pre_race'
+        elif seconds_to_start > 0: # Last 10 seconds, show countdown
+            phase = 'countdown'
+        else: # Scheduled time passed, race should be running or just finished
+            phase = 'racing' # Race is due/running, waiting for replay
 
     return jsonify({
         'phase': phase,
-        'race_id': next_race.id,
-        'seconds_to_start': max(0, seconds),
+        'race_id': race_id_for_display,
+        'seconds_to_start': max(0, seconds_to_start) if seconds_to_start is not None else None,
         'finished_race_id': finished_race_id,
         'server_time': now.isoformat(),
     })
@@ -441,6 +441,7 @@ def api_race_bets_spectator(race_id):
             'amount': bet.amount,
             'odds': round(bet.odds_at_bet, 2) if bet.odds_at_bet else None,
             'status': bet.status,
+            'selection_order': bet.selection_order,
         })
 
     return jsonify({'race_id': race.id, 'bets': bets_data})
@@ -506,3 +507,42 @@ def send_chat_message():
     db.session.commit()
 
     return jsonify(new_message.to_dict()), 201
+
+
+@api_bp.route('/api/race/<int:race_id>/bettor-results')
+@limiter.limit("30 per minute")
+def api_race_bettor_results(race_id):
+    """Returns aggregated bettor results (profit/loss) for a finished race."""
+    race = Race.query.get(race_id)
+    if not race or race.status != 'finished':
+        return jsonify({'error': 'Course non trouvée ou non terminée'}), 404
+
+    bets = Bet.query.filter_by(race_id=race.id).all()
+
+    bettor_profits = {} # {user_id: {username: str, profit: float}}
+
+    for bet in bets:
+        if bet.user_id not in bettor_profits:
+            user = User.query.get(bet.user_id)
+            bettor_profits[bet.user_id] = {
+                'username': user.username if user else 'Inconnu',
+                'profit': 0.0
+            }
+
+        net_profit = 0.0
+        if bet.status == 'won':
+            net_profit = (bet.winnings or 0.0) - (bet.amount or 0.0)
+        elif bet.status == 'lost':
+            net_profit = -(bet.amount or 0.0)
+        # For 'pending' or 'refunded', profit is 0 or already handled by refund
+
+        bettor_profits[bet.user_id]['profit'] += net_profit
+
+    # Convert to list and sort by profit descending
+    results = sorted(
+        list(bettor_profits.values()),
+        key=lambda x: x['profit'],
+        reverse=True
+    )
+
+    return jsonify({'race_id': race.id, 'bettor_results': results})
