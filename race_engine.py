@@ -16,11 +16,16 @@ from data import (
     RACE_STUMBLE_SPEED_MULT, RACE_STRATEGY_ATTACK_MAX_MULT,
     RACE_STRATEGY_ECONOMY_MIN_MULT, RACE_STRATEGY_ECONOMY_RECOVERY,
     RACE_STRATEGY_NEUTRAL_FATIGUE, RACE_VARIANCE_MAX, RACE_VARIANCE_MIN,
-    RACE_VIRAGE_AGI_MULT, RACE_VIRAGE_SPEED_CAP, RACE_VIRAGE_TERRAIN_MOD,
+    RACE_VIRAGE_AGI_MULT, RACE_VIRAGE_SPEED_CAP, RACE_VIRAGE_TERRAIN_MOD, # Corrected import
     RACE_DESCENTE_AGI_RISK_REDUCTION, RACE_DESCENTE_SPEED_MULT, RACE_DESCENTE_TERRAIN_MOD,
 )
 
 DEFAULT_STRATEGY_PROFILE = {'phase_1': 35, 'phase_2': 50, 'phase_3': 80}
+
+# Constantes pour la simulation
+SIMULATION_DURATION_SECONDS = 50
+TARGET_SNAPSHOTS_PER_SECOND = 10 # Générer 10 snapshots par seconde
+TARGET_TOTAL_TURNS = SIMULATION_DURATION_SECONDS * TARGET_SNAPSHOTS_PER_SECOND # 50 * 10 = 500 turns
 
 @dataclass(frozen=True)
 class Segment:
@@ -85,39 +90,45 @@ class CourseManager:
         self.rng = rng or random.Random()
 
     def run(self):
-        # Pour une course de 50 secondes avec un affichage a 0.5s par tour, on vise environ 100 tours.
-        # On ajuste donc la vitesse de simulation pour que 3000m soient parcourus en ~100 tours.
-        while not all(p.is_finished for p in self.participants) and self.current_turn < 120:
+        # La simulation s'arrête quand tous les cochons ont fini ou que le nombre max de tours est atteint
+        # On utilise TARGET_TOTAL_TURNS pour la granularité
+        while not all(p.is_finished for p in self.participants) and self.current_turn < TARGET_TOTAL_TURNS + 50: # +50 pour laisser une marge
             self.current_turn += 1
             self.simulate_turn()
             self.record_history()
         return self.history
 
     def simulate_turn(self):
+        # Distance moyenne cible par tour: total_length / TARGET_TOTAL_TURNS
+        # Pour 3000m en 500 tours, c'est 6m/tour
+        # On ajuste les calculs de vitesse en conséquence
+        
         for p in self.participants:
             if p.is_finished:
                 p.current_speed = 0.0; p.visual_event = 'finished'; continue
             
-            # Vitesse moyenne cible : 3000m / 100 tours = 30m/tour
-            # On booste les stats de base pour atteindre cette moyenne
-            base_speed = (p.vitesse * 1.5 + p.endurance * 0.5 + RACE_BASE_SPEED_CONSTANT + 15)
+            # Vitesse de base ajustée pour la nouvelle granularité
+            # On divise par TARGET_SNAPSHOTS_PER_SECOND pour obtenir une vitesse par "tick"
+            base_speed_per_second = (p.vitesse * 1.5 + p.endurance * 0.5 + RACE_BASE_SPEED_CONSTANT + 15)
+            base_speed_per_turn = base_speed_per_second / TARGET_SNAPSHOTS_PER_SECOND
             
             # Application des multiplicateurs classiques
             strategy_mult = 0.8 + (p.strategy / 100.0) * 0.4 # 0.8 a 1.2
             freshness_factor = 0.9 + (p.freshness / 1000.0)
             variance = self.rng.uniform(0.95, 1.05)
             
-            final_speed = base_speed * strategy_mult * freshness_factor * variance
-            if p.has_draft: final_speed += 2.0
+            final_speed_per_turn = base_speed_per_turn * strategy_mult * freshness_factor * variance
+            if p.has_draft: final_speed_per_turn += (2.0 / TARGET_SNAPSHOTS_PER_SECOND) # Ajuster le bonus de draft
             
-            p.current_speed = round(final_speed, 3)
-            p.distance = min(self.total_length, p.distance + final_speed)
+            p.current_speed = round(final_speed_per_turn, 3) # C'est la vitesse par "turn"
+            p.distance = min(self.total_length, p.distance + final_speed_per_turn)
             
             if p.distance >= self.total_length:
                 p.is_finished = True; p.finish_time = self.current_turn
             
-            # Gestion fatigue simplifiee pour 100 tours
-            p.fatigue += (p.strategy / 50.0)
+            # Gestion fatigue simplifiee pour la nouvelle granularité
+            # La fatigue s'accumule moins vite par tour, mais sur plus de tours
+            p.fatigue += (p.strategy / 50.0) / TARGET_SNAPSHOTS_PER_SECOND
             
             # Events visuels
             p.visual_event = None
@@ -132,7 +143,8 @@ class CourseManager:
         for i in range(1, len(sorted_pigs)):
             front, chaser = sorted_pigs[i-1], sorted_pigs[i]
             gap = front.distance - chaser.distance
-            chaser.has_draft = (5.0 <= gap <= 25.0)
+            # Ajuster les seuils de drafting pour la nouvelle granularité
+            chaser.has_draft = (1.0 <= gap <= 5.0) # Gap plus petit car les pas sont plus petits
 
     def record_history(self):
         self.history.append({

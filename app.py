@@ -63,7 +63,11 @@ def create_app():
     app.config['SESSION_SQLALCHEMY_TABLE'] = 'flask_sessions'
     db_url = app.config['SQLALCHEMY_DATABASE_URI']
     if 'sqlite' in db_url:
-        app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {'pool_pre_ping': True}
+        # Augmenter le timeout pour SQLite pour eviter les erreurs "database is locked"
+        app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
+            'pool_pre_ping': True,
+            'connect_args': {'timeout': 30} # Attend jusqu'a 30 secondes
+        }
     else:
         app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
             'pool_pre_ping': True,
