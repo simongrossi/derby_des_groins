@@ -1,6 +1,8 @@
 from datetime import datetime
 from extensions import db
-from models import MarketplaceListing, InventoryItem
+from exceptions import InsufficientFundsError
+from models import MarketplaceListing, InventoryItem, User
+from services.finance_service import credit_user, debit_user
 
 def create_listing(user_id, item_id, prix):
     """Crée une petite annonce pour Le Bon Groin."""
@@ -34,8 +36,6 @@ def get_all_listings():
 
 def buy_from_marketplace(buyer_id, listing_id):
     """Achète un objet d'une petite annonce."""
-    from models import User
-
     listing = MarketplaceListing.query.get(listing_id)
     if not listing:
         return False, "Annonce introuvable."
@@ -48,14 +48,29 @@ def buy_from_marketplace(buyer_id, listing_id):
         return False, "Fonds insuffisants en BitGroins."
 
     # Payer
-    success = buyer.pay(listing.prix_demande, reason_code='marketplace_buy', reason_label=f"Achat sur Le Bon Groin", details=f"Objet: {listing.inventory_item.item.nom}")
-    if not success:
+    try:
+        debit_user(
+            buyer,
+            listing.prix_demande,
+            reason_code='marketplace_buy',
+            reason_label="Achat sur Le Bon Groin",
+            details=f"Objet: {listing.inventory_item.item.nom}",
+            commit=False,
+        )
+    except InsufficientFundsError:
         return False, "Erreur lors du paiement."
 
     # Gagner
     seller = User.query.get(listing.seller_id)
     if seller:
-        seller.earn(listing.prix_demande, reason_code='marketplace_sell', reason_label=f"Vente sur Le Bon Groin", details=f"Objet: {listing.inventory_item.item.nom}")
+        credit_user(
+            seller,
+            listing.prix_demande,
+            reason_code='marketplace_sell',
+            reason_label="Vente sur Le Bon Groin",
+            details=f"Objet: {listing.inventory_item.item.nom}",
+            commit=False,
+        )
 
     # Transferer propriete
     new_inv_item = InventoryItem.query.filter_by(user_id=buyer_id, item_id=listing.inventory_item.item_id).first()

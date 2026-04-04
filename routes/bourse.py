@@ -2,6 +2,7 @@ from flask import Blueprint, render_template, redirect, url_for, session, flash,
 from datetime import datetime, timedelta
 
 from extensions import db, limiter
+from exceptions import InsufficientFundsError, PigTiredError
 from models import User, Pig, BalanceTransaction, MarketHistory
 from data import BOURSE_BLOCK_MIN, BOURSE_BLOCK_MAX, BOURSE_GRAIN_LAYOUT
 from helpers import get_feeding_cost_multiplier, get_user_active_pigs, get_cereals_dict
@@ -11,6 +12,8 @@ from services.market_service import (
     get_bourse_cereals, get_bourse_grid_data,
     log_market_state,
 )
+from services.finance_service import debit_user
+from services.pig_service import feed_pig, update_pig_vitals
 
 bourse_bp = Blueprint('bourse', __name__)
 
@@ -33,7 +36,7 @@ def bourse():
     # Cochons actifs du joueur
     active_pigs = Pig.query.filter_by(user_id=user.id, is_alive=True).all()
     for pig in active_pigs:
-        pig.update_vitals()
+        update_pig_vitals(pig)
 
     # Compteur d'achats total de l'utilisateur (pour affichage)
     total_purchases = db.session.query(db.func.count(BalanceTransaction.id)).filter(
@@ -135,7 +138,7 @@ def bourse_buy():
         flash("Cochon introuvable !", "error")
         return redirect(url_for('bourse.bourse'))
 
-    pig.update_vitals()
+    update_pig_vitals(pig)
 
     if pig.hunger >= 95:
         flash("Ton cochon n'a plus faim !", "warning")
@@ -158,23 +161,32 @@ def bourse_buy():
     effective_cost = round(base_cost * surcharge * feeding_multiplier, 2)
 
     # Debiter
-    if not user.pay(
-        effective_cost,
-        reason_code='feed_purchase',
-        reason_label='Achat Bourse aux Grains',
-        details=(
-            f"{cereals[cereal_key]['name']} pour {pig.name}. "
-            f"Surcout Bourse x{surcharge:.2f}, "
-            f"Pression x{feeding_multiplier:.2f}."
-        ),
-        reference_type='pig',
-        reference_id=pig.id,
-    ):
+    try:
+        debit_user(
+            user,
+            effective_cost,
+            reason_code='feed_purchase',
+            reason_label='Achat Bourse aux Grains',
+            details=(
+                f"{cereals[cereal_key]['name']} pour {pig.name}. "
+                f"Surcout Bourse x{surcharge:.2f}, "
+                f"Pression x{feeding_multiplier:.2f}."
+            ),
+            reference_type='pig',
+            reference_id=pig.id,
+            commit=False,
+        )
+    except InsufficientFundsError:
         flash("Pas assez de BitGroins !", "error")
         return redirect(url_for('bourse.bourse'))
 
     # Appliquer les effets
-    pig.feed(cereals[cereal_key])
+    try:
+        feed_pig(pig, cereals[cereal_key], commit=False)
+    except PigTiredError as exc:
+        db.session.rollback()
+        flash(str(exc), "warning")
+        return redirect(url_for('bourse.bourse'))
 
     # Mettre a jour la vitrine
     update_vitrine(market, cereal_key, user.id)

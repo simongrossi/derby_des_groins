@@ -1,11 +1,9 @@
 """Veterinary, abattoir and pig death helpers."""
 
 from datetime import datetime
-import random
 
-from extensions import db
 from models import Pig
-from data import CHARCUTERIE, CHARCUTERIE_PREMIUM, EPITAPHS
+from services.pig_service import kill_pig, retire_pig
 
 
 def get_first_injured_pig(user_id):
@@ -24,40 +22,15 @@ def check_vet_deadlines():
     injured_pigs = Pig.query.filter_by(is_injured=True, is_alive=True).all()
     for pig in injured_pigs:
         if pig.vet_deadline and now > pig.vet_deadline:
-            pig.kill(cause='blessure')
+            kill_pig(pig, cause='blessure', commit=False)
 
 
 def send_to_abattoir(pig, cause='abattoir', commit=True):
-    charcuterie = random.choice(CHARCUTERIE)
-    epitaph_template = random.choice(EPITAPHS)
-    pig.is_alive = False
-    pig.is_injured = False
-    pig.vet_deadline = None
-    pig.death_date = datetime.utcnow()
-    pig.death_cause = cause
-    pig.charcuterie_type = charcuterie['name']
-    pig.charcuterie_emoji = charcuterie['emoji']
-    pig.epitaph = epitaph_template.format(name=pig.name, wins=pig.races_won)
-    pig.challenge_mort_wager = 0
-    if commit:
-        db.session.commit()
+    kill_pig(pig, cause=cause, commit=commit)
 
 
 def retire_pig_old_age(pig, commit=True):
-    charcuterie = random.choice(CHARCUTERIE_PREMIUM)
-    pig.is_alive = False
-    pig.is_injured = False
-    pig.vet_deadline = None
-    pig.death_date = datetime.utcnow()
-    pig.death_cause = 'vieillesse'
-    pig.charcuterie_type = charcuterie['name']
-    pig.charcuterie_emoji = charcuterie['emoji']
-    pig.epitaph = (
-        f"{pig.name} a pris sa retraite après {pig.races_entered} courses glorieuses. "
-        "Un cochon bien vieilli fait le meilleur jambon."
-    )
-    pig.challenge_mort_wager = 0
-    db.session.commit()
+    retire_pig(pig, commit=commit)
 
 
 def get_dead_pigs_abattoir():

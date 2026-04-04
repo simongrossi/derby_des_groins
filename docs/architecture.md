@@ -8,6 +8,11 @@
 - **Frontend**: HTML5, Jinja2, Tailwind CSS (CDN), Chart.js
 - **API Temps-RÉEL**: Endpoints JSON pour les countdowns, les flux de résultats et l'état détaillé des cochons.
 
+## Principes d'Architecture
+- **Modèles SQLAlchemy anémiques** : `models.py` décrit désormais avant tout les colonnes, relations et quelques mutations locales triviales d'état.
+- **Logique métier en services** : les opérations financières et les actions Tamagotchi lourdes vivent dans `services/finance_service.py` et `services/pig_service.py`.
+- **Erreurs métier explicites** : les règles bloquantes remontent via `exceptions.py` (`InsufficientFundsError`, `PigTiredError`, etc.) au lieu de dépendre d'imports locaux dans les modèles.
+
 ## Structure des Modèles (Database Schema)
 
 1.  **`GameConfig`** : Stocke les paramètres globaux (horaires de courses, ouverture du marché, seuils d'aide d'urgence, réglages d'économie, house edge et multiplicateurs journaliers).
@@ -54,7 +59,7 @@
 ```text
 derby_des_groins/
 ├── app.py                  # Initialisation Flask, Flask-Session et migrations légères
-├── models.py               # Définition de tous les modèles SQLAlchemy
+├── models.py               # Définition des modèles SQLAlchemy (DAO + relations)
 ├── extensions.py           # Instance db shared pour éviter les cycles
 ├── helpers.py              # Logique métier : calcul power, reproduction, PMU, transactions
 ├── data.py                 # Constantes du monde, echeanciers, types de courses
@@ -75,7 +80,10 @@ derby_des_groins/
 │   └── api.py              # Endpoints JSON pour l'UI dynamique + replay course
 ├── services/               # Couche métier dédiée
 │   ├── economy_service.py  # Réglages d'équilibrage, snapshots live et simulateur
+│   ├── finance_service.py  # Débits/crédits, transactions, aides et prime journalière
+│   ├── pig_service.py      # Actions cochons, vitals, école, retraite, abattoir
 │   └── ...
+├── exceptions.py           # Exceptions métier partagées
 ├── templates/              # Vues Jinja2 (v3.0 UI Responsive)
 │   ├── admin_base.html     # Layout admin partagé (sidebar + nav mobile)
 │   ├── admin_dashboard.html # Stats globales, économie, actions rapides

@@ -18,7 +18,7 @@ from data import (
     PIG_ORIGINS,
     MAX_INJURY_RISK, MIN_INJURY_RISK, VET_RESPONSE_MINUTES,
 )
-from services.pig_service import get_pig_settings
+from services.pig_service import adjust_pig_weight, check_level_up, get_pig_settings, kill_pig, retire_pig
 from race_engine import CourseManager
 
 from helpers.config import get_config
@@ -323,7 +323,7 @@ def run_race_if_needed():
                         xp_gained *= 2
                         pig.happiness = min(100, pig.happiness + 15)
                     elif p.finish_position == num_participants:
-                        pig.kill(cause='challenge')
+                        kill_pig(pig, cause='challenge', commit=False)
                         pig.challenge_mort_wager = 0
                         continue
                     pig.challenge_mort_wager = 0
@@ -378,10 +378,10 @@ def run_race_if_needed():
                 pig.energy = max(0, pig.energy - progression.race_energy_cost)
                 pig.comeback_bonus_ready = False
                 pig.hunger = max(0, pig.hunger - progression.race_hunger_cost)
-                pig.adjust_weight(progression.race_weight_delta)
+                adjust_pig_weight(pig, progression.race_weight_delta)
                 pig.mark_bad_state_if_needed()
                 pig.last_updated = datetime.utcnow()
-                pig.check_level_up()
+                check_level_up(pig)
 
                 # Rookie protection: the first races should teach the loop, not wipe the stable.
                 career_races = max(0, int(pig.races_entered or 0))
@@ -411,7 +411,7 @@ def run_race_if_needed():
                     )
 
                 if pig.max_races and pig.races_entered >= pig.max_races:
-                    pig.retire()
+                    retire_pig(pig, commit=False)
 
         bets = Bet.query.filter_by(race_id=race.id, status='pending').all()
         bet_types = get_configured_bet_types()

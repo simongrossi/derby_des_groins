@@ -2,6 +2,7 @@ from flask import Blueprint, render_template, request, redirect, url_for, sessio
 from sqlalchemy.exc import IntegrityError
 from datetime import datetime
 
+from exceptions import InsufficientFundsError
 from extensions import db, limiter
 from models import User, Race, Participant, Bet
 from data import COMPLEX_BET_MIN_SELECTIONS
@@ -13,7 +14,8 @@ from services.economy_service import (
     get_weekly_bacon_tickets_value,
     get_weekly_race_quota_value,
 )
-from services.pig_service import calculate_pig_power, get_weight_profile
+from services.finance_service import debit_user
+from services.pig_service import calculate_pig_power, get_weight_profile, update_pig_vitals
 from services.race_service import (
     attach_bet_outcome_snapshots,
     RacePlanningError, build_course_schedule, calculate_bet_odds,
@@ -42,7 +44,7 @@ def courses():
 
     pigs_data = []
     for pig in pigs:
-        pig.update_vitals()
+        update_pig_vitals(pig)
         weekly_commitments = count_pig_weekly_course_commitments(pig.id, datetime.now())
         pigs_data.append({
             'pig': pig,
@@ -349,14 +351,18 @@ def place_bet():
         odds_at_bet=odds_at_bet,
         status='pending'
     )
-    if not user.pay(
-        amount,
-        reason_code='bet_stake',
-        reason_label='Mise de pari',
-        details=f"Ticket {bet_types[bet_type]['label'].lower()} sur la course #{race_id}: {bet_label}.",
-        reference_type='race',
-        reference_id=race_id,
-    ):
+    try:
+        debit_user(
+            user,
+            amount,
+            reason_code='bet_stake',
+            reason_label='Mise de pari',
+            details=f"Ticket {bet_types[bet_type]['label'].lower()} sur la course #{race_id}: {bet_label}.",
+            reference_type='race',
+            reference_id=race_id,
+            commit=False,
+        )
+    except InsufficientFundsError:
         flash("Pas assez de BitGroins pour valider ce ticket.", "error")
         return redirect(url_for('race.paris'))
     db.session.add(bet)

@@ -1,15 +1,20 @@
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
+import json
 import math
 import random
 
+from flask import current_app, has_app_context
+
 from data import (
-    DEFAULT_PIG_WEIGHT_KG, FRESHNESS_BONUS_HOURS,
+    CHARCUTERIE, CHARCUTERIE_PREMIUM, DEFAULT_PIG_WEIGHT_KG, EPITAPHS, FRESHNESS_BONUS_HOURS,
     FRESHNESS_MORAL_BONUS, IDEAL_WEIGHT_MALUS_THRESHOLD_RATIO,
     MAX_INJURY_RISK, MAX_PIG_SLOTS, MAX_PIG_WEIGHT_KG, MAX_WEIGHT_PERFORMANCE_MALUS,
     MIN_INJURY_RISK, MIN_PIG_WEIGHT_KG, PIG_EMOJIS, PIG_ORIGINS,
-    PRELOADED_PIG_NAMES, RETIREMENT_HERITAGE_MIN_WINS, VET_RESPONSE_MINUTES,
+    PRELOADED_PIG_NAMES, RETIREMENT_HERITAGE_MIN_WINS, SCHOOL_XP_DECAY_FLOOR,
+    SCHOOL_XP_DECAY_THRESHOLDS, VET_RESPONSE_MINUTES,
 )
+from exceptions import PigNotFoundError, PigTiredError
 
 
 @dataclass(frozen=True)
@@ -53,12 +58,16 @@ def get_pig_settings():
         injury_max_risk=_f('pig_injury_max_risk', MAX_INJURY_RISK),
         vet_response_minutes=_i('pig_vet_response_minutes', VET_RESPONSE_MINUTES),
     )
+
+
 from extensions import db
-from models import Auction, Pig
+from models import Auction, Participant, Pig, Race, Trophy
 from services.economy_service import (
     calculate_adoption_cost_for_counts,
     get_feeding_multiplier_for_count,
     get_level_happiness_bonus_value,
+    get_progression_settings,
+    scale_stat_gains,
     xp_for_level_value,
 )
 
@@ -87,6 +96,327 @@ class PigHeritageSnapshot:
             rarity=str(getattr(pig, 'rarity', 'commun') or 'commun'),
             lineage_boost=float(getattr(pig, 'lineage_boost', 0.0) or 0.0),
         )
+
+
+def get_pig_record(pig_or_id):
+    if isinstance(pig_or_id, Pig):
+        return pig_or_id
+    pig = Pig.query.get(pig_or_id)
+    if not pig:
+        raise PigNotFoundError("Cochon introuvable.")
+    return pig
+
+
+def get_winning_track_profiles(pig) -> set[str]:
+    if not pig or not pig.id:
+        return set()
+    winning_rows = (
+        db.session.query(Race.replay_json)
+        .join(Participant, Participant.race_id == Race.id)
+        .filter(
+            Participant.pig_id == pig.id,
+            Participant.finish_position == 1,
+            Race.status == 'finished',
+        )
+        .all()
+    )
+    profiles = set()
+    for (replay_json,) in winning_rows:
+        if not replay_json:
+            continue
+        try:
+            replay = json.loads(replay_json)
+        except (TypeError, ValueError):
+            continue
+        if isinstance(replay, dict) and replay.get('track_profile'):
+            profiles.add(replay['track_profile'])
+    return profiles
+
+
+def award_longevity_trophies(pig):
+    if not pig or not pig.owner or not pig.created_at:
+        return
+    months_alive = max(0, (datetime.utcnow() - pig.created_at).days // 30)
+    for month_index in range(1, months_alive + 1):
+        Trophy.award(
+            user_id=pig.owner.id,
+            code=f'ancient_one_month_{month_index}',
+            label="L'Ancien",
+            emoji='🕰️',
+            description=f"{pig.name} a traverse {month_index} mois reel(s) de bureau sans quitter la porcherie.",
+            pig_name=pig.name,
+        )
+
+
+def maybe_award_memorial_trophies(pig):
+    if not pig or not pig.owner:
+        return
+    if pig.created_at and (datetime.utcnow() - pig.created_at).days >= 30:
+        Trophy.award(
+            user_id=pig.owner.id,
+            code='office_elder',
+            label="L'Ancien du Bureau",
+            emoji='🗄️',
+            description='Un cochon a tenu plus de 30 jours reels avant son post-mortem.',
+            pig_name=pig.name,
+        )
+    if pig.created_at and (datetime.utcnow() - pig.created_at).days >= 90:
+        Trophy.award(
+            user_id=pig.owner.id,
+            code='office_pillar',
+            label='Le Pilier de Bureau',
+            emoji='🪑',
+            description='Un cochon a tenu plus de 3 mois reels avant de quitter la piste.',
+            pig_name=pig.name,
+        )
+    if pig.max_races and pig.races_entered >= pig.max_races and not pig.ever_bad_state:
+        Trophy.award(
+            user_id=pig.owner.id,
+            code='golden_retirement',
+            label='Retraite Doree',
+            emoji='☕',
+            description="Atteindre la limite de courses sans jamais tomber en mauvais etat.",
+            pig_name=pig.name,
+        )
+    if len(get_winning_track_profiles(pig)) >= 3:
+        Trophy.award(
+            user_id=pig.owner.id,
+            code='segment_expert',
+            label='Expert des Segments',
+            emoji='🧭',
+            description='Ce cochon a gagne sur 3 profils de piste differents.',
+            pig_name=pig.name,
+        )
+    if (pig.school_sessions_completed or 0) > 20:
+        Trophy.award(
+            user_id=pig.owner.id,
+            code='iron_memory',
+            label='Memoire de Fer',
+            emoji='🧠',
+            description="Plus de 20 passages a l'ecole porcine avant la fin de carriere.",
+            pig_name=pig.name,
+        )
+
+
+def get_school_decay_multiplier(pig) -> float:
+    pig = get_pig_record(pig)
+    today = datetime.utcnow().date()
+    sessions = 0 if pig.last_school_date != today else (pig.daily_school_sessions or 0)
+    for threshold, multiplier in SCHOOL_XP_DECAY_THRESHOLDS:
+        if sessions < threshold:
+            return multiplier
+    return SCHOOL_XP_DECAY_FLOOR
+
+
+def feed_pig(pig_or_id, cereal, commit=True):
+    pig = get_pig_record(pig_or_id)
+    if not pig.is_alive:
+        raise PigTiredError("Ce cochon ne peut plus etre nourri.")
+    if (pig.hunger or 0) >= 95:
+        raise PigTiredError("Ton cochon n'a plus faim !")
+
+    pig.hunger = min(100, float(pig.hunger or 0.0) + cereal['hunger_restore'])
+    pig.energy = min(100, float(pig.energy or 0.0) + cereal.get('energy_restore', 0))
+    adjust_pig_weight(pig, cereal.get('weight_delta', 0.0))
+    pig.apply_stat_boosts(cereal.get('stats', {}))
+    pig.last_fed_at = datetime.utcnow()
+    pig.register_positive_interaction(pig.last_fed_at)
+    pig.mark_bad_state_if_needed()
+    if commit:
+        db.session.commit()
+    return pig
+
+
+def train_pig(pig_or_id, training, commit=True):
+    pig = get_pig_record(pig_or_id)
+    if not pig.is_alive or pig.is_injured:
+        raise PigTiredError("Ton cochon est blesse. Passe d'abord par le veterinaire.")
+    if training['energy_cost'] > 0 and (pig.energy or 0) < training['energy_cost']:
+        raise PigTiredError("Ton cochon est trop fatigue !")
+    if (pig.hunger or 0) < training.get('hunger_cost', 0):
+        raise PigTiredError("Ton cochon a trop faim pour s'entrainer !")
+    if (pig.happiness or 0) < training.get('min_happiness', 0):
+        raise PigTiredError("Ton cochon n'est pas assez heureux !")
+
+    progression = get_progression_settings()
+    pig.energy = max(0, min(100, float(pig.energy or 0.0) - training['energy_cost']))
+    pig.hunger = max(0, float(pig.hunger or 0.0) - training.get('hunger_cost', 0))
+    adjust_pig_weight(pig, training.get('weight_delta', 0.0))
+    if 'happiness_bonus' in training:
+        pig.happiness = min(
+            100,
+            float(pig.happiness or 0.0) + (training['happiness_bonus'] * progression.training_happiness_multiplier),
+        )
+    pig.apply_stat_boosts(
+        scale_stat_gains(training.get('stats', {}), progression.training_stat_gain_multiplier)
+    )
+    pig.register_positive_interaction(datetime.utcnow())
+    pig.mark_bad_state_if_needed()
+    if commit:
+        db.session.commit()
+    return pig
+
+
+def study_pig(pig_or_id, lesson, correct, commit=True) -> str:
+    pig = get_pig_record(pig_or_id)
+    if not pig.is_alive or pig.is_injured:
+        raise PigTiredError("L'ecole attendra. Ton cochon doit d'abord passer au veterinaire.")
+    if (pig.energy or 0) < lesson['energy_cost']:
+        raise PigTiredError("Ton cochon est trop fatigue pour suivre ce cours.")
+    if (pig.hunger or 0) < lesson['hunger_cost']:
+        raise PigTiredError("Ton cochon a trop faim pour se concentrer.")
+    if (pig.happiness or 0) < lesson['min_happiness']:
+        raise PigTiredError("Ton cochon boude l'ecole aujourd'hui. Remonte-lui le moral d'abord.")
+
+    progression = get_progression_settings()
+    decay = get_school_decay_multiplier(pig)
+    today = datetime.utcnow().date()
+    if pig.last_school_date != today:
+        pig.daily_school_sessions = 0
+        pig.last_school_date = today
+    pig.daily_school_sessions = (pig.daily_school_sessions or 0) + 1
+
+    pig.energy = max(0, float(pig.energy or 0.0) - lesson['energy_cost'])
+    pig.hunger = max(0, float(pig.hunger or 0.0) - lesson['hunger_cost'])
+    pig.last_school_at = datetime.utcnow()
+    pig.school_sessions_completed = (pig.school_sessions_completed or 0) + 1
+
+    if correct:
+        pig.apply_stat_boosts(
+            scale_stat_gains(lesson.get('stats', {}), progression.school_stat_gain_multiplier * decay)
+        )
+        pig.xp = int(pig.xp or 0) + int(round(lesson['xp'] * progression.school_xp_multiplier * decay))
+        pig.happiness = min(
+            100,
+            float(pig.happiness or 0.0) + (lesson.get('happiness_bonus', 0) * progression.school_happiness_multiplier),
+        )
+        category = 'success'
+    else:
+        pig.xp = int(pig.xp or 0) + int(round(lesson.get('wrong_xp', 0) * progression.school_wrong_xp_multiplier * decay))
+        pig.happiness = max(
+            0,
+            float(pig.happiness or 0.0) - (lesson.get('wrong_happiness_penalty', 0) * progression.school_wrong_happiness_multiplier),
+        )
+        category = 'warning'
+
+    pig.register_positive_interaction(datetime.utcnow())
+    pig.mark_bad_state_if_needed()
+    check_level_up(pig)
+    if commit:
+        db.session.commit()
+    return category
+
+
+def kill_pig(pig_or_id, cause='abattoir', commit=True):
+    pig = get_pig_record(pig_or_id)
+    charcuterie = random.choice(CHARCUTERIE)
+    epitaph_template = random.choice(EPITAPHS)
+    pig.is_alive = False
+    pig.is_injured = False
+    pig.vet_deadline = None
+    pig.death_date = datetime.utcnow()
+    pig.death_cause = cause
+    pig.charcuterie_type = charcuterie['name']
+    pig.charcuterie_emoji = charcuterie['emoji']
+    pig.epitaph = epitaph_template.format(name=pig.name, wins=pig.races_won)
+    pig.challenge_mort_wager = 0
+    maybe_award_memorial_trophies(pig)
+    if commit:
+        db.session.commit()
+    return pig
+
+
+def retire_pig(pig_or_id, commit=True):
+    pig = get_pig_record(pig_or_id)
+    charcuterie = random.choice(CHARCUTERIE_PREMIUM)
+    pig.is_alive = False
+    pig.is_injured = False
+    pig.vet_deadline = None
+    pig.death_date = datetime.utcnow()
+    pig.death_cause = 'vieillesse'
+    pig.charcuterie_type = charcuterie['name']
+    pig.charcuterie_emoji = charcuterie['emoji']
+    pig.epitaph = (
+        f"{pig.name} a pris sa retraite après {pig.races_entered} courses glorieuses. "
+        f"Un cochon bien vieilli fait le meilleur jambon."
+    )
+    pig.challenge_mort_wager = 0
+    maybe_award_memorial_trophies(pig)
+    if commit:
+        db.session.commit()
+    return pig
+
+
+def update_pig_vitals(pig_or_id, force_commit=False):
+    pig = get_pig_record(pig_or_id)
+    now = datetime.utcnow()
+    progression = get_progression_settings()
+    min_commit_interval = 60
+    if has_app_context():
+        min_commit_interval = current_app.config.get('PIG_VITALS_COMMIT_INTERVAL_SECONDS', 60)
+
+    award_longevity_trophies(pig)
+    if not pig.last_updated:
+        pig.last_updated = now
+        return pig
+
+    elapsed_seconds = (now - pig.last_updated).total_seconds()
+    elapsed_hours = elapsed_seconds / 3600
+    if elapsed_hours < 0.01:
+        return pig
+
+    truce_hours = calculate_weekend_truce_hours(pig.last_updated, now)
+    effective_hours = max(0.0, elapsed_hours - truce_hours)
+    hours = min(effective_hours, 24)
+    if effective_hours < 0.01:
+        pig.last_updated = now
+        if force_commit or elapsed_seconds >= min_commit_interval:
+            db.session.commit()
+        return pig
+
+    reference_interaction = pig.last_interaction_at or pig.last_updated
+    if reference_interaction:
+        grace_deadline = reference_interaction + timedelta(hours=progression.freshness_grace_hours)
+        if now > grace_deadline:
+            elapsed_workdays = 0
+            cursor = grace_deadline.date()
+            while cursor <= now.date():
+                if cursor.weekday() < 5:
+                    elapsed_workdays += 1
+                cursor += timedelta(days=1)
+            pig.freshness = max(0.0, 100.0 - (elapsed_workdays * progression.freshness_decay_per_workday))
+        else:
+            pig.freshness = 100.0
+
+    pig.hunger = max(0, pig.hunger - (hours * progression.hunger_decay_per_hour))
+    if pig.hunger > progression.energy_regen_hunger_threshold:
+        pig.energy = min(100, pig.energy + (hours * progression.energy_regen_per_hour))
+    else:
+        pig.energy = max(0, pig.energy - (hours * progression.energy_drain_per_hour))
+
+    if pig.hunger < 15:
+        pig.happiness = max(0, pig.happiness - (hours * progression.low_hunger_happiness_drain_per_hour))
+    elif pig.hunger < 30:
+        pig.happiness = max(0, pig.happiness - (hours * progression.mid_hunger_happiness_drain_per_hour))
+    elif pig.happiness < progression.passive_happiness_regen_cap:
+        pig.happiness = min(
+            progression.passive_happiness_regen_cap,
+            pig.happiness + (hours * progression.passive_happiness_regen_per_hour),
+        )
+
+    current_weight = pig.weight_kg or DEFAULT_PIG_WEIGHT_KG
+    if pig.hunger < 25:
+        pig.weight_kg = clamp_pig_weight(current_weight - hours * 0.25)
+    elif pig.hunger > 75 and pig.energy < 45:
+        pig.weight_kg = clamp_pig_weight(current_weight + hours * 0.18)
+    elif pig.energy > 80 and pig.hunger < 60:
+        pig.weight_kg = clamp_pig_weight(current_weight - hours * 0.08)
+
+    pig.mark_bad_state_if_needed()
+    pig.last_updated = now
+    if force_commit or elapsed_seconds >= min_commit_interval:
+        db.session.commit()
+    return pig
 
 
 def get_freshness_bonus(pig):
@@ -203,7 +533,7 @@ def get_pig_performance_flags(pig):
 
 
 def update_pig_state(pig):
-    pig.update_vitals()
+    update_pig_vitals(pig)
 
 
 def calculate_pig_power(pig):
@@ -303,7 +633,7 @@ def retire_pig_into_heritage(user, pig):
     for descendant in related_pigs:
         descendant.lineage_boost = round((descendant.lineage_boost or 0.0) + bonus, 2)
         descendant.moral = min(100, (descendant.moral or 0.0) + min(4.0, bonus * 0.4))
-    pig.retire()
+    retire_pig(pig, commit=False)
     pig.death_cause = 'retraite_honoree'
     pig.epitaph = f"{pig.name} entre au haras des legends. Sa lignee inspire toute la porcherie (+{bonus:.1f} heritage)."
     db.session.commit()

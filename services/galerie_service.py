@@ -1,5 +1,7 @@
 from extensions import db
+from exceptions import InsufficientFundsError
 from models import Shop, Item
+from services.finance_service import debit_user
 
 SHOPS_DATA = [
     {
@@ -112,9 +114,16 @@ def buy_from_shop(user, item, currency):
     if currency == 'glands':
         if not user.can_afford(prix):
             return False, "Fonds insuffisants en BitGroins (Glands)."
-        # Déduire l'argent
-        success = user.pay(prix, reason_code='shop_buy', reason_label=f"Achat: {item.nom}", details=f"Achats Galeries Lard-Chande")
-        if not success:
+        try:
+            debit_user(
+                user,
+                prix,
+                reason_code='shop_buy',
+                reason_label=f"Achat: {item.nom}",
+                details="Achats Galeries Lard-Chande",
+                commit=False,
+            )
+        except InsufficientFundsError:
             return False, "Erreur lors du paiement."
     elif currency == 'truffes':
         # On essaie d'utiliser user.truffes_balance s'il existe (à implémenter si ce n'est pas le cas)

@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta
 import json
-import random
 
+from data import WEEKLY_BACON_TICKETS
 from extensions import db
 
 
@@ -42,51 +42,6 @@ class User(db.Model):
         """Vérifie si l'utilisateur a assez de BitGroins."""
         return (self.balance or 0.0) >= amount
 
-    def pay(self, amount: float, reason_code: str = 'debit',
-            reason_label: str = 'Débit BitGroins', details: str = None,
-            reference_type: str = None, reference_id: int = None) -> bool:
-        """Débite le solde de manière atomique (SQL UPDATE + transaction).
-        Renvoie False si le solde est insuffisant."""
-        from services.finance_service import debit_user_balance
-        return debit_user_balance(
-            self.id, amount,
-            reason_code=reason_code, reason_label=reason_label,
-            details=details, reference_type=reference_type,
-            reference_id=reference_id,
-        )
-
-    def earn(self, amount: float, reason_code: str = 'credit',
-             reason_label: str = 'Crédit BitGroins', details: str = None,
-             reference_type: str = None, reference_id: int = None) -> bool:
-        """Crédite le solde de manière atomique (SQL UPDATE + transaction)."""
-        from services.finance_service import credit_user_balance
-        return credit_user_balance(
-            self.id, amount,
-            reason_code=reason_code, reason_label=reason_label,
-            details=details, reference_type=reference_type,
-            reference_id=reference_id,
-        )
-
-    def claim_daily_reward(self) -> float:
-        """Verse la prime de pointage journalière si elle n'a pas encore été
-        réclamée aujourd'hui. Renvoie le montant crédité (0 si déjà perçue)."""
-        from services.economy_service import get_daily_login_reward_value
-        today = datetime.utcnow().date()
-        if self.last_daily_reward_at and self.last_daily_reward_at.date() >= today:
-            return 0.0
-        reward_amount = get_daily_login_reward_value()
-        # Marquer AVANT earn() pour eviter le double-credit en cas de race condition
-        self.last_daily_reward_at = datetime.utcnow()
-        db.session.flush()  # Persiste le timestamp dans la transaction
-        self.earn(
-            reward_amount,
-            reason_code='daily_reward',
-            reason_label='Prime de pointage journalière',
-        )
-        # Refresh le solde en memoire (earn() fait un SQL UPDATE atomique)
-        db.session.refresh(self)
-        return reward_amount
-
     @property
     def active_pigs(self):
         """Liste des cochons vivants de l'utilisateur."""
@@ -100,11 +55,20 @@ class User(db.Model):
     @property
     def bacon_tickets(self) -> int:
         """Nombre de tickets bacon (quota de paris hebdo) restants."""
-        from services.race_service import get_user_weekly_bet_count
-        from services.economy_service import get_weekly_bacon_tickets_value
-        # Utiliser datetime.utcnow() pour correspondre aux dates de paris en DB
-        count = get_user_weekly_bet_count(self, datetime.utcnow())
-        return max(0, get_weekly_bacon_tickets_value() - count)
+        current_dt = datetime.utcnow()
+        week_start = datetime.combine((current_dt - timedelta(days=current_dt.weekday())).date(), datetime.min.time())
+        week_end = week_start + timedelta(days=7)
+        weekly_limit_entry = GameConfig.query.filter_by(key='economy_weekly_bacon_tickets').first()
+        try:
+            weekly_limit = int(float(weekly_limit_entry.value)) if weekly_limit_entry else int(WEEKLY_BACON_TICKETS)
+        except (TypeError, ValueError):
+            weekly_limit = int(WEEKLY_BACON_TICKETS)
+        count = Bet.query.filter(
+            Bet.user_id == self.id,
+            Bet.placed_at >= week_start,
+            Bet.placed_at < week_end,
+        ).count()
+        return max(0, weekly_limit - count)
 
 
 class Pig(db.Model):
@@ -214,19 +178,7 @@ class Pig(db.Model):
         """Le cochon peut-il aller à l'école ? (vivant, pas blessé)"""
         return self.is_alive and not self.is_injured
 
-    @property
-    def ideal_weight(self) -> float:
-        """Poids de forme calculé à partir des stats."""
-        from services.pig_service import calculate_target_weight_kg
-        return calculate_target_weight_kg(self)
-
-    @property
-    def power(self) -> float:
-        """Puissance de course effective (stats + condition + poids)."""
-        from helpers import calculate_pig_power
-        return round(calculate_pig_power(self), 1)
-
-    # ── Méthodes de mutation d'état ─────────────────────────────────────
+    # ── Méthodes de mutation d'état simples ─────────────────────────────
 
     def apply_stat_boosts(self, stats: dict):
         """Applique un dictionnaire {stat_name: boost_value} en capant à 100."""
@@ -234,23 +186,6 @@ class Pig(db.Model):
             current = getattr(self, stat, None)
             if current is not None:
                 setattr(self, stat, min(100, current + boost))
-
-    def adjust_weight(self, delta: float) -> float:
-        """Modifie le poids avec clamping min/max. Renvoie le nouveau poids."""
-        from data import MIN_PIG_WEIGHT_KG, MAX_PIG_WEIGHT_KG, DEFAULT_PIG_WEIGHT_KG
-        w = (self.weight_kg or DEFAULT_PIG_WEIGHT_KG) + delta
-        self.weight_kg = round(min(MAX_PIG_WEIGHT_KG, max(MIN_PIG_WEIGHT_KG, w)), 1)
-        return self.weight_kg
-
-    def check_level_up(self):
-        """Monte de niveau tant que l'XP le permet (+10 bonheur par level)."""
-        from services.economy_service import get_level_happiness_bonus_value, xp_for_level_value
-
-        self.level = max(1, int(self.level or 1))
-        current_xp = float(self.xp or 0.0)
-        while current_xp >= xp_for_level_value(self.level + 1):
-            self.level += 1
-            self.happiness = min(100, float(self.happiness or 0.0) + get_level_happiness_bonus_value())
 
     def reset_freshness(self):
         """Remet la fraicheur a fond apres une interaction positive."""
@@ -266,188 +201,10 @@ class Pig(db.Model):
         self.last_updated = interaction_time
         self.reset_freshness()
 
-    def award_longevity_trophies(self):
-        """Attribue un trophee par mois reel de vie."""
-        if not self.owner or not self.created_at:
-            return
-        months_alive = max(0, (datetime.utcnow() - self.created_at).days // 30)
-        for month_index in range(1, months_alive + 1):
-            Trophy.award(
-                user_id=self.owner.id,
-                code=f'ancient_one_month_{month_index}',
-                label="L'Ancien",
-                emoji='🕰️',
-                description=f"{self.name} a traverse {month_index} mois reel(s) de bureau sans quitter la porcherie.",
-                pig_name=self.name,
-            )
-
     def mark_bad_state_if_needed(self):
         """Memorise si le cochon est deja passe par un mauvais etat."""
         if (self.hunger or 0) < 20 or (self.energy or 0) < 20:
             self.ever_bad_state = True
-
-    def maybe_award_memorial_trophies(self):
-        """Attribue les trophees memoriels lies a la fin de carriere."""
-        if not self.owner:
-            return
-        if self.created_at and (datetime.utcnow() - self.created_at).days >= 30:
-            Trophy.award(
-                user_id=self.owner.id,
-                code='office_elder',
-                label="L'Ancien du Bureau",
-                emoji='🗄️',
-                description='Un cochon a tenu plus de 30 jours reels avant son post-mortem.',
-                pig_name=self.name,
-            )
-        if self.created_at and (datetime.utcnow() - self.created_at).days >= 90:
-            Trophy.award(
-                user_id=self.owner.id,
-                code='office_pillar',
-                label='Le Pilier de Bureau',
-                emoji='🪑',
-                description='Un cochon a tenu plus de 3 mois reels avant de quitter la piste.',
-                pig_name=self.name,
-            )
-        if (self.max_races and self.races_entered >= self.max_races and not self.ever_bad_state):
-            Trophy.award(
-                user_id=self.owner.id,
-                code='golden_retirement',
-                label='Retraite Doree',
-                emoji='☕',
-                description="Atteindre la limite de courses sans jamais tomber en mauvais etat.",
-                pig_name=self.name,
-            )
-        winning_track_profiles = self.get_winning_track_profiles()
-        if len(winning_track_profiles) >= 3:
-            Trophy.award(
-                user_id=self.owner.id,
-                code='segment_expert',
-                label='Expert des Segments',
-                emoji='🧭',
-                description='Ce cochon a gagne sur 3 profils de piste differents.',
-                pig_name=self.name,
-            )
-        if (self.school_sessions_completed or 0) > 20:
-            Trophy.award(
-                user_id=self.owner.id,
-                code='iron_memory',
-                label='Memoire de Fer',
-                emoji='🧠',
-                description="Plus de 20 passages a l'ecole porcine avant la fin de carriere.",
-                pig_name=self.name,
-            )
-
-    def get_winning_track_profiles(self) -> set[str]:
-        if not self.id:
-            return set()
-        winning_rows = (
-            db.session.query(Race.replay_json)
-            .join(Participant, Participant.race_id == Race.id)
-            .filter(
-                Participant.pig_id == self.id,
-                Participant.finish_position == 1,
-                Race.status == 'finished',
-            )
-            .all()
-        )
-        profiles = set()
-        for (replay_json,) in winning_rows:
-            if not replay_json:
-                continue
-            try:
-                replay = json.loads(replay_json)
-            except (TypeError, ValueError):
-                continue
-            if isinstance(replay, dict) and replay.get('track_profile'):
-                profiles.add(replay['track_profile'])
-        return profiles
-
-    def feed(self, cereal: dict):
-        """Nourrir le cochon avec une céréale (dict issu de data.CEREALS).
-        Met à jour faim, énergie, poids, stats et timestamps."""
-        self.hunger = min(100, self.hunger + cereal['hunger_restore'])
-        self.energy = min(100, self.energy + cereal.get('energy_restore', 0))
-        self.adjust_weight(cereal.get('weight_delta', 0.0))
-        self.apply_stat_boosts(cereal.get('stats', {}))
-        self.last_fed_at = datetime.utcnow()
-        self.register_positive_interaction(self.last_fed_at)
-        self.mark_bad_state_if_needed()
-
-    def train(self, training: dict):
-        """Entraîner le cochon (dict issu de data.TRAININGS).
-        Consomme énergie/faim, modifie poids, stats et bonheur."""
-        from services.economy_service import get_progression_settings, scale_stat_gains
-
-        progression = get_progression_settings()
-        self.energy = max(0, min(100, float(self.energy or 0.0) - training['energy_cost']))
-        self.hunger = max(0, float(self.hunger or 0.0) - training.get('hunger_cost', 0))
-        self.adjust_weight(training.get('weight_delta', 0.0))
-        if 'happiness_bonus' in training:
-            self.happiness = min(
-                100,
-                float(self.happiness or 0.0) + (training['happiness_bonus'] * progression.training_happiness_multiplier),
-            )
-        self.apply_stat_boosts(
-            scale_stat_gains(training.get('stats', {}), progression.training_stat_gain_multiplier)
-        )
-        self.register_positive_interaction(datetime.utcnow())
-        self.mark_bad_state_if_needed()
-
-    def _school_decay_multiplier(self) -> float:
-        """Return XP/stat decay multiplier based on daily school sessions already done today."""
-        from data import SCHOOL_XP_DECAY_THRESHOLDS, SCHOOL_XP_DECAY_FLOOR
-        today = datetime.utcnow().date()
-        if self.last_school_date != today:
-            sessions = 0
-        else:
-            sessions = self.daily_school_sessions or 0
-        for threshold, multiplier in SCHOOL_XP_DECAY_THRESHOLDS:
-            if sessions < threshold:
-                return multiplier
-        return SCHOOL_XP_DECAY_FLOOR
-
-    def study(self, lesson: dict, correct: bool) -> str:
-        """Suivre un cours (dict issu de data.SCHOOL_LESSONS).
-        Renvoie 'success' ou 'warning' selon la réponse."""
-        from services.economy_service import get_progression_settings, scale_stat_gains
-
-        progression = get_progression_settings()
-        decay = self._school_decay_multiplier()
-
-        # Update daily session counter before anything else
-        today = datetime.utcnow().date()
-        if self.last_school_date != today:
-            self.daily_school_sessions = 0
-            self.last_school_date = today
-        self.daily_school_sessions = (self.daily_school_sessions or 0) + 1
-
-        self.energy = max(0, float(self.energy or 0.0) - lesson['energy_cost'])
-        self.hunger = max(0, float(self.hunger or 0.0) - lesson['hunger_cost'])
-        self.last_school_at = datetime.utcnow()
-        self.school_sessions_completed = (self.school_sessions_completed or 0) + 1
-
-        if correct:
-            self.apply_stat_boosts(
-                scale_stat_gains(lesson.get('stats', {}), progression.school_stat_gain_multiplier * decay)
-            )
-            self.xp = int(self.xp or 0) + int(round(lesson['xp'] * progression.school_xp_multiplier * decay))
-            self.happiness = min(
-                100,
-                float(self.happiness or 0.0) + (lesson.get('happiness_bonus', 0) * progression.school_happiness_multiplier),
-            )
-            category = 'success'
-        else:
-            self.xp = int(self.xp or 0) + int(round(lesson.get('wrong_xp', 0) * progression.school_wrong_xp_multiplier * decay))
-            self.happiness = max(
-                0,
-                float(self.happiness or 0.0) - (lesson.get('wrong_happiness_penalty', 0) * progression.school_wrong_happiness_multiplier),
-            )
-            category = 'warning'
-
-        self.register_positive_interaction(datetime.utcnow())
-        self.mark_bad_state_if_needed()
-        self.check_level_up()
-        return category
 
     def heal(self):
         """Soigne le cochon : retire blessure et deadline vétérinaire."""
@@ -458,117 +215,6 @@ class Pig(db.Model):
         """Blesse le cochon avec une deadline vétérinaire."""
         self.is_injured = True
         self.vet_deadline = deadline
-
-    def kill(self, cause: str = 'abattoir'):
-        """Tue le cochon et le transforme en charcuterie."""
-        from data import CHARCUTERIE, EPITAPHS
-        charcuterie = random.choice(CHARCUTERIE)
-        epitaph_template = random.choice(EPITAPHS)
-        self.is_alive = False
-        self.is_injured = False
-        self.vet_deadline = None
-        self.death_date = datetime.utcnow()
-        self.death_cause = cause
-        self.charcuterie_type = charcuterie['name']
-        self.charcuterie_emoji = charcuterie['emoji']
-        self.epitaph = epitaph_template.format(name=self.name, wins=self.races_won)
-        self.challenge_mort_wager = 0
-        self.maybe_award_memorial_trophies()
-
-    def retire(self):
-        """Retire le cochon pour vieillesse (charcuterie premium)."""
-        from data import CHARCUTERIE_PREMIUM
-        charcuterie = random.choice(CHARCUTERIE_PREMIUM)
-        self.is_alive = False
-        self.is_injured = False
-        self.vet_deadline = None
-        self.death_date = datetime.utcnow()
-        self.death_cause = 'vieillesse'
-        self.charcuterie_type = charcuterie['name']
-        self.charcuterie_emoji = charcuterie['emoji']
-        self.epitaph = (
-            f"{self.name} a pris sa retraite après {self.races_entered} courses glorieuses. "
-            f"Un cochon bien vieilli fait le meilleur jambon."
-        )
-        self.challenge_mort_wager = 0
-        self.maybe_award_memorial_trophies()
-
-    def update_vitals(self, force_commit=False):
-        """Décroissance Tamagotchi en fonction du temps écoulé.
-        Appelé avant chaque interaction pour synchroniser l'état."""
-        from utils.time_utils import calculate_weekend_truce_hours
-        from data import DEFAULT_PIG_WEIGHT_KG
-        from services.economy_service import get_progression_settings
-
-        from flask import current_app
-
-        now = datetime.utcnow()
-        progression = get_progression_settings()
-        min_commit_interval = current_app.config.get('PIG_VITALS_COMMIT_INTERVAL_SECONDS', 60)
-        self.award_longevity_trophies()
-        if not self.last_updated:
-            self.last_updated = now
-            return
-        elapsed_seconds = (now - self.last_updated).total_seconds()
-        elapsed_hours = elapsed_seconds / 3600
-        if elapsed_hours < 0.01:
-            return
-        truce_hours = calculate_weekend_truce_hours(self.last_updated, now)
-        effective_hours = max(0.0, elapsed_hours - truce_hours)
-        hours = min(effective_hours, 24)
-        if effective_hours < 0.01:
-            self.last_updated = now
-            if force_commit or elapsed_seconds >= min_commit_interval:
-                db.session.commit()
-            return
-
-        reference_interaction = self.last_interaction_at or self.last_updated
-        if reference_interaction:
-            grace_deadline = reference_interaction + timedelta(hours=progression.freshness_grace_hours)
-            if now > grace_deadline:
-                elapsed_workdays = 0
-                cursor = grace_deadline.date()
-                while cursor <= now.date():
-                    if cursor.weekday() < 5:
-                        elapsed_workdays += 1
-                    cursor += timedelta(days=1)
-                self.freshness = max(0.0, 100.0 - (elapsed_workdays * progression.freshness_decay_per_workday))
-            else:
-                self.freshness = 100.0
-
-        # Faim décroît avec le temps
-        self.hunger = max(0, self.hunger - (hours * progression.hunger_decay_per_hour))
-
-        # Énergie dépend de la faim
-        if self.hunger > progression.energy_regen_hunger_threshold:
-            self.energy = min(100, self.energy + (hours * progression.energy_regen_per_hour))
-        else:
-            self.energy = max(0, self.energy - (hours * progression.energy_drain_per_hour))
-
-        # Bonheur dépend de la faim
-        if self.hunger < 15:
-            self.happiness = max(0, self.happiness - (hours * progression.low_hunger_happiness_drain_per_hour))
-        elif self.hunger < 30:
-            self.happiness = max(0, self.happiness - (hours * progression.mid_hunger_happiness_drain_per_hour))
-        elif self.happiness < progression.passive_happiness_regen_cap:
-            self.happiness = min(
-                progression.passive_happiness_regen_cap,
-                self.happiness + (hours * progression.passive_happiness_regen_per_hour),
-            )
-
-        # Poids fluctue selon faim/énergie
-        current_weight = self.weight_kg or DEFAULT_PIG_WEIGHT_KG
-        if self.hunger < 25:
-            self.weight_kg = round(min(190.0, max(75.0, current_weight - hours * 0.25)), 1)
-        elif self.hunger > 75 and self.energy < 45:
-            self.weight_kg = round(min(190.0, max(75.0, current_weight + hours * 0.18)), 1)
-        elif self.energy > 80 and self.hunger < 60:
-            self.weight_kg = round(min(190.0, max(75.0, current_weight - hours * 0.08)), 1)
-
-        self.mark_bad_state_if_needed()
-        self.last_updated = now
-        if force_commit or elapsed_seconds >= min_commit_interval:
-            db.session.commit()
 
 
 

@@ -12,6 +12,7 @@ import unicodedata
 from zoneinfo import ZoneInfo
 from sqlalchemy import or_
 
+from exceptions import InsufficientFundsError
 from extensions import db
 from models import User, Race, Pig, Bet, BalanceTransaction, CerealItem, TrainingItem, SchoolLessonItem, HangmanWordItem, PigAvatar, AuthEventLog
 from sqlalchemy.orm import joinedload
@@ -38,6 +39,7 @@ from services.economy_service import (
     save_economy_settings,
     save_progression_settings,
 )
+from services.finance_service import credit_user, debit_user
 from services.finance_service import (
     adjust_user_balance,
     build_finance_settings_from_form,
@@ -694,9 +696,15 @@ def admin_cancel_race(user, race_id):
         if bet.status == 'pending':
             bet_user = User.query.get(bet.user_id)
             if bet_user:
-                bet_user.earn(bet.amount, reason_code='bet_refund',
-                              reason_label='Remboursement (Course annulee)',
-                              reference_type='race', reference_id=race.id)
+                credit_user(
+                    bet_user,
+                    bet.amount,
+                    reason_code='bet_refund',
+                    reason_label='Remboursement (Course annulee)',
+                    reference_type='race',
+                    reference_id=race.id,
+                    commit=False,
+                )
             bet.status = 'cancelled'
 
     db.session.delete(race)
@@ -872,8 +880,15 @@ def admin_trigger_event(user):
     elif event_type == 'bonus_bg':
         all_users = User.query.all()
         for u in all_users:
-            u.earn(50.0, reason_code='admin_gift', reason_label='Cadeau Admin',
-                   reference_type='user', reference_id=user.id)
+            credit_user(
+                u,
+                50.0,
+                reason_code='admin_gift',
+                reason_label='Cadeau Admin',
+                reference_type='user',
+                reference_id=user.id,
+                commit=False,
+            )
         db.session.commit()
         flash("💰 Bonus de 50 🪙 BitGroins accorde a tous !", "success")
     else:
@@ -991,12 +1006,30 @@ def admin_adjust_balance(user):
     target = User.query.get_or_404(user_id)
 
     if amount > 0:
-        target.earn(amount, reason_code='admin_adjust', reason_label=reason,
-                    reference_type='user', reference_id=user.id)
+        credit_user(
+            target,
+            amount,
+            reason_code='admin_adjust',
+            reason_label=reason,
+            reference_type='user',
+            reference_id=user.id,
+            commit=False,
+        )
         flash(f"💰 +{amount:.0f} 🪙 credites a {target.username}.", "success")
     else:
-        target.pay(abs(amount), reason_code='admin_adjust', reason_label=reason,
-                   reference_type='user', reference_id=user.id)
+        try:
+            debit_user(
+                target,
+                abs(amount),
+                reason_code='admin_adjust',
+                reason_label=reason,
+                reference_type='user',
+                reference_id=user.id,
+                commit=False,
+            )
+        except InsufficientFundsError:
+            flash(f"{target.username} n'a pas assez de BitGroins pour ce debit.", "error")
+            return redirect(url_for('admin.admin_users'))
         flash(f"💸 {amount:.0f} 🪙 debites de {target.username}.", "success")
 
     db.session.commit()

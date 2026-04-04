@@ -2,6 +2,7 @@ from flask import Blueprint, render_template, request, redirect, url_for, sessio
 from sqlalchemy import update
 from datetime import datetime
 
+from exceptions import InsufficientFundsError
 from extensions import db, limiter
 from models import User, Pig, Auction
 from data import RARITIES, PIG_ORIGINS, JOURS_FR, DEFAULT_PIG_WEIGHT_KG
@@ -11,6 +12,7 @@ from helpers import (
     get_prix_moyen_groin, apply_row_lock, get_user_active_pigs,
 )
 from services.game_settings_service import get_game_settings
+from services.finance_service import credit_user, debit_user
 from services.notification_service import push_user_notification
 
 market_bp = Blueprint('market', __name__)
@@ -73,14 +75,18 @@ def bid():
         flash(f"Enchère minimum : {min_bid:.0f} 🪙 !", "error")
         return redirect(url_for('market.marche'))
 
-    if not user.pay(
-        bid_amount,
-        reason_code='auction_bid',
-        reason_label='Mise bloquee en enchere',
-        details=f"Enchere sur {auction.pig_name}.",
-        reference_type='auction',
-        reference_id=auction.id,
-    ):
+    try:
+        debit_user(
+            user,
+            bid_amount,
+            reason_code='auction_bid',
+            reason_label='Mise bloquee en enchere',
+            details=f"Enchere sur {auction.pig_name}.",
+            reference_type='auction',
+            reference_id=auction.id,
+            commit=False,
+        )
+    except InsufficientFundsError:
         flash("Pas assez de BitGroins !", "error")
         return redirect(url_for('market.marche'))
 
@@ -110,13 +116,15 @@ def bid():
     if previous_bidder_id and previous_bid_amount > 0:
         previous_user = User.query.get(previous_bidder_id)
         if previous_user:
-            previous_user.earn(
+            credit_user(
+                previous_user,
                 previous_bid_amount,
                 reason_code='auction_outbid_refund',
                 reason_label='Remboursement enchere depassee',
                 details=f"Ton offre sur {auction.pig_name} a ete depassee.",
                 reference_type='auction',
                 reference_id=auction.id,
+                commit=False,
             )
             push_user_notification(
                 user_id=previous_user.id,

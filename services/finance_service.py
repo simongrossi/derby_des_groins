@@ -8,8 +8,10 @@ from data import (
     TAX_THRESHOLD_1, TAX_RATE_1, TAX_THRESHOLD_2, TAX_RATE_2, TAX_EXEMPT_REASON_CODES,
     CASINO_REASON_CODES, CASINO_DAILY_WIN_CAP,
 )
+from exceptions import InsufficientFundsError, UserNotFoundError
 from extensions import db
 from models import BalanceTransaction, GameConfig, Pig, User
+from services.economy_service import get_daily_login_reward_value
 
 DEFAULT_SOLIDARITY_RELIEF_THRESHOLD = 50.0
 DEFAULT_SOLIDARITY_RELIEF_AMOUNT = 30.0
@@ -116,6 +118,15 @@ def save_finance_settings(settings):
     invalidate_config_cache()
 
 
+def get_user_record(user_or_id):
+    if isinstance(user_or_id, User):
+        return user_or_id
+    user = User.query.get(user_or_id)
+    if not user:
+        raise UserNotFoundError("Utilisateur introuvable.")
+    return user
+
+
 def record_balance_transaction(user_id, amount, balance_before, balance_after,
                                reason_code='adjustment', reason_label='Mouvement BitGroins',
                                details=None, reference_type=None, reference_id=None):
@@ -180,6 +191,28 @@ def debit_user_balance(user_id, amount, reason_code='debit', reason_label='Débi
         reference_type=reference_type,
         reference_id=reference_id,
     )
+
+
+def debit_user(user_or_id, amount, reason_code='debit', reason_label='Débit BitGroins',
+               details=None, reference_type=None, reference_id=None, commit=True):
+    user = get_user_record(user_or_id)
+    amount = round(float(amount or 0.0), 2)
+    if amount <= 0:
+        return user
+    if not debit_user_balance(
+        user.id,
+        amount,
+        reason_code=reason_code,
+        reason_label=reason_label,
+        details=details,
+        reference_type=reference_type,
+        reference_id=reference_id,
+    ):
+        raise InsufficientFundsError("Solde insuffisant.")
+    if commit:
+        db.session.commit()
+    db.session.refresh(user)
+    return user
 
 
 def _apply_progressive_tax(user_id, amount, reason_code):
@@ -255,6 +288,47 @@ def credit_user_balance(user_id, amount, reason_code='credit', reason_label='Cr�
         reference_type=reference_type,
         reference_id=reference_id,
     )
+
+
+def credit_user(user_or_id, amount, reason_code='credit', reason_label='Crédit BitGroins',
+                details=None, reference_type=None, reference_id=None, commit=True):
+    user = get_user_record(user_or_id)
+    amount = round(float(amount or 0.0), 2)
+    if amount <= 0:
+        return user
+    credit_user_balance(
+        user.id,
+        amount,
+        reason_code=reason_code,
+        reason_label=reason_label,
+        details=details,
+        reference_type=reference_type,
+        reference_id=reference_id,
+    )
+    if commit:
+        db.session.commit()
+    db.session.refresh(user)
+    return user
+
+
+def claim_daily_reward(user_or_id):
+    user = get_user_record(user_or_id)
+    today = datetime.utcnow().date()
+    if user.last_daily_reward_at and user.last_daily_reward_at.date() >= today:
+        return 0.0
+
+    reward_amount = get_daily_login_reward_value()
+    user.last_daily_reward_at = datetime.utcnow()
+    db.session.flush()
+    credit_user_balance(
+        user.id,
+        reward_amount,
+        reason_code='daily_reward',
+        reason_label='Prime de pointage journalière',
+    )
+    db.session.commit()
+    db.session.refresh(user)
+    return reward_amount
 
 
 def reserve_pig_challenge_slot(pig_id, wager):

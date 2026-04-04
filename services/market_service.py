@@ -31,7 +31,7 @@ from models import Auction, BalanceTransaction, GrainMarket, MarketHistory, Pig,
 from helpers.db import apply_row_lock
 from services.game_settings_service import get_game_settings
 from services.finance_service import credit_user_balance
-from services.pig_service import build_unique_pig_name, generate_weight_kg_for_profile
+from services.pig_service import build_unique_pig_name, generate_weight_kg_for_profile, kill_pig
 
 
 def get_prix_moyen_groin():
@@ -122,7 +122,7 @@ def resolve_auctions():
             if winner:
                 active_pigs = Pig.query.filter_by(user_id=winner.id, is_alive=True).order_by(Pig.id).all()
                 if len(active_pigs) >= 2:
-                    active_pigs[0].kill(cause='sacrifice')
+                    kill_pig(active_pigs[0], cause='sacrifice', commit=False)
                 new_pig = Pig(
                     user_id=winner.id, name=build_unique_pig_name(auction.pig_name, fallback_prefix='Champion du marche'), emoji=auction.pig_emoji,
                     vitesse=auction.pig_vitesse, endurance=auction.pig_endurance, agilite=auction.pig_agilite, force=auction.pig_force,

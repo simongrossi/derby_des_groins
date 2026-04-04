@@ -5,7 +5,7 @@ import json as _json
 from extensions import db, limiter
 from models import User, Pig, Race, Participant, Bet, UserNotification, ChatMessage
 from data import SCHOOL_COOLDOWN_MINUTES, MIN_INJURY_RISK, DEFAULT_PIG_WEIGHT_KG
-from services.pig_service import get_pig_settings
+from services.pig_service import get_pig_settings, kill_pig, update_pig_vitals
 from helpers import (
     get_user_active_pigs, calculate_pig_power,
     get_weight_profile, get_seconds_until, get_cooldown_remaining,
@@ -56,7 +56,7 @@ def veterinaire_index():
     pigs = get_user_active_pigs(user)
     pigs_data = []
     for pig in pigs:
-        pig.update_vitals()
+        update_pig_vitals(pig)
         injury_risk = round(pig.injury_risk or get_pig_settings().injury_min_risk, 1)
         pigs_data.append({
             'pig': pig,
@@ -97,8 +97,7 @@ def vet_solve():
     if not pig.is_injured:
         return jsonify({'already_healed': True}), 200
     if pig.vet_deadline and datetime.utcnow() > pig.vet_deadline:
-        pig.kill(cause='blessure')
-        db.session.commit()
+        kill_pig(pig, cause='blessure')
         return jsonify({'dead': True, 'message': 'Le délai était dépassé. RIP.'}), 200
 
     progression = get_progression_settings()
@@ -129,8 +128,7 @@ def vet_timeout():
     if not pig or pig.user_id != user.id:
         return jsonify({'error': 'Cochon introuvable'}), 404
     if pig.is_alive and pig.is_injured:
-        pig.kill(cause='blessure')
-        db.session.commit()
+        kill_pig(pig, cause='blessure')
     return jsonify({'dead': True})
 
 
@@ -177,7 +175,7 @@ def api_pig():
     pig = Pig.query.filter_by(user_id=user.id, is_alive=True).first()
     if not pig:
         return jsonify({'error': 'Pas de cochon'}), 404
-    pig.update_vitals()
+    update_pig_vitals(pig)
     return jsonify({
         'name': pig.name, 'emoji': pig.emoji,
         'level': pig.level, 'xp': pig.xp,

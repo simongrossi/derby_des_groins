@@ -2,6 +2,7 @@ from flask import Blueprint, jsonify, render_template, request, redirect, url_fo
 from datetime import datetime
 import random
 
+from exceptions import InsufficientFundsError, PigTiredError
 from extensions import db, limiter
 from models import User, Pig, PigAvatar
 from data import (
@@ -18,7 +19,8 @@ from services.economy_service import get_breeding_cost_value, get_progression_se
 from utils.time_utils import is_weekend_truce_active
 
 from services.finance_service import (
-    maybe_grant_emergency_relief, reserve_pig_challenge_slot, release_pig_challenge_slot,
+    credit_user, debit_user, maybe_grant_emergency_relief,
+    reserve_pig_challenge_slot, release_pig_challenge_slot,
 )
 from services.pig_service import (
     calculate_pig_power, xp_for_level, get_weight_profile, get_adoption_cost,
@@ -27,7 +29,9 @@ from services.pig_service import (
     can_retire_into_heritage, retire_pig_into_heritage, create_offspring,
     apply_origin_bonus, generate_weight_kg_for_profile, get_freshness_bonus,
     get_pig_performance_flags, reset_snack_share_limit_if_needed,
-    is_pig_name_taken, build_unique_pig_name,
+    is_pig_name_taken, build_unique_pig_name, check_level_up,
+    feed_pig, get_school_decay_multiplier, kill_pig, study_pig,
+    train_pig, update_pig_vitals,
 )
 
 pig_bp = Blueprint('pig', __name__)
@@ -53,7 +57,7 @@ def mon_cochon():
 
     pigs_data = []
     for p in pigs:
-        p.update_vitals()
+        update_pig_vitals(p)
         races_remaining = max(0, (p.max_races or 80) - p.races_entered)
         age_days = (datetime.utcnow() - p.created_at).days if p.created_at else 0
         rarity_info = RARITIES.get(p.rarity or 'commun', RARITIES['commun'])
@@ -108,14 +112,18 @@ def adopt_second_pig():
     if cost is None:
         flash("Impossible d'adopter un nouveau cochon pour l'instant.", "warning")
         return redirect(url_for('pig.mon_cochon'))
-    if not user.pay(
-        cost,
-        reason_code='pig_adoption',
-        reason_label='Adoption de cochon',
-        details="Ouverture d'une nouvelle place dans l'elevage.",
-        reference_type='user',
-        reference_id=user.id,
-    ):
+    try:
+        debit_user(
+            user,
+            cost,
+            reason_code='pig_adoption',
+            reason_label='Adoption de cochon',
+            details="Ouverture d'une nouvelle place dans l'elevage.",
+            reference_type='user',
+            reference_id=user.id,
+            commit=False,
+        )
+    except InsufficientFundsError:
         flash(f"Il te faut {cost:.0f} 🪙 pour adopter un nouveau cochon !", "error")
         return redirect(url_for('pig.mon_cochon'))
 
@@ -151,7 +159,7 @@ def feed():
         flash("Cochon introuvable !", "error")
         return redirect(url_for('pig.mon_cochon'))
 
-    pig.update_vitals()
+    update_pig_vitals(pig)
     cereals = get_cereals_dict()
     cereal_key = request.form.get('cereal')
     if cereal_key not in cereals:
@@ -162,18 +170,26 @@ def feed():
         return redirect(url_for('pig.mon_cochon'))
     feeding_multiplier = get_feeding_cost_multiplier(user)
     effective_cost = round(cereal['cost'] * feeding_multiplier, 2)
-    if not user.pay(
-        effective_cost,
-        reason_code='feed_purchase',
-        reason_label='Nourriture achetee',
-        details=f"{cereal['name']} pour {pig.name}. Cout x{feeding_multiplier:.2f} avec {user.pig_count} cochon(s).",
-        reference_type='pig',
-        reference_id=pig.id,
-    ):
+    try:
+        debit_user(
+            user,
+            effective_cost,
+            reason_code='feed_purchase',
+            reason_label='Nourriture achetee',
+            details=f"{cereal['name']} pour {pig.name}. Cout x{feeding_multiplier:.2f} avec {user.pig_count} cochon(s).",
+            reference_type='pig',
+            reference_id=pig.id,
+            commit=False,
+        )
+    except InsufficientFundsError:
         flash("Pas assez de BitGroins !", "error")
         return redirect(url_for('pig.mon_cochon'))
-
-    pig.feed(cereal)
+    try:
+        feed_pig(pig, cereal, commit=False)
+    except PigTiredError as exc:
+        db.session.rollback()
+        flash(str(exc), "warning")
+        return redirect(url_for('pig.mon_cochon'))
     db.session.commit()
     flash(f"{cereal['emoji']} {cereal['name']} donné ! Miam ! Coût réel: {effective_cost:.0f} 🪙 (x{feeding_multiplier:.2f} de pression d'élevage).", "success")
     return redirect(url_for('pig.mon_cochon'))
@@ -205,7 +221,7 @@ def share_snack():
         flash(f"Tu as deja distribue tes {SNACK_SHARE_DAILY_LIMIT} en-cas solidaires aujourd'hui.", "warning")
         return redirect(url_for('pig.mon_cochon'))
 
-    recipient_pig.update_vitals()
+    update_pig_vitals(recipient_pig)
     recipient_pig.hunger = min(100, recipient_pig.hunger + snack['hunger_restore'])
     recipient_pig.last_fed_at = datetime.utcnow()
     recipient_pig.register_positive_interaction(recipient_pig.last_fed_at)
@@ -230,7 +246,7 @@ def train():
         flash("Cochon introuvable !", "error")
         return redirect(url_for('pig.mon_cochon'))
 
-    pig.update_vitals()
+    update_pig_vitals(pig)
     if not pig.can_train:
         flash("Ton cochon est blessé. Passe d'abord par le vétérinaire.", "warning")
         return redirect(url_for('api.veterinaire', pig_id=pig.id))
@@ -258,7 +274,11 @@ def train():
     if pig.happiness < training.get('min_happiness', 0):
         flash("Ton cochon n'est pas assez heureux !", "error")
         return redirect(url_for('pig.mon_cochon'))
-    pig.train(training)
+    try:
+        train_pig(pig, training, commit=False)
+    except PigTiredError as exc:
+        flash(str(exc), "error")
+        return redirect(url_for('pig.mon_cochon'))
     pig.daily_train_count = (pig.daily_train_count or 0) + 1
     pig.last_train_date = today
     db.session.commit()
@@ -280,7 +300,7 @@ def school():
         flash("Cochon introuvable !", "error")
         return redirect(url_for('pig.mon_cochon'))
 
-    pig.update_vitals()
+    update_pig_vitals(pig)
     if not pig.can_school:
         flash("L'école attendra. Ton cochon doit d'abord passer au vétérinaire.", "warning")
         return redirect(url_for('api.veterinaire', pig_id=pig.id))
@@ -313,8 +333,12 @@ def school():
         return redirect(url_for('pig.mon_cochon'))
 
     selected_answer = answers[answer_idx]
-    decay_before = pig._school_decay_multiplier()
-    category = pig.study(lesson, correct=selected_answer['correct'])
+    decay_before = get_school_decay_multiplier(pig)
+    try:
+        category = study_pig(pig, lesson, correct=selected_answer['correct'], commit=False)
+    except PigTiredError as exc:
+        flash(str(exc), "warning")
+        return redirect(url_for('pig.mon_cochon'))
     if category == 'success':
         feedback_prefix = "Cours valide avec mention groin-tres-bien."
     else:
@@ -390,7 +414,7 @@ def challenge_mort():
         flash("Cochon introuvable !", "error")
         return redirect(url_for('pig.mon_cochon'))
 
-    pig.update_vitals()
+    update_pig_vitals(pig)
     if pig.is_injured:
         flash("Impossible d'inscrire un cochon blessé au Challenge de la Mort.", "error")
         return redirect(url_for('api.veterinaire', pig_id=pig.id))
@@ -405,14 +429,18 @@ def challenge_mort():
         flash("Ton cochon est trop faible pour le Challenge !", "error")
         return redirect(url_for('pig.mon_cochon'))
 
-    if not user.pay(
-        wager,
-        reason_code='challenge_entry',
-        reason_label='Inscription Challenge de la Mort',
-        details=f"{pig.name} engagé pour {wager:.0f} 🪙.",
-        reference_type='pig',
-        reference_id=pig.id,
-    ):
+    try:
+        debit_user(
+            user,
+            wager,
+            reason_code='challenge_entry',
+            reason_label='Inscription Challenge de la Mort',
+            details=f"{pig.name} engagé pour {wager:.0f} 🪙.",
+            reference_type='pig',
+            reference_id=pig.id,
+            commit=False,
+        )
+    except InsufficientFundsError:
         flash("T'as pas les moyens de jouer avec la vie de ton cochon !", "error")
         return redirect(url_for('pig.mon_cochon'))
     if not reserve_pig_challenge_slot(pig.id, wager):
@@ -444,7 +472,8 @@ def cancel_challenge():
     if refund <= 0:
         flash("Le challenge a déjà été annulé ou réglé ailleurs.", "warning")
         return redirect(url_for('pig.mon_cochon'))
-    user.earn(
+    credit_user(
+        user,
         refund,
         reason_code='challenge_refund',
         reason_label='Remboursement Challenge de la Mort',
@@ -478,14 +507,18 @@ def breed_pig():
         flash("La porcherie est pleine. Vends, retire ou perds un cochon avant de lancer une nouvelle portée.", "warning")
         return redirect(url_for('pig.mon_cochon'))
     breeding_cost = get_breeding_cost_value()
-    if not user.pay(
-        breeding_cost,
-        reason_code='pig_breeding',
-        reason_label='Lancement de portee',
-        details=f"Portee entre {parent_a.name} et {parent_b.name}.",
-        reference_type='user',
-        reference_id=user.id,
-    ):
+    try:
+        debit_user(
+            user,
+            breeding_cost,
+            reason_code='pig_breeding',
+            reason_label='Lancement de portee',
+            details=f"Portee entre {parent_a.name} et {parent_b.name}.",
+            reference_type='user',
+            reference_id=user.id,
+            commit=False,
+        )
+    except InsufficientFundsError:
         flash(f"Il faut {breeding_cost:.0f} 🪙 pour financer la portée.", "error")
         return redirect(url_for('pig.mon_cochon'))
 
@@ -529,8 +562,7 @@ def sacrifice_pig():
         flash("Cochon introuvable !", "error")
         return redirect(url_for('pig.mon_cochon'))
 
-    pig.kill(cause='sacrifice_volontaire')
-    db.session.commit()
+    kill_pig(pig, cause='sacrifice_volontaire')
     flash(f"🔪 {pig.name} a été envoyé à l'abattoir volontairement. Paix à ses côtelettes.", "warning")
     return redirect(url_for('pig.mon_cochon'))
 
@@ -613,7 +645,7 @@ def typing_complete():
     pig.last_updated = pig.last_school_at
     pig.reset_freshness()
     pig.mark_bad_state_if_needed()
-    pig.check_level_up()
+    check_level_up(pig)
     db.session.commit()
 
     flash(f"🏆 Typing Derby termine ! {bonus_msg} (WPM: {wpm:.1f}, Erreurs: {errors})", category)

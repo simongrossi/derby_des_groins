@@ -27,7 +27,6 @@ from services.economy_service import (
     get_adoption_cost_for_active_count,
     get_bet_limits,
     get_configured_bet_types,
-    get_daily_login_reward_value,
     get_economy_settings,
     get_feeding_multiplier_for_count,
     get_progression_settings,
@@ -38,7 +37,8 @@ from services.economy_service import (
     xp_for_level_value,
 )
 from services.market_service import get_prix_moyen_groin, is_market_open, get_next_market_time
-from services.pig_service import calculate_pig_power, get_pig_settings, get_weight_profile
+from services.finance_service import claim_daily_reward
+from services.pig_service import calculate_pig_power, get_pig_settings, get_weight_profile, update_pig_vitals
 from services.race_service import (
     attach_bet_outcome_snapshots,
     build_course_schedule,
@@ -587,14 +587,13 @@ def index():
         user = User.query.get(session['user_id'])
         if user:
             # --- Prime de pointage journalière ---
-            reward = user.claim_daily_reward()
+            reward = claim_daily_reward(user)
             if reward > 0:
-                db.session.commit()
                 flash(f"🎁 Prime de pointage : Vous avez reçu {reward:.0f} 🪙 BitGroins pour votre première connexion de la journée !", "success")
 
             pigs = get_user_active_pigs(user)
             for pig in pigs:
-                pig.update_vitals()
+                update_pig_vitals(pig)
             pigs_data = [{
                 'pig': pig,
                 'power': round(calculate_pig_power(pig), 1),
