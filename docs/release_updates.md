@@ -9,6 +9,40 @@ Objectif:
 
 ## 2026-04-04
 
+### Phase 6 - Amincissement des blueprints auth, market, main et admin
+- creation de `services/auth_service.py` pour sortir de `routes/auth.py`:
+  - inscription;
+  - login;
+  - magic links;
+  - changement de mot de passe;
+- creation de `services/market_service.py` pour centraliser:
+  - les surencheres;
+  - la mise en vente des cochons;
+  - les deplacements de la Bourse;
+- creation de `services/main_page_service.py` pour deplacer la construction des contextes lourds de:
+  - l'accueil;
+  - l'historique;
+  - la page `/regles`;
+  - la page `/classement`;
+- creation de `services/admin_user_service.py` et `services/admin_settings_service.py` pour sortir une premiere partie de `routes/admin.py`:
+  - droits admin;
+  - reset mot de passe;
+  - generation de token magic link;
+  - ajustement de solde;
+  - sauvegarde des reglages cochons;
+  - validation/sauvegarde du JSON moteur de course;
+  - sauvegarde des reglages Bourse;
+- ajout de tests unitaires de service:
+  - `tests/test_auth_service.py`;
+  - `tests/test_market_service.py`;
+  - `tests/test_admin_user_service.py`;
+  - `tests/test_admin_settings_service.py`.
+
+Verification locale:
+- `python3 -m py_compile` sur les routes/services modifies: OK;
+- `create_app('testing')`: OK;
+- `./.venv/bin/python -m unittest tests.test_admin_user_service tests.test_admin_settings_service tests.test_auth_service tests.test_market_service`: OK.
+
 ### Phase 5 - Nettoyage du point d'entree, service paris et package models
 - extraction des seeders et commandes CLI hors de `app.py` vers `cli/seeders.py`;
 - ajout d'une configuration applicative a base de classes dans `config/app_config.py`;

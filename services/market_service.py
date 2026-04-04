@@ -2,13 +2,16 @@ from datetime import datetime, timedelta
 import random
 
 from sqlalchemy import func
+from sqlalchemy import update
 
+from config.game_rules import MARKET_RULES
 from data import (
     BOURSE_BLOCK_MAX, BOURSE_BLOCK_MIN, BOURSE_DEFAULT_POS, BOURSE_GRAIN_LAYOUT,
     BOURSE_GRID_SIZE, BOURSE_GRID_VALUES, BOURSE_MIN_MOVEMENT, BOURSE_MOVEMENT_DIVISOR,
     BOURSE_SURCHARGE_FACTOR, CEREALS, DEFAULT_PIG_WEIGHT_KG, PIG_EMOJIS,
     PIG_NAME_PREFIXES, PIG_NAME_SUFFIXES, PIG_ORIGINS, RARITIES,
 )
+from exceptions import InsufficientFundsError, UserNotFoundError, ValidationError
 
 
 def _get_bourse_surcharge_factor():
@@ -28,10 +31,10 @@ def _get_bourse_movement_divisor():
 from extensions import db
 from models import Auction, BalanceTransaction, GrainMarket, MarketHistory, Pig, User
 
-from helpers.db import apply_row_lock
 from services.game_settings_service import get_game_settings
-from services.finance_service import credit_user_balance
+from services.finance_service import credit_user, credit_user_balance, debit_user
 from services.pig_service import build_unique_pig_name, generate_weight_kg_for_profile, kill_pig, random_pig_sex
+from services.notification_service import push_user_notification
 
 
 def get_prix_moyen_groin():
@@ -42,6 +45,191 @@ def get_prix_moyen_groin():
     if active:
         return round(sum(a.starting_price for a in active) / len(active), 2)
     return 42.0
+
+
+def _get_market_user(user_or_id):
+    user = user_or_id if isinstance(user_or_id, User) else User.query.get(user_or_id)
+    if not user:
+        raise UserNotFoundError("Utilisateur introuvable.")
+    return user
+
+
+def _ensure_market_access(user):
+    from helpers.market_helpers import get_market_lock_reason, get_market_unlock_progress
+
+    if not get_market_unlock_progress(user)[0]:
+        raise ValidationError(get_market_lock_reason(user))
+
+
+def place_auction_bid_for_user(user_or_id, auction_id, bid_amount):
+    from helpers.db import apply_row_lock
+
+    user = _get_market_user(user_or_id)
+    _ensure_market_access(user)
+
+    auction = apply_row_lock(Auction.query.filter_by(id=auction_id)).first()
+    if not auction or auction.status != 'active':
+        raise ValidationError("Cette enchère n'est plus disponible !")
+    if datetime.utcnow() >= auction.ends_at:
+        raise ValidationError("L'enchère est terminée !")
+
+    min_bid = (
+        round((auction.current_bid or 0.0) + MARKET_RULES.minimum_bid_increment, 2)
+        if auction.current_bid and auction.current_bid > 0
+        else round(float(auction.starting_price or 0.0), 2)
+    )
+    if not bid_amount or bid_amount < min_bid:
+        raise ValidationError(f"Enchère minimum : {min_bid:.0f} 🪙 !")
+
+    try:
+        debit_user(
+            user,
+            bid_amount,
+            reason_code='auction_bid',
+            reason_label='Mise bloquee en enchere',
+            details=f"Enchere sur {auction.pig_name}.",
+            reference_type='auction',
+            reference_id=auction.id,
+            commit=False,
+        )
+    except InsufficientFundsError:
+        raise InsufficientFundsError("Pas assez de BitGroins !") from None
+
+    previous_bidder_id = auction.bidder_id
+    previous_bid_amount = round(auction.current_bid or 0.0, 2)
+    auction_conditions = [
+        Auction.id == auction.id,
+        Auction.status == 'active',
+        Auction.ends_at > datetime.utcnow(),
+        Auction.current_bid == previous_bid_amount,
+    ]
+    if previous_bidder_id is None:
+        auction_conditions.append(Auction.bidder_id.is_(None))
+    else:
+        auction_conditions.append(Auction.bidder_id == previous_bidder_id)
+
+    result = db.session.execute(
+        update(Auction)
+        .where(*auction_conditions)
+        .values(current_bid=bid_amount, bidder_id=user.id)
+    )
+    if result.rowcount != 1:
+        db.session.rollback()
+        raise ValidationError("Quelqu'un a enchéri juste avant toi. Recharge le marché et retente.")
+
+    if previous_bidder_id and previous_bid_amount > 0:
+        previous_user = User.query.get(previous_bidder_id)
+        if previous_user:
+            credit_user(
+                previous_user,
+                previous_bid_amount,
+                reason_code='auction_outbid_refund',
+                reason_label='Remboursement enchere depassee',
+                details=f"Ton offre sur {auction.pig_name} a ete depassee.",
+                reference_type='auction',
+                reference_id=auction.id,
+                commit=False,
+            )
+            push_user_notification(
+                user_id=previous_user.id,
+                title="Marché aux Groins",
+                message=(
+                    f"{auction.pig_name} a été surenchéri. "
+                    f"Ta mise ({previous_bid_amount:.0f} 🪙) a été remboursée."
+                ),
+                category='warning',
+                event_key=f"auction_outbid:{auction.id}:{int(bid_amount)}:{user.id}",
+            )
+
+    db.session.commit()
+    return {
+        'category': 'success',
+        'message': f"Enchère placée : {bid_amount:.0f} 🪙 sur {auction.pig_name} !",
+    }
+
+
+def list_pig_for_sale(user_or_id, pig_id, starting_price):
+    user = _get_market_user(user_or_id)
+    _ensure_market_access(user)
+
+    if not is_market_open(user):
+        raise ValidationError("Le marché est fermé ! Reviens le jour du marché.")
+
+    pig = Pig.query.filter_by(id=pig_id, user_id=user.id, is_alive=True).first()
+    if not pig:
+        raise ValidationError("Tu n'as pas ce cochon ou il n'est plus disponible !")
+    if pig.is_injured:
+        raise ValidationError("Impossible de vendre un cochon blessé. Il doit d'abord voir le vétérinaire.")
+    if not starting_price or starting_price < MARKET_RULES.minimum_starting_price:
+        raise ValidationError(f"Prix minimum : {MARKET_RULES.minimum_starting_price:.0f} 🪙 !")
+
+    auction = Auction(
+        pig_name=pig.name,
+        pig_emoji=pig.emoji,
+        pig_sex=pig.sex or 'M',
+        pig_avatar_url=pig.avatar_url,
+        pig_vitesse=pig.vitesse,
+        pig_endurance=pig.endurance,
+        pig_agilite=pig.agilite,
+        pig_force=pig.force,
+        pig_intelligence=pig.intelligence,
+        pig_moral=pig.moral,
+        pig_weight=pig.weight_kg or DEFAULT_PIG_WEIGHT_KG,
+        pig_rarity=pig.rarity or 'commun',
+        pig_max_races=max(0, (pig.max_races or 80) - pig.races_entered),
+        pig_origin=pig.origin_country or 'France',
+        pig_origin_flag=pig.origin_flag or '🇫🇷',
+        starting_price=starting_price,
+        current_bid=0,
+        seller_id=user.id,
+        source_pig_id=pig.id,
+        ends_at=get_market_close_time(),
+        status='active',
+    )
+    pig.is_alive = False
+    pig.death_cause = 'vendu'
+    pig.death_date = datetime.utcnow()
+    pig.charcuterie_type = 'En vente'
+    pig.charcuterie_emoji = '🏷️'
+    pig.epitaph = f"{pig.name} a été mis en vente au Marché aux Groins."
+    db.session.add(auction)
+    db.session.commit()
+
+    return {
+        'category': 'success',
+        'message': f"🏷️ {pig.name} est en vente pour {starting_price:.0f} 🪙 minimum !",
+    }
+
+
+def move_bourse_for_user(user_or_id, dx, dy):
+    user = _get_market_user(user_or_id)
+    if dx == 0 and dy == 0:
+        raise ValidationError("Deplacement impossible (bord de grille ou points insuffisants).")
+
+    market = get_grain_market()
+    max_points = get_bourse_movement_points(user.id)
+    points_used = move_bourse_cursor(market, dx, dy, max_points)
+    if points_used <= 0:
+        raise ValidationError("Deplacement impossible (bord de grille ou points insuffisants).")
+
+    market.last_move_user_id = user.id
+    market.last_move_at = datetime.utcnow()
+    db.session.commit()
+
+    direction = []
+    if dx > 0:
+        direction.append(f'{dx} vers la droite')
+    elif dx < 0:
+        direction.append(f'{abs(dx)} vers la gauche')
+    if dy > 0:
+        direction.append(f'{dy} vers le bas')
+    elif dy < 0:
+        direction.append(f'{abs(dy)} vers le haut')
+
+    return {
+        'category': 'success',
+        'message': f"Bloc deplace de {', '.join(direction)} ! ({points_used} point(s) utilise(s))",
+    }
 
 
 def get_next_market_time():
@@ -111,6 +299,8 @@ def generate_auction_pig():
 
 
 def resolve_auctions():
+    from helpers.db import apply_row_lock
+
     now = datetime.utcnow()
     expired = Auction.query.filter(Auction.status == 'active', Auction.ends_at <= now).all()
     for auction in expired:

@@ -1,4 +1,7 @@
 from dataclasses import dataclass, field
+from datetime import datetime
+import json
+import random
 
 
 @dataclass(frozen=True)
@@ -201,3 +204,43 @@ class RacePlanningRules:
 
 BET_RULES = BetRules()
 RACE_PLANNING_RULES = RacePlanningRules()
+
+
+@dataclass(frozen=True)
+class MarketRules:
+    """Marketplace thresholds shared between routes and services."""
+
+    minimum_bid_increment: float = 5.0
+    minimum_starting_price: float = 5.0
+
+
+MARKET_RULES = MarketRules()
+
+
+@dataclass(frozen=True)
+class AuthRules:
+    """Authentication and account bootstrap thresholds."""
+
+    minimum_username_length: int = 3
+    minimum_password_length: int = 6
+
+    def pick_default_origin(self, origins):
+        return random.choice(origins)
+
+    def parse_magic_token_payload(self, raw_value):
+        try:
+            return json.loads(raw_value)
+        except (TypeError, ValueError, json.JSONDecodeError):
+            return None
+
+    def parse_magic_expiry(self, raw_value):
+        try:
+            return datetime.fromisoformat(raw_value)
+        except (TypeError, ValueError):
+            return None
+
+    def is_magic_token_expired(self, expires_at):
+        return datetime.utcnow() > expires_at
+
+
+AUTH_RULES = AuthRules()

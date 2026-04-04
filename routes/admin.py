@@ -1,18 +1,15 @@
 from flask import Blueprint, render_template, request, redirect, url_for, session, flash, make_response
-from werkzeug.security import generate_password_hash
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 import csv
 import io
-import json
 import logging
 import os
 import re
-import secrets
 import unicodedata
 from zoneinfo import ZoneInfo
 from sqlalchemy import or_
 
-from exceptions import InsufficientFundsError
+from exceptions import BusinessRuleError
 from extensions import db
 from models import User, Race, Pig, Bet, BalanceTransaction, CerealItem, TrainingItem, SchoolLessonItem, HangmanWordItem, PigAvatar, AuthEventLog
 from sqlalchemy.orm import joinedload
@@ -46,12 +43,21 @@ from services.finance_service import (
     get_finance_settings,
     save_finance_settings,
 )
+from services.admin_user_service import (
+    adjust_user_balance_by_admin,
+    create_user_magic_link_token,
+    reset_user_password,
+    toggle_admin_status,
+)
+from services.admin_settings_service import (
+    save_admin_pig_settings,
+    save_bourse_settings,
+    save_race_engine_settings_json,
+)
 from services.pig_service import get_pig_settings
 from services.race_engine_service import (
     get_race_engine_settings,
     reset_race_engine_settings,
-    save_race_engine_settings,
-    RaceEngineSettings,
 )
 from services.game_settings_service import get_game_settings
 from services.race_service import attach_bet_outcome_snapshots, get_configured_npcs
@@ -385,57 +391,17 @@ def admin_balance(user):
             flash("Paramètres financiers sauvegardés.", "success")
 
         elif action == 'save_pig':
-            from helpers.config import invalidate_config_cache
-
-            def _fi(k, d):
-                try:
-                    return max(1, int(float(request.form.get(k, d))))
-                except (TypeError, ValueError):
-                    return int(d)
-
-            def _ff(k, d):
-                try:
-                    return float(request.form.get(k, d))
-                except (TypeError, ValueError):
-                    return float(d)
-
-            pig_payload = {
-                'pig_max_slots': str(_fi('pig_max_slots', pig.max_slots)),
-                'pig_retirement_min_wins': str(_fi('pig_retirement_min_wins', pig.retirement_min_wins)),
-                'pig_weight_default_kg': str(_ff('pig_weight_default_kg', pig.weight_default_kg)),
-                'pig_weight_min_kg': str(_ff('pig_weight_min_kg', pig.weight_min_kg)),
-                'pig_weight_max_kg': str(_ff('pig_weight_max_kg', pig.weight_max_kg)),
-                'pig_weight_malus_ratio': str(_ff('pig_weight_malus_ratio', pig.weight_malus_ratio)),
-                'pig_weight_malus_max': str(_ff('pig_weight_malus_max', pig.weight_malus_max)),
-                'pig_injury_min_risk': str(_ff('pig_injury_min_risk', pig.injury_min_risk)),
-                'pig_injury_max_risk': str(_ff('pig_injury_max_risk', pig.injury_max_risk)),
-                'pig_vet_response_minutes': str(_fi('pig_vet_response_minutes', pig.vet_response_minutes)),
-            }
-            existing = {
-                e.key: e
-                for e in GameConfig.query.filter(GameConfig.key.in_(list(pig_payload.keys()))).all()
-            }
-            for k, v in pig_payload.items():
-                entry = existing.get(k)
-                if entry:
-                    entry.value = v
-                else:
-                    db.session.add(GameConfig(key=k, value=v))
-            db.session.commit()
-            invalidate_config_cache()
+            save_admin_pig_settings(request.form, pig)
             pig = get_pig_settings()
             flash("Paramètres cochons sauvegardés.", "success")
 
         elif action == 'save_engine':
-            raw_json = request.form.get('race_engine_json', '')
             try:
-                json.loads(raw_json)  # Valide le JSON
-                from helpers.config import set_config
-                set_config('race_engine_config', raw_json)
+                save_race_engine_settings_json(request.form.get('race_engine_json', ''))
                 engine = get_race_engine_settings()
                 flash("Moteur de course sauvegardé.", "success")
-            except (ValueError, TypeError) as e:
-                flash(f"JSON invalide : {e}", "error")
+            except BusinessRuleError as exc:
+                flash(str(exc), "error")
 
         elif action == 'reset_engine':
             reset_race_engine_settings()
@@ -443,16 +409,11 @@ def admin_balance(user):
             flash("Moteur de course réinitialisé aux valeurs par défaut.", "success")
 
         elif action == 'save_bourse':
-            from helpers.config import set_config, invalidate_config_cache
             try:
-                sf = float(request.form.get('bourse_surcharge_factor', 0.05))
-                md = max(1, int(float(request.form.get('bourse_movement_divisor', 10))))
-                set_config('bourse_surcharge_factor', str(sf))
-                set_config('bourse_movement_divisor', str(md))
-                invalidate_config_cache()
+                save_bourse_settings(request.form)
                 flash("Paramètres bourse sauvegardés.", "success")
-            except (TypeError, ValueError) as e:
-                flash(f"Valeur invalide : {e}", "error")
+            except BusinessRuleError as exc:
+                flash(str(exc), "error")
 
         # Reload after save
         finance = get_finance_settings()
@@ -914,14 +875,13 @@ def admin_users(user):
 @admin_required
 def admin_toggle_user_admin(user, user_id):
     target = User.query.get_or_404(user_id)
-    if target.id == user.id:
-        flash("Tu ne peux pas modifier tes propres droits admin.", "error")
+    try:
+        message = toggle_admin_status(user, target)
+    except BusinessRuleError as exc:
+        flash(str(exc), "error")
         return redirect(url_for('admin.admin_users'))
 
-    target.is_admin = not target.is_admin
-    db.session.commit()
-    state = 'promu administrateur' if target.is_admin else 'retire des administrateurs'
-    flash(f"{target.username} a ete {state}.", "success")
+    flash(message, "success")
     return redirect(url_for('admin.admin_users'))
 
 
@@ -930,15 +890,18 @@ def admin_toggle_user_admin(user, user_id):
 def admin_reset_password(user):
     user_id = request.form.get('user_id', type=int)
     new_password = request.form.get('new_password', '').strip()
-
-    if not user_id or len(new_password) < 4:
-        flash("Mot de passe trop court (min 4 caracteres).", "error")
+    if not user_id:
+        flash("Utilisateur introuvable.", "error")
         return redirect(url_for('admin.admin_users'))
 
     target = User.query.get_or_404(user_id)
-    target.password_hash = generate_password_hash(new_password)
-    db.session.commit()
-    flash(f"🔑 Mot de passe de {target.username} mis a jour.", "success")
+    try:
+        message = reset_user_password(target, new_password)
+    except BusinessRuleError as exc:
+        flash(str(exc), "error")
+        return redirect(url_for('admin.admin_users'))
+
+    flash(message, "success")
     return redirect(url_for('admin.admin_users'))
 
 
@@ -946,17 +909,8 @@ def admin_reset_password(user):
 @admin_required
 def admin_magic_link(user, user_id):
     target = User.query.get_or_404(user_id)
-
-    # Generate a secure token
-    token = secrets.token_urlsafe(32)
-    expires = datetime.utcnow() + timedelta(hours=24)
-
-    # Store in GameConfig as magic_token_<user_id>
-    set_config(f'magic_token_{target.id}', json.dumps({
-        'token': token,
-        'expires': expires.isoformat(),
-        'user_id': target.id,
-    }))
+    magic_link = create_user_magic_link_token(target)
+    token = magic_link['token']
 
     # Build the magic link URL (safe: url_for evite le Host header injection)
     base_url = os.environ.get('BASE_URL', '').rstrip('/')
@@ -999,40 +953,19 @@ def admin_adjust_balance(user):
     amount = request.form.get('amount', type=float)
     reason = request.form.get('reason', 'Ajustement admin').strip()
 
-    if not user_id or amount is None or amount == 0:
-        flash("Montant invalide.", "error")
+    if not user_id:
+        flash("Utilisateur introuvable.", "error")
         return redirect(url_for('admin.admin_users'))
 
     target = User.query.get_or_404(user_id)
 
-    if amount > 0:
-        credit_user(
-            target,
-            amount,
-            reason_code='admin_adjust',
-            reason_label=reason,
-            reference_type='user',
-            reference_id=user.id,
-            commit=False,
-        )
-        flash(f"💰 +{amount:.0f} 🪙 credites a {target.username}.", "success")
-    else:
-        try:
-            debit_user(
-                target,
-                abs(amount),
-                reason_code='admin_adjust',
-                reason_label=reason,
-                reference_type='user',
-                reference_id=user.id,
-                commit=False,
-            )
-        except InsufficientFundsError:
-            flash(f"{target.username} n'a pas assez de BitGroins pour ce debit.", "error")
-            return redirect(url_for('admin.admin_users'))
-        flash(f"💸 {amount:.0f} 🪙 debites de {target.username}.", "success")
+    try:
+        message = adjust_user_balance_by_admin(user, target, amount, reason)
+    except BusinessRuleError as exc:
+        flash(str(exc), "error")
+        return redirect(url_for('admin.admin_users'))
 
-    db.session.commit()
+    flash(message, "success")
     return redirect(url_for('admin.admin_users'))
 
 

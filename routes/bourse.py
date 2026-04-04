@@ -8,7 +8,7 @@ from data import BOURSE_BLOCK_MIN, BOURSE_BLOCK_MAX
 from helpers import get_feeding_cost_multiplier, get_cereals_dict
 from services.market_service import (
     get_grain_market, get_all_grain_surcharges, get_bourse_movement_points,
-    move_bourse_cursor, get_bourse_cereals, get_bourse_grid_data,
+    get_bourse_cereals, get_bourse_grid_data, move_bourse_for_user,
 )
 from services.pig_service import buy_cereal_from_bourse_for_user
 
@@ -75,33 +75,15 @@ def bourse():
 def bourse_move():
     if 'user_id' not in session:
         return redirect(url_for('auth.login'))
-    user = User.query.get(session['user_id'])
-    if not user:
-        session.pop('user_id', None)
-        return redirect(url_for('auth.login'))
-
-    dx = request.form.get('dx', 0, type=int)
-    dy = request.form.get('dy', 0, type=int)
-
-    if dx == 0 and dy == 0:
-        return redirect(url_for('bourse.bourse'))
-
-    market = get_grain_market()
-    max_pts = get_bourse_movement_points(user.id)
-
-    points_used = move_bourse_cursor(market, dx, dy, max_pts)
-    if points_used > 0:
-        market.last_move_user_id = user.id
-        market.last_move_at = datetime.utcnow()
-        db.session.commit()
-        direction = []
-        if dx > 0: direction.append(f'{dx} vers la droite')
-        elif dx < 0: direction.append(f'{abs(dx)} vers la gauche')
-        if dy > 0: direction.append(f'{dy} vers le bas')
-        elif dy < 0: direction.append(f'{abs(dy)} vers le haut')
-        flash(f"Bloc deplace de {', '.join(direction)} ! ({points_used} point(s) utilise(s))", "success")
-    else:
-        flash("Deplacement impossible (bord de grille ou points insuffisants).", "warning")
+    try:
+        result = move_bourse_for_user(
+            session['user_id'],
+            request.form.get('dx', 0, type=int),
+            request.form.get('dy', 0, type=int),
+        )
+        flash(result['message'], result.get('category', 'success'))
+    except BusinessRuleError as exc:
+        flash(str(exc), "error")
 
     return redirect(url_for('bourse.bourse'))
 

@@ -1,19 +1,20 @@
 from flask import Blueprint, render_template, request, redirect, url_for, session, flash
-from werkzeug.security import generate_password_hash, check_password_hash
-from datetime import datetime
-from urllib.parse import urlparse
-import json
-import random
 import math
 
 from extensions import db, limiter
+from exceptions import BusinessRuleError, UserNotFoundError, ValidationError
 from models import User, Pig, Bet, Auction, Trophy
-from data import PIG_ORIGINS, RARITIES
-from helpers import get_config, get_market_unlock_progress, get_market_lock_reason
-from services.economy_service import get_configured_bet_types, get_welcome_bonus_value
-from services.finance_service import record_balance_transaction
+from helpers import get_market_unlock_progress, get_market_lock_reason
+from services.economy_service import get_configured_bet_types
 from services.auth_log_service import log_auth_event
-from services.pig_service import apply_origin_bonus, generate_weight_kg_for_profile, get_active_listing_count, build_unique_pig_name, random_pig_sex
+from services.auth_service import (
+    authenticate_user,
+    change_user_password,
+    consume_magic_login_token,
+    register_user,
+    resolve_safe_next_url,
+)
+from services.pig_service import get_active_listing_count
 
 auth_bp = Blueprint('auth', __name__)
 
@@ -22,42 +23,13 @@ auth_bp = Blueprint('auth', __name__)
 @limiter.limit("5 per minute", methods=["POST"])
 def register():
     if request.method == 'POST':
-        username = request.form.get('username', '').strip()
-        password = request.form.get('password', '').strip()
-        if not username or not password:
-            return render_template('auth.html', error="Remplis tous les champs !", mode='register')
-        if len(username) < 3:
-            return render_template('auth.html', error="Pseudo trop court (min 3 caractères)", mode='register')
-        if User.query.filter_by(username=username).first():
-            return render_template('auth.html', error="Ce pseudo est déjà pris !", mode='register')
-        welcome_bonus = get_welcome_bonus_value()
-        user = User(username=username, password_hash=generate_password_hash(password), balance=welcome_bonus)
-        db.session.add(user)
-        db.session.flush()
-        record_balance_transaction(
-            user_id=user.id,
-            amount=welcome_bonus,
-            balance_before=0.0,
-            balance_after=welcome_bonus,
-            reason_code='welcome_bonus',
-            reason_label="Bonus d'inscription",
-            details="Capital de depart offert a la creation du compte.",
-            reference_type='user',
-            reference_id=user.id,
-        )
-        origin = random.choice(PIG_ORIGINS)
-        pig = Pig(user_id=user.id, name=build_unique_pig_name(f"Cochon de {username}", fallback_prefix='Cochon'), emoji='🐷',
-                  sex=random_pig_sex(), origin_country=origin['country'], origin_flag=origin['flag'])
-        apply_origin_bonus(pig, origin)
-        pig.weight_kg = generate_weight_kg_for_profile(pig)
-        db.session.add(pig)
-        log_auth_event(
-            event_type='register',
-            is_success=True,
-            user_id=user.id,
-            username_attempt=username,
-        )
-        db.session.commit()
+        try:
+            user = register_user(
+                request.form.get('username', ''),
+                request.form.get('password', ''),
+            )
+        except BusinessRuleError as exc:
+            return render_template('auth.html', error=str(exc), mode='register')
         session['user_id'] = user.id
         return redirect(url_for('pig.mon_cochon'))
     return render_template('auth.html', mode='register')
@@ -67,31 +39,17 @@ def register():
 @limiter.limit("5 per minute", methods=["POST"])
 def login():
     if request.method == 'POST':
-        username = request.form.get('username', '').strip()
-        password = request.form.get('password', '').strip()
-        user = User.query.filter_by(username=username).first()
-        if not user or not check_password_hash(user.password_hash, password):
-            log_auth_event(
-                event_type='login',
-                is_success=False,
-                username_attempt=username,
-                details='invalid_credentials',
+        try:
+            user = authenticate_user(
+                request.form.get('username', ''),
+                request.form.get('password', ''),
             )
-            db.session.commit()
-            return render_template('auth.html', error="Identifiants incorrects !", mode='login')
-        log_auth_event(
-            event_type='login',
-            is_success=True,
-            user_id=user.id,
-            username_attempt=username,
-        )
-        db.session.commit()
+        except BusinessRuleError as exc:
+            return render_template('auth.html', error=str(exc), mode='login')
         session['user_id'] = user.id
-        next_url = request.args.get('next') or request.form.get('next')
+        next_url = resolve_safe_next_url(request.args.get('next') or request.form.get('next'))
         if next_url:
-            parsed = urlparse(next_url)
-            if not parsed.scheme and not parsed.netloc and next_url.startswith('/'):
-                return redirect(next_url)
+            return redirect(next_url)
         return redirect(url_for('main.index'))
     return render_template('auth.html', mode='login')
 
@@ -99,56 +57,18 @@ def login():
 @auth_bp.route('/auth/magic/<token>')
 def magic_login(token):
     """Connexion via lien magique genere par l'admin."""
-    from models import GameConfig
-    # Search all magic_token_* entries
-    configs = GameConfig.query.filter(GameConfig.key.like('magic_token_%')).all()
-    for cfg in configs:
-        try:
-            data = json.loads(cfg.value)
-        except (json.JSONDecodeError, TypeError):
-            continue
-        if data.get('token') != token:
-            continue
-        # Found matching token — check expiry
-        expires = datetime.fromisoformat(data['expires'])
-        if datetime.utcnow() > expires:
-            log_auth_event(
-                event_type='magic_login',
-                is_success=False,
-                username_attempt=str(data.get('user_id', '')),
-                details='expired_token',
-            )
-            db.session.delete(cfg)
-            db.session.commit()
-            flash("Ce lien magique a expire.", "error")
-            return redirect(url_for('auth.login'))
-        # Valid token — log in
-        user = User.query.get(data['user_id'])
-        if not user:
-            log_auth_event(
-                event_type='magic_login',
-                is_success=False,
-                username_attempt=str(data.get('user_id', '')),
-                details='user_not_found',
-            )
-            flash("Utilisateur introuvable.", "error")
-            db.session.commit()
-            return redirect(url_for('auth.login'))
-        log_auth_event(
-            event_type='magic_login',
-            is_success=True,
-            user_id=user.id,
-            username_attempt=user.username,
-        )
-        session['user_id'] = user.id
-        # Consume the token
-        db.session.delete(cfg)
-        db.session.commit()
-        flash(f"Bienvenue {user.username} ! Connecte via lien magique.", "success")
-        return redirect(url_for('main.index'))
+    try:
+        user = consume_magic_login_token(token)
+    except UserNotFoundError as exc:
+        flash(str(exc), "error")
+        return redirect(url_for('auth.login'))
+    except BusinessRuleError as exc:
+        flash(str(exc), "error")
+        return redirect(url_for('auth.login'))
 
-    flash("Lien magique invalide ou expire.", "error")
-    return redirect(url_for('auth.login'))
+    session['user_id'] = user.id
+    flash(f"Bienvenue {user.username} ! Connecte via lien magique.", "success")
+    return redirect(url_for('main.index'))
 
 
 @auth_bp.route('/logout')
@@ -180,21 +100,15 @@ def profil():
         current_password = request.form.get('current_password', '').strip()
         new_password = request.form.get('new_password', '').strip()
         confirm_password = request.form.get('confirm_password', '').strip()
-
-        if not current_password or not new_password or not confirm_password:
-            flash("Remplis tous les champs pour changer ton mot de passe.", "warning")
-        elif not check_password_hash(user.password_hash, current_password):
-            flash("Ton mot de passe actuel est incorrect.", "error")
-        elif len(new_password) < 6:
-            flash("Ton nouveau mot de passe doit faire au moins 6 caractères.", "warning")
-        elif current_password == new_password:
-            flash("Choisis un mot de passe différent de l'actuel.", "warning")
-        elif new_password != confirm_password:
-            flash("La confirmation du nouveau mot de passe ne correspond pas.", "error")
-        else:
-            user.password_hash = generate_password_hash(new_password)
-            db.session.commit()
+        try:
+            change_user_password(user, current_password, new_password, confirm_password)
             flash("Mot de passe mis à jour avec succès.", "success")
+        except ValidationError as exc:
+            message = str(exc)
+            category = 'error'
+            if 'au moins' in message or 'différent' in message or 'Remplis' in message:
+                category = 'warning'
+            flash(message, category)
         return redirect(url_for('auth.profil'))
 
     pigs = Pig.query.filter_by(user_id=user.id).order_by(Pig.created_at.desc()).all()

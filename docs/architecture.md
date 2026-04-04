@@ -10,9 +10,10 @@
 
 ## Principes d'Architecture
 - **Modèles SQLAlchemy anémiques** : le package `models/` décrit désormais avant tout les colonnes, relations et quelques mutations locales triviales d'état, découpées par domaine.
-- **Logique métier en services** : les opérations financières et les actions Tamagotchi lourdes vivent dans `services/finance_service.py` et `services/pig_service.py`.
+- **Logique métier en services** : les opérations financières, les actions Tamagotchi, les paris, l'authentification et une partie de l'administration vivent maintenant dans des services dédiés (`services/finance_service.py`, `services/pig_service.py`, `services/bet_service.py`, `services/auth_service.py`, `services/admin_*_service.py`, etc.).
 - **Erreurs métier explicites** : les règles bloquantes remontent via `exceptions.py` (`InsufficientFundsError`, `PigTiredError`, etc.) au lieu de dépendre d'imports locaux dans les modèles.
 - **Factory plus propre** : `app.py` charge maintenant sa configuration via `config/app_config.py`, tandis que les seeders et commandes CLI ont été déplacés dans `cli/seeders.py`.
+- **Blueprints allégés progressivement** : `routes/pig.py`, `routes/race.py`, `routes/market.py`, `routes/bourse.py`, `routes/auth.py`, `routes/main.py` et une partie de `routes/admin.py` délèguent désormais leur logique métier à la couche service.
 
 ## Structure des Modèles (Database Schema)
 
@@ -93,9 +94,14 @@ derby_des_groins/
 │   ├── agenda.py           # Mini-jeu La Légende du COMOP (réflexe calendrier)
 │   └── api.py              # Endpoints JSON pour l'UI dynamique + replay course
 ├── services/               # Couche métier dédiée
+│   ├── admin_settings_service.py # Sauvegarde/validation des reglages admin (cochons, moteur, bourse)
+│   ├── admin_user_service.py # Gestion admin des joueurs (droits, mot de passe, lien magique, solde)
+│   ├── auth_service.py     # Inscription, login, magic links, changement de mot de passe
 │   ├── bet_service.py      # Validation métier et création de tickets PMU
 │   ├── economy_service.py  # Réglages d'équilibrage, snapshots live et simulateur
 │   ├── finance_service.py  # Débits/crédits, transactions, aides et prime journalière
+│   ├── main_page_service.py # Construction des contextes lourds pour accueil, regles, historique, classement
+│   ├── market_service.py   # Encheres cochons, ventes, bids et deplacement de la Bourse
 │   ├── pig_service.py      # Actions cochons, vitals, école, retraite, abattoir
 │   └── ...
 ├── exceptions.py           # Exceptions métier partagées
