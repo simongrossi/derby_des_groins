@@ -1,10 +1,6 @@
 from flask import Blueprint, render_template, request, redirect, url_for, session, flash, make_response
-from datetime import datetime
 import json
-import logging
-import os
 import re
-import unicodedata
 from sqlalchemy import or_
 
 from exceptions import BusinessRuleError
@@ -43,6 +39,35 @@ from services.admin_bet_service import (
     reconcile_bet_by_id,
     reconcile_finished_bets,
 )
+from services.admin_avatar_service import (
+    create_avatar,
+    delete_avatar,
+    get_avatar_svg_code,
+    update_avatar,
+)
+from services.admin_event_service import trigger_admin_event
+from services.admin_game_data_service import (
+    delete_cereal_item,
+    delete_hangman_word,
+    delete_lesson_item,
+    delete_training_item,
+    replace_hangman_words_from_text,
+    save_cereal_item,
+    save_hangman_word,
+    save_lesson_item,
+    save_training_item,
+    toggle_cereal_item,
+    toggle_hangman_word,
+    toggle_lesson_item,
+    toggle_training_item,
+)
+from services.admin_notification_service import (
+    get_smtp_config,
+    save_smtp_settings,
+    send_email,
+    send_test_smtp_email,
+)
+from services.admin_pig_service import heal_admin_pig, toggle_admin_pig_life
 from services.admin_user_service import (
     adjust_user_balance_by_admin,
     create_user_magic_link_token,
@@ -53,6 +78,10 @@ from services.admin_settings_service import (
     save_admin_pig_settings,
     save_bourse_settings,
     save_race_engine_settings_json,
+)
+from services.admin_truffes_service import (
+    build_admin_truffes_context,
+    save_truffes_settings,
 )
 from services.admin_race_service import (
     build_admin_races_page_context,
@@ -87,60 +116,6 @@ def _invalidate_game_data_on_write(response):
 # Helpers
 # ══════════════════════════════════════════════════════════════════════════════
 
-
-
-
-def _get_smtp_config():
-    """Charge la config SMTP depuis GameConfig."""
-    return {
-        'host': get_config('smtp_host', ''),
-        'port': get_config('smtp_port', '587'),
-        'security': get_config('smtp_security', 'tls'),
-        'user': get_config('smtp_user', ''),
-        'password': get_config('smtp_password', ''),
-        'from_addr': get_config('smtp_from', ''),
-        'from_name': get_config('smtp_from_name', 'Derby des Groins'),
-        'enabled': get_config('smtp_enabled', '0') == '1',
-    }
-
-
-def _send_email(to_addr, subject, body_html):
-    """Envoie un email via la config SMTP. Retourne (success, error_message)."""
-    import smtplib
-    from email.mime.text import MIMEText
-    from email.mime.multipart import MIMEMultipart
-
-    cfg = _get_smtp_config()
-    if not cfg['enabled']:
-        return False, "L'envoi d'emails est desactive."
-    if not cfg['host'] or not cfg['from_addr']:
-        return False, "Configuration SMTP incomplete."
-
-    msg = MIMEMultipart('alternative')
-    msg['Subject'] = subject
-    msg['From'] = f"{cfg['from_name']} <{cfg['from_addr']}>"
-    msg['To'] = to_addr
-    msg.attach(MIMEText(body_html, 'html', 'utf-8'))
-
-    try:
-        port = int(cfg['port'] or 587)
-        if cfg['security'] == 'ssl':
-            server = smtplib.SMTP_SSL(cfg['host'], port, timeout=15)
-        else:
-            server = smtplib.SMTP(cfg['host'], port, timeout=15)
-            if cfg['security'] == 'tls':
-                server.starttls()
-
-        if cfg['user'] and cfg['password']:
-            server.login(cfg['user'], cfg['password'])
-
-        server.sendmail(cfg['from_addr'], [to_addr], msg.as_string())
-        server.quit()
-        return True, None
-    except Exception as e:
-        logging.getLogger(__name__).exception("Echec envoi email a %s", to_addr)
-        return False, "Erreur lors de l'envoi de l'email. Verifiez la configuration SMTP."
-
 def _parse_race_npcs_from_lines(lines):
     """Normalise une liste de lignes 'Nom|Emoji' en liste de dicts."""
     npcs = []
@@ -161,19 +136,6 @@ def _parse_race_npcs_from_lines(lines):
         seen.add(name)
         npcs.append({'name': name, 'emoji': emoji})
     return npcs
-
-
-def _normalize_hangman_word(raw_word):
-    normalized = unicodedata.normalize('NFD', (raw_word or '').strip().upper())
-    normalized = ''.join(ch for ch in normalized if unicodedata.category(ch) != 'Mn')
-    normalized = re.sub(r'\s+', ' ', normalized).strip()
-    if not normalized or len(normalized) > 80:
-        return None
-    if not any(ch.isalpha() for ch in normalized):
-        return None
-    if any((not ch.isalpha()) and ch != ' ' for ch in normalized):
-        return None
-    return normalized
 
 # ══════════════════════════════════════════════════════════════════════════════
 # Dashboard
@@ -524,18 +486,7 @@ def admin_pigs(user):
 @admin_required
 def admin_toggle_pig_life(user, pig_id):
     pig = Pig.query.get_or_404(pig_id)
-    pig.is_alive = not pig.is_alive
-    if pig.is_alive:
-        pig.death_date = None
-        pig.death_cause = None
-        pig.charcuterie_type = None
-        pig.charcuterie_emoji = None
-        pig.epitaph = None
-    else:
-        pig.death_date = datetime.utcnow()
-        pig.death_cause = pig.death_cause or 'admin'
-    db.session.commit()
-    flash(f"Statut mis a jour pour {pig.name}.", 'success')
+    flash(toggle_admin_pig_life(pig), 'success')
     return redirect(url_for('admin.admin_pigs'))
 
 
@@ -543,12 +494,10 @@ def admin_toggle_pig_life(user, pig_id):
 @admin_required
 def admin_heal_pig(user, pig_id):
     pig = Pig.query.get_or_404(pig_id)
-    if pig.is_injured:
-        pig.heal()
-        db.session.commit()
-        flash(f"🏥 {pig.name} a ete soigne !", "success")
-    else:
-        flash(f"{pig.name} n'est pas blesse.", "warning")
+    try:
+        flash(heal_admin_pig(pig), "success")
+    except BusinessRuleError as exc:
+        flash(str(exc), "warning")
     return redirect(url_for('admin.admin_pigs'))
 
 
@@ -565,36 +514,11 @@ def admin_events(user):
 @admin_bp.route('/admin/events/trigger', methods=['POST'])
 @admin_required
 def admin_trigger_event(user):
-    event_type = request.form.get('event_type')
-    if event_type == 'food_drop':
-        all_pigs = Pig.query.filter_by(is_alive=True).all()
-        for p in all_pigs:
-            p.energy = min(100, (p.energy or 0) + 30)
-            p.hunger = min(100, (p.hunger or 0) + 30)
-        db.session.commit()
-        flash("📦 Distribution de nourriture ! +30 Energie/Faim pour tous.", "success")
-    elif event_type == 'vet_visit':
-        injured_pigs = Pig.query.filter_by(is_alive=True, is_injured=True).all()
-        for p in injured_pigs:
-            p.heal()
-        db.session.commit()
-        flash(f"🏥 Visite veterinaire ! {len(injured_pigs)} groins soignes.", "success")
-    elif event_type == 'bonus_bg':
-        all_users = User.query.all()
-        for u in all_users:
-            credit_user(
-                u,
-                50.0,
-                reason_code='admin_gift',
-                reason_label='Cadeau Admin',
-                reference_type='user',
-                reference_id=user.id,
-                commit=False,
-            )
-        db.session.commit()
-        flash("💰 Bonus de 50 🪙 BitGroins accorde a tous !", "success")
-    else:
-        flash("Evenement inconnu.", "error")
+    try:
+        message, category = trigger_admin_event(user, request.form.get('event_type'))
+        flash(message, category)
+    except BusinessRuleError as exc:
+        flash(str(exc), "error")
 
     return redirect(url_for('admin.admin_events'))
 
@@ -669,7 +593,7 @@ def admin_magic_link(user, user_id):
 
     # Try to send by email if SMTP is configured and user has email
     if hasattr(target, 'email') and target.email:
-        smtp_cfg = _get_smtp_config()
+        smtp_cfg = get_smtp_config()
         if smtp_cfg['enabled']:
             html = f"""
             <h2>🐷 Derby des Groins — Connexion magique</h2>
@@ -678,7 +602,7 @@ def admin_magic_link(user, user_id):
             <p><a href="{magic_url}" style="background:#6366f1;color:white;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold;">Se connecter</a></p>
             <p style="color:#888;font-size:12px;">Ce lien expire dans 24 heures.</p>
             """
-            ok, err = _send_email(target.email, 'Ton lien de connexion — Derby des Groins', html)
+            ok, err = send_email(target.email, 'Ton lien de connexion — Derby des Groins', html)
             if ok:
                 flash(f"📧 Email envoye a {target.email}.", "success")
             else:
@@ -717,7 +641,7 @@ def admin_adjust_balance(user):
 @admin_bp.route('/admin/notifications')
 @admin_required
 def admin_notifications(user):
-    smtp = _get_smtp_config()
+    smtp = get_smtp_config()
     return render_template('admin_notifications.html',
         user=user, admin_tab='notifications', smtp=smtp)
 
@@ -725,46 +649,18 @@ def admin_notifications(user):
 @admin_bp.route('/admin/notifications/save', methods=['POST'])
 @admin_required
 def admin_save_smtp(user):
-    smtp_keys = {
-        'smtp_host': request.form.get('smtp_host', '').strip(),
-        'smtp_port': request.form.get('smtp_port', '587').strip(),
-        'smtp_security': request.form.get('smtp_security', 'tls').strip(),
-        'smtp_user': request.form.get('smtp_user', '').strip(),
-        'smtp_from': request.form.get('smtp_from', '').strip(),
-        'smtp_from_name': request.form.get('smtp_from_name', 'Derby des Groins').strip(),
-        'smtp_enabled': '1' if 'smtp_enabled' in request.form else '0',
-    }
-
-    # Ne pas ecraser le mot de passe SMTP si le champ est laisse vide
-    new_password = request.form.get('smtp_password', '').strip()
-    if new_password:
-        smtp_keys['smtp_password'] = new_password
-
-    for key, val in smtp_keys.items():
-        set_config(key, val)
-
-    flash("📧 Configuration SMTP sauvegardee !", "success")
+    flash(save_smtp_settings(request.form), "success")
     return redirect(url_for('admin.admin_notifications'))
 
 
 @admin_bp.route('/admin/notifications/test', methods=['POST'])
 @admin_required
 def admin_test_smtp(user):
-    to_addr = request.form.get('test_email', '').strip()
-    if not to_addr:
-        flash("Adresse email requise.", "error")
-        return redirect(url_for('admin.admin_notifications'))
-
-    html = """
-    <h2>🐷 Derby des Groins — Test SMTP</h2>
-    <p>Si tu lis ce message, la configuration SMTP fonctionne correctement !</p>
-    <p style="color:#888;font-size:12px;">Envoye depuis le panneau d'administration.</p>
-    """
-    ok, err = _send_email(to_addr, 'Test SMTP — Derby des Groins', html)
-    if ok:
-        flash(f"✅ Email de test envoye a {to_addr} !", "success")
-    else:
-        flash(f"❌ Echec : {err}", "error")
+    try:
+        message, category = send_test_smtp_email(request.form.get('test_email', ''))
+        flash(message, category)
+    except BusinessRuleError as exc:
+        flash(str(exc), "error")
 
     return redirect(url_for('admin.admin_notifications'))
 
@@ -777,18 +673,15 @@ def admin_test_smtp(user):
 @admin_required
 def admin_truffes(user):
     if request.method == 'POST':
-        daily_limit = request.form.get('truffe_daily_limit', '1')
-        replay_cost = request.form.get('truffe_replay_cost', '2')
-        set_config('truffe_daily_limit', daily_limit)
-        set_config('truffe_replay_cost', replay_cost)
-        flash("Configuration des truffes sauvegardee !", "success")
+        flash(save_truffes_settings(request.form), "success")
         return redirect(url_for('admin.admin_truffes'))
 
-    config = {
-        'daily_limit': get_config('truffe_daily_limit', '1'),
-        'replay_cost': get_config('truffe_replay_cost', '2'),
-    }
-    return render_template('admin_truffes.html', user=user, admin_tab='truffes', config=config)
+    return render_template(
+        'admin_truffes.html',
+        user=user,
+        admin_tab='truffes',
+        config=build_admin_truffes_context(),
+    )
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -833,28 +726,14 @@ def admin_cereal_save(user):
     if item_id:
         item = CerealItem.query.get_or_404(item_id)
     else:
-        item = CerealItem(key=request.form.get('key', '').strip().lower())
-        db.session.add(item)
+        item = CerealItem()
 
-    item.name = request.form.get('name', '').strip()
-    item.emoji = request.form.get('emoji', '🌾').strip()
-    item.cost = float(request.form.get('cost', 5))
-    item.description = request.form.get('description', '').strip()
-    item.hunger_restore = float(request.form.get('hunger_restore', 0))
-    item.energy_restore = float(request.form.get('energy_restore', 0))
-    item.weight_delta = float(request.form.get('weight_delta', 0))
-    item.valeur_fourragere = float(request.form.get('valeur_fourragere', 100))
-    item.is_active = 'is_active' in request.form
-    item.sort_order = int(request.form.get('sort_order', 0))
-    for stat in STAT_NAMES:
-        setattr(item, f'stat_{stat}', float(request.form.get(f'stat_{stat}', 0)))
+    try:
+        item = save_cereal_item(request.form, item)
+    except BusinessRuleError as exc:
+        flash(str(exc), "error")
+        return redirect(url_for('admin.admin_cereal_edit', item_id=item_id) if item_id else url_for('admin.admin_cereal_new'))
 
-    af = request.form.get('available_from', '').strip()
-    item.available_from = datetime.fromisoformat(af) if af else None
-    au = request.form.get('available_until', '').strip()
-    item.available_until = datetime.fromisoformat(au) if au else None
-
-    db.session.commit()
     flash(f"Cereale '{item.name}' sauvegardee !", "success")
     return redirect(url_for('admin.admin_data'))
 
@@ -863,9 +742,7 @@ def admin_cereal_save(user):
 @admin_required
 def admin_cereal_delete(user, item_id):
     item = CerealItem.query.get_or_404(item_id)
-    name = item.name
-    db.session.delete(item)
-    db.session.commit()
+    name = delete_cereal_item(item)
     flash(f"Cereale '{name}' supprimee.", "success")
     return redirect(url_for('admin.admin_data'))
 
@@ -874,9 +751,8 @@ def admin_cereal_delete(user, item_id):
 @admin_required
 def admin_cereal_toggle(user, item_id):
     item = CerealItem.query.get_or_404(item_id)
-    item.is_active = not item.is_active
-    db.session.commit()
-    state = 'activee' if item.is_active else 'desactivee'
+    is_active = toggle_cereal_item(item)
+    state = 'activee' if is_active else 'desactivee'
     flash(f"{item.emoji} {item.name} {state}.", "success")
     return redirect(url_for('admin.admin_data'))
 
@@ -905,28 +781,14 @@ def admin_training_save(user):
     if item_id:
         item = TrainingItem.query.get_or_404(item_id)
     else:
-        item = TrainingItem(key=request.form.get('key', '').strip().lower())
-        db.session.add(item)
+        item = TrainingItem()
 
-    item.name = request.form.get('name', '').strip()
-    item.emoji = request.form.get('emoji', '💪').strip()
-    item.description = request.form.get('description', '').strip()
-    item.energy_cost = int(request.form.get('energy_cost', 25))
-    item.hunger_cost = int(request.form.get('hunger_cost', 10))
-    item.weight_delta = float(request.form.get('weight_delta', 0))
-    item.min_happiness = int(request.form.get('min_happiness', 20))
-    item.happiness_bonus = int(request.form.get('happiness_bonus', 0))
-    item.is_active = 'is_active' in request.form
-    item.sort_order = int(request.form.get('sort_order', 0))
-    for stat in STAT_NAMES:
-        setattr(item, f'stat_{stat}', float(request.form.get(f'stat_{stat}', 0)))
+    try:
+        item = save_training_item(request.form, item)
+    except BusinessRuleError as exc:
+        flash(str(exc), "error")
+        return redirect(url_for('admin.admin_training_edit', item_id=item_id) if item_id else url_for('admin.admin_training_new'))
 
-    af = request.form.get('available_from', '').strip()
-    item.available_from = datetime.fromisoformat(af) if af else None
-    au = request.form.get('available_until', '').strip()
-    item.available_until = datetime.fromisoformat(au) if au else None
-
-    db.session.commit()
     flash(f"Entrainement '{item.name}' sauvegarde !", "success")
     return redirect(url_for('admin.admin_data'))
 
@@ -935,9 +797,7 @@ def admin_training_save(user):
 @admin_required
 def admin_training_delete(user, item_id):
     item = TrainingItem.query.get_or_404(item_id)
-    name = item.name
-    db.session.delete(item)
-    db.session.commit()
+    name = delete_training_item(item)
     flash(f"Entrainement '{name}' supprime.", "success")
     return redirect(url_for('admin.admin_data'))
 
@@ -946,9 +806,8 @@ def admin_training_delete(user, item_id):
 @admin_required
 def admin_training_toggle(user, item_id):
     item = TrainingItem.query.get_or_404(item_id)
-    item.is_active = not item.is_active
-    db.session.commit()
-    state = 'active' if item.is_active else 'desactive'
+    is_active = toggle_training_item(item)
+    state = 'active' if is_active else 'desactive'
     flash(f"{item.emoji} {item.name} {state}.", "success")
     return redirect(url_for('admin.admin_data'))
 
@@ -977,43 +836,14 @@ def admin_lesson_save(user):
     if item_id:
         item = SchoolLessonItem.query.get_or_404(item_id)
     else:
-        item = SchoolLessonItem(key=request.form.get('key', '').strip().lower())
-        db.session.add(item)
+        item = SchoolLessonItem()
 
-    item.name = request.form.get('name', '').strip()
-    item.emoji = request.form.get('emoji', '📚').strip()
-    item.description = request.form.get('description', '').strip()
-    item.question = request.form.get('question', '').strip()
-    item.xp = int(request.form.get('xp', 20))
-    item.wrong_xp = int(request.form.get('wrong_xp', 5))
-    item.energy_cost = int(request.form.get('energy_cost', 10))
-    item.hunger_cost = int(request.form.get('hunger_cost', 4))
-    item.min_happiness = int(request.form.get('min_happiness', 15))
-    item.happiness_bonus = int(request.form.get('happiness_bonus', 5))
-    item.wrong_happiness_penalty = int(request.form.get('wrong_happiness_penalty', 5))
-    item.is_active = 'is_active' in request.form
-    item.sort_order = int(request.form.get('sort_order', 0))
-    for stat in STAT_NAMES:
-        setattr(item, f'stat_{stat}', float(request.form.get(f'stat_{stat}', 0)))
+    try:
+        item = save_lesson_item(request.form, item)
+    except BusinessRuleError as exc:
+        flash(str(exc), "error")
+        return redirect(url_for('admin.admin_lesson_edit', item_id=item_id) if item_id else url_for('admin.admin_lesson_new'))
 
-    answers = []
-    for i in range(4):
-        text = request.form.get(f'answer_{i}_text', '').strip()
-        if not text:
-            continue
-        answers.append({
-            'text': text,
-            'correct': f'answer_{i}_correct' in request.form,
-            'feedback': request.form.get(f'answer_{i}_feedback', '').strip(),
-        })
-    item.answers_json = json.dumps(answers, ensure_ascii=False)
-
-    af = request.form.get('available_from', '').strip()
-    item.available_from = datetime.fromisoformat(af) if af else None
-    au = request.form.get('available_until', '').strip()
-    item.available_until = datetime.fromisoformat(au) if au else None
-
-    db.session.commit()
     flash(f"Lecon '{item.name}' sauvegardee !", "success")
     return redirect(url_for('admin.admin_data'))
 
@@ -1022,9 +852,7 @@ def admin_lesson_save(user):
 @admin_required
 def admin_lesson_delete(user, item_id):
     item = SchoolLessonItem.query.get_or_404(item_id)
-    name = item.name
-    db.session.delete(item)
-    db.session.commit()
+    name = delete_lesson_item(item)
     flash(f"Lecon '{name}' supprimee.", "success")
     return redirect(url_for('admin.admin_data'))
 
@@ -1033,9 +861,8 @@ def admin_lesson_delete(user, item_id):
 @admin_required
 def admin_lesson_toggle(user, item_id):
     item = SchoolLessonItem.query.get_or_404(item_id)
-    item.is_active = not item.is_active
-    db.session.commit()
-    state = 'activee' if item.is_active else 'desactivee'
+    is_active = toggle_lesson_item(item)
+    state = 'activee' if is_active else 'desactivee'
     flash(f"{item.emoji} {item.name} {state}.", "success")
     return redirect(url_for('admin.admin_data'))
 
@@ -1081,31 +908,17 @@ def admin_hangman_word_save(user):
         url_for('admin.admin_hangman_word_new')
     )
 
-    word = _normalize_hangman_word(request.form.get('word', ''))
-    if not word:
-        flash("Le mot doit contenir uniquement des lettres et des espaces (accents autorises).", "warning")
-        return redirect(redirect_target)
-
     if item_id:
         item = HangmanWordItem.query.get_or_404(item_id)
     else:
         item = HangmanWordItem()
 
-    duplicate = HangmanWordItem.query.filter(
-        HangmanWordItem.word == word,
-        HangmanWordItem.id != item.id,
-    ).first()
-    if duplicate:
-        flash(f"Le mot '{word}' existe deja.", "error")
+    try:
+        item = save_hangman_word(request.form, item)
+    except BusinessRuleError as exc:
+        category = "warning" if "lettres et des espaces" in str(exc) else "error"
+        flash(str(exc), category)
         return redirect(redirect_target)
-
-    item.word = word
-    item.sort_order = request.form.get('sort_order', type=int) or 0
-    item.is_active = 'is_active' in request.form
-    if not item_id:
-        db.session.add(item)
-
-    db.session.commit()
     flash(f"Mot '{item.word}' sauvegarde !", "success")
     return redirect(url_for('admin.admin_data') + '#hangman-words')
 
@@ -1113,41 +926,13 @@ def admin_hangman_word_save(user):
 @admin_bp.route('/admin/data/hangman-words/bulk-save', methods=['POST'])
 @admin_required
 def admin_hangman_words_bulk_save(user):
-    raw_text = request.form.get('words_text', '')
-    lines = raw_text.splitlines()
-    normalized_words = []
-    seen = set()
-    invalid_lines = []
-
-    for index, raw_line in enumerate(lines, start=1):
-        if not raw_line.strip():
-            continue
-        normalized = _normalize_hangman_word(raw_line)
-        if not normalized:
-            invalid_lines.append(index)
-            continue
-        if normalized in seen:
-            continue
-        seen.add(normalized)
-        normalized_words.append(normalized)
-
-    if invalid_lines:
-        preview = ', '.join(str(line_no) for line_no in invalid_lines[:5])
-        if len(invalid_lines) > 5:
-            preview += ', ...'
-        flash(f"Lignes invalides dans la liste de mots: {preview}. Utilise uniquement des lettres et des espaces.", "warning")
+    try:
+        count = replace_hangman_words_from_text(request.form.get('words_text', ''))
+    except BusinessRuleError as exc:
+        flash(str(exc), "warning")
         return redirect(url_for('admin.admin_data') + '#hangman-words')
 
-    if not normalized_words:
-        flash("La liste de mots est vide. Colle au moins une ligne.", "warning")
-        return redirect(url_for('admin.admin_data') + '#hangman-words')
-
-    HangmanWordItem.query.delete()
-    for index, word in enumerate(normalized_words):
-        db.session.add(HangmanWordItem(word=word, is_active=True, sort_order=index))
-    db.session.commit()
-
-    flash(f"Liste du Cochon Pendu remplacee ({len(normalized_words)} mots/expressions).", "success")
+    flash(f"Liste du Cochon Pendu remplacee ({count} mots/expressions).", "success")
     return redirect(url_for('admin.admin_data') + '#hangman-words')
 
 
@@ -1155,9 +940,7 @@ def admin_hangman_words_bulk_save(user):
 @admin_required
 def admin_hangman_word_delete(user, item_id):
     item = HangmanWordItem.query.get_or_404(item_id)
-    word = item.word
-    db.session.delete(item)
-    db.session.commit()
+    word = delete_hangman_word(item)
     flash(f"Mot '{word}' supprime.", "success")
     return redirect(url_for('admin.admin_data') + '#hangman-words')
 
@@ -1166,9 +949,8 @@ def admin_hangman_word_delete(user, item_id):
 @admin_required
 def admin_hangman_word_toggle(user, item_id):
     item = HangmanWordItem.query.get_or_404(item_id)
-    item.is_active = not item.is_active
-    db.session.commit()
-    state = 'active' if item.is_active else 'desactive'
+    is_active = toggle_hangman_word(item)
+    state = 'active' if is_active else 'desactive'
     flash(f"Mot '{item.word}' {state}.", "success")
     return redirect(url_for('admin.admin_data') + '#hangman-words')
 
@@ -1176,12 +958,6 @@ def admin_hangman_word_toggle(user, item_id):
 # ══════════════════════════════════════════════════════════════════════════════
 # Avatars
 # ══════════════════════════════════════════════════════════════════════════════
-
-AVATAR_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'static', 'avatars')
-ALLOWED_AVATAR_EXT = {'png', 'svg'}
-MAX_AVATAR_SIZE = 256 * 1024  # 256 Ko
-
-
 @admin_bp.route('/admin/avatars')
 @admin_required
 def admin_avatars(user):
@@ -1192,53 +968,17 @@ def admin_avatars(user):
 @admin_bp.route('/admin/avatars/upload', methods=['POST'])
 @admin_required
 def admin_avatar_upload(user):
-    name = request.form.get('name', '').strip()
-    if not name:
-        flash("Nom d'avatar requis.", "error")
+    try:
+        avatar = create_avatar(
+            request.form.get('name', ''),
+            request.form.get('svg_code', ''),
+            request.files.get('avatar_file'),
+        )
+    except BusinessRuleError as exc:
+        flash(str(exc), "error")
         return redirect(url_for('admin.admin_avatars'))
 
-    svg_code = request.form.get('svg_code', '').strip()
-    file = request.files.get('avatar_file')
-
-    if svg_code:
-        if not svg_code.strip().startswith('<svg') and not svg_code.strip().startswith('<?xml'):
-            flash("Le code SVG doit commencer par <svg.", "error")
-            return redirect(url_for('admin.admin_avatars'))
-        avatar = PigAvatar(name=name, filename='_tmp', format='svg')
-        db.session.add(avatar)
-        db.session.flush()
-        filename = f'{avatar.id}.svg'
-        avatar.filename = filename
-        os.makedirs(AVATAR_DIR, exist_ok=True)
-        with open(os.path.join(AVATAR_DIR, filename), 'w', encoding='utf-8') as f:
-            f.write(svg_code)
-
-    elif file and file.filename:
-        ext = file.filename.rsplit('.', 1)[-1].lower() if '.' in file.filename else ''
-        if ext not in ALLOWED_AVATAR_EXT:
-            flash("Format autorise : PNG ou SVG.", "error")
-            return redirect(url_for('admin.admin_avatars'))
-        data = file.read()
-        if len(data) > MAX_AVATAR_SIZE:
-            flash("Fichier trop volumineux (max 256 Ko).", "error")
-            return redirect(url_for('admin.admin_avatars'))
-        if ext == 'png' and not data[:4] == b'\x89PNG':
-            flash("Fichier PNG invalide.", "error")
-            return redirect(url_for('admin.admin_avatars'))
-        avatar = PigAvatar(name=name, filename='_tmp', format=ext)
-        db.session.add(avatar)
-        db.session.flush()
-        filename = f'{avatar.id}.{ext}'
-        avatar.filename = filename
-        os.makedirs(AVATAR_DIR, exist_ok=True)
-        with open(os.path.join(AVATAR_DIR, filename), 'wb') as f:
-            f.write(data)
-    else:
-        flash("Fournir un fichier ou du code SVG.", "error")
-        return redirect(url_for('admin.admin_avatars'))
-
-    db.session.commit()
-    flash(f"Avatar '{name}' ajoute.", "success")
+    flash(f"Avatar '{avatar.name}' ajoute.", "success")
     return redirect(url_for('admin.admin_avatars'))
 
 
@@ -1248,54 +988,20 @@ def admin_avatar_edit(user, avatar_id):
     avatar = PigAvatar.query.get_or_404(avatar_id)
 
     if request.method == 'GET':
-        svg_code = ''
-        if avatar.format == 'svg':
-            filepath = os.path.join(AVATAR_DIR, avatar.filename)
-            if os.path.exists(filepath):
-                with open(filepath, 'r', encoding='utf-8') as f:
-                    svg_code = f.read()
+        svg_code = get_avatar_svg_code(avatar)
         return render_template('admin_avatar_edit.html', user=user, avatar=avatar, svg_code=svg_code)
 
-    # POST
-    name = request.form.get('name', '').strip()
-    if name:
-        avatar.name = name
+    try:
+        avatar = update_avatar(
+            avatar,
+            request.form.get('name', ''),
+            request.form.get('svg_code', ''),
+            request.files.get('avatar_file'),
+        )
+    except BusinessRuleError as exc:
+        flash(str(exc), "error")
+        return redirect(url_for('admin.admin_avatar_edit', avatar_id=avatar.id))
 
-    svg_code = request.form.get('svg_code', '').strip()
-    file = request.files.get('avatar_file')
-
-    if svg_code:
-        if not svg_code.strip().startswith('<svg') and not svg_code.strip().startswith('<?xml'):
-            flash("Le code SVG doit commencer par <svg.", "error")
-            return redirect(url_for('admin.admin_avatar_edit', avatar_id=avatar.id))
-        # Remove old file if format changed
-        old_filepath = os.path.join(AVATAR_DIR, avatar.filename)
-        if os.path.exists(old_filepath):
-            os.remove(old_filepath)
-        avatar.format = 'svg'
-        avatar.filename = f'{avatar.id}.svg'
-        os.makedirs(AVATAR_DIR, exist_ok=True)
-        with open(os.path.join(AVATAR_DIR, avatar.filename), 'w', encoding='utf-8') as f:
-            f.write(svg_code)
-    elif file and file.filename:
-        ext = file.filename.rsplit('.', 1)[-1].lower() if '.' in file.filename else ''
-        if ext not in ALLOWED_AVATAR_EXT:
-            flash("Format autorise : PNG ou SVG.", "error")
-            return redirect(url_for('admin.admin_avatar_edit', avatar_id=avatar.id))
-        data = file.read()
-        if len(data) > MAX_AVATAR_SIZE:
-            flash("Fichier trop volumineux (max 256 Ko).", "error")
-            return redirect(url_for('admin.admin_avatar_edit', avatar_id=avatar.id))
-        old_filepath = os.path.join(AVATAR_DIR, avatar.filename)
-        if os.path.exists(old_filepath):
-            os.remove(old_filepath)
-        avatar.format = ext
-        avatar.filename = f'{avatar.id}.{ext}'
-        os.makedirs(AVATAR_DIR, exist_ok=True)
-        with open(os.path.join(AVATAR_DIR, avatar.filename), 'wb') as f:
-            f.write(data)
-
-    db.session.commit()
     flash(f"Avatar '{avatar.name}' mis a jour.", "success")
     return redirect(url_for('admin.admin_avatars'))
 
@@ -1304,11 +1010,6 @@ def admin_avatar_edit(user, avatar_id):
 @admin_required
 def admin_avatar_delete(user, avatar_id):
     avatar = PigAvatar.query.get_or_404(avatar_id)
-    Pig.query.filter_by(avatar_id=avatar.id).update({'avatar_id': None})
-    filepath = os.path.join(AVATAR_DIR, avatar.filename)
-    if os.path.exists(filepath):
-        os.remove(filepath)
-    db.session.delete(avatar)
-    db.session.commit()
-    flash(f"Avatar '{avatar.name}' supprime.", "success")
+    name = delete_avatar(avatar)
+    flash(f"Avatar '{name}' supprime.", "success")
     return redirect(url_for('admin.admin_avatars'))

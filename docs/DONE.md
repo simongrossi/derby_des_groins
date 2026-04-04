@@ -16,6 +16,8 @@ Liste des fonctionnalités et idées déjà implémentées dans le projet.
 - **Pages principales allégées** : les contextes lourds de l'accueil, de l'historique, des règles et du classement sont désormais assemblés dans `services/main_page_service.py`.
 - **Admin commencé côté services** : `services/admin_user_service.py` et `services/admin_settings_service.py` prennent en charge une partie des actions admin utilisateurs et réglages pour réduire `routes/admin.py`.
 - **Routes courses/admin encore amincies** : `services/race_page_service.py`, `services/admin_race_service.py` et `services/admin_bet_service.py` portent maintenant une partie des contextes lourds et actions admin liées aux courses, PNJ et tickets.
+- **Panneau admin largement sorti en services** : les actions admin cochons, événements, notifications SMTP, réglages Truffes, CRUD des données de jeu et gestion des avatars délèguent désormais à `services/admin_pig_service.py`, `services/admin_event_service.py`, `services/admin_notification_service.py`, `services/admin_truffes_service.py`, `services/admin_game_data_service.py` et `services/admin_avatar_service.py`.
+- **Validations admin homogénéisées** : les erreurs de parsing et de validation côté admin remontent maintenant via `ValidationError` / `BusinessRuleError` au lieu de branches inline et `ValueError` bruts dans `routes/admin.py`.
 
 ## Gestion des Courses
 - **Gestion des courses vides / sous-peuplées** : Mise en place d'une règle configurable (`min_real_participants`) pour remplir automatiquement les courses avec des bots ou les annuler.
@@ -168,7 +170,8 @@ Corrections de failles économiques majeures identifiées par simulation (voir `
 - **Gestion des Cochons** : Liste complète avec filtres de vie, fonctions de résurrection/mise à mort administrative et soin immédiat (bouton Heal).
 - **Événements Globaux** : Déclenchement manuel de bonus (pluie de nourriture, visite vétérinaire générale, bonus BitGroins pour tous).
 - **Configuration SMTP** : Panneau de réglage pour l'envoi d'emails (notifications, liens magiques) avec test d'envoi en direct.
-- **Éditeur de Données (CRUD)** : Interface complète pour ajouter, modifier ou désactiver les Céréales, Entraînements et Leçons d'école sans toucher au code ni à la base de données brute.
+- **Éditeur de Données (CRUD)** : Interface complète pour ajouter, modifier ou désactiver les Céréales, Entraînements, Leçons d'école et mots du pendu sans toucher au code ni à la base de données brute.
+- **Gestion des avatars** : Upload, édition SVG et suppression des avatars directement depuis l'admin avec validations centralisées côté service.
 - **Seeding Automatique** : Migration automatique des données statiques (`data.py`) vers la base de données au premier lancement pour une flexibilité totale.
 
 ## Audit des Paris et Performance (v2.1)

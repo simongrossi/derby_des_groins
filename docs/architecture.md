@@ -13,8 +13,9 @@
 - **Logique métier en services** : les opérations financières, les actions Tamagotchi, les paris, l'authentification et une partie de l'administration vivent maintenant dans des services dédiés (`services/finance_service.py`, `services/pig_service.py`, `services/bet_service.py`, `services/auth_service.py`, `services/admin_*_service.py`, etc.).
 - **Erreurs métier explicites** : les règles bloquantes remontent via `exceptions.py` (`InsufficientFundsError`, `PigTiredError`, etc.) au lieu de dépendre d'imports locaux dans les modèles.
 - **Factory plus propre** : `app.py` charge maintenant sa configuration via `config/app_config.py`, tandis que les seeders et commandes CLI ont été déplacés dans `cli/seeders.py`.
-- **Blueprints allégés progressivement** : `routes/pig.py`, `routes/race.py`, `routes/market.py`, `routes/bourse.py`, `routes/auth.py`, `routes/main.py` et une partie de `routes/admin.py` délèguent désormais leur logique métier à la couche service.
+- **Blueprints allégés progressivement** : `routes/pig.py`, `routes/race.py`, `routes/market.py`, `routes/bourse.py`, `routes/auth.py`, `routes/main.py` et la majeure partie de `routes/admin.py` délèguent désormais leur logique métier à la couche service.
 - **Pages de course et admin découpées par contexte** : les routes de consultation lourdes s'appuient maintenant sur des builders de contexte dédiés (`services/main_page_service.py`, `services/race_page_service.py`, `services/admin_race_service.py`, `services/admin_bet_service.py`) pour limiter les requêtes et le code de présentation dans les blueprints.
+- **Administration découpée par domaines** : le panneau admin est désormais réparti entre des services dédiés pour les utilisateurs, réglages, courses, tickets, cochons, événements, SMTP, Truffes, données de jeu et avatars.
 
 ## Structure des Modèles (Database Schema)
 
@@ -97,7 +98,13 @@ derby_des_groins/
 ├── services/               # Couche métier dédiée
 │   ├── admin_settings_service.py # Sauvegarde/validation des reglages admin (cochons, moteur, bourse)
 │   ├── admin_bet_service.py # Audit et reconciliation admin des tickets PMU
+│   ├── admin_avatar_service.py # Upload, edition et suppression des avatars admin
+│   ├── admin_event_service.py # Declenchement des evenements globaux admin
+│   ├── admin_game_data_service.py # CRUD admin des cereales, entrainements, lecons et mots du pendu
 │   ├── admin_race_service.py # Configuration admin des courses, PNJ, annulation et force race
+│   ├── admin_notification_service.py # Reglages SMTP et envoi de mails de test
+│   ├── admin_pig_service.py # Heal/toggle vie-mort des cochons depuis l'admin
+│   ├── admin_truffes_service.py # Reglages Truffes et construction du contexte associe
 │   ├── admin_user_service.py # Gestion admin des joueurs (droits, mot de passe, lien magique, solde)
 │   ├── auth_service.py     # Inscription, login, magic links, changement de mot de passe
 │   ├── bet_service.py      # Validation métier et création de tickets PMU

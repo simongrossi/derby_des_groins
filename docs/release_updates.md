@@ -9,6 +9,36 @@ Objectif:
 
 ## 2026-04-04
 
+### Phase 8 - Amincissement final du panneau admin (cochons, evenements, notifications, truffes, donnees, avatars)
+- creation de `services/admin_pig_service.py` pour sortir de `routes/admin.py`:
+  - le toggle vie/mort des cochons admin;
+  - le soin immediat des cochons;
+- creation de `services/admin_event_service.py` pour centraliser le declenchement des evenements globaux admin;
+- creation de `services/admin_notification_service.py` pour centraliser:
+  - la lecture/sauvegarde des reglages SMTP;
+  - l'envoi de mail de test;
+- creation de `services/admin_truffes_service.py` pour sortir la construction et la sauvegarde des reglages Truffes;
+- creation de `services/admin_game_data_service.py` pour centraliser le CRUD admin de:
+  - cereales;
+  - entrainements;
+  - lecons;
+  - mots du pendu;
+- creation de `services/admin_avatar_service.py` pour centraliser:
+  - l'upload d'avatars;
+  - l'edition SVG;
+  - la suppression d'avatars;
+  - les validations de format/taille/contenu;
+- remplacement dans `routes/admin.py` des validations inline par des `ValidationError`/`BusinessRuleError` metier sur les formulaires admin sensibles;
+- ajout des tests unitaires:
+  - `tests/test_admin_avatar_service.py`;
+  - `tests/test_admin_event_service.py`;
+  - `tests/test_admin_game_data_service.py`;
+  - `tests/test_admin_notification_service.py`.
+
+Verification locale:
+- `python3 -m py_compile routes/admin.py services/admin_avatar_service.py services/admin_event_service.py services/admin_game_data_service.py services/admin_notification_service.py services/admin_pig_service.py services/admin_truffes_service.py tests/test_admin_avatar_service.py tests/test_admin_event_service.py tests/test_admin_game_data_service.py tests/test_admin_notification_service.py`: OK;
+- `./.venv/bin/python -m unittest tests.test_admin_avatar_service tests.test_admin_game_data_service tests.test_admin_notification_service tests.test_admin_event_service tests.test_admin_race_service tests.test_admin_user_service tests.test_admin_settings_service tests.test_auth_service tests.test_market_service`: OK.
+
 ### Phase 7 - Amincissement des pages courses et du panneau admin races/bets
 - creation de `services/race_page_service.py` pour sortir de `routes/race.py` la construction des contextes de:
   - `/courses`;
