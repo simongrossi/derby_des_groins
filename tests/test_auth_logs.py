@@ -62,6 +62,31 @@ class AuthLogsTests(unittest.TestCase):
             self.assertEqual(event.ip_address, '203.0.113.99')
             self.assertEqual(event.route, '/')
 
+    def test_non_auth_request_logs_username_for_authenticated_user(self):
+        with self.app.app_context():
+            user = User.query.filter_by(username='auth-log-site-action-user').first()
+            if user is None:
+                user = User(username='auth-log-site-action-user', password_hash='x')
+                db.session.add(user)
+                db.session.commit()
+            user_id = int(user.id)
+
+        with self.client.session_transaction() as session:
+            session['user_id'] = user_id
+
+        response = self.client.get('/', headers={'X-Forwarded-For': '203.0.113.55'})
+        self.assertIn(response.status_code, (200, 302))
+
+        with self.app.app_context():
+            event = (
+                AuthEventLog.query
+                .filter_by(event_type='site_action', user_id=user_id, ip_address='203.0.113.55')
+                .order_by(AuthEventLog.id.desc())
+                .first()
+            )
+            self.assertIsNotNone(event)
+            self.assertEqual(event.username_attempt, 'auth-log-site-action-user')
+
     def test_purge_old_auth_logs_removes_expired_rows(self):
         with self.app.app_context():
             stale = AuthEventLog(

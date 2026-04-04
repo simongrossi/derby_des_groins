@@ -70,7 +70,7 @@
                             {% endif %}
                         </td>
                         <td class="px-3 py-2 text-white/80">{{ row.user_id or '-' }}</td>
-                        <td class="px-3 py-2 text-white/80">{{ row.username_attempt or '-' }}</td>
+                        <td class="px-3 py-2 text-white/80">{{ row.username_attempt or (row.user.username if row.user else '-') }}</td>
                         <td class="px-3 py-2 text-white/80">{{ row.ip_address }}</td>
                         <td class="px-3 py-2 text-white/70">{{ row.route or '-' }}</td>
                         <td class="px-3 py-2 text-white/60">{{ row.details or '-' }}</td>

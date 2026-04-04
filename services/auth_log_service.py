@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 from flask import request
 
 from extensions import db
-from models import AuthEventLog
+from models import AuthEventLog, User
 
 
 def _extract_client_ip() -> str:
@@ -49,11 +49,15 @@ def purge_old_auth_events(retention_days: int) -> int:
 
 def log_site_action(*, user_id: int | None, method: str, path: str, status_code: int) -> None:
     """Journalise une action HTTP hors auth (audit d'usage + IP)."""
+    username_attempt = None
+    if user_id is not None:
+        username_attempt = db.session.query(User.username).filter(User.id == user_id).scalar()
+
     payload = {
         'event_type': 'site_action',
         'is_success': bool(status_code < 400),
         'user_id': user_id,
-        'username_attempt': None,
+        'username_attempt': username_attempt,
         'ip_address': _extract_client_ip(),
         'user_agent': (request.user_agent.string[:300] if request.user_agent else None),
         'route': (path or '')[:120],

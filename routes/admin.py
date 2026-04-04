@@ -10,9 +10,11 @@ import re
 import secrets
 import unicodedata
 from zoneinfo import ZoneInfo
+from sqlalchemy import or_
 
 from extensions import db
 from models import User, Race, Pig, Bet, BalanceTransaction, CerealItem, TrainingItem, SchoolLessonItem, HangmanWordItem, PigAvatar, AuthEventLog
+from sqlalchemy.orm import joinedload
 from data import JOURS_FR
 from helpers import (
     set_config, get_config, populate_race_participants, run_race_if_needed,
@@ -255,7 +257,7 @@ def admin_auth_logs(user):
     username = (request.args.get('username', '') or '').strip()
     ip_address = (request.args.get('ip', '') or '').strip()
 
-    query = AuthEventLog.query
+    query = AuthEventLog.query.options(joinedload(AuthEventLog.user))
     if event_type:
         query = query.filter(AuthEventLog.event_type == event_type)
     if success_filter == '1':
@@ -263,7 +265,12 @@ def admin_auth_logs(user):
     elif success_filter == '0':
         query = query.filter(AuthEventLog.is_success.is_(False))
     if username:
-        query = query.filter(AuthEventLog.username_attempt.ilike(f"%{username}%"))
+        query = query.filter(
+            or_(
+                AuthEventLog.username_attempt.ilike(f"%{username}%"),
+                AuthEventLog.user.has(User.username.ilike(f"%{username}%")),
+            )
+        )
     if ip_address:
         query = query.filter(AuthEventLog.ip_address.ilike(f"%{ip_address}%"))
 
