@@ -228,13 +228,14 @@ def log_market_state(market):
     """Enregistre l'état actuel des prix dans l'historique."""
     from data import CEREALS
     surcharges = get_all_grain_surcharges(market)
+    recorded_at = datetime.utcnow()
     for key, surcharge in surcharges.items():
         base_cost = CEREALS[key]['cost']
         history = MarketHistory(
             cereal_key=key,
             price=round(base_cost * surcharge, 2),
             surcharge=round(surcharge, 2),
-            recorded_at=datetime.utcnow()
+            recorded_at=recorded_at
         )
         db.session.add(history)
 

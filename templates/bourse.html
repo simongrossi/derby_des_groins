@@ -27,6 +27,81 @@
             border-radius: 1.5rem;
         }
 
+        .chart-shell {
+            position: relative;
+            overflow: hidden;
+            background:
+                radial-gradient(circle at top right, rgba(251, 191, 36, 0.12), transparent 32%),
+                radial-gradient(circle at bottom left, rgba(52, 211, 153, 0.08), transparent 34%),
+                rgba(30, 41, 59, 0.52);
+            box-shadow:
+                inset 0 1px 0 rgba(255,255,255,0.08),
+                0 22px 48px rgba(15, 23, 42, 0.18);
+        }
+
+        .chart-shell::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            background: linear-gradient(180deg, rgba(255,255,255,0.10), transparent 22%);
+        }
+
+        .chart-kicker {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.45rem;
+            border-radius: 999px;
+            border: 1px solid rgba(255,255,255,0.08);
+            background: rgba(255,255,255,0.06);
+            padding: 0.35rem 0.7rem;
+            font-size: 0.68rem;
+            font-weight: 800;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: rgba(255,255,255,0.55);
+        }
+
+        .chart-stage {
+            position: relative;
+            height: 400px;
+            margin-top: 1.25rem;
+            border-radius: 1.25rem;
+            border: 1px solid rgba(255,255,255,0.06);
+            background: linear-gradient(180deg, rgba(255,255,255,0.05), rgba(255,255,255,0.02));
+            padding: 1rem;
+        }
+
+        .chart-stage::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            border-radius: inherit;
+            pointer-events: none;
+            background: linear-gradient(180deg, rgba(255,255,255,0.08), transparent 18%, transparent 82%, rgba(255,255,255,0.04));
+        }
+
+        html[data-theme="light"] .chart-shell {
+            background:
+                radial-gradient(circle at top right, rgba(251, 191, 36, 0.18), transparent 30%),
+                radial-gradient(circle at bottom left, rgba(16, 185, 129, 0.10), transparent 34%),
+                linear-gradient(180deg, rgba(255,255,255,0.92), rgba(255,248,251,0.92)) !important;
+            box-shadow:
+                inset 0 1px 0 rgba(255,255,255,0.95),
+                0 24px 54px rgba(214, 132, 173, 0.14) !important;
+        }
+
+        html[data-theme="light"] .chart-kicker {
+            border-color: rgba(214, 170, 191, 0.46);
+            background: rgba(255,255,255,0.72);
+            color: rgba(75, 49, 67, 0.62);
+        }
+
+        html[data-theme="light"] .chart-stage {
+            border-color: rgba(214, 170, 191, 0.34);
+            background: linear-gradient(180deg, rgba(255,255,255,0.86), rgba(255,244,248,0.68));
+        }
+
         /* --- Grille 7x7 --- */
         .grid-cell {
             width: 52px; height: 52px;
@@ -462,21 +537,29 @@
 
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <!-- Graphique des Prix -->
-            <div class="card p-6">
-                <h3 class="font-title text-xl text-yellow-400 mb-4 flex items-center gap-2">
-                    <span class="text-2xl">💰</span> Évolution des Prix (BitGroins)
-                </h3>
-                <div class="relative h-[400px]">
+            <div class="card chart-shell p-6">
+                <div class="relative z-[1]">
+                    <span class="chart-kicker">7 derniers jours</span>
+                    <h3 class="font-title text-xl text-yellow-400 mt-4 flex items-center gap-2">
+                        <span class="text-2xl">💰</span> Évolution des Prix (BitGroins)
+                    </h3>
+                    <p class="text-sm font-semibold text-white/45 mt-2">Une lecture plus douce du marché, avec le dernier relevé mis en avant.</p>
+                </div>
+                <div class="chart-stage">
                     <canvas id="priceChart"></canvas>
                 </div>
             </div>
 
             <!-- Graphique des Surcouts -->
-            <div class="card p-6">
-                <h3 class="font-title text-xl text-pink-400 mb-4 flex items-center gap-2">
-                    <span class="text-2xl">📈</span> Évolution des Surcharges (%)
-                </h3>
-                <div class="relative h-[400px]">
+            <div class="card chart-shell p-6">
+                <div class="relative z-[1]">
+                    <span class="chart-kicker">Pression du bloc</span>
+                    <h3 class="font-title text-xl text-pink-400 mt-4 flex items-center gap-2">
+                        <span class="text-2xl">📈</span> Évolution des Surcharges (%)
+                    </h3>
+                    <p class="text-sm font-semibold text-white/45 mt-2">Les écarts sont affichés en pourcentage additionnel pour comparer les céréales d'un coup d'oeil.</p>
+                </div>
+                <div class="chart-stage">
                     <canvas id="surchargeChart"></canvas>
                 </div>
             </div>
@@ -486,7 +569,7 @@
             <h3 class="font-title text-xl text-emerald-400 mb-4">Zoom sur une céréale</h3>
             <div class="flex overflow-x-auto gap-3 pb-2 scrollbar-hide">
                 {% for key, cer in cereals.items() %}
-                <button onclick="toggleDataset('{{ key }}')" class="dataset-toggle flex items-center gap-2 px-4 py-2 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 transition-all text-sm font-bold whitespace-nowrap" id="toggle-{{ key }}">
+                <button onclick="toggleDataset('{{ key }}')" class="dataset-toggle flex items-center gap-2 px-4 py-2 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 transition-all text-sm font-bold whitespace-nowrap shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]" id="toggle-{{ key }}">
                     <span>{{ cer.emoji }}</span>
                     <span>{{ cer.name }}</span>
                 </button>
@@ -522,7 +605,13 @@
             viewCharts.classList.remove('hidden');
             tabCharts.className = "flex-1 py-3 rounded-xl text-sm font-bold transition-all bg-yellow-400/20 text-yellow-100 border border-yellow-400/30";
             tabMarket.className = "flex-1 py-3 rounded-xl text-sm font-bold transition-all text-white/50 hover:text-white hover:bg-white/5";
-            loadCharts();
+            requestAnimationFrame(() => {
+                if (priceChart && surchargeChart) {
+                    refreshChartsLayout();
+                    return;
+                }
+                loadCharts();
+            });
         } else {
             viewMarket.classList.remove('hidden');
             buySection.classList.remove('hidden');
@@ -532,7 +621,7 @@
         }
     }
 
-    let priceChart, surchargeChart, chartData;
+    let priceChart, surchargeChart, chartData, chartsLoadingPromise;
     const chartStatus = document.getElementById('chart-status');
     const colors = {
         mais: '#facc15', // yellow
@@ -546,120 +635,242 @@
         tournesol: '#a78bfa' // violet
     };
 
-    async function loadCharts() {
-        if (priceChart) return; // Déjà chargé
+    function waitForNextPaint() {
+        return new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    }
 
-        if (typeof Chart === 'undefined') {
-            chartStatus.textContent = "La librairie des graphiques n'a pas pu etre chargee.";
-            chartStatus.classList.remove('hidden');
-            return;
-        }
+    function hexToRgba(hex, alpha) {
+        const normalized = hex.replace('#', '');
+        const bigint = parseInt(normalized, 16);
+        const r = (bigint >> 16) & 255;
+        const g = (bigint >> 8) & 255;
+        const b = bigint & 255;
+        return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+    }
 
-        const res = await fetch('/bourse/history?days=7');
-        if (!res.ok) {
-            chartStatus.textContent = "Impossible de charger l'historique de la Bourse pour le moment.";
-            chartStatus.classList.remove('hidden');
-            return;
-        }
-        chartData = await res.json();
+    function buildLineGradient(ctx, color) {
+        const chart = ctx.chart;
+        const { chartArea } = chart;
+        if (!chartArea) return hexToRgba(color, 0.18);
+        const gradient = chart.ctx.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
+        gradient.addColorStop(0, hexToRgba(color, 0.24));
+        gradient.addColorStop(0.5, hexToRgba(color, 0.08));
+        gradient.addColorStop(1, hexToRgba(color, 0.01));
+        return gradient;
+    }
 
-        if (!chartData.timestamps || !chartData.datasets) {
-            chartStatus.textContent = "Les donnees de graphique sont incompletes.";
-            chartStatus.classList.remove('hidden');
-            return;
-        }
-
-        const rawTimestamps = chartData.timestamps || [];
-        const hasSinglePoint = rawTimestamps.length <= 1;
-        const normalizedTimestamps = hasSinglePoint
-            ? [
-                new Date((rawTimestamps[0] ? new Date(rawTimestamps[0]) : new Date()).getTime() - 60 * 60 * 1000).toISOString(),
-                rawTimestamps[0] || new Date().toISOString()
-            ]
-            : rawTimestamps;
-
-        if (chartData.source === 'snapshot' || hasSinglePoint) {
-            chartStatus.textContent = "Historique insuffisant : affichage d'un repere instantane du marche actuel.";
-            chartStatus.classList.remove('hidden');
-        }
-
-        const ts = normalizedTimestamps.map(t => new Date(t).toLocaleString('fr-FR', {
+    function formatChartLabels(timestamps) {
+        const minuteLabels = timestamps.map(t => new Date(t).toLocaleString('fr-FR', {
             day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit'
         }));
+        const hasDuplicateMinute = new Set(minuteLabels).size !== minuteLabels.length;
+        const options = hasDuplicateMinute
+            ? { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' }
+            : { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' };
+        return timestamps.map(t => new Date(t).toLocaleString('fr-FR', options));
+    }
 
-        const priceDatasets = [];
-        const surchargeDatasets = [];
-
-        for (const [key, ds] of Object.entries(chartData.datasets)) {
-            const color = colors[key] || '#ffffff';
-            const pricePoints = Array.isArray(ds.prices) ? ds.prices : [];
-            const surchargePoints = Array.isArray(ds.surcharges) ? ds.surcharges : [];
-            const normalizedPrices = hasSinglePoint
-                ? [pricePoints[0] ?? 0, pricePoints[0] ?? 0]
-                : pricePoints;
-            const normalizedSurcharges = hasSinglePoint
-                ? [surchargePoints[0] ?? 1, surchargePoints[0] ?? 1]
-                : surchargePoints;
-            priceDatasets.push({
-                label: ds.label,
-                data: normalizedPrices,
-                borderColor: color,
-                backgroundColor: color + '20',
-                borderWidth: 2,
-                tension: 0.3,
-                pointRadius: hasSinglePoint ? 4 : 2,
-                pointHoverRadius: hasSinglePoint ? 6 : 4,
-                key: key
-            });
-            surchargeDatasets.push({
-                label: ds.label,
-                data: normalizedSurcharges.map(s => (s - 1) * 100), // En % additionnel
-                borderColor: color,
-                backgroundColor: color + '20',
-                borderWidth: 2,
-                tension: 0.3,
-                pointRadius: hasSinglePoint ? 4 : 2,
-                pointHoverRadius: hasSinglePoint ? 6 : 4,
-                key: key
-            });
+    function refreshChartsLayout() {
+        if (priceChart) {
+            priceChart.resize();
+            priceChart.update('none');
         }
+        if (surchargeChart) {
+            surchargeChart.resize();
+            surchargeChart.update('none');
+        }
+    }
 
-        const commonOptions = {
-            responsive: true,
-            maintainAspectRatio: false,
-            interaction: { mode: 'index', intersect: false },
-            plugins: {
-                legend: { display: false }
-            },
-            scales: {
-                x: {
-                    grid: { color: 'rgba(255,255,255,0.05)' },
-                    ticks: { color: 'rgba(255,255,255,0.4)', font: { size: 10 } }
+    async function loadCharts() {
+        if (priceChart && surchargeChart) {
+            refreshChartsLayout();
+            return;
+        }
+        if (chartsLoadingPromise) return chartsLoadingPromise;
+
+        chartsLoadingPromise = (async () => {
+            if (typeof Chart === 'undefined') {
+                chartStatus.textContent = "La librairie des graphiques n'a pas pu etre chargee.";
+                chartStatus.classList.remove('hidden');
+                return;
+            }
+
+            const res = await fetch('/bourse/history?days=7');
+            if (!res.ok) {
+                chartStatus.textContent = "Impossible de charger l'historique de la Bourse pour le moment.";
+                chartStatus.classList.remove('hidden');
+                return;
+            }
+            chartData = await res.json();
+
+            if (!chartData.timestamps || !chartData.datasets) {
+                chartStatus.textContent = "Les donnees de graphique sont incompletes.";
+                chartStatus.classList.remove('hidden');
+                return;
+            }
+
+            const rawTimestamps = chartData.timestamps || [];
+            const hasSinglePoint = rawTimestamps.length <= 1;
+            const normalizedTimestamps = hasSinglePoint
+                ? [
+                    new Date((rawTimestamps[0] ? new Date(rawTimestamps[0]) : new Date()).getTime() - 60 * 60 * 1000).toISOString(),
+                    rawTimestamps[0] || new Date().toISOString()
+                ]
+                : rawTimestamps;
+
+            if (chartData.source === 'snapshot' || hasSinglePoint) {
+                chartStatus.textContent = "Historique insuffisant : affichage d'un repere instantane du marche actuel.";
+                chartStatus.classList.remove('hidden');
+            }
+
+            const ts = formatChartLabels(normalizedTimestamps);
+
+            const priceDatasets = [];
+            const surchargeDatasets = [];
+
+            for (const [key, ds] of Object.entries(chartData.datasets)) {
+                const color = colors[key] || '#ffffff';
+                const pricePoints = Array.isArray(ds.prices) ? ds.prices : [];
+                const surchargePoints = Array.isArray(ds.surcharges) ? ds.surcharges : [];
+                const normalizedPrices = hasSinglePoint
+                    ? [pricePoints[0] ?? 0, pricePoints[0] ?? 0]
+                    : pricePoints;
+                const normalizedSurcharges = hasSinglePoint
+                    ? [surchargePoints[0] ?? 1, surchargePoints[0] ?? 1]
+                    : surchargePoints;
+                priceDatasets.push({
+                    label: ds.label,
+                    data: normalizedPrices,
+                    borderColor: color,
+                    backgroundColor: ctx => buildLineGradient(ctx, color),
+                    fill: true,
+                    borderWidth: 3,
+                    tension: 0.38,
+                    cubicInterpolationMode: 'monotone',
+                    spanGaps: true,
+                    pointRadius: hasSinglePoint ? 4 : (ctx => ctx.dataIndex === ctx.dataset.data.length - 1 ? 4 : 0),
+                    pointHoverRadius: 6,
+                    pointHitRadius: 18,
+                    pointBorderWidth: 2,
+                    pointBackgroundColor: '#ffffff',
+                    pointBorderColor: color,
+                    key: key
+                });
+                surchargeDatasets.push({
+                    label: ds.label,
+                    data: normalizedSurcharges.map(s => (s - 1) * 100), // En % additionnel
+                    borderColor: color,
+                    backgroundColor: ctx => buildLineGradient(ctx, color),
+                    fill: true,
+                    borderWidth: 3,
+                    tension: 0.38,
+                    cubicInterpolationMode: 'monotone',
+                    spanGaps: true,
+                    pointRadius: hasSinglePoint ? 4 : (ctx => ctx.dataIndex === ctx.dataset.data.length - 1 ? 4 : 0),
+                    pointHoverRadius: 6,
+                    pointHitRadius: 18,
+                    pointBorderWidth: 2,
+                    pointBackgroundColor: '#ffffff',
+                    pointBorderColor: color,
+                    key: key
+                });
+            }
+
+            const isLightTheme = document.documentElement.dataset.theme === 'light';
+            const axisGridColor = isLightTheme ? 'rgba(113, 74, 95, 0.08)' : 'rgba(255,255,255,0.06)';
+            const axisTickColor = isLightTheme ? 'rgba(75, 49, 67, 0.68)' : 'rgba(255,255,255,0.58)';
+            const tooltipBg = isLightTheme ? 'rgba(63, 43, 57, 0.92)' : 'rgba(17, 24, 39, 0.88)';
+
+            const commonOptions = {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: { mode: 'index', intersect: false },
+                animation: false,
+                layout: {
+                    padding: { top: 12, right: 12, bottom: 6, left: 6 }
                 },
-                y: {
-                    grid: { color: 'rgba(255,255,255,0.05)' },
-                    ticks: { color: 'rgba(255,255,255,0.6)', font: { size: 10, weight: 'bold' } }
-                }
-            }
-        };
-
-        priceChart = new Chart(document.getElementById('priceChart'), {
-            type: 'line',
-            data: { labels: ts, datasets: priceDatasets },
-            options: commonOptions
-        });
-
-        surchargeChart = new Chart(document.getElementById('surchargeChart'), {
-            type: 'line',
-            data: { labels: ts, datasets: surchargeDatasets },
-            options: {
-                ...commonOptions,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        backgroundColor: tooltipBg,
+                        borderColor: hexToRgba('#ffffff', isLightTheme ? 0.08 : 0.12),
+                        borderWidth: 1,
+                        cornerRadius: 14,
+                        padding: 12,
+                        displayColors: true,
+                        titleFont: { family: 'Nunito', size: 13, weight: '800' },
+                        bodyFont: { family: 'Nunito', size: 12, weight: '700' },
+                        boxWidth: 10,
+                        boxHeight: 10,
+                        usePointStyle: true
+                    }
+                },
                 scales: {
-                    ...commonOptions.scales,
-                    y: { ...commonOptions.scales.y, ticks: { ...commonOptions.scales.y.ticks, callback: v => '+' + v + '%' } }
+                    x: {
+                        border: { display: false },
+                        grid: { color: axisGridColor },
+                        ticks: {
+                            color: axisTickColor,
+                            font: { size: 10, weight: '700' },
+                            maxRotation: 0,
+                            autoSkip: true,
+                            maxTicksLimit: 6
+                        }
+                    },
+                    y: {
+                        border: { display: false },
+                        grid: {
+                            color: axisGridColor,
+                            drawTicks: false
+                        },
+                        ticks: {
+                            color: axisTickColor,
+                            font: { size: 10, weight: '800' },
+                            padding: 10
+                        }
+                    }
                 }
+            };
+
+            await waitForNextPaint();
+
+            const priceCanvas = document.getElementById('priceChart');
+            const surchargeCanvas = document.getElementById('surchargeChart');
+            const priceCtx = priceCanvas ? priceCanvas.getContext('2d') : null;
+            const surchargeCtx = surchargeCanvas ? surchargeCanvas.getContext('2d') : null;
+
+            if (!priceCtx || !surchargeCtx) {
+                chartStatus.textContent = "Impossible d'initialiser les zones de graphique.";
+                chartStatus.classList.remove('hidden');
+                return;
             }
-        });
+
+            priceChart = new Chart(priceCtx, {
+                type: 'line',
+                data: { labels: ts, datasets: priceDatasets },
+                options: commonOptions
+            });
+
+            surchargeChart = new Chart(surchargeCtx, {
+                type: 'line',
+                data: { labels: ts, datasets: surchargeDatasets },
+                options: {
+                    ...commonOptions,
+                    scales: {
+                        ...commonOptions.scales,
+                        y: { ...commonOptions.scales.y, ticks: { ...commonOptions.scales.y.ticks, callback: v => '+' + v + '%' } }
+                    }
+                }
+            });
+
+            refreshChartsLayout();
+        })();
+
+        try {
+            await chartsLoadingPromise;
+        } finally {
+            chartsLoadingPromise = null;
+        }
     }
 
     function toggleDataset(key) {
@@ -679,6 +890,12 @@
         btn.style.opacity = isHidden ? '0.4' : '1';
         btn.style.borderColor = isHidden ? 'rgba(255,255,255,0.1)' : (colors[key] + '60');
     }
+
+    window.addEventListener('resize', () => {
+        if (priceChart || surchargeChart) {
+            refreshChartsLayout();
+        }
+    });
 </script>
 
 {% include '_footer.html' %}
