@@ -119,6 +119,12 @@ Les stats permanentes ne suffisent pas. La performance reelle depend aussi de l'
 
 Les cereales donnent satiete, energie, poids et parfois des boosts de stats.
 
+Nouveau flux:
+- la **Bourse aux Grains** est le seul endroit pour **acheter** des cereales;
+- l'achat ajoute `+1` unite dans un **stock joueur** par type de cereale;
+- l'ecran **Mon Cochon** ne fait plus payer: il **consomme 1 unite de stock** pour nourrir le cochon;
+- si le stock est vide, le jeu renvoie vers la Bourse.
+
 | Cereale | Cout de base | Effets directs |
 |---|---:|---|
 | Mais | 5 | +20 satiete, +5 energie, +0.5 kg, gains equilibres |
@@ -130,7 +136,8 @@ Les cereales donnent satiete, energie, poids et parfois des boosts de stats.
 
 Attention:
 - ces couts sont des couts de base;
-- le cout reel passe ensuite par la Bourse aux Grains et par la pression de nourrissage de la porcherie.
+- le cout reel est applique **au moment de l'achat a la Bourse**, pas au moment de donner la cereale au cochon;
+- nourrir depuis `Mon Cochon` consomme le stock sans transaction supplementaire.
 
 ### 5.2 Entrainements
 
@@ -290,6 +297,10 @@ Formats actuellement disponibles:
 
 Chaque cochon supplementaire augmente le cout des cereales de `+20%`.
 
+Important:
+- cette pression s'applique desormais **au moment de l'achat en Bourse**;
+- elle ne s'affiche plus comme un prix a payer dans l'onglet `Nourrir` de `Mon Cochon`.
+
 Multiplicateurs actuels:
 
 | Cochons actifs | Multiplicateur |
@@ -312,12 +323,22 @@ Regles actuelles:
 - bloc `3x3` de cereales partage par tous les joueurs;
 - surcharge par point de grille: `+5%`;
 - centre = reference la moins punitive;
+- la Bourse est maintenant le **seul point d'achat** des cereales;
+- chaque achat ajoute `1` unite au stock du joueur (`inventaire de cereales`);
 - points de mouvement:
   - minimum garanti: `1`;
   - puis `1` point par tranche de `10` achats de nourriture;
 - vitrine:
   - le dernier grain achete est bloque pour tous;
   - il faut qu'un autre grain soit achete pour le debloquer.
+
+Prix reel d'achat:
+- `cout final = cout de base x surcharge Bourse x pression de nourrissage`
+
+Consommation:
+- l'ecran `Mon Cochon` lit le stock joueur et affiche la quantite restante par cereale;
+- donner une cereale retire `1` unite du stock;
+- si le stock est a `0`, le bouton passe en rupture de stock et renvoie vers `/bourse`.
 
 La page `/bourse` expose deja une aide "comment ca marche", mais `/regles` est maintenant le hub complet pour comprendre l'impact economique.
 

@@ -9,6 +9,7 @@ Liste des fonctionnalités et idées déjà implémentées dans le projet.
 - **Services métier extraits** : la logique de `User.pay()` / `User.earn()` / prime journalière vit désormais dans `services/finance_service.py`, et les actions `Pig.feed()` / `Pig.train()` / `Pig.study()` / vitals / mort / retraite dans `services/pig_service.py`.
 - **Exceptions métier partagées** : un nouveau fichier `exceptions.py` centralise les erreurs métier comme `InsufficientFundsError`, `PigTiredError`, `UserNotFoundError` et `PigNotFoundError`.
 - **Routes rebranchées** : les blueprints et helpers appellent maintenant explicitement les services, ce qui supprime les imports locaux dans les modèles et réduit les risques de dépendances circulaires.
+- **Inventaire de céréales** : nouveau modèle `UserCerealInventory` pour séparer l'achat des grains (Bourse) de leur consommation (Mon Cochon).
 
 ## Gestion des Courses
 - **Gestion des courses vides / sous-peuplées** : Mise en place d'une règle configurable (`min_real_participants`) pour remplir automatiquement les courses avec des bots ou les annuler.
@@ -33,8 +34,13 @@ Liste des fonctionnalités et idées déjà implémentées dans le projet.
 - **Vitrine anti-spam** : le dernier grain achete est bloque pour tous jusqu'a ce qu'un autre grain soit achete, forcant la variete.
 - **Prix dynamiques** : le cout final combine le modificateur Bourse, la pression de porcherie et le cout de base.
 - **Qualite variable** : les bonus de faim, energie et stats sont multiplies par le modificateur de qualite de la grille.
-- **Interface dediee** (`/bourse`) : grille visuelle, controles directionnels, selecteur de cochon, cartes de cereales avec prix ajustes.
+- **Achat decouple de la consommation** : la Bourse est maintenant l'unique point d'achat des cereales, qui sont ajoutees a un stock joueur avant d'etre consommees plus tard.
+- **Interface dediee** (`/bourse`) : grille visuelle, controles directionnels, cartes de cereales avec prix ajustes et achat pour stock global.
 - **Modele GrainMarket** : singleton en base pour stocker l'etat partage du marche.
+
+## Mon Cochon et alimentation
+- **Consommation sur stock** : l'onglet nourrir de `Mon Cochon` ne facture plus directement. Il consomme `1` unite de cereal en stock.
+- **Retour de stock en UI** : chaque cereale affiche maintenant la quantite disponible, avec etat `Rupture de stock` et lien vers `/bourse` si necessaire.
 
 ## Transparence joueur
 - **Hub `Regles`** : une page publique `/regles` centralise maintenant les règles, jauges, paris, économie, Bourse, marché et mini-jeux.

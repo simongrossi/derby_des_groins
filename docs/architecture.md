@@ -29,9 +29,10 @@
 8.  **`BalanceTransaction`** : Journal comptable complet de chaque BitGroin dépensé ou gagné (traçabilité totale).
 9.  **`Auction`** : Marché aux enchères temporisées pour l'achat/vente de cochons entre joueurs.
 10. **`GrainMarket`** : Singleton partagé de la Bourse aux Grains. Stocke la position du curseur (cursor_x, cursor_y) sur la grille 7x7, le grain actuellement en vitrine (bloqué), et les métadonnées de la dernière transaction.
-11. **`Shop` & `Item`** : Modèles de base pour la Galerie Lard-chande (nom de la boutique, items vendables avec leur coût double-monnaie et effet).
-12. **`InventoryItem`** : Modèle de la possession d'objets des joueurs avec la quantité de chacun d'eux.
-13. **`MarketplaceListing`** : Représente une annonce entre joueurs dans Le Bon Groin pour vendre leurs objets inventoriés.
+11. **`UserCerealInventory`** : Stock de céréales par joueur, avec une ligne unique par couple (`user_id`, `cereal_key`) pour séparer clairement l'achat (Bourse) de la consommation (Mon Cochon).
+12. **`Shop` & `Item`** : Modèles de base pour la Galerie Lard-chande (nom de la boutique, items vendables avec leur coût double-monnaie et effet).
+13. **`InventoryItem`** : Modèle de la possession d'objets des joueurs avec la quantité de chacun d'eux.
+14. **`MarketplaceListing`** : Représente une annonce entre joueurs dans Le Bon Groin pour vendre leurs objets inventoriés.
 
 ## Mécaniques Principales
 
@@ -52,6 +53,7 @@
     *   Paramètres d'économie pilotables depuis **`/admin/economy`** avec persistance en base.
     *   Simulation admin basée sur les chiffres live pour estimer l'inflation et les sinks.
     *   Marché aux enchères ouvert périodiquement avec système de surenchère.
+    *   **Flux nourriture découpé** : achat des céréales uniquement sur `/bourse`, stockage dans `UserCerealInventory`, puis consommation gratuite depuis `/mon-cochon`.
 - **Récupération Vétérinaire** : Mini-jeu (puzzle de soin) pour soigner un cochon blessé avant la deadline, sous peine de séquelles ou de mort.
 
 ## Arborescence du Projet
