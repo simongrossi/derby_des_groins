@@ -15,10 +15,8 @@
     #stats-panel { width: 300px; flex-shrink: 0; background: linear-gradient(180deg, rgba(15,10,30,0.98), rgba(8,6,18,0.99)); border-left: 1px solid rgba(255,255,255,0.06); overflow-y: auto; padding: 1rem; }
     @media (max-width: 767px) { #circuit-wrap { flex-direction: column; } #svg-area { flex: 1; min-height: 0; } #stats-panel { width: 100%; height: 40vh; border-left: none; border-top: 1px solid rgba(255,255,255,0.06); } }
     .track-bg { fill: none; stroke: rgba(255,255,255,0.06); stroke-linecap: round; }
-    .pig-marker { transition: transform 0.1s linear; }
+    .pig-marker { transition: transform 0.15s linear; }
     .pig-label { font-size: 10px; fill: white; text-anchor: middle; dominant-baseline: hanging; opacity: 0.7; }
-    #countdown-overlay { position: fixed; inset: 0; z-index: 50; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.85); pointer-events: none; }
-    #countdown-text { font-size: clamp(4rem, 20vw, 12rem); font-weight: 900; background: linear-gradient(135deg, #fbbf24, #f97316); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
 
     .overlay-full { position: fixed; inset: 0; z-index: 40; display: flex; flex-direction: column; align-items: center; justify-content: center; background: radial-gradient(ellipse at center, rgba(39,13,49,0.97), rgba(8,6,18,0.99)); }
 
@@ -49,7 +47,7 @@
     }
     .btn-wood:hover { transform: scale(1.05); background: #8d6e63; }
 
-    #stats-cards .pig-stat-card { border: 1px solid rgba(255,255,255,0.06); border-radius: 0.75rem; padding: 0.6rem 0.75rem; margin-bottom: 0.5rem; background: rgba(255,255,255,0.02); }
+    .pig-stat-card { border: 1px solid rgba(255,255,255,0.06); border-radius: 0.75rem; padding: 0.6rem 0.75rem; margin-bottom: 0.5rem; background: rgba(255,255,255,0.02); }
     .stat-mini-bar { height: 3px; border-radius: 2px; transition: width 0.4s ease; }
     .stat-mini-bar-bg { background: rgba(255,255,255,0.06); }
   </style>
@@ -60,13 +58,12 @@
     <p style="margin-top:1rem;color:rgba(255,255,255,0.4);font-size:0.85rem;">Chargement du circuit…</p>
   </div>
 
-  <!-- OVERLAY LOBBY (Attente / Inscriptions) -->
+  <!-- OVERLAY LOBBY -->
   <div id="lobby-overlay" class="overlay-full" style="display:none;">
     <div class="wood-board text-center">
       <p id="lobby-label" class="text-xs uppercase tracking-[0.3em] text-white/50 mb-2">Prochaine course</p>
-      <div id="lobby-countdown" class="wood-timer text-amber-200">--:--</div>
+      <div id="lobby-countdown" class="wood-timer text-amber-200">00:00:00</div>
       <h2 class="font-title text-2xl mb-6">Course #<span id="lobby-race-id">?</span></h2>
-
       <div class="overflow-hidden rounded-xl">
         <table class="wood-table">
           <thead>
@@ -80,61 +77,38 @@
           <tbody id="lobby-runners-body"></tbody>
         </table>
       </div>
-
       <div id="lobby-total-staked" class="mt-6 text-sm font-bold text-white/40">
         Total des enjeux : <span class="text-amber-200">0 🪙</span>
       </div>
-      <div class="mt-8">
-        <button onclick="closeCircuit()" class="btn-wood">✕ FERMER</button>
-      </div>
+      <div class="mt-8"><button onclick="closeCircuit()" class="btn-wood">✕ FERMER</button></div>
     </div>
   </div>
 
-  <!-- OVERLAY RESULTATS (Fin de course) -->
+  <!-- OVERLAY RESULTATS -->
   <div id="results-overlay" class="overlay-full" style="display:none;">
     <div class="wood-board">
       <h1 class="font-title text-4xl text-center text-amber-200 mb-8">🏆 RESULTATS DE LA COURSE #<span id="results-race-id">?</span></h1>
-
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <!-- Tableau Cochons -->
         <div>
           <h2 class="font-title text-xl mb-4 text-white/70 tracking-widest">🏁 CLASSEMENT</h2>
           <table class="wood-table">
-            <thead>
-              <tr>
-                <th class="w-12">Pos</th>
-                <th>Cochon</th>
-                <th class="text-right">Gain Proprio</th>
-              </tr>
-            </thead>
+            <thead><tr><th class="w-12">Pos</th><th>Cochon</th><th class="text-right">Résultat</th></tr></thead>
             <tbody id="results-runners-body"></tbody>
           </table>
         </div>
-
-        <!-- Tableau Parieurs -->
         <div>
           <h2 class="font-title text-xl mb-4 text-white/70 tracking-widest">💰 PROFITS DES PARIEURS</h2>
           <table class="wood-table">
-            <thead>
-              <tr>
-                <th>Joueur</th>
-                <th class="text-right">Bilan Net</th>
-              </tr>
-            </thead>
+            <thead><tr><th>Joueur</th><th class="text-right">Bilan Net</th></tr></thead>
             <tbody id="results-bettors-body"></tbody>
           </table>
         </div>
       </div>
-
-      <div class="mt-10 text-center">
-        <button onclick="closeCircuit()" class="btn-wood">RETOURNER A L'ACCUEIL</button>
-      </div>
+      <div class="mt-10 text-center"><button onclick="closeCircuit()" class="btn-wood">RETOURNER A L'ACCUEIL</button></div>
     </div>
   </div>
 
-  <div id="countdown-overlay" style="display:none;"><div id="countdown-text">3</div></div>
-
-  <!-- CIRCUIT LIVE (Pendant l'animation) -->
+  <!-- ANIMATION -->
   <div id="circuit-wrap" style="display:none;">
     <div id="svg-area">
       <svg id="circuit-svg" viewBox="0 0 900 600" preserveAspectRatio="xMidYMid meet" style="width:95%; height:95%;">
@@ -149,7 +123,7 @@
         <div id="info-turn" class="text-xs font-bold text-white/60 mt-1 uppercase tracking-widest">Tour 0 / 5</div>
       </div>
       <div id="race-status-banner" style="position:absolute; bottom:2rem; left:50%; transform:translateX(-50%); display:none;">
-        <span class="pill bg-amber-500 text-black px-6 py-2 text-lg font-black animate-pulse">COURSE EN COURS...</span>
+        <span class="pill bg-amber-500 text-black px-6 py-2 text-lg font-black animate-pulse rounded-full">COURSE EN COURS...</span>
       </div>
     </div>
     <div id="stats-panel">
@@ -159,7 +133,12 @@
   </div>
 
 <script>
-const PIG_COLORS = ['#f87171','#fb923c','#facc15','#4ade80','#22d3ee','#818cf8','#e879f9','#f472b6','#a3e635','#fca5a5','#fdba74','#fde68a'];
+// --- SECURITE ---
+if (!window.location.pathname.endsWith('/circuit')) {
+    document.body.innerHTML = "";
+    window.stop();
+}
+
 const LAP_DISTANCE = 600; const TOTAL_LAPS = 5; const TOTAL_RACE_DISTANCE = LAP_DISTANCE * TOTAL_LAPS;
 const TARGET_RACE_DURATION_MS = 50000;
 
@@ -169,8 +148,9 @@ let animationFrameId = null;
 let lastAnimatedRaceId = null;
 let pathElement = null;
 let pathLength = 0;
-let resultsRaceId = null;
-let raceTargetTime = null; // Temps de départ cible (Date)
+let isPlaying = false;
+let showingResultsForRaceId = null;
+let raceTargetStartTimeLocal = null;
 
 function initTrack() {
   pathElement = document.getElementById('track-bg-path');
@@ -178,9 +158,11 @@ function initTrack() {
 }
 
 function formatTime(seconds) {
-  if (seconds === null || seconds < 0) return '00:00';
-  const m = Math.floor(seconds / 60), s = seconds % 60;
-  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+  if (seconds === null || seconds < 0) return '00:00:00';
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const s = seconds % 60;
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 }
 
 function pigVisualHTML(pig, size = 24) {
@@ -229,216 +211,178 @@ function updateStatsPanel(pigs) {
   });
 }
 
-function updateLapDisplay(pigs) {
-  const infoTurnEl = document.getElementById('info-turn');
-  if (infoTurnEl && pigs.length > 0) {
-    const maxDistance = Math.max(...pigs.map(p => p.distance));
-    const currentLap = Math.min(TOTAL_LAPS, Math.floor(maxDistance / LAP_DISTANCE) + 1);
-    infoTurnEl.textContent = `Tour ${currentLap} / ${TOTAL_LAPS}`;
-  }
-}
-
 async function startAnimation(replay) {
-  if (lastAnimatedRaceId === replay.race_id) return;
+  if (isPlaying || lastAnimatedRaceId === replay.race_id) return;
+  console.log("[Animation] Lancement course #", replay.race_id);
 
+  isPlaying = true;
   replayData = replay;
   animationStartTime = performance.now();
   lastAnimatedRaceId = replay.race_id;
+  showingResultsForRaceId = null;
 
-  const pigs = replay.turns[0].pigs.map(p => ({ id: p.id, name: p.name, emoji: '🐷' }));
-  if (replay.participant_meta) {
-    pigs.forEach(p => { const m = replay.participant_meta[String(p.id)]; if (m) { p.emoji = m.emoji; p.avatar_url = m.avatar_url; } });
+  // Créer les marqueurs de cochons en utilisant l'ordre initial du replay
+  createPigMarkers(replay.turns[0].pigs);
+  const statsCardsContainer = document.getElementById('stats-cards');
+  if (statsCardsContainer) {
+    statsCardsContainer.innerHTML = replay.turns[0].pigs.map((p, i) => `
+      <div class="pig-stat-card" id="stat-${p.id}">
+        <div class="flex items-center gap-2">${pigVisualHTML(p, 20)} <span class="text-xs font-bold">${p.name}</span><span class="ml-auto text-[10px] font-black" id="stat-pos-${p.id}">#—</span></div>
+        <div class="stat-mini-bar-bg mt-2"><div class="stat-mini-bar" id="bar-${p.id}" style="width:0%; background:#22d3ee"></div></div>
+      </div>`).join('');
   }
-
-  createPigMarkers(pigs);
-  const container = document.getElementById('stats-cards');
-  if (container) container.innerHTML = pigs.map((p, i) => `
-    <div class="pig-stat-card" id="stat-${p.id}">
-      <div class="flex items-center gap-2">
-        ${pigVisualHTML(p, 20)}
-        <span class="text-xs font-bold" style="color:${PIG_COLORS[i%12]}">${p.name}</span>
-        <span class="ml-auto text-[10px] font-black" id="stat-pos-${p.id}">#—</span>
-      </div>
-      <div class="stat-mini-bar-bg mt-2">
-        <div class="stat-mini-bar" id="bar-${p.id}" style="width:0%; background:#22d3ee"></div>
-      </div>
-    </div>`).join('');
 
   document.getElementById('lobby-overlay').style.display = 'none';
   document.getElementById('results-overlay').style.display = 'none';
   document.getElementById('circuit-wrap').style.display = 'flex';
   document.getElementById('info-race').textContent = `Course #${replay.race_id}`;
-
   animationFrameId = requestAnimationFrame(animate);
 }
 
 function animate(currentTime) {
+  if (!isPlaying) return;
   const elapsedTime = currentTime - animationStartTime;
   const progress = Math.min(1, elapsedTime / TARGET_RACE_DURATION_MS);
 
   const numTurns = replayData.turns.length;
+  // S'assurer qu'il y a au moins 2 tours pour l'interpolation
+  if (numTurns < 2) {
+      console.warn("Replay data has less than 2 turns, cannot interpolate smoothly.");
+      isPlaying = false; // Arrêter l'animation
+      setTimeout(finishAnimation, 0); // Passer directement à la fin
+      return;
+  }
+
   const virtualTurnIndex = progress * (numTurns - 1);
   const turnAIndex = Math.floor(virtualTurnIndex);
   const turnBIndex = Math.min(turnAIndex + 1, numTurns - 1);
-
   const turnA = replayData.turns[turnAIndex];
   const turnB = replayData.turns[turnBIndex];
   const lerpFactor = virtualTurnIndex - turnAIndex;
 
   const interpolatedPigs = turnA.pigs.map((pigA, i) => {
       const pigB = turnB.pigs[i];
-      const interpolatedDistance = pigA.distance + (pigB.distance - pigA.distance) * lerpFactor;
-      return { ...pigA, distance: interpolatedDistance };
+      return { ...pigA, distance: pigA.distance + (pigB.distance - pigA.distance) * lerpFactor };
   });
 
   updatePigPositions(interpolatedPigs);
   updateStatsPanel(interpolatedPigs);
-  updateLapDisplay(interpolatedPigs);
 
-  if (progress < 1) {
-    animationFrameId = requestAnimationFrame(animate);
-  } else {
-    setTimeout(finishAnimation, 1500);
-  }
+  const maxDist = Math.max(...interpolatedPigs.map(p => p.distance));
+  document.getElementById('info-turn').textContent = `Tour ${Math.min(TOTAL_LAPS, Math.floor(maxDist / LAP_DISTANCE) + 1)} / ${TOTAL_LAPS}`;
+
+  if (progress < 1) { animationFrameId = requestAnimationFrame(animate); }
+  else { isPlaying = false; setTimeout(finishAnimation, 1000); } // Délai avant d'afficher les résultats
 }
 
 async function finishAnimation() {
   const raceId = replayData.race_id;
-  resultsRaceId = raceId;
+  showingResultsForRaceId = raceId;
+  console.log("[Animation] Finie, affichage résultats #", raceId);
+
   document.getElementById('circuit-wrap').style.display = 'none';
   document.getElementById('results-race-id').textContent = raceId;
   document.getElementById('results-overlay').style.display = 'flex';
 
-  const lastTurn = replayData.turns[replayData.turns.length - 1];
-  const winners = [...lastTurn.pigs].sort((a,b) => b.distance - a.distance);
+  // Utiliser le classement final fourni par le replayData
+  const finalRankingIds = replayData.final_ranking_ids;
+  const participantsMap = new Map(replayData.turns[0].pigs.map(p => [p.id, p])); // Map pour retrouver les cochons par ID
 
   const runnersBody = document.getElementById('results-runners-body');
-  runnersBody.innerHTML = winners.map((p, i) => {
+  runnersBody.innerHTML = finalRankingIds.map((pigId, i) => {
+    const p = participantsMap.get(pigId);
     const meta = replayData.participant_meta[String(p.id)];
-    return `
-      <tr>
-        <td><span class="text-xl">${i === 0 ? '🥇' : (i === 1 ? '🥈' : (i === 2 ? '🥉' : i + 1))}</span></td>
-        <td><div class="flex items-center gap-3"><span>${meta?.emoji || '🐷'}</span> <span>${p.name}</span></div></td>
-        <td class="text-right text-emerald-400">Podium</td>
-      </tr>
-    `;
+    return `<tr><td><span class="text-xl">${i === 0 ? '🥇' : (i === 1 ? '🥈' : (i === 2 ? '🥉' : i + 1))}</span></td><td><div class="flex items-center gap-3"><span>${meta?.emoji || '🐷'}</span> <span>${p.name}</span></div></td><td class="text-right text-emerald-400"></td></tr>`;
   }).join('');
 
   try {
     const res = await fetch(`/api/race/${raceId}/bettor-results`);
     const data = await res.json();
-    const bettorsBody = document.getElementById('results-bettors-body');
-    bettorsBody.innerHTML = data.bettor_results.map(r => `
-      <tr>
-        <td>${r.username}</td>
-        <td class="text-right ${r.profit > 0 ? 'text-emerald-400' : (r.profit < 0 ? 'text-rose-400' : 'text-white/40')}">
-          ${r.profit > 0 ? '+' : ''}${r.profit.toFixed(0)} 🪙
-        </td>
-      </tr>
-    `).join('');
-    if (data.bettor_results.length === 0) {
-      bettorsBody.innerHTML = '<tr><td colspan="2" class="text-center text-white/30">Aucun pari.</td></tr>';
-    }
+    document.getElementById('results-bettors-body').innerHTML = data.bettor_results.map(r => `<tr><td>${r.username}</td><td class="text-right ${r.profit > 0 ? 'text-emerald-400' : (r.profit < 0 ? 'text-rose-400' : 'text-white/40')}">${r.profit > 0 ? '+' : ''}${r.profit.toFixed(0)} 🪙</td></tr>`).join('');
+    if (data.bettor_results.length === 0) document.getElementById('results-bettors-body').innerHTML = '<tr><td colspan="2" class="text-center text-white/30">Aucun pari.</td></tr>';
   } catch(e) { console.error("Erreur resultats parieurs", e); }
 }
 
 function closeCircuit() {
-  cancelAnimationFrame(animationFrameId);
+  if (animationFrameId) cancelAnimationFrame(animationFrameId);
   window.location.href = '/';
 }
 
 async function updateLobbyData(raceId) {
   try {
-    const [preR, betsR] = await Promise.all([
-      fetch(`/api/race/${raceId}/pre-race`),
-      fetch(`/api/race/${raceId}/bets-spectator`)
-    ]);
-    const pre = await preR.json();
-    const betsData = await betsR.json();
-
-    const stakesByParticipantId = {};
-    let totalEnjeux = 0;
+    const [preR, betsR] = await Promise.all([ fetch(`/api/race/${raceId}/pre-race`), fetch(`/api/race/${raceId}/bets-spectator`) ]);
+    const pre = await preR.json(); const betsData = await betsR.json();
+    const stakesByParticipantId = {}; let totalEnjeux = 0;
     betsData.bets.forEach(b => {
       totalEnjeux += b.amount;
       const ids = (b.selection_order || "").split(',').map(Number).filter(id => !isNaN(id));
-      if (ids.length > 0) { stakesByParticipantId[ids[0]] = (stakesByParticipantId[ids[0]] || 0) + b.amount; }
+      if (ids.length > 0) stakesByParticipantId[ids[0]] = (stakesByParticipantId[ids[0]] || 0) + b.amount;
     });
-
     const tbody = document.getElementById('lobby-runners-body');
-    if (tbody) {
-      tbody.innerHTML = pre.participants.sort((a,b) => (a.odds||99)-(b.odds||99)).map(p => {
-        const betAmount = stakesByParticipantId[p.id] || 0;
-        return `
-          <tr>
-            <td><div class="flex items-center gap-3"><span>${p.emoji}</span> <span>${p.name}</span></div></td>
-            <td class="text-white/40 font-semibold">${p.owner_name || '💻 IA'}</td>
-            <td class="text-right text-amber-200">${betAmount > 0 ? betAmount.toFixed(0) + ' 🪙' : '—'}</td>
-            <td class="text-right text-white/80">x${p.odds ? p.odds.toFixed(1) : '--'}</td>
-          </tr>
-        `;
-      }).join('');
-    }
+    if (tbody) tbody.innerHTML = pre.participants.sort((a,b) => (a.odds||99)-(b.odds||99)).map(p => `<tr><td><div class="flex items-center gap-3"><span>${p.emoji}</span> <span>${p.name}</span></div></td><td class="text-white/40 font-semibold">${p.owner_name || '💻 IA'}</td><td class="text-right text-amber-200">${(stakesByParticipantId[p.id] || 0).toFixed(0)} 🪙</td><td class="text-right text-white/80">x${p.odds ? p.odds.toFixed(1) : '--'}</td></tr>`).join('');
     const totalEl = document.getElementById('lobby-total-staked');
     if (totalEl) totalEl.innerHTML = `Total des enjeux : <span class="text-amber-200 text-lg">${totalEnjeux.toFixed(0)} 🪙</span>`;
   } catch(e) { console.error("Erreur update lobby", e); }
 }
 
-async function pollState() {
-  if (animationFrameId || resultsRaceId) {
-      // Si un décompte est en cours, on le met à jour sans attendre le poll
-      if (raceTargetTime) {
-          const now = Date.now();
-          const diff = Math.max(0, Math.floor((raceTargetTime - now) / 1000));
-          document.getElementById('lobby-countdown').textContent = formatTime(diff);
-      }
+function updateUIClock() {
+  if (isPlaying || showingResultsForRaceId) return;
+  const lobbyCountdownEl = document.getElementById('lobby-countdown');
+  if (raceTargetStartTimeLocal && lobbyCountdownEl) {
+    const diffSec = Math.max(0, Math.floor((raceTargetStartTimeLocal - Date.now()) / 1000));
+    lobbyCountdownEl.textContent = formatTime(diffSec);
   }
+}
+
+async function pollState() {
+  if (isPlaying || showingResultsForRaceId) return;
 
   try {
     const r = await fetch('/api/race/live-state');
     const s = await r.json();
-    if (document.getElementById('loading-overlay')) document.getElementById('loading-overlay').style.display = 'none';
+    document.getElementById('loading-overlay').style.display = 'none';
 
     if (s.phase === 'racing') {
-      if (!animationFrameId) {
-          document.getElementById('lobby-overlay').style.display = 'none';
-          document.getElementById('circuit-wrap').style.display = 'flex';
-          document.getElementById('race-status-banner').style.display = 'block';
-          if (s.finished_race_id && s.finished_race_id !== lastAnimatedRaceId) {
-            const repR = await fetch(`/api/race/${s.finished_race_id}/replay`);
-            const rep = await repR.json();
-            if (rep.turns) {
-              document.getElementById('race-status-banner').style.display = 'none';
-              startAnimation(rep);
-            }
-          }
+      if (s.finished_race_id && s.finished_race_id !== lastAnimatedRaceId) {
+        const repR = await fetch(`/api/race/${s.finished_race_id}/replay`);
+        const rep = await repR.json();
+        if (rep.turns && rep.turns.length > 1) {
+          document.getElementById('race-status-banner').style.display = 'none';
+          startAnimation(rep);
+        }
+      } else {
+        document.getElementById('lobby-overlay').style.display = 'none';
+        document.getElementById('circuit-wrap').style.display = 'flex';
+        document.getElementById('race-status-banner').style.display = 'block';
       }
       return;
     }
 
     if (s.race_id) {
       document.getElementById('lobby-overlay').style.display = 'flex';
+      document.getElementById('results-overlay').style.display = 'none';
+      document.getElementById('circuit-wrap').style.display = 'none';
       document.getElementById('lobby-race-id').textContent = s.race_id;
 
-      // Synchronisation du chronomètre
-      const serverNow = s.server_time ? new Date(s.server_time).getTime() : Date.now();
-      const localNow = Date.now();
-      const offset = serverNow - localNow;
-      raceTargetTime = localNow + (s.seconds_to_start * 1000) - offset;
-
+      raceTargetStartTimeLocal = Date.now() + (s.seconds_to_start * 1000);
       document.getElementById('lobby-label').textContent = s.phase === 'countdown' ? "Décollage imminent" : "Prochaine course";
 
       if (!window._lastLobbyRaceId || window._lastLobbyRaceId !== s.race_id) {
         window._lastLobbyRaceId = s.race_id;
         updateLobbyData(s.race_id);
       }
+    } else {
+      document.getElementById('lobby-overlay').style.display = 'none';
+      document.getElementById('circuit-wrap').style.display = 'none';
     }
-  } catch(e) {}
+  } catch(e) { console.error("Poll error", e); }
 }
 
 document.addEventListener('DOMContentLoaded', () => {
   initTrack();
   pollState();
-  setInterval(pollState, 1000); // Poll plus fréquent pour le chronomètre
+  setInterval(pollState, 3000);
+  setInterval(updateUIClock, 1000);
 });
 </script>
 </body>

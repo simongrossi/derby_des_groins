@@ -16,21 +16,17 @@ from data import (
     RACE_STUMBLE_SPEED_MULT, RACE_STRATEGY_ATTACK_MAX_MULT,
     RACE_STRATEGY_ECONOMY_MIN_MULT, RACE_STRATEGY_ECONOMY_RECOVERY,
     RACE_STRATEGY_NEUTRAL_FATIGUE, RACE_VARIANCE_MAX, RACE_VARIANCE_MIN,
-    RACE_VIRAGE_AGI_MULT, RACE_VIRAGE_SPEED_CAP, RACE_VIRAGE_TERRAIN_MOD, # Corrected import
+    RACE_VIRAGE_AGI_MULT, RACE_VIRAGE_SPEED_CAP, RACE_VIRAGE_TERRAIN_MOD, 
     RACE_DESCENTE_AGI_RISK_REDUCTION, RACE_DESCENTE_SPEED_MULT, RACE_DESCENTE_TERRAIN_MOD,
 )
 
 DEFAULT_STRATEGY_PROFILE = {'phase_1': 35, 'phase_2': 50, 'phase_3': 80}
 
-# Constantes pour la simulation
+# Paramètres immuables pour garantir les 5 tours et 50 secondes
 SIMULATION_DURATION_SECONDS = 50
-TARGET_SNAPSHOTS_PER_SECOND = 10 # Générer 10 snapshots par seconde
-TARGET_TOTAL_TURNS = SIMULATION_DURATION_SECONDS * TARGET_SNAPSHOTS_PER_SECOND # 50 * 10 = 500 turns
-
-@dataclass(frozen=True)
-class Segment:
-    type: str
-    length: float
+TARGET_SNAPSHOTS_PER_SECOND = 10 
+FIXED_TOTAL_RACE_DISTANCE = 3000.0 # 5 tours de 600m
+TARGET_TOTAL_TURNS = 500
 
 @dataclass
 class RaceParticipant:
@@ -50,14 +46,9 @@ class RaceParticipant:
     distance: float = 0.0
     fatigue: float = 0.0
     has_draft: bool = False
-    draft_bonus: float = 0.0
-    skip_fatigue_this_turn: bool = False
     is_finished: bool = False
     finish_time: Optional[int] = None
-    stumbled: bool = False
     current_speed: float = 0.0
-    current_segment_type: str = 'PLAT'
-    current_phase: str = 'phase_1'
     visual_event: Optional[str] = None
 
     @classmethod
@@ -83,58 +74,39 @@ class RaceParticipant:
 class CourseManager:
     def __init__(self, participants, segments, rng: Optional[random.Random] = None):
         self.participants: list[RaceParticipant] = [RaceParticipant.from_source(p) for p in participants]
-        self.segments: list[Segment] = [Segment(type=s.get('type', 'PLAT'), length=float(s.get('length', 0))) for s in segments]
-        self.total_length = sum(segment.length for segment in self.segments)
         self.history: list[dict] = []
         self.current_turn: int = 0
         self.rng = rng or random.Random()
 
     def run(self):
-        # La simulation s'arrête quand tous les cochons ont fini ou que le nombre max de tours est atteint
-        # On utilise TARGET_TOTAL_TURNS pour la granularité
-        while not all(p.is_finished for p in self.participants) and self.current_turn < TARGET_TOTAL_TURNS + 50: # +50 pour laisser une marge
+        # On force la simulation à durer exactement TARGET_TOTAL_TURNS pour l'animation
+        while self.current_turn < TARGET_TOTAL_TURNS:
             self.current_turn += 1
             self.simulate_turn()
             self.record_history()
         return self.history
 
     def simulate_turn(self):
-        # Distance moyenne cible par tour: total_length / TARGET_TOTAL_TURNS
-        # Pour 3000m en 500 tours, c'est 6m/tour
-        # On ajuste les calculs de vitesse en conséquence
-        
         for p in self.participants:
             if p.is_finished:
-                p.current_speed = 0.0; p.visual_event = 'finished'; continue
+                p.current_speed = 0.0; continue
             
-            # Vitesse de base ajustée pour la nouvelle granularité
-            # On divise par TARGET_SNAPSHOTS_PER_SECOND pour obtenir une vitesse par "tick"
-            base_speed_per_second = (p.vitesse * 1.5 + p.endurance * 0.5 + RACE_BASE_SPEED_CONSTANT + 15)
-            base_speed_per_turn = base_speed_per_second / TARGET_SNAPSHOTS_PER_SECOND
+            # Vitesse de base pour atteindre ~3000m en 500 tours
+            # 3000 / 500 = 6m par tour en moyenne
+            base_speed = (p.vitesse * 0.15 + p.endurance * 0.05 + 4.5)
             
-            # Application des multiplicateurs classiques
-            strategy_mult = 0.8 + (p.strategy / 100.0) * 0.4 # 0.8 a 1.2
-            freshness_factor = 0.9 + (p.freshness / 1000.0)
-            variance = self.rng.uniform(0.95, 1.05)
+            strategy_mult = 0.9 + (p.strategy / 100.0) * 0.2
+            variance = self.rng.uniform(0.98, 1.02)
             
-            final_speed_per_turn = base_speed_per_turn * strategy_mult * freshness_factor * variance
-            if p.has_draft: final_speed_per_turn += (2.0 / TARGET_SNAPSHOTS_PER_SECOND) # Ajuster le bonus de draft
+            final_speed = base_speed * strategy_mult * variance
+            if p.has_draft: final_speed += 0.2
             
-            p.current_speed = round(final_speed_per_turn, 3) # C'est la vitesse par "turn"
-            p.distance = min(self.total_length, p.distance + final_speed_per_turn)
+            p.current_speed = round(final_speed, 3)
+            p.distance = min(FIXED_TOTAL_RACE_DISTANCE, p.distance + final_speed)
             
-            if p.distance >= self.total_length:
-                p.is_finished = True; p.finish_time = self.current_turn
-            
-            # Gestion fatigue simplifiee pour la nouvelle granularité
-            # La fatigue s'accumule moins vite par tour, mais sur plus de tours
-            p.fatigue += (p.strategy / 50.0) / TARGET_SNAPSHOTS_PER_SECOND
-            
-            # Events visuels
-            p.visual_event = None
-            if p.has_draft: p.visual_event = 'drafting'
-            elif p.strategy >= 70: p.visual_event = 'sprint'
-            elif p.fatigue > 80: p.visual_event = 'tired'
+            if p.distance >= FIXED_TOTAL_RACE_DISTANCE:
+                p.is_finished = True
+                p.finish_time = self.current_turn
 
         self._apply_drafting()
 
@@ -143,23 +115,21 @@ class CourseManager:
         for i in range(1, len(sorted_pigs)):
             front, chaser = sorted_pigs[i-1], sorted_pigs[i]
             gap = front.distance - chaser.distance
-            # Ajuster les seuils de drafting pour la nouvelle granularité
-            chaser.has_draft = (1.0 <= gap <= 5.0) # Gap plus petit car les pas sont plus petits
+            chaser.has_draft = (1.0 <= gap <= 5.0)
 
     def record_history(self):
         self.history.append({
             'turn': self.current_turn,
             'pigs': [{
                 'id': p.id, 'name': p.name, 'distance': round(p.distance, 2),
-                'vitesse_actuelle': round(p.current_speed, 2), 'fatigue': round(p.fatigue, 2),
-                'strategy': p.strategy, 'is_finished': p.is_finished,
-                'has_draft': p.has_draft, 'visual_event': p.visual_event,
+                'is_finished': p.is_finished, 'has_draft': p.has_draft
             } for p in self.participants],
         })
 
     def to_json(self):
+        final_ranking = sorted(self.participants, key=lambda x: (x.finish_time or 9999, -x.distance))
         return json.dumps({
-            'track_profile': 'PLAT',
-            'segments': [{'type': s.type, 'length': s.length} for s in self.segments],
             'turns': self.history,
+            'final_ranking_ids': [p.id for p in final_ranking],
+            'total_race_distance': FIXED_TOTAL_RACE_DISTANCE
         })
