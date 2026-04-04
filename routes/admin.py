@@ -1,25 +1,22 @@
 from flask import Blueprint, render_template, request, redirect, url_for, session, flash, make_response
-from datetime import datetime, timezone
-import csv
-import io
+from datetime import datetime
+import json
 import logging
 import os
 import re
 import unicodedata
-from zoneinfo import ZoneInfo
 from sqlalchemy import or_
 
 from exceptions import BusinessRuleError
 from extensions import db
-from models import User, Race, Pig, Bet, BalanceTransaction, CerealItem, TrainingItem, SchoolLessonItem, HangmanWordItem, PigAvatar, AuthEventLog
+from models import User, Race, Pig, Bet, CerealItem, TrainingItem, SchoolLessonItem, HangmanWordItem, PigAvatar, AuthEventLog
 from sqlalchemy.orm import joinedload
 from data import JOURS_FR
 from helpers import (
-    set_config, get_config, populate_race_participants, run_race_if_needed,
+    set_config, get_config,
     get_all_cereals_dict, get_all_trainings_dict, get_all_school_lessons_dict,
     invalidate_game_data_cache,
 )
-from helpers.config import DEFAULT_RACE_THEMES
 from helpers.auth import admin_required
 from services.economy_service import (
     build_admin_progression_context,
@@ -29,7 +26,6 @@ from services.economy_service import (
     build_progression_settings_from_form,
     build_progression_simulation_inputs_from_form,
     build_simulation_inputs_from_form,
-    get_configured_bet_types,
     get_economy_settings,
     get_progression_settings,
     save_day_reward_multipliers,
@@ -38,10 +34,14 @@ from services.economy_service import (
 )
 from services.finance_service import credit_user, debit_user
 from services.finance_service import (
-    adjust_user_balance,
     build_finance_settings_from_form,
     get_finance_settings,
     save_finance_settings,
+)
+from services.admin_bet_service import (
+    build_admin_bets_page_context,
+    reconcile_bet_by_id,
+    reconcile_finished_bets,
 )
 from services.admin_user_service import (
     adjust_user_balance_by_admin,
@@ -54,13 +54,19 @@ from services.admin_settings_service import (
     save_bourse_settings,
     save_race_engine_settings_json,
 )
+from services.admin_race_service import (
+    build_admin_races_page_context,
+    cancel_race_and_refund_bets,
+    export_race_npcs_csv_content,
+    force_race_now,
+    import_race_npcs_csv,
+    save_admin_races_configuration,
+)
 from services.pig_service import get_pig_settings
 from services.race_engine_service import (
     get_race_engine_settings,
     reset_race_engine_settings,
 )
-from services.game_settings_service import get_game_settings
-from services.race_service import attach_bet_outcome_snapshots, get_configured_npcs
 
 admin_bp = Blueprint('admin', __name__)
 
@@ -168,62 +174,6 @@ def _normalize_hangman_word(raw_word):
     if any((not ch.isalpha()) and ch != ' ' for ch in normalized):
         return None
     return normalized
-
-
-def _get_bet_payout_balance_delta(bet):
-    amount = (
-        db.session.query(db.func.coalesce(db.func.sum(BalanceTransaction.amount), 0.0))
-        .filter(
-            BalanceTransaction.user_id == bet.user_id,
-            BalanceTransaction.reference_type == 'bet',
-            BalanceTransaction.reference_id == bet.id,
-            BalanceTransaction.reason_code.in_([
-                'bet_payout',
-                'bet_payout_adjustment',
-                'bet_payout_reversal',
-            ]),
-        )
-        .scalar()
-    )
-    return round(float(amount or 0.0), 2)
-
-
-def _reconcile_bet_record(bet):
-    snapshot = getattr(bet, 'outcome_snapshot', None)
-    if snapshot is None:
-        attach_bet_outcome_snapshots([bet])
-        snapshot = getattr(bet, 'outcome_snapshot', None)
-    if snapshot is None or snapshot.actual_status is None:
-        return False, "Course non terminee: aucun recalcul possible."
-
-    expected_winnings = round(bet.amount * bet.odds_at_bet, 2) if snapshot.actual_status == 'won' else 0.0
-    current_payout_delta = _get_bet_payout_balance_delta(bet)
-    payout_delta = round(expected_winnings - current_payout_delta, 2)
-
-    if payout_delta > 0:
-        adjust_user_balance(
-            bet.user_id,
-            payout_delta,
-            reason_code='bet_payout_adjustment',
-            reason_label='Correction gain de pari',
-            details=f"Correction admin du ticket #{bet.id} sur la course #{bet.race_id}.",
-            reference_type='bet',
-            reference_id=bet.id,
-        )
-    elif payout_delta < 0:
-        adjust_user_balance(
-            bet.user_id,
-            payout_delta,
-            reason_code='bet_payout_reversal',
-            reason_label='Correction pari',
-            details=f"Annulation du trop-percu sur le ticket #{bet.id} de la course #{bet.race_id}.",
-            reference_type='bet',
-            reference_id=bet.id,
-        )
-
-    bet.status = snapshot.actual_status
-    bet.winnings = expected_winnings
-    return True, snapshot.actual_status
 
 # ══════════════════════════════════════════════════════════════════════════════
 # Dashboard
@@ -443,136 +393,27 @@ def admin_balance(user):
 @admin_bp.route('/admin/races')
 @admin_required
 def admin_races(user):
-    settings = get_game_settings()
-    upcoming_races = Race.query.filter(Race.status.in_(['upcoming', 'open'])).order_by(Race.scheduled_at).limit(20).all()
-    recent_races = Race.query.filter_by(status='finished').order_by(Race.finished_at.desc()).limit(10).all()
-
-    # Thèmes : fusionner config DB avec defaults
-    raw_themes = get_config('race_themes', '')
-    try:
-        current_themes = json.loads(raw_themes) if raw_themes else {}
-    except (json.JSONDecodeError, TypeError):
-        current_themes = {}
-    merged_themes = {}
-    for d in range(7):
-        key = str(d)
-        merged_themes[key] = {**DEFAULT_RACE_THEMES.get(key, {}), **current_themes.get(key, {})}
-
-    configured_npcs = get_configured_npcs()
-    race_npcs_text = '\n'.join(f"{npc['name']}|{npc.get('emoji', '🐷')}" for npc in configured_npcs)
-
-    return render_template('admin_races.html',
-        user=user, admin_tab='races',
-        upcoming_races=upcoming_races, recent_races=recent_races,
-        config={
-            'race_hour': settings.race_hour,
-            'race_minute': settings.race_minute,
-            'market_days': settings.market_days,
-            'market_hour': settings.market_hour,
-            'market_minute': settings.market_minute,
-            'market_duration': settings.market_duration,
-            'min_real_participants': settings.min_real_participants,
-            'empty_race_mode': settings.empty_race_mode,
-            'timezone': get_config('timezone', 'Europe/Paris'),
-            'race_schedule': settings.race_schedule,
-            'schedule_dict': settings.schedule_dict,
-            'race_themes': merged_themes,
-            'race_npcs_text': race_npcs_text,
-        },
-        jours=JOURS_FR)
+    context = build_admin_races_page_context()
+    return render_template(
+        'admin_races.html',
+        user=user,
+        admin_tab='races',
+        jours=JOURS_FR,
+        **context,
+    )
 
 
 @admin_bp.route('/admin/save', methods=['POST'])
 @admin_required
 def admin_save(user):
-    old_timezone = get_config('timezone', 'Europe/Paris')
-    keys = [
-        'race_hour', 'race_minute', 'market_hour',
-        'market_minute', 'market_duration', 'min_real_participants', 'empty_race_mode', 'timezone'
-    ]
-    for key in keys:
-        val = request.form.get(key)
-        if val is not None:
-            set_config(key, val)
+    try:
+        messages = save_admin_races_configuration(request.form)
+    except BusinessRuleError as exc:
+        flash(str(exc), "error")
+        return redirect(url_for('admin.admin_races'))
 
-    new_timezone = (request.form.get('timezone') or '').strip()
-    if new_timezone:
-        try:
-            old_tz = ZoneInfo(old_timezone)
-            new_tz = ZoneInfo(new_timezone)
-        except Exception:
-            flash("Fuseau horaire invalide. Aucun changement applique.", "error")
-            return redirect(url_for('admin.admin_races'))
-
-        if new_timezone != old_timezone:
-            upcoming_races = Race.query.filter(
-                Race.status.in_(['upcoming', 'open']),
-                Race.scheduled_at.isnot(None),
-            ).all()
-            for race in upcoming_races:
-                scheduled_utc = race.scheduled_at
-                if scheduled_utc.tzinfo is None:
-                    scheduled_utc = scheduled_utc.replace(tzinfo=timezone.utc)
-                else:
-                    scheduled_utc = scheduled_utc.astimezone(timezone.utc)
-
-                old_local = scheduled_utc.astimezone(old_tz)
-                preserved_local = datetime(
-                    old_local.year, old_local.month, old_local.day,
-                    old_local.hour, old_local.minute, old_local.second, old_local.microsecond,
-                    tzinfo=new_tz,
-                )
-                race.scheduled_at = preserved_local.astimezone(timezone.utc).replace(tzinfo=None)
-
-            db.session.commit()
-            set_config('timezone', new_timezone)
-            flash("Fuseau horaire mis a jour. Les courses a venir ont ete recalees pour garder les memes heures locales.", "success")
-            flash("Note logs Docker: pour aligner l'heure systeme (TZ), redemarre le conteneur web.", "info")
-        else:
-            set_config('timezone', new_timezone)
-
-    # Jours du marché : checkboxes multi-valeurs → "1,3,4"
-    market_days = request.form.getlist('market_days')
-    if market_days:
-        set_config('market_day', ','.join(sorted(market_days, key=int)))
-
-    schedule = {}
-    for i in range(7):
-        day_times_raw = request.form.get(f'schedule_{i}', '').strip()
-        times = [t.strip() for t in day_times_raw.split(',') if t.strip()]
-        valid_times = [t for t in times if re.match(r'^\d{1,2}:\d{2}$', t) and int(t.split(':')[0]) < 24 and int(t.split(':')[1]) < 60]
-        schedule[str(i)] = sorted(valid_times)
-
-    set_config('race_schedule', json.dumps(schedule))
-
-    # Thèmes de course par jour
-    themes = {}
-    for i in range(7):
-        try:
-            multiplier = max(1, int(request.form.get(f'theme_{i}_multiplier', '1') or '1'))
-        except (ValueError, TypeError):
-            multiplier = 1
-        themes[str(i)] = {
-            'emoji': request.form.get(f'theme_{i}_emoji', '🥓').strip(),
-            'name': request.form.get(f'theme_{i}_name', '').strip(),
-            'tag': request.form.get(f'theme_{i}_tag', '').strip(),
-            'description': request.form.get(f'theme_{i}_description', '').strip(),
-            'accent': request.form.get(f'theme_{i}_accent', 'pink').strip(),
-            'focus_stat': request.form.get(f'theme_{i}_focus_stat', '').strip(),
-            'focus_label': request.form.get(f'theme_{i}_focus_label', '').strip(),
-            'reward_multiplier': multiplier,
-            'event_label': request.form.get(f'theme_{i}_event_label', '').strip(),
-            'planning_hint': request.form.get(f'theme_{i}_planning_hint', '').strip(),
-        }
-    # PNJ de remplissage des courses : une ligne par PNJ, format "Nom|🐷"
-    raw_npcs = request.form.get('race_npcs_text', '')
-    npcs = _parse_race_npcs_from_lines(raw_npcs.splitlines())
-    if npcs:
-        set_config('race_npcs', json.dumps(npcs, ensure_ascii=False))
-    else:
-        set_config('race_npcs', '')
-
-    flash("Configuration sauvegardee !", "success")
+    for message, category in messages:
+        flash(message, category)
     return redirect(url_for('admin.admin_races'))
 
 
@@ -580,14 +421,7 @@ def admin_save(user):
 @admin_required
 def admin_export_race_npcs_csv(user):
     """Exporte les PNJ de remplissage en CSV (name,emoji)."""
-    npcs = get_configured_npcs()
-    output = io.StringIO()
-    writer = csv.writer(output)
-    writer.writerow(['name', 'emoji'])
-    for npc in npcs:
-        writer.writerow([npc.get('name', ''), npc.get('emoji', '🐷')])
-
-    response = make_response(output.getvalue())
+    response = make_response(export_race_npcs_csv_content())
     response.headers['Content-Type'] = 'text/csv; charset=utf-8'
     response.headers['Content-Disposition'] = 'attachment; filename=race_npcs.csv'
     return response
@@ -597,50 +431,22 @@ def admin_export_race_npcs_csv(user):
 @admin_required
 def admin_import_race_npcs_csv(user):
     """Importe les PNJ de remplissage depuis un CSV (name,emoji)."""
-    upload = request.files.get('race_npcs_csv')
-    if not upload or not upload.filename:
-        flash("Aucun fichier CSV selectionne.", "warning")
-        return redirect(url_for('admin.admin_races'))
-
     try:
-        content = upload.stream.read().decode('utf-8-sig')
-    except Exception:
-        flash("Impossible de lire le fichier CSV.", "error")
+        npc_count = import_race_npcs_csv(request.files.get('race_npcs_csv'))
+    except BusinessRuleError as exc:
+        message = str(exc)
+        category = 'warning' if 'Aucun fichier' in message or 'Import vide' in message else 'error'
+        flash(message, category)
         return redirect(url_for('admin.admin_races'))
 
-    reader = csv.DictReader(io.StringIO(content))
-    if not reader.fieldnames or 'name' not in reader.fieldnames:
-        flash("CSV invalide: colonne obligatoire 'name' manquante.", "error")
-        return redirect(url_for('admin.admin_races'))
-
-    lines = []
-    for row in reader:
-        if not row:
-            continue
-        name = (row.get('name') or '').strip()
-        emoji = (row.get('emoji') or '').strip()
-        if not name:
-            continue
-        lines.append(f"{name}|{emoji}" if emoji else name)
-
-    npcs = _parse_race_npcs_from_lines(lines)
-    if not npcs:
-        flash("Import vide: aucun PNJ valide detecte.", "warning")
-        return redirect(url_for('admin.admin_races'))
-
-    set_config('race_npcs', json.dumps(npcs, ensure_ascii=False))
-    flash(f"Import CSV reussi: {len(npcs)} PNJ enregistres.", "success")
+    flash(f"Import CSV reussi: {npc_count} PNJ enregistres.", "success")
     return redirect(url_for('admin.admin_races'))
 
 
 @admin_bp.route('/admin/force-race', methods=['POST'])
 @admin_required
 def admin_force_race(user):
-    race = Race(scheduled_at=datetime.now(), status='open')
-    db.session.add(race)
-    db.session.flush()
-    populate_race_participants(race, respect_course_plans=False, allow_rebuild_if_bets=True, commit=True)
-    run_race_if_needed()
+    force_race_now()
     flash("🏁 Course forcee ! Resultats disponibles.", "success")
     return redirect(url_for('admin.admin_races'))
 
@@ -649,28 +455,13 @@ def admin_force_race(user):
 @admin_required
 def admin_cancel_race(user, race_id):
     race = Race.query.get_or_404(race_id)
-    if race.status == 'finished':
-        flash("Impossible d'annuler une course terminee.", "error")
+    try:
+        cancelled_race_id = cancel_race_and_refund_bets(race)
+    except BusinessRuleError as exc:
+        flash(str(exc), "error")
         return redirect(url_for('admin.admin_races'))
 
-    for bet in race.bets:
-        if bet.status == 'pending':
-            bet_user = User.query.get(bet.user_id)
-            if bet_user:
-                credit_user(
-                    bet_user,
-                    bet.amount,
-                    reason_code='bet_refund',
-                    reason_label='Remboursement (Course annulee)',
-                    reference_type='race',
-                    reference_id=race.id,
-                    commit=False,
-                )
-            bet.status = 'cancelled'
-
-    db.session.delete(race)
-    db.session.commit()
-    flash(f"Course #{race_id} annulee et paris rembourses.", "success")
+    flash(f"Course #{cancelled_race_id} annulee et paris rembourses.", "success")
     return redirect(url_for('admin.admin_races'))
 
 
@@ -681,74 +472,24 @@ def admin_cancel_race(user, race_id):
 @admin_bp.route('/admin/bets')
 @admin_required
 def admin_bets(user):
-    status_filter = (request.args.get('status') or '').strip()
-    race_id_filter = request.args.get('race_id', type=int)
-    username_filter = (request.args.get('username') or '').strip()
-    mismatch_only = request.args.get('mismatch') == '1'
-
-    query = Bet.query.join(User, User.id == Bet.user_id).join(Race, Race.id == Bet.race_id)
-    if status_filter:
-        query = query.filter(Bet.status == status_filter)
-    if race_id_filter:
-        query = query.filter(Bet.race_id == race_id_filter)
-    if username_filter:
-        query = query.filter(User.username.ilike(f"%{username_filter}%"))
-
-    bets = (
-        query
-        .order_by(Bet.placed_at.desc(), Bet.id.desc())
-        .limit(150)
-        .all()
+    context = build_admin_bets_page_context(
+        status_filter=(request.args.get('status') or '').strip(),
+        race_id_filter=request.args.get('race_id', type=int),
+        username_filter=(request.args.get('username') or '').strip(),
+        mismatch_only=request.args.get('mismatch') == '1',
     )
-    attach_bet_outcome_snapshots(bets)
-
-    if mismatch_only:
-        bets = [bet for bet in bets if not bet.outcome_snapshot.is_consistent]
-
-    mismatch_count = sum(1 for bet in bets if not bet.outcome_snapshot.is_consistent)
-    finished_count = sum(1 for bet in bets if bet.outcome_snapshot.race_finished)
-
     return render_template(
         'admin_bets.html',
         user=user,
         admin_tab='bets',
-        bets=bets,
-        bet_types=get_configured_bet_types(),
-        filters={
-            'status': status_filter,
-            'race_id': race_id_filter or '',
-            'username': username_filter,
-            'mismatch': mismatch_only,
-        },
-        stats={
-            'visible': len(bets),
-            'finished': finished_count,
-            'mismatch': mismatch_count,
-        },
+        **context,
     )
 
 
 @admin_bp.route('/admin/bets/reconcile', methods=['POST'])
 @admin_required
 def admin_reconcile_bets(user):
-    bets = (
-        Bet.query
-        .join(Race, Race.id == Bet.race_id)
-        .filter(Race.status == 'finished')
-        .order_by(Bet.id.asc())
-        .all()
-    )
-    attach_bet_outcome_snapshots(bets)
-
-    updated = 0
-    for bet in bets:
-        if bet.outcome_snapshot.is_consistent:
-            continue
-        did_update, _ = _reconcile_bet_record(bet)
-        if did_update:
-            updated += 1
-
-    db.session.commit()
+    updated = reconcile_finished_bets()
     flash(f"{updated} ticket(s) ont ete recalcules et corriges.", "success")
     return redirect(url_for('admin.admin_bets'))
 
@@ -756,14 +497,14 @@ def admin_reconcile_bets(user):
 @admin_bp.route('/admin/bets/<int:bet_id>/reconcile', methods=['POST'])
 @admin_required
 def admin_reconcile_bet(user, bet_id):
-    bet = Bet.query.get_or_404(bet_id)
-    attach_bet_outcome_snapshots([bet])
-    did_update, result = _reconcile_bet_record(bet)
+    bet, did_update, result = reconcile_bet_by_id(bet_id)
+    if bet is None:
+        flash(result, "error")
+        return redirect(url_for('admin.admin_bets'))
     if not did_update:
         flash(result, "warning")
         return redirect(url_for('admin.admin_bets'))
 
-    db.session.commit()
     flash(f"Ticket #{bet.id} recalcule: statut final {result}.", "success")
     return redirect(url_for('admin.admin_bets'))
 

@@ -15,6 +15,7 @@ Liste des fonctionnalités et idées déjà implémentées dans le projet.
 - **Auth et marché sortis des routes** : `services/auth_service.py` gère maintenant inscription, login, mot de passe et magic links, tandis que `services/market_service.py` porte les bids, ventes de cochons et déplacements Bourse.
 - **Pages principales allégées** : les contextes lourds de l'accueil, de l'historique, des règles et du classement sont désormais assemblés dans `services/main_page_service.py`.
 - **Admin commencé côté services** : `services/admin_user_service.py` et `services/admin_settings_service.py` prennent en charge une partie des actions admin utilisateurs et réglages pour réduire `routes/admin.py`.
+- **Routes courses/admin encore amincies** : `services/race_page_service.py`, `services/admin_race_service.py` et `services/admin_bet_service.py` portent maintenant une partie des contextes lourds et actions admin liées aux courses, PNJ et tickets.
 
 ## Gestion des Courses
 - **Gestion des courses vides / sous-peuplées** : Mise en place d'une règle configurable (`min_real_participants`) pour remplir automatiquement les courses avec des bots ou les annuler.
@@ -156,11 +157,14 @@ Corrections de failles économiques majeures identifiées par simulation (voir `
     - Bouton "Force Race" pour déclencher une course immédiatement.
     - Annulation de course sécurisée avec remboursement automatique des parieurs.
     - Les contextes lourds de l'accueil, de l'historique, des règles et du classement ont été sortis du blueprint principal vers `services/main_page_service.py`.
+    - Les pages `/courses`, `/paris` et plusieurs actions de `/admin/races` délèguent maintenant leurs contextes et opérations à des services dédiés.
 - **Gestion des Joueurs** :
     - Ajustement manuel des soldes (BitGroins) avec journalisation.
     - Promotion/Rétrogradation des administrateurs.
     - Réinitialisation de mot de passe et génération de **Liens Magiques** (connexion sécurisée par token de 24h).
     - Une partie de ces actions est maintenant servie par `services/admin_user_service.py` au lieu d'être codée inline dans `routes/admin.py`.
+- **Audit des Paris admin** :
+    - La consultation et la réconciliation des tickets admin passent désormais par `services/admin_bet_service.py`.
 - **Gestion des Cochons** : Liste complète avec filtres de vie, fonctions de résurrection/mise à mort administrative et soin immédiat (bouton Heal).
 - **Événements Globaux** : Déclenchement manuel de bonus (pluie de nourriture, visite vétérinaire générale, bonus BitGroins pour tous).
 - **Configuration SMTP** : Panneau de réglage pour l'envoi d'emails (notifications, liens magiques) avec test d'envoi en direct.

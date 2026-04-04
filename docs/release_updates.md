@@ -9,6 +9,26 @@ Objectif:
 
 ## 2026-04-04
 
+### Phase 7 - Amincissement des pages courses et du panneau admin races/bets
+- creation de `services/race_page_service.py` pour sortir de `routes/race.py` la construction des contextes de:
+  - `/courses`;
+  - `/paris`;
+- creation de `services/admin_race_service.py` pour centraliser:
+  - le contexte de `/admin/races`;
+  - la sauvegarde de la configuration courses/marche/themes/PNJ;
+  - l'import/export CSV des PNJ;
+  - le `force race`;
+  - l'annulation de course avec remboursement;
+- creation de `services/admin_bet_service.py` pour centraliser:
+  - l'affichage admin des tickets;
+  - la reconciliation de masse des paris;
+  - la reconciliation d'un ticket unitaire;
+- ajout de `tests/test_admin_race_service.py`.
+
+Verification locale:
+- `python3 -m py_compile routes/admin.py services/admin_bet_service.py services/admin_race_service.py routes/race.py services/race_page_service.py tests/test_admin_race_service.py`: OK;
+- `./.venv/bin/python -m unittest tests.test_admin_race_service tests.test_admin_user_service tests.test_admin_settings_service tests.test_auth_service tests.test_market_service`: OK.
+
 ### Phase 6 - Amincissement des blueprints auth, market, main et admin
 - creation de `services/auth_service.py` pour sortir de `routes/auth.py`:
   - inscription;

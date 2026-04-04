@@ -14,6 +14,7 @@
 - **Erreurs métier explicites** : les règles bloquantes remontent via `exceptions.py` (`InsufficientFundsError`, `PigTiredError`, etc.) au lieu de dépendre d'imports locaux dans les modèles.
 - **Factory plus propre** : `app.py` charge maintenant sa configuration via `config/app_config.py`, tandis que les seeders et commandes CLI ont été déplacés dans `cli/seeders.py`.
 - **Blueprints allégés progressivement** : `routes/pig.py`, `routes/race.py`, `routes/market.py`, `routes/bourse.py`, `routes/auth.py`, `routes/main.py` et une partie de `routes/admin.py` délèguent désormais leur logique métier à la couche service.
+- **Pages de course et admin découpées par contexte** : les routes de consultation lourdes s'appuient maintenant sur des builders de contexte dédiés (`services/main_page_service.py`, `services/race_page_service.py`, `services/admin_race_service.py`, `services/admin_bet_service.py`) pour limiter les requêtes et le code de présentation dans les blueprints.
 
 ## Structure des Modèles (Database Schema)
 
@@ -95,6 +96,8 @@ derby_des_groins/
 │   └── api.py              # Endpoints JSON pour l'UI dynamique + replay course
 ├── services/               # Couche métier dédiée
 │   ├── admin_settings_service.py # Sauvegarde/validation des reglages admin (cochons, moteur, bourse)
+│   ├── admin_bet_service.py # Audit et reconciliation admin des tickets PMU
+│   ├── admin_race_service.py # Configuration admin des courses, PNJ, annulation et force race
 │   ├── admin_user_service.py # Gestion admin des joueurs (droits, mot de passe, lien magique, solde)
 │   ├── auth_service.py     # Inscription, login, magic links, changement de mot de passe
 │   ├── bet_service.py      # Validation métier et création de tickets PMU
@@ -103,6 +106,7 @@ derby_des_groins/
 │   ├── main_page_service.py # Construction des contextes lourds pour accueil, regles, historique, classement
 │   ├── market_service.py   # Encheres cochons, ventes, bids et deplacement de la Bourse
 │   ├── pig_service.py      # Actions cochons, vitals, école, retraite, abattoir
+│   ├── race_page_service.py # Construction des contextes lourds de /courses et /paris
 │   └── ...
 ├── exceptions.py           # Exceptions métier partagées
 ├── templates/              # Vues Jinja2 (v3.0 UI Responsive)
