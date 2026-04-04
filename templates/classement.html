@@ -830,6 +830,8 @@
         options: { ..._opts, scales: { ..._opts.scales, y: { ..._opts.scales.y, max: 100 } } }
     }));
 
+    refreshClassementChartsTheme();
+    document.addEventListener('DOMContentLoaded', refreshClassementChartsTheme);
     document.addEventListener('derby-theme-change', refreshClassementChartsTheme);
 </script>
 
