@@ -421,6 +421,8 @@ def maybe_grant_solidarity_relief(user):
         reference_type='system',
         reference_id=user.id,
     )
+    from services.place_financiere_service import increment_solidarity_rescues
+    increment_solidarity_rescues()
     db.session.commit()
     return fs.solidarity_amount
 

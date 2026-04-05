@@ -34,6 +34,7 @@ TAX_EXEMPT_REASON_CODES = frozenset({
     'daily_reward', 'emergency_relief', 'challenge_payout',
     'solidarity_relief', 'breed_refund',
     'bet_payout', 'bet_payout_adjustment', 'bet_refund',
+    'tirelire_explosion',
 })
 
 CASINO_REASON_CODES = frozenset({
