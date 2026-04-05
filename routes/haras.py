@@ -64,7 +64,7 @@ def lister():
 
     try:
         list_pig_in_haras(user, pig, price)
-        flash(f"✅ {pig.emoji} {pig.name} est maintenant au Haras pour {price:.0f} BG par saillie !", "success")
+        flash(f"🔥 {pig.emoji} {pig.name} est désormais sur Groin-der à {price:.0f} BG par match !", "success")
     except (BusinessRuleError, ValidationError) as e:
         flash(str(e), "error")
 
@@ -89,7 +89,7 @@ def retirer():
 
     try:
         unlist_pig_from_haras(user, pig)
-        flash(f"🏠 {pig.emoji} {pig.name} a quitté le Haras.", "success")
+        flash(f"👋 {pig.emoji} {pig.name} a supprimé son profil Groin-der.", "success")
     except BusinessRuleError as e:
         flash(str(e), "error")
 
