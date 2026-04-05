@@ -397,18 +397,18 @@
                     <!-- HARAS PORCIN -->
                     {% if pig.is_alive or pig.retired_into_heritage %}
                     <div class="w-full mt-4 px-4 py-3 rounded-2xl border border-emerald-400/20 bg-emerald-400/8 text-left">
-                        <p class="text-[10px] font-bold uppercase tracking-wider text-emerald-300 mb-2">🐴 Haras Porcin</p>
+                        <p class="text-[10px] font-bold uppercase tracking-wider text-emerald-300 mb-2">🔥 Groin-der</p>
                         {% if pig.haras_listed %}
                         <div class="flex items-center justify-between gap-2 mb-2">
                             <div>
                                 <p class="font-title text-lg text-emerald-300">{{ "%.0f"|format(pig.haras_price or 0) }} BG</p>
-                                <p class="text-white/35 text-[10px]">{{ pig.haras_services_count or 0 }} saillie{{ 's' if (pig.haras_services_count or 0) > 1 else '' }}</p>
+                                <p class="text-white/35 text-[10px]">{{ pig.haras_services_count or 0 }} match{{ 'es' if (pig.haras_services_count or 0) > 1 else '' }}</p>
                             </div>
                             <span class="text-[10px] font-bold text-emerald-300/70 border border-emerald-400/25 rounded-full px-2 py-0.5">En service</span>
                         </div>
                         <form method="POST" action="/haras/retirer">
                             <input type="hidden" name="pig_id" value="{{ pig.id }}">
-                            <button type="submit" class="w-full text-[11px] font-bold text-red-300/70 hover:text-red-300 transition-colors py-1">✕ Retirer du Haras</button>
+                            <button type="submit" class="w-full text-[11px] font-bold text-red-300/70 hover:text-red-300 transition-colors py-1">✕ Quitter Groin-der</button>
                         </form>
                         {% else %}
                         <form method="POST" action="/haras/lister" class="space-y-2">

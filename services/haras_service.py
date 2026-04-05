@@ -1,4 +1,4 @@
-"""Service pour le Haras Porcin — marketplace P2P de géniteurs."""
+"""Service pour Groin-der — marketplace P2P de géniteurs porcins."""
 
 from exceptions import BusinessRuleError, InsufficientFundsError, ValidationError
 from extensions import db
@@ -43,9 +43,9 @@ def list_pig_in_haras(user, pig, price):
     if pig.user_id != user.id:
         raise BusinessRuleError("Ce cochon ne t'appartient pas.")
     if not is_eligible_for_haras(pig):
-        raise BusinessRuleError("Ce cochon n'est pas éligible au Haras (doit être vivant ou à la retraite honorée).")
+        raise BusinessRuleError("Ce cochon n'est pas éligible sur Groin-der (doit être vivant ou à la retraite honorée).")
     if pig.haras_listed:
-        raise BusinessRuleError("Ce cochon est déjà listé au Haras.")
+        raise BusinessRuleError("Ce cochon a déjà un profil sur Groin-der.")
 
     try:
         price = round(float(price), 2)
@@ -68,7 +68,7 @@ def unlist_pig_from_haras(user, pig):
     if pig.user_id != user.id:
         raise BusinessRuleError("Ce cochon ne t'appartient pas.")
     if not pig.haras_listed:
-        raise BusinessRuleError("Ce cochon n'est pas listé au Haras.")
+        raise BusinessRuleError("Ce cochon n'a pas de profil sur Groin-der.")
 
     pig.haras_listed = False
     pig.haras_price = None
@@ -95,7 +95,7 @@ def perform_saillie(buyer, stud_pig, porcelet_name=None):
 
     # ── Validations ──────────────────────────────────────────────────────────
     if not stud_pig.haras_listed:
-        raise BusinessRuleError("Ce cochon n'est plus disponible au Haras.")
+        raise BusinessRuleError("Ce cochon n'est plus disponible sur Groin-der.")
     if not is_eligible_for_haras(stud_pig):
         raise BusinessRuleError("Ce géniteur n'est plus éligible (mort sans retraite honorée).")
     if buyer.id == stud_pig.user_id:
@@ -123,7 +123,7 @@ def perform_saillie(buyer, stud_pig, porcelet_name=None):
         buyer,
         stud_price,
         reason_code='haras_saillie',
-        reason_label='Saillie au Haras Porcin',
+        reason_label='Match Groin-der',
         details=f"Saillie avec {stud_pig.name} ({stud_pig.emoji}) de {owner.username if owner else '?'}.",
         reference_type='pig',
         reference_id=stud_pig.id,
@@ -134,10 +134,10 @@ def perform_saillie(buyer, stud_pig, porcelet_name=None):
         stud_pig.user_id,
         owner_share,
         reason_code='haras_sale',
-        reason_label='Saillie vendue au Haras',
+        reason_label='Match vendu sur Groin-der',
         details=(
-            f"Saillie de {stud_pig.name} ({stud_pig.emoji}) achetée par {buyer.username}. "
-            f"Commission Haras : -{commission:.2f} BG (15 %)."
+            f"Match de {stud_pig.name} ({stud_pig.emoji}) acheté par {buyer.username}. "
+            f"Commission Groin-der : -{commission:.2f} BG (15 %)."
         ),
         reference_type='pig',
         reference_id=stud_pig.id,

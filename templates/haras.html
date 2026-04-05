@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Derby des Groins -- Haras Porcin</title>
+    <title>Derby des Groins -- Groin-der</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" crossorigin="anonymous"></script>
     <link href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
@@ -56,17 +56,17 @@
     <!-- ===== HERO ===== -->
     <div class="text-center space-y-2">
         <h1 class="font-title text-4xl sm:text-5xl text-emerald-300 drop-shadow-[0_0_24px_rgba(16,185,129,0.30)]">
-            🐴 Le Haras Porcin
+            🔥 Groin-der
         </h1>
-        <p class="text-white/50 text-sm font-semibold uppercase tracking-widest">Marketplace P2P de géniteurs d'élite</p>
+        <p class="text-white/50 text-sm font-semibold uppercase tracking-widest">L'app de rencontres porcines #1 de l'internet</p>
         <p class="text-white/35 text-sm italic max-w-xl mx-auto">
-            "Ici, les grands champions transmettent leur ADN aux générations futures. Choisissez votre géniteur, payez les frais de notaire, et récupérez un porcelet de lignée royale."
+            "Swipe à droite sur un champion. Payez les frais de notaire. Récupérez un porcelet de lignée royale. C'est comme Tinder, mais pour les cochons et avec de la paperasse."
         </p>
     </div>
 
     <!-- ===== GÉNITEURS DISPONIBLES ===== -->
     <section>
-        <h2 class="font-title text-2xl text-white/80 mb-4">🏆 Géniteurs disponibles</h2>
+        <h2 class="font-title text-2xl text-white/80 mb-4">🔥 Profils disponibles</h2>
 
         {% if listings %}
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
@@ -108,7 +108,7 @@
                 <!-- Infos génération + lignée -->
                 <div class="text-xs text-white/40 font-semibold space-y-0.5">
                     <p>🌳 Génération {{ pig.generation }} — {{ pig.lineage_name or 'Lignée inconnue' }}</p>
-                    <p>🏁 {{ pig.races_won }} victoires · {{ pig.haras_services_count }} saillies</p>
+                    <p>🏁 {{ pig.races_won }} victoires · {{ pig.haras_services_count }} match{{ 'es' if pig.haras_services_count != 1 else '' }}</p>
                     <p>{{ pig.origin_flag }} {{ pig.origin_country }}</p>
                 </div>
 
@@ -134,7 +134,7 @@
                         <input type="hidden" name="pig_id" value="{{ pig.id }}">
                         <button type="submit"
                             class="w-full rounded-xl border border-red-400/25 bg-red-400/10 py-2 text-sm font-bold text-red-300 hover:bg-red-400/20 transition-colors">
-                            ✕ Retirer du Haras
+                            ✕ Quitter Groin-der
                         </button>
                     </form>
                     {% else %}
@@ -196,8 +196,8 @@
         {% else %}
         <div class="card p-10 text-center space-y-3">
             <p class="text-4xl">🏚️</p>
-            <p class="font-bold text-white/60">Le Haras est vide pour l'instant.</p>
-            <p class="text-white/35 text-sm italic">Sois le premier à y inscrire un champion !</p>
+            <p class="font-bold text-white/60">Aucun profil sur Groin-der pour l'instant.</p>
+            <p class="text-white/35 text-sm italic">Sois le premier à swiper un champion dans la mare !</p>
         </div>
         {% endif %}
     </section>
@@ -208,7 +208,7 @@
         <!-- Cochons déjà listés -->
         {% if user_listed %}
         <div class="card p-6 space-y-4">
-            <h2 class="font-title text-xl text-amber-300">⭐ Mes géniteurs au Haras</h2>
+            <h2 class="font-title text-xl text-amber-300">🔥 Mes profils Groin-der</h2>
             <div class="space-y-3">
                 {% for pig in user_listed %}
                 <div class="flex items-center justify-between gap-3 rounded-xl border border-white/6 bg-white/3 px-4 py-3">
@@ -216,12 +216,12 @@
                         <span class="text-xl">{{ pig.emoji }}</span>
                         <div class="min-w-0">
                             <p class="font-bold text-white text-sm truncate">{{ pig.name }}</p>
-                            <p class="text-white/40 text-xs">{{ "%.0f"|format(pig.haras_price) }} BG · {{ pig.haras_services_count }} saillies</p>
+                            <p class="text-white/40 text-xs">{{ "%.0f"|format(pig.haras_price) }} BG · {{ pig.haras_services_count }} match{{ 'es' if pig.haras_services_count != 1 else '' }}</p>
                         </div>
                     </div>
                     <form method="POST" action="/haras/retirer">
                         <input type="hidden" name="pig_id" value="{{ pig.id }}">
-                        <button type="submit" class="text-red-300/70 hover:text-red-300 text-xs font-bold transition-colors">Retirer</button>
+                        <button type="submit" class="text-red-300/70 hover:text-red-300 text-xs font-bold transition-colors">Quitter</button>
                     </form>
                 </div>
                 {% endfor %}
@@ -232,8 +232,8 @@
         <!-- Lister un cochon -->
         {% if eligible_pigs %}
         <div class="card p-6 space-y-4">
-            <h2 class="font-title text-xl text-emerald-300">➕ Inscrire un géniteur</h2>
-            <p class="text-white/40 text-sm">Prix minimum : <strong class="text-white/70">{{ min_haras_price|int }} BG</strong> par saillie. Tu recevras 85 % du prix, 15 % vont à la Tirelire Centrale.</p>
+            <h2 class="font-title text-xl text-emerald-300">➕ Créer un profil Groin-der</h2>
+            <p class="text-white/40 text-sm">Prix minimum : <strong class="text-white/70">{{ min_haras_price|int }} BG</strong> par match. Tu recevras 85 % du prix, 15 % vont à la Tirelire Centrale.</p>
             <form method="POST" action="/haras/lister" class="space-y-3">
                 <select name="pig_id" required
                     class="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500/40">
@@ -254,7 +254,7 @@
                     >
                     <button type="submit"
                         class="rounded-xl border border-emerald-400/30 bg-emerald-400/12 px-4 py-2.5 text-sm font-bold text-emerald-300 hover:bg-emerald-400/20 transition-colors whitespace-nowrap">
-                        Inscrire au Haras
+                        Publier le profil
                     </button>
                 </div>
             </form>
@@ -263,8 +263,8 @@
 
         {% if not eligible_pigs and not user_listed %}
         <div class="card p-6 space-y-2 lg:col-span-2">
-            <h2 class="font-title text-xl text-white/40">Aucun cochon éligible</h2>
-            <p class="text-white/30 text-sm">Tu dois posséder un cochon vivant (ou retraité au Haras des Légendes) pour pouvoir l'inscrire comme géniteur.</p>
+            <h2 class="font-title text-xl text-white/40">Aucun profil possible</h2>
+            <p class="text-white/30 text-sm">Tu dois posséder un cochon vivant (ou retraité au Haras des Légendes) pour créer un profil Groin-der.</p>
         </div>
         {% endif %}
 
