@@ -407,11 +407,13 @@
                             <span class="text-[10px] font-bold text-emerald-300/70 border border-emerald-400/25 rounded-full px-2 py-0.5">En service</span>
                         </div>
                         <form method="POST" action="/haras/retirer">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                             <input type="hidden" name="pig_id" value="{{ pig.id }}">
                             <button type="submit" class="w-full text-[11px] font-bold text-red-300/70 hover:text-red-300 transition-colors py-1">✕ Quitter Groin-der</button>
                         </form>
                         {% else %}
                         <form method="POST" action="/haras/lister" class="space-y-2">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                             <input type="hidden" name="pig_id" value="{{ pig.id }}">
                             <div class="flex gap-2">
                                 <input type="number" name="price" min="20" step="1" placeholder="Prix BG"
