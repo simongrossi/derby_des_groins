@@ -4,7 +4,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🐷 Derby des Groins</title>
+    <title>🐷 Derby des Groins — Jeu de Courses & Paris</title>
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
     <style>
@@ -198,13 +199,20 @@
                 <div class="soft p-4"><div class="flex justify-between"><p class="text-white font-bold">Fatigue</p><span class="text-rose-200 font-extrabold">{{ featured_pig_status.fatigue_pct }}%</span></div><div class="gauge mt-3"><div class="fill bg-gradient-to-r from-rose-500 to-pink-300" style="width: {{ featured_pig_status.fatigue_pct }}%"></div></div></div>
             </div>
             <div class="mt-5 flex flex-wrap gap-3">
-                <form method="POST" action="/feed">
+                {% if recommended_cereal %}
+                <form method="POST" action="{{ url_for('pig.feed') }}">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <input type="hidden" name="pig_id" value="{{ pig.id }}">
-                    <input type="hidden" name="cereal" value="avoine">
-                    <button type="submit" class="btn-primary">🍬 Donner une friandise</button>
+                    <input type="hidden" name="cereal" value="{{ recommended_cereal.key }}">
+                    <button type="submit" class="btn-primary">
+                        {{ recommended_cereal.emoji }} Donner {{ recommended_cereal.name }}
+                        <span class="ml-1 opacity-70 text-[10px]">(Stock: {{ inventory[recommended_cereal.key] }})</span>
+                    </button>
                 </form>
-                <a href="/mon-cochon" class="btn-secondary">🐷 Ouvrir Ma Bauge</a>
+                {% else %}
+                <a href="{{ url_for('bourse.bourse') }}" class="btn-primary">🛒 Plus de stock : Bourse aux Grains</a>
+                {% endif %}
+                <a href="{{ url_for('pig.mon_cochon') }}" class="btn-secondary">🐷 Ouvrir Ma Bauge</a>
             </div>
             {% else %}
             <p class="text-white/55 font-semibold mt-4">Connecte-toi pour voir l'etat de ton cochon et agir rapidement.</p>
