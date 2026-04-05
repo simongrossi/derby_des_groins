@@ -83,6 +83,23 @@ def build_unique_pig_name(base_name, fallback_prefix='Cochon'):
         suffix += 1
 
 
+_GENE_KEYS = ['gene_vitesse', 'gene_endurance', 'gene_agilite', 'gene_force', 'gene_intelligence', 'gene_moral']
+_GENE_STAT_MAP = {
+    'gene_vitesse': 'vitesse',
+    'gene_endurance': 'endurance',
+    'gene_agilite': 'agilite',
+    'gene_force': 'force',
+    'gene_intelligence': 'intelligence',
+    'gene_moral': 'moral',
+}
+
+
+def init_pig_genes_random(pig, low=35.0, high=65.0):
+    """Initialise les 6 gènes d'un cochon de première génération avec des valeurs aléatoires."""
+    for gene_key in _GENE_KEYS:
+        setattr(pig, gene_key, round(random.uniform(low, high), 1))
+
+
 def apply_origin_bonus(pig, origin):
     base_value = getattr(pig, origin['bonus_stat']) or PIG_DEFAULTS.stat
     setattr(pig, origin['bonus_stat'], base_value + origin['bonus'])
@@ -130,6 +147,13 @@ def create_offspring(user, parent_a, parent_b, name=None):
             stat,
             round(min(PIG_LIMITS.max_value, max(PIG_OFFSPRING_RULES.inherited_stat_floor, inherited)), 1),
         )
+    # Héritage des gènes — potentiel génétique
+    for gene_key, stat_key in _GENE_STAT_MAP.items():
+        val_a = getattr(parent_a, gene_key, None) or getattr(parent_a, stat_key, PIG_DEFAULTS.stat)
+        val_b = getattr(parent_b, gene_key, None) or getattr(parent_b, stat_key, PIG_DEFAULTS.stat)
+        inherited_gene = (val_a + val_b) / 2 + random.uniform(-8, 8)
+        setattr(child, gene_key, round(max(5.0, min(100.0, inherited_gene)), 1))
+
     child.energy = PIG_OFFSPRING_RULES.initial_energy
     child.hunger = PIG_OFFSPRING_RULES.initial_hunger
     child.happiness = min(
@@ -137,6 +161,75 @@ def create_offspring(user, parent_a, parent_b, name=None):
         round(
             PIG_OFFSPRING_RULES.initial_happiness_base
             + (barn_bonus * PIG_OFFSPRING_RULES.initial_happiness_barn_bonus_factor),
+            1,
+        ),
+    )
+    child.weight_kg = generate_weight_kg_for_profile(child, level=child.level)
+    return child
+
+
+def create_offspring_from_stud(user, stud, name=None):
+    """Crée un porcelet depuis un géniteur du Haras Porcin (sans 2e parent requis).
+    Le géniteur contribue 60 % de ses stats/gènes ; un parent fantôme à niveau de base complète."""
+    _PHANTOM_STAT = 12.0
+    _PHANTOM_GENE = 45.0
+    barn_bonus = user.barn_heritage_bonus or 0.0
+    lineage_name = stud.lineage_name or f"Lignée {stud.name}"
+
+    child = Pig(
+        user_id=user.id,
+        name=build_unique_pig_name(
+            name or f"Porcelet de {stud.name}",
+            fallback_prefix='Porcelet',
+        ),
+        emoji=random.choice(PIG_EMOJIS),
+        sex=random_pig_sex(),
+        rarity=stud.rarity if random.random() < 0.40 else 'commun',
+        origin_country=stud.origin_country,
+        origin_flag=stud.origin_flag,
+        lineage_name=lineage_name,
+        generation=(stud.generation or 1) + 1,
+        sire_id=stud.id if stud.sex == 'M' else None,
+        dam_id=stud.id if stud.sex == 'F' else None,
+        max_races=get_pig_settings().default_max_races,
+        lineage_boost=round(
+            (stud.lineage_boost or 0.0) * 0.50
+            + barn_bonus * PIG_OFFSPRING_RULES.barn_bonus_factor,
+            2,
+        ),
+    )
+
+    # Stats héritées : 60 % stud + 40 % fantôme
+    for stat in ['vitesse', 'endurance', 'agilite', 'force', 'intelligence', 'moral']:
+        stud_stat = getattr(stud, stat, PIG_DEFAULTS.stat) or PIG_DEFAULTS.stat
+        base = stud_stat * 0.60 + _PHANTOM_STAT * 0.40
+        inherited = (
+            base * PIG_OFFSPRING_RULES.inherited_stats_parent_average_factor
+            + random.uniform(
+                PIG_OFFSPRING_RULES.inherited_stats_random_min,
+                PIG_OFFSPRING_RULES.inherited_stats_random_max,
+            )
+            + child.lineage_boost
+        )
+        setattr(
+            child,
+            stat,
+            round(min(PIG_LIMITS.max_value, max(PIG_OFFSPRING_RULES.inherited_stat_floor, inherited)), 1),
+        )
+
+    # Gènes hérités : 60 % stud + 40 % fantôme (meilleure transmissibilité que la reproduction normale)
+    for gene_key in _GENE_KEYS:
+        stud_gene = getattr(stud, gene_key, None) or _PHANTOM_GENE
+        inherited_gene = stud_gene * 0.60 + _PHANTOM_GENE * 0.40 + random.uniform(-6, 6)
+        setattr(child, gene_key, round(max(5.0, min(100.0, inherited_gene)), 1))
+
+    child.energy = PIG_OFFSPRING_RULES.initial_energy
+    child.hunger = PIG_OFFSPRING_RULES.initial_hunger
+    child.happiness = min(
+        PIG_LIMITS.max_value,
+        round(
+            PIG_OFFSPRING_RULES.initial_happiness_base
+            + barn_bonus * PIG_OFFSPRING_RULES.initial_happiness_barn_bonus_factor,
             1,
         ),
     )
