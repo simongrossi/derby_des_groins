@@ -466,14 +466,6 @@
 </script>
 {% endif %}
 
-<!-- Global Overlay for live circuit -->
-<div id="global-circuit-overlay" class="fixed inset-0 z-[10000] hidden bg-black">
-    <iframe id="global-circuit-iframe" src="" class="w-full h-full border-none"></iframe>
-    <button onclick="closeGlobalCircuit()" class="absolute top-4 right-4 z-[10001] bg-black/50 hover:bg-black/80 text-white p-2 rounded-full border border-white/20 transition-all">
-        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-    </button>
-</div>
-
 <!-- Backdrop mobile nav -->
 <div id="nav-backdrop" class="fixed inset-0 z-[99] bg-black/60 backdrop-blur-sm hidden" aria-hidden="true"></div>
 <div id="global-toast-container" class="fixed top-4 right-4 z-[11000] flex w-[min(92vw,24rem)] flex-col gap-2 pointer-events-none"></div>
@@ -544,11 +536,7 @@
         if (window.innerWidth >= 1024) closeNav();
     });
 
-    // ── Circuit Live Auto-Overlay ──
-    var overlay = document.getElementById('global-circuit-overlay');
-    var iframe = document.getElementById('global-circuit-iframe');
     var toastContainer = document.getElementById('global-toast-container');
-    var isOverlayOpen = false;
     var toastStorageKey = 'derby_seen_toasts_v1';
     var notificationCursorKey = 'derby_toast_cursor_v1';
     var lastNotifId = parseInt(localStorage.getItem(notificationCursorKey) || '0', 10) || 0;
@@ -601,36 +589,6 @@
         }, 5500);
     }
 
-    window.closeGlobalCircuit = function() {
-        overlay.classList.add('hidden');
-        iframe.src = '';
-        isOverlayOpen = false;
-    };
-
-    // Ecouteur de messages venant de l'iframe du circuit
-    window.addEventListener('message', function(event) {
-        if (event.data === 'close-global-circuit') {
-            closeGlobalCircuit();
-        }
-    });
-
-    function pollCircuitState() {
-        fetch('/api/race/live-state')
-            .then(r => r.json())
-            .then(state => {
-                if ((state.phase === 'pre_race' || state.phase === 'countdown' || state.phase === 'racing') && !isOverlayOpen) {
-                    iframe.src = '/circuit';
-                    overlay.classList.remove('hidden');
-                    isOverlayOpen = true;
-                }
-                else if (state.phase === 'idle' && isOverlayOpen) {
-                    setTimeout(function() {
-                        if (isOverlayOpen) closeGlobalCircuit();
-                    }, 10000);
-                }
-            })
-            .catch(e => console.warn('[Header] Poll error', e));
-    }
 
     function pollNotifications() {
         fetch('/api/notifications/poll?since_id=' + encodeURIComponent(lastNotifId))
@@ -649,14 +607,9 @@
     }
 
     {% if user %}
-    setInterval(pollCircuitState, 5000);
-    setTimeout(pollCircuitState, 1000);
     setInterval(pollNotifications, 7000);
     setTimeout(pollNotifications, 1200);
     {% endif %}
 
-    document.addEventListener('keydown', function(e) {
-        if (e.key === 'Escape' && isOverlayOpen) closeGlobalCircuit();
-    });
 }());
 </script>

@@ -2,7 +2,7 @@ from flask import Blueprint, render_template, request, redirect, url_for, sessio
 from datetime import datetime, timedelta
 import json as _json
 
-from extensions import db, limiter
+from extensions import db, limiter, APP_TIMEZONE
 from models import User, Pig, Race, Participant, Bet, UserNotification, ChatMessage
 from data import SCHOOL_COOLDOWN_MINUTES, MIN_INJURY_RISK, DEFAULT_PIG_WEIGHT_KG
 from services.pig_service import get_pig_settings, kill_pig, update_pig_vitals
@@ -264,7 +264,7 @@ def api_race_live_state():
     Returns the current phase of the race lifecycle so all connected clients
     can show the same overlay at the same time.
     """
-    now = datetime.now()
+    now = datetime.now(APP_TIMEZONE)
 
     # Latest finished race (for replay)
     last_finished = Race.query.filter_by(status='finished').order_by(Race.finished_at.desc()).first()
@@ -279,7 +279,13 @@ def api_race_live_state():
 
     if next_scheduled_race:
         race_id_for_display = next_scheduled_race.id
-        seconds_to_start = int((next_scheduled_race.scheduled_at - now).total_seconds())
+        
+        # Récupérer l'heure programmée et s'assurer qu'elle est "timezone aware"
+        scheduled_at_aware = next_scheduled_race.scheduled_at
+        if scheduled_at_aware.tzinfo is None:
+            scheduled_at_aware = scheduled_at_aware.replace(tzinfo=APP_TIMEZONE)
+
+        seconds_to_start = int((scheduled_at_aware - now).total_seconds())
 
         if seconds_to_start > 50: # More than 50 seconds to start, show idle/lobby
             phase = 'idle'
