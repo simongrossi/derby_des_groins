@@ -89,6 +89,16 @@ Chaque joueur possède un **cochon virtuel** qu'il doit développer comme un Tam
 - **Regarder la Course en Direct** (`/race/live`) — replay animé tour par tour de la dernière course
 - **Faire du shopping** (`/galerie-lard-chande`) — acheter des équipements et cosmétiques dans les 5 boutiques de La Galerie Lard-chande avec vos Glands et Truffes
 - **Vendre et Acheter d'occasion** (`/le-bon-groin`) — marchander vos objets avec les autres joueurs sur Le Bon Groin
+- **Circuit Live v2** (`/circuit`) — visualisation haute performance (60 FPS) des courses en temps réel avec moteur physique complet
+
+### 🏁 Nouveau : Moteur de Course Live v2
+
+Le système de course a été entièrement refondu pour offrir une expérience plus immersive et réaliste :
+
+- **Physique Avancée** : Le moteur gère désormais la **fatigue progressive**, l'impact des **segments de terrain** (boue, pentes, virages serrés) et les **risques de trébuchement** basés sur l'agilité.
+- **Animation Ultra-Fluide** : L'interface du circuit utilise désormais `requestAnimationFrame` avec une **interpolation linéaire (lerp)** entre 500 points de passage, garantissant un rendu à 60 FPS constant.
+- **Synchronisation Temps Réel** : Un système de synchronisation avec l'horloge serveur élimine toute dérive temporelle sur le compte à rebours, assurant que tous les spectateurs voient le départ au même instant.
+- **Événements Visuels** : Les cochons affichent des états dynamiques (sprint, fatigue, trébuchement) visibles directement sur la piste.
 
 ### 🧭 Vision long terme et rétention
 
@@ -206,6 +216,7 @@ En usage local via `python app.py`, le scheduler demarre automatiquement. Si le 
 
 - Les comptes par defaut (Christophe, Simon, etc.) utilisent le mot de passe : `mdp1234`
 - Le compte `Christophe` dispose des droits administrateur.
+- **Sécurité Admin** : Un script `promote_admin.py` est disponible à la racine pour promouvoir n'importe quel utilisateur au rang d'administrateur via le terminal.
 
 La structure de base doit etre geree par migrations Alembic (`flask db upgrade`), pas par `db.create_all()`.
 
@@ -316,7 +327,8 @@ derby_des_groins/
 │   ├── race.py
 │   └── ...
 ├── data.py                 # Constantes de jeu (céréales, entraînements, raretés…)
-├── race_engine.py          # Moteur de simulation de course
+├── race_engine.py          # Moteur de simulation de course v2 (Physics-based)
+├── promote_admin.py        # Script utilitaire de promotion admin
 ├── scheduler.py            # Tâches de fond APScheduler (courses, enchères, véto)
 ├── requirements.txt        # Dépendances Python
 ├── Dockerfile              # Image Python 3.12-slim + Gunicorn
