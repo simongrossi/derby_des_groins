@@ -366,6 +366,66 @@
                         </div>
                         <p class="text-white/45 text-[11px] font-bold mt-2">Valeur patrimoniale actuelle : +{{ "%.1f"|format(pd.heritage_value) }}. Les retraites d'honneur renforcent durablement la lignée et toute la porcherie.</p>
                     </div>
+
+                    <!-- PROFIL ADN -->
+                    {% set has_genes = pig.gene_vitesse is not none %}
+                    {% set dna_vit = pig.gene_vitesse if has_genes else pig.vitesse %}
+                    {% set dna_end = pig.gene_endurance if has_genes else pig.endurance %}
+                    {% set dna_agi = pig.gene_agilite if has_genes else pig.agilite %}
+                    {% set dna_for = pig.gene_force if has_genes else pig.force %}
+                    {% set dna_int = pig.gene_intelligence if has_genes else pig.intelligence %}
+                    {% set dna_mor = pig.gene_moral if has_genes else pig.moral %}
+                    <div class="w-full mt-4 px-4 py-3 rounded-2xl border border-teal-400/20 bg-teal-400/8 text-left">
+                        <div class="flex items-center justify-between gap-2 mb-2">
+                            <p class="text-[10px] font-bold uppercase tracking-wider text-teal-300">🧬 Profil ADN</p>
+                            {% if not has_genes %}
+                            <span class="text-[9px] font-bold text-white/25 italic">Estimé sur stats actuelles</span>
+                            {% else %}
+                            <span class="text-[9px] font-bold text-teal-300/60">Potentiel héréditaire</span>
+                            {% endif %}
+                        </div>
+                        <div class="grid grid-cols-3 gap-1.5 text-center">
+                            {% for label, val in [('Vit.', dna_vit), ('End.', dna_end), ('Agi.', dna_agi), ('For.', dna_for), ('Int.', dna_int), ('Mor.', dna_mor)] %}
+                            <div class="rounded-lg border border-teal-400/15 bg-teal-400/5 py-1.5 px-1">
+                                <p class="text-teal-300/60 text-[9px] font-bold">{{ label }}</p>
+                                <p class="text-teal-200 font-title text-sm leading-none mt-0.5">{{ "%.0f"|format(val or 0) }}</p>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <!-- HARAS PORCIN -->
+                    {% if pig.is_alive or pig.retired_into_heritage %}
+                    <div class="w-full mt-4 px-4 py-3 rounded-2xl border border-emerald-400/20 bg-emerald-400/8 text-left">
+                        <p class="text-[10px] font-bold uppercase tracking-wider text-emerald-300 mb-2">🐴 Haras Porcin</p>
+                        {% if pig.haras_listed %}
+                        <div class="flex items-center justify-between gap-2 mb-2">
+                            <div>
+                                <p class="font-title text-lg text-emerald-300">{{ "%.0f"|format(pig.haras_price or 0) }} BG</p>
+                                <p class="text-white/35 text-[10px]">{{ pig.haras_services_count or 0 }} saillie{{ 's' if (pig.haras_services_count or 0) > 1 else '' }}</p>
+                            </div>
+                            <span class="text-[10px] font-bold text-emerald-300/70 border border-emerald-400/25 rounded-full px-2 py-0.5">En service</span>
+                        </div>
+                        <form method="POST" action="/haras/retirer">
+                            <input type="hidden" name="pig_id" value="{{ pig.id }}">
+                            <button type="submit" class="w-full text-[11px] font-bold text-red-300/70 hover:text-red-300 transition-colors py-1">✕ Retirer du Haras</button>
+                        </form>
+                        {% else %}
+                        <form method="POST" action="/haras/lister" class="space-y-2">
+                            <input type="hidden" name="pig_id" value="{{ pig.id }}">
+                            <div class="flex gap-2">
+                                <input type="number" name="price" min="20" step="1" placeholder="Prix BG"
+                                    class="flex-1 min-w-0 bg-white/5 border border-white/15 rounded-xl px-2 py-1.5 text-white text-sm focus:outline-none focus:border-emerald-500/40">
+                                <button type="submit"
+                                    class="rounded-xl border border-emerald-400/25 bg-emerald-400/10 px-3 py-1.5 text-[11px] font-bold text-emerald-300 hover:bg-emerald-400/18 transition-colors whitespace-nowrap">
+                                    Proposer
+                                </button>
+                            </div>
+                        </form>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+
                 </div>
             </div>
 

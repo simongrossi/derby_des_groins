@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Derby des Groins -- Haras Porcin</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" crossorigin="anonymous"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * { font-family: 'Nunito', sans-serif; }
+        .font-title { font-family: 'Lilita One', cursive; }
+
+        body {
+            background: #0f172a;
+            background-image:
+                radial-gradient(at 15% 10%, rgba(16, 185, 129, 0.10) 0, transparent 50%),
+                radial-gradient(at 85% 10%, rgba(139, 92, 246, 0.10) 0, transparent 50%),
+                radial-gradient(at 50% 85%, rgba(234, 179, 8, 0.07) 0, transparent 50%);
+            color: #f8fafc;
+            min-height: 100vh;
+        }
+
+        .card {
+            background: rgba(30, 41, 59, 0.55);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 1.5rem;
+        }
+
+        .rarity-commun     { border-color: rgba(148,163,184,0.3); }
+        .rarity-rare       { border-color: rgba(59,130,246,0.4); }
+        .rarity-epique     { border-color: rgba(139,92,246,0.45); }
+        .rarity-legendaire { border-color: rgba(234,179,8,0.5); box-shadow: 0 0 20px rgba(234,179,8,0.15); }
+
+        .badge {
+            display: inline-flex; align-items: center; gap: .25rem;
+            padding: .2rem .6rem; border-radius: 999px;
+            font-size: .7rem; font-weight: 700; border: 1px solid;
+        }
+        .badge-commun     { background: rgba(148,163,184,.1); border-color: rgba(148,163,184,.3); color: #94a3b8; }
+        .badge-rare       { background: rgba(59,130,246,.1);  border-color: rgba(59,130,246,.3);  color: #60a5fa; }
+        .badge-epique     { background: rgba(139,92,246,.1);  border-color: rgba(139,92,246,.3);  color: #a78bfa; }
+        .badge-legendaire { background: rgba(234,179,8,.12);  border-color: rgba(234,179,8,.4);   color: #fbbf24; }
+
+        .chart-shell { position: relative; width: 120px; height: 120px; }
+    </style>
+</head>
+<body>
+{% include '_site_header.html' %}
+{% set active_page = 'haras' %}
+{% include '_flash.html' %}
+
+<main class="max-w-6xl mx-auto px-4 py-8 space-y-10">
+
+    <!-- ===== HERO ===== -->
+    <div class="text-center space-y-2">
+        <h1 class="font-title text-4xl sm:text-5xl text-emerald-300 drop-shadow-[0_0_24px_rgba(16,185,129,0.30)]">
+            🐴 Le Haras Porcin
+        </h1>
+        <p class="text-white/50 text-sm font-semibold uppercase tracking-widest">Marketplace P2P de géniteurs d'élite</p>
+        <p class="text-white/35 text-sm italic max-w-xl mx-auto">
+            "Ici, les grands champions transmettent leur ADN aux générations futures. Choisissez votre géniteur, payez les frais de notaire, et récupérez un porcelet de lignée royale."
+        </p>
+    </div>
+
+    <!-- ===== GÉNITEURS DISPONIBLES ===== -->
+    <section>
+        <h2 class="font-title text-2xl text-white/80 mb-4">🏆 Géniteurs disponibles</h2>
+
+        {% if listings %}
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            {% for pig in listings %}
+            {% set is_mine = (pig.user_id == user.id) %}
+            {% set rarity_cls = 'rarity-' ~ pig.rarity %}
+
+            {# Calcul valeurs ADN (fallback sur stats si gènes null) #}
+            {% set g_vit = pig.gene_vitesse if pig.gene_vitesse is not none else pig.vitesse %}
+            {% set g_end = pig.gene_endurance if pig.gene_endurance is not none else pig.endurance %}
+            {% set g_agi = pig.gene_agilite if pig.gene_agilite is not none else pig.agilite %}
+            {% set g_for = pig.gene_force if pig.gene_force is not none else pig.force %}
+            {% set g_int = pig.gene_intelligence if pig.gene_intelligence is not none else pig.intelligence %}
+            {% set g_mor = pig.gene_moral if pig.gene_moral is not none else pig.moral %}
+            {% set has_genes = pig.gene_vitesse is not none %}
+
+            <div class="card border {{ rarity_cls }} p-5 flex flex-col gap-4">
+
+                <!-- Header cochon -->
+                <div class="flex items-start justify-between gap-3">
+                    <div class="flex items-center gap-2 min-w-0">
+                        <span class="text-3xl shrink-0">{{ pig.emoji }}</span>
+                        <div class="min-w-0">
+                            <p class="font-bold text-white truncate">{{ pig.name }}</p>
+                            <p class="text-white/40 text-xs truncate">par {{ pig.owner.username }}</p>
+                        </div>
+                    </div>
+                    <div class="flex flex-col items-end gap-1 shrink-0">
+                        <span class="badge badge-{{ pig.rarity }}">
+                            {% if pig.rarity == 'legendaire' %}👑{% elif pig.rarity == 'epique' %}💜{% elif pig.rarity == 'rare' %}💙{% else %}⚪{% endif %}
+                            {{ pig.rarity | capitalize }}
+                        </span>
+                        {% if pig.retired_into_heritage %}
+                        <span class="badge border-amber-400/30 bg-amber-400/10 text-amber-300">🏅 Retraité</span>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Infos génération + lignée -->
+                <div class="text-xs text-white/40 font-semibold space-y-0.5">
+                    <p>🌳 Génération {{ pig.generation }} — {{ pig.lineage_name or 'Lignée inconnue' }}</p>
+                    <p>🏁 {{ pig.races_won }} victoires · {{ pig.haras_services_count }} saillies</p>
+                    <p>{{ pig.origin_flag }} {{ pig.origin_country }}</p>
+                </div>
+
+                <!-- Radar ADN -->
+                <div class="flex items-center justify-center">
+                    <div class="chart-shell">
+                        <canvas id="dna-{{ pig.id }}" width="120" height="120"></canvas>
+                    </div>
+                </div>
+                {% if not has_genes %}
+                <p class="text-center text-white/25 text-xs -mt-2">ADN estimé d'après les stats actuelles</p>
+                {% endif %}
+
+                <!-- Prix + Action -->
+                <div class="mt-auto pt-3 border-t border-white/6">
+                    <div class="flex items-center justify-between gap-3">
+                        <p class="font-title text-xl text-emerald-300">{{ "%.0f"|format(pig.haras_price) }} <span class="text-sm text-emerald-300/60">BG</span></p>
+                        <p class="text-white/35 text-xs">+15% frais notaire</p>
+                    </div>
+
+                    {% if is_mine %}
+                    <form method="POST" action="/haras/retirer" class="mt-3">
+                        <input type="hidden" name="pig_id" value="{{ pig.id }}">
+                        <button type="submit"
+                            class="w-full rounded-xl border border-red-400/25 bg-red-400/10 py-2 text-sm font-bold text-red-300 hover:bg-red-400/20 transition-colors">
+                            ✕ Retirer du Haras
+                        </button>
+                    </form>
+                    {% else %}
+                    <form method="POST" action="/haras/saillir" class="mt-3 space-y-2">
+                        <input type="hidden" name="stud_pig_id" value="{{ pig.id }}">
+                        <input
+                            type="text"
+                            name="porcelet_name"
+                            placeholder="Nom du porcelet (optionnel)"
+                            maxlength="80"
+                            class="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder-white/25 focus:outline-none focus:border-emerald-500/40"
+                        >
+                        <button type="submit"
+                            class="w-full rounded-xl border border-emerald-400/30 bg-emerald-400/12 py-2 text-sm font-bold text-emerald-300 hover:bg-emerald-400/20 transition-colors">
+                            🐣 Demander une saillie ({{ "%.0f"|format(pig.haras_price) }} BG)
+                        </button>
+                    </form>
+                    {% endif %}
+                </div>
+
+            </div>
+
+            <!-- Init Chart.js radar pour ce cochon -->
+            <script>
+            (function() {
+                const ctx = document.getElementById('dna-{{ pig.id }}');
+                new Chart(ctx, {
+                    type: 'radar',
+                    data: {
+                        labels: ['Vit.', 'End.', 'Agi.', 'For.', 'Int.', 'Mor.'],
+                        datasets: [{
+                            data: [{{ g_vit|round(1) }}, {{ g_end|round(1) }}, {{ g_agi|round(1) }}, {{ g_for|round(1) }}, {{ g_int|round(1) }}, {{ g_mor|round(1) }}],
+                            backgroundColor: 'rgba(16,185,129,0.15)',
+                            borderColor: 'rgba(16,185,129,0.7)',
+                            borderWidth: 1.5,
+                            pointRadius: 2,
+                            pointBackgroundColor: 'rgba(16,185,129,0.9)',
+                        }]
+                    },
+                    options: {
+                        responsive: false,
+                        plugins: { legend: { display: false } },
+                        scales: {
+                            r: {
+                                min: 0, max: 100,
+                                ticks: { display: false, stepSize: 25 },
+                                grid: { color: 'rgba(255,255,255,0.06)' },
+                                angleLines: { color: 'rgba(255,255,255,0.06)' },
+                                pointLabels: { color: 'rgba(255,255,255,0.45)', font: { size: 9, weight: 'bold' } },
+                            }
+                        }
+                    }
+                });
+            })();
+            </script>
+            {% endfor %}
+        </div>
+
+        {% else %}
+        <div class="card p-10 text-center space-y-3">
+            <p class="text-4xl">🏚️</p>
+            <p class="font-bold text-white/60">Le Haras est vide pour l'instant.</p>
+            <p class="text-white/35 text-sm italic">Sois le premier à y inscrire un champion !</p>
+        </div>
+        {% endif %}
+    </section>
+
+    <!-- ===== MES COCHONS AU HARAS / LISTER ===== -->
+    <section class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+        <!-- Cochons déjà listés -->
+        {% if user_listed %}
+        <div class="card p-6 space-y-4">
+            <h2 class="font-title text-xl text-amber-300">⭐ Mes géniteurs au Haras</h2>
+            <div class="space-y-3">
+                {% for pig in user_listed %}
+                <div class="flex items-center justify-between gap-3 rounded-xl border border-white/6 bg-white/3 px-4 py-3">
+                    <div class="flex items-center gap-2 min-w-0">
+                        <span class="text-xl">{{ pig.emoji }}</span>
+                        <div class="min-w-0">
+                            <p class="font-bold text-white text-sm truncate">{{ pig.name }}</p>
+                            <p class="text-white/40 text-xs">{{ "%.0f"|format(pig.haras_price) }} BG · {{ pig.haras_services_count }} saillies</p>
+                        </div>
+                    </div>
+                    <form method="POST" action="/haras/retirer">
+                        <input type="hidden" name="pig_id" value="{{ pig.id }}">
+                        <button type="submit" class="text-red-300/70 hover:text-red-300 text-xs font-bold transition-colors">Retirer</button>
+                    </form>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Lister un cochon -->
+        {% if eligible_pigs %}
+        <div class="card p-6 space-y-4">
+            <h2 class="font-title text-xl text-emerald-300">➕ Inscrire un géniteur</h2>
+            <p class="text-white/40 text-sm">Prix minimum : <strong class="text-white/70">{{ min_haras_price|int }} BG</strong> par saillie. Tu recevras 85 % du prix, 15 % vont à la Tirelire Centrale.</p>
+            <form method="POST" action="/haras/lister" class="space-y-3">
+                <select name="pig_id" required
+                    class="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500/40">
+                    <option value="" disabled selected>— Choisir un cochon —</option>
+                    {% for pig in eligible_pigs %}
+                    <option value="{{ pig.id }}">{{ pig.emoji }} {{ pig.name }} (gén. {{ pig.generation }}, {{ pig.races_won }} victoires)</option>
+                    {% endfor %}
+                </select>
+                <div class="flex gap-2">
+                    <input
+                        type="number"
+                        name="price"
+                        min="{{ min_haras_price|int }}"
+                        step="1"
+                        placeholder="Prix saillie (BG)"
+                        required
+                        class="flex-1 rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white placeholder-white/25 focus:outline-none focus:border-emerald-500/40"
+                    >
+                    <button type="submit"
+                        class="rounded-xl border border-emerald-400/30 bg-emerald-400/12 px-4 py-2.5 text-sm font-bold text-emerald-300 hover:bg-emerald-400/20 transition-colors whitespace-nowrap">
+                        Inscrire au Haras
+                    </button>
+                </div>
+            </form>
+        </div>
+        {% endif %}
+
+        {% if not eligible_pigs and not user_listed %}
+        <div class="card p-6 space-y-2 lg:col-span-2">
+            <h2 class="font-title text-xl text-white/40">Aucun cochon éligible</h2>
+            <p class="text-white/30 text-sm">Tu dois posséder un cochon vivant (ou retraité au Haras des Légendes) pour pouvoir l'inscrire comme géniteur.</p>
+        </div>
+        {% endif %}
+
+    </section>
+
+</main>
+
+{% include '_footer.html' %}
+</body>
+</html>

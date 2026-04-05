@@ -151,6 +151,8 @@ def adopt_second_pig():
         max_races=get_pig_settings().default_max_races,
     )
     apply_origin_bonus(new_pig, origin)
+    from services.pig_lineage_service import init_pig_genes_random
+    init_pig_genes_random(new_pig)
     new_pig.weight_kg = generate_weight_kg_for_profile(new_pig)
     db.session.add(new_pig)
     db.session.commit()

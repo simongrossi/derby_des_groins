@@ -15,6 +15,7 @@ from routes.agenda import agenda_bp
 from routes.poker import poker_bp
 from routes.cochon_pendu import cochon_pendu_bp
 from routes.place_financiere import place_financiere_bp
+from routes.haras import haras_bp
 
 all_blueprints = [
     auth_bp,
@@ -34,4 +35,5 @@ all_blueprints = [
     poker_bp,
     cochon_pendu_bp,
     place_financiere_bp,
+    haras_bp,
 ]

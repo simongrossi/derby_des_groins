@@ -69,6 +69,19 @@ class Pig(db.Model):
     dam_id = db.Column(db.Integer, db.ForeignKey('pig.id'), nullable=True)
     retired_into_heritage = db.Column(db.Boolean, default=False)
 
+    # Haras Porcin — marketplace P2P de géniteurs
+    haras_listed         = db.Column(db.Boolean, default=False, nullable=False, server_default='false')
+    haras_price          = db.Column(db.Float, nullable=True)
+    haras_services_count = db.Column(db.Integer, default=0, nullable=False, server_default='0')
+
+    # ADN — potentiel génétique héréditaire (0-100, nullable pour les anciens cochons)
+    gene_vitesse      = db.Column(db.Float, nullable=True)
+    gene_endurance    = db.Column(db.Float, nullable=True)
+    gene_agilite      = db.Column(db.Float, nullable=True)
+    gene_force        = db.Column(db.Float, nullable=True)
+    gene_intelligence = db.Column(db.Float, nullable=True)
+    gene_moral        = db.Column(db.Float, nullable=True)
+
     owner = db.relationship('User', backref=db.backref('pigs', lazy=True))
 
     __table_args__ = (
