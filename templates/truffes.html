@@ -352,13 +352,20 @@
       try {
         const res = await fetch('{{ url_for("truffes.truffes_play") }}', {
           method: 'POST',
-          headers: { 
+          headers: {
               'Content-Type': 'application/json',
               'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
           },
-          body: JSON.stringify({ is_replay: isReplay }), // Pass is_replay flag
+          body: JSON.stringify({ is_replay: isReplay }),
         });
-        const data = await res.json();
+        let data;
+        try {
+          data = await res.json();
+        } catch (jsonErr) {
+          console.error('Erreur réponse serveur (/truffes/play) :', res.status, jsonErr);
+          alert('Erreur serveur (' + res.status + '). Réessaie dans un instant.');
+          return false;
+        }
         if (!data.ok) {
           if (data.error === 'Limite quotidienne atteinte' && !isReplay) {
               showAlreadyPlayed();

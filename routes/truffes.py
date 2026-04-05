@@ -110,14 +110,19 @@ def truffes_play():
             return jsonify({'ok': False, 'error': 'Limite quotidienne atteinte'}), 429
 
     user.last_truffe_at = _utcnow_naive()
-    user.truffe_plays_today += 1
+    user.truffe_plays_today = (user.truffe_plays_today or 0) + 1
     db.session.commit()
     db.session.refresh(user)
-    
+
+    # Calcul direct pour éviter que _sync_truffe_daily_counter (appelé dans
+    # _get_remaining_free_plays) ne réinitialise le compteur à 0 si le timestamp
+    # UTC stocké et la date locale du serveur diffèrent (ex. décalage de fuseau horaire).
+    remaining_after = max(0, limit - (user.truffe_plays_today or 0))
+
     return jsonify({
         'ok': True,
         'new_balance': round(user.balance or 0.0, 2),
-        'remaining_free_plays': _get_remaining_free_plays(user, limit=limit),
+        'remaining_free_plays': remaining_after,
     })
 
 
