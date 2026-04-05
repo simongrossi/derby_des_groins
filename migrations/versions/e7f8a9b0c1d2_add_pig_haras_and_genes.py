@@ -17,18 +17,17 @@ depends_on = None
 
 
 def upgrade():
-    # Haras Porcin — marketplace P2P
-    op.add_column('pig', sa.Column('haras_listed', sa.Boolean(), nullable=False, server_default='false'))
-    op.add_column('pig', sa.Column('haras_price', sa.Float(), nullable=True))
-    op.add_column('pig', sa.Column('haras_services_count', sa.Integer(), nullable=False, server_default='0'))
-
-    # ADN — potentiel génétique héréditaire (0-100, nullable sur anciens cochons)
-    op.add_column('pig', sa.Column('gene_vitesse', sa.Float(), nullable=True))
-    op.add_column('pig', sa.Column('gene_endurance', sa.Float(), nullable=True))
-    op.add_column('pig', sa.Column('gene_agilite', sa.Float(), nullable=True))
-    op.add_column('pig', sa.Column('gene_force', sa.Float(), nullable=True))
-    op.add_column('pig', sa.Column('gene_intelligence', sa.Float(), nullable=True))
-    op.add_column('pig', sa.Column('gene_moral', sa.Float(), nullable=True))
+    # Utilisation de IF NOT EXISTS (PostgreSQL) pour rendre la migration idempotente
+    # au cas où certaines colonnes existeraient déjà en base.
+    op.execute("ALTER TABLE pig ADD COLUMN IF NOT EXISTS haras_listed BOOLEAN NOT NULL DEFAULT false")
+    op.execute("ALTER TABLE pig ADD COLUMN IF NOT EXISTS haras_price FLOAT")
+    op.execute("ALTER TABLE pig ADD COLUMN IF NOT EXISTS haras_services_count INTEGER NOT NULL DEFAULT 0")
+    op.execute("ALTER TABLE pig ADD COLUMN IF NOT EXISTS gene_vitesse FLOAT")
+    op.execute("ALTER TABLE pig ADD COLUMN IF NOT EXISTS gene_endurance FLOAT")
+    op.execute("ALTER TABLE pig ADD COLUMN IF NOT EXISTS gene_agilite FLOAT")
+    op.execute("ALTER TABLE pig ADD COLUMN IF NOT EXISTS gene_force FLOAT")
+    op.execute("ALTER TABLE pig ADD COLUMN IF NOT EXISTS gene_intelligence FLOAT")
+    op.execute("ALTER TABLE pig ADD COLUMN IF NOT EXISTS gene_moral FLOAT")
 
 
 def downgrade():
