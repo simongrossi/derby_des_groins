@@ -113,7 +113,14 @@ class CourseManager:
             
             # 4. Calcul final
             variance = self.rng.uniform(RACE_VARIANCE_MIN, RACE_VARIANCE_MAX)
-            final_speed = base_speed * strategy_mult * fatigue_malus * terrain_mult * variance
+            final_speed = (
+                base_speed
+                * strategy_mult
+                * fatigue_malus
+                * terrain_mult
+                * variance
+                * max(0.0, p.recent_race_penalty_multiplier)
+            )
             
             # Gestion Trébuchement
             if p.stumbled_cooldown > 0:
@@ -156,6 +163,8 @@ class CourseManager:
             'turn': self.current_turn,
             'pigs': [{
                 'id': p.id, 'name': p.name, 'distance': round(p.distance, 2),
+                'vitesse_actuelle': round(p.current_speed, 3),
+                'fatigue': round(p.fatigue, 3),
                 'is_finished': p.is_finished, 'has_draft': p.has_draft,
                 'visual_event': p.visual_event
             } for p in self.participants],

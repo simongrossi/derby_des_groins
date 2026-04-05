@@ -114,13 +114,14 @@
 
 ### Priorites techniques ouvertes
 
-- [ ] **R1** Validation runtime complete
-  - Demarrer l'application dans un environnement avec les dependances installees
-  - Verifier le boot Flask, les imports de blueprints et l'absence de cycles au demarrage
-  - Faire un smoke test minimum sur `/`, `/paris`, `/courses`, `/history`, `/regles`, `/admin`
-- [ ] **R2** Lancer les tests existants
-  - Executer `pytest` ou au minimum les suites critiques routes/services
-  - Corriger les regressions eventuelles liees au recent decoupage des services
+- [x] **R1** Validation runtime complete
+  - Boot Flask confirme dans la `.venv` avec `create_app('testing')`
+  - Imports des blueprints charges sans cycle bloquant
+  - Smoke test valide sur `/`, `/paris`, `/courses`, `/history`, `/regles` ; `/admin` redirige correctement pour un non-admin
+- [x] **R2** Lancer les tests existants
+  - Suite `unittest discover -s tests` executee dans la `.venv`
+  - Resultat actuel : **41 tests OK**
+  - Deux regressions moteur reparees au passage dans `race_engine.py` (penalite de course recente + champs replay attendus par le front)
 - [ ] **R3** Dernier decoupage du classement
   - `services/main_page_service.py` ne porte plus que le classement, mais peut encore etre scinde en un `classement_page_service.py`
   - Sortir au besoin les agregations SQL et/ou la construction des awards pour finir le nettoyage
