@@ -22,16 +22,29 @@ from utils.time_utils import is_weekend_truce_active
 from services.finance_service import (
     credit_user, debit_user, maybe_grant_emergency_relief, release_pig_challenge_slot,
 )
-from services.pig_service import (
-    calculate_pig_power, xp_for_level, get_weight_profile, get_adoption_cost,
-    get_active_listing_count, get_pig_slot_count, get_max_pig_slots,
+from services.pig_lineage_service import (
+    apply_origin_bonus,
+    build_unique_pig_name,
+    create_offspring,
     get_lineage_label, get_pig_heritage_value,
-    can_retire_into_heritage, retire_pig_into_heritage, create_offspring,
-    apply_origin_bonus, generate_weight_kg_for_profile, get_freshness_bonus,
-    get_pig_performance_flags, reset_snack_share_limit_if_needed,
-    is_pig_name_taken, build_unique_pig_name, check_level_up,
+    is_pig_name_taken,
+    random_pig_sex,
+)
+from services.pig_power_service import (
+    calculate_pig_power,
+    check_level_up,
+    generate_weight_kg_for_profile,
+    get_freshness_bonus,
+    get_pig_performance_flags,
+    get_weight_profile,
+    xp_for_level,
+)
+from services.pig_service import (
+    can_retire_into_heritage, retire_pig_into_heritage, get_adoption_cost,
+    get_active_listing_count, get_pig_slot_count, get_max_pig_slots,
+    reset_snack_share_limit_if_needed,
     enter_pig_death_challenge, feed_pig_for_user, kill_pig,
-    get_user_cereal_inventory_dict, random_pig_sex, study_pig_for_user, train_pig_for_user, update_pig_vitals,
+    get_user_cereal_inventory_dict, study_pig_for_user, train_pig_for_user, update_pig_vitals,
 )
 
 pig_bp = Blueprint('pig', __name__)

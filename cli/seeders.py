@@ -22,14 +22,13 @@ from models import (
 )
 from services.auth_log_service import purge_old_auth_events
 from services.finance_service import record_balance_transaction
-from services.pig_service import (
+from services.pig_lineage_service import (
     apply_origin_bonus,
     build_unique_pig_name,
-    clamp_pig_weight,
     create_preloaded_admin_pigs,
-    generate_weight_kg_for_profile,
     random_pig_sex,
 )
+from services.pig_power_service import clamp_pig_weight, generate_weight_kg_for_profile
 
 logger = logging.getLogger(__name__)
 

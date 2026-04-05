@@ -8,7 +8,8 @@ from services.economy_service import (
     get_weekly_bacon_tickets_value,
     get_weekly_race_quota_value,
 )
-from services.pig_service import calculate_pig_power, get_weight_profile, update_pig_vitals
+from services.pig_power_service import calculate_pig_power, get_weight_profile
+from services.pig_service import update_pig_vitals
 from services.race_service import (
     attach_bet_outcome_snapshots,
     build_course_schedule,

@@ -302,10 +302,10 @@ Note de demo:
 
 ## 📚 Documentation utile
 
-- [Architecture](/D:/Programmation/derby_des_groins/docs/architecture.md)
-- [Règles du jeu](/D:/Programmation/derby_des_groins/docs/regles_du_jeu.md)
-- [Transparence joueur](/D:/Programmation/derby_des_groins/docs/transparence_joueur.md)
-- [Panneau Admin Économie](/D:/Programmation/derby_des_groins/docs/admin_economie.md)
+- [Architecture](docs/architecture.md)
+- [Règles du jeu](docs/regles_du_jeu.md)
+- [Transparence joueur](docs/transparence_joueur.md)
+- [Panneau Admin Économie](docs/admin_economie.md)
 
 ---
 
@@ -370,7 +370,7 @@ derby_des_groins/
 │   └── seeders.py          # Seed explicite + maintenance auth logs
 │
 ├── helpers/                # Package helpers modulaire (8 modules)
-│   ├── __init__.py         # Couche de compat minimale du package helpers
+│   ├── __init__.py         # Namespace package documenté (sans ré-exports runtime)
 │   ├── config.py           # get_config, set_config, caching
 │   ├── db.py               # Row-level locking helpers
 │   ├── time_helpers.py     # Cooldown, formatage durées
@@ -382,8 +382,14 @@ derby_des_groins/
 ├── services/               # Couche logique métier
 │   ├── bet_service.py      # Validation métier et creation des tickets PMU
 │   ├── finance_service.py  # Transactions BitGroins atomiques
-│   ├── pig_service.py      # Création cochon, stats, poids
+│   ├── history_page_service.py # Contexte de l'historique et des courbes
+│   ├── homepage_service.py # Contexte de la page d'accueil
+│   ├── main_page_service.py # Contexte du classement
+│   ├── pig_lineage_service.py # Noms, lignée, reproduction
+│   ├── pig_power_service.py # Poids, puissance, progression
+│   ├── pig_service.py      # Actions cochon, vitals, école, retraite
 │   ├── race_service.py     # Résolution courses, XP, récompenses
+│   ├── rules_page_service.py # Contexte du hub des règles
 │   ├── market_service.py   # Enchères, remboursement auto
 │   ├── galerie_service.py  # Boutiques + marketplace P2P
 │   ├── marketplace_service.py
@@ -425,7 +431,7 @@ derby_des_groins/
 | `config/*_defaults.py` | Valeurs par défaut | Économie, gameplay, moteur de course, bourse |
 | `content/` | Données statiques | Céréales, entraînements, école, raretés, origines, textes |
 | `helpers/` | Helpers transverses | config, DB, temps, véto, courses, game data, marché |
-| `services/` | Couche métier | 8 modules : finance, cochon, courses, enchères, boutiques, economie |
+| `services/` | Couche métier | Services dédiés par domaine : accueil, règles, historique, classement, cochon, poids, lignée, courses, économie, finance, admin |
 | `scheduler.py` | Tâches de fond | Résolution courses, enchères, deadlines véto, historique marché |
 | `routes/` | 15 Blueprints | Chaque domaine a son fichier avec ses routes |
 | `app.py` | Point d'entrée | Factory `create_app()` et bootstrap Flask |

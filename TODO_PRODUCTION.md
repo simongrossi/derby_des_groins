@@ -2,7 +2,7 @@
 
 > Audit realise le 24/03/2026.
 > **Qualite du code** (6 points) : corriges.
-> **Refactorisation architecture** : terminee.
+> **Refactorisation architecture** : terminee et documentee.
 > **Corrections code** (securite + perf + logging) : terminees.
 
 ---
@@ -31,7 +31,12 @@
 - [x] **4.1** Ancien monolithe `helpers.py` supprimé au profit du package `helpers/`
 - [x] **4.2** Ancien fichier `data.py` supprimé ; constantes regroupées dans `config/*_defaults.py` et `content/`
 - [x] **4.3** Imports internes réécrits vers les modules réels (`helpers.config`, `helpers.race`, `services.*`, etc.)
-- [x] **4.4** `helpers/__init__.py` réduit à une couche de compat minimale du package `helpers/`
+- [x] **4.4** `helpers/__init__.py` réduit à un namespace package documenté, sans ré-exports runtime
+- [x] **4.5** Accueil extrait dans `services/homepage_service.py` pour alléger `services/main_page_service.py`
+- [x] **4.6** Domaine cochon redécoupé entre `services/pig_service.py`, `services/pig_power_service.py` et `services/pig_lineage_service.py`
+- [x] **4.7** Sweep de code mort: suppression de `RACE_BASE_SPEED_VIT_MULT` inutilisé dans `config/race_engine_defaults.py`
+- [x] **4.8** Hub règles extrait dans `services/rules_page_service.py`
+- [x] **4.9** Historique extrait dans `services/history_page_service.py`, `services/main_page_service.py` recentré sur le classement
 
 ### Qualite du code (session precedente) ✅
 - [x] Suppression `update_item.py`
@@ -107,9 +112,25 @@
 
 ## TACHES RESTANTES
 
+### Priorites techniques ouvertes
+
+- [ ] **R1** Validation runtime complete
+  - Demarrer l'application dans un environnement avec les dependances installees
+  - Verifier le boot Flask, les imports de blueprints et l'absence de cycles au demarrage
+  - Faire un smoke test minimum sur `/`, `/paris`, `/courses`, `/history`, `/regles`, `/admin`
+- [ ] **R2** Lancer les tests existants
+  - Executer `pytest` ou au minimum les suites critiques routes/services
+  - Corriger les regressions eventuelles liees au recent decoupage des services
+- [ ] **R3** Dernier decoupage du classement
+  - `services/main_page_service.py` ne porte plus que le classement, mais peut encore etre scinde en un `classement_page_service.py`
+  - Sortir au besoin les agregations SQL et/ou la construction des awards pour finir le nettoyage
+- [ ] **R4** Consolidation post-refactor
+  - Ajouter ou mettre a jour quelques tests ciblant `homepage_service`, `rules_page_service`, `history_page_service`, `pig_power_service` et `pig_lineage_service`
+  - Continuer a supprimer les imports legacy si de nouveaux points de friction apparaissent
+
 ### Infrastructure / Environnement — Toutes terminees
 
-*(Plus aucune tache d'infra restante)*
+*(Plus aucune tache d'infra structurante restante a ce stade)*
 
 ### Taches d'infra terminees
 

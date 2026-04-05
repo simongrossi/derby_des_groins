@@ -10,12 +10,12 @@ from models import GameConfig, Pig, User
 from services.auth_log_service import log_auth_event
 from services.economy_service import get_welcome_bonus_value
 from services.finance_service import record_balance_transaction
-from services.pig_service import (
+from services.pig_lineage_service import (
     apply_origin_bonus,
     build_unique_pig_name,
-    generate_weight_kg_for_profile,
     random_pig_sex,
 )
+from services.pig_power_service import generate_weight_kg_for_profile
 
 
 def register_user(username, password):

@@ -2,20 +2,21 @@
 
 Liste des fonctionnalités et idées déjà implémentées dans le projet.
 
-> Note: pour les règles réellement actives et les réglages joueurs à jour, la référence n'est plus ce fichier mais [docs/regles_du_jeu.md](/D:/Programmation/derby_des_groins/docs/regles_du_jeu.md) et la page `/regles`.
+> Note: pour les règles réellement actives et les réglages joueurs à jour, la référence n'est plus ce fichier mais `docs/regles_du_jeu.md` et la page `/regles`.
 
 ## Architecture et découplage
 - **Découplage critique des modèles** : les modèles SQLAlchemy ont été découpés dans un package `models/` par domaine (`user.py`, `pig.py`, `race.py`, etc.) avec un `models/__init__.py` de compatibilité.
 - **Constantes regroupées par domaine** : l'ancien `data.py` a été supprimé. Les valeurs par défaut vivent désormais dans `config/*_defaults.py` et le contenu statique dans `content/`.
-- **Package helpers clarifié** : l'ancien monolithe `helpers.py` a été supprimé ; les imports runtime pointent désormais directement vers `helpers.config`, `helpers.race`, `helpers.game_data`, `helpers.veterinary`, etc.
-- **Services métier extraits** : la logique de `User.pay()` / `User.earn()` / prime journalière vit désormais dans `services/finance_service.py`, et les actions `Pig.feed()` / `Pig.train()` / `Pig.study()` / vitals / mort / retraite dans `services/pig_service.py`.
+- **Package helpers clarifié** : l'ancien monolithe `helpers.py` a été supprimé ; `helpers/__init__.py` ne sert plus que de namespace package documenté et les imports runtime pointent vers `helpers.config`, `helpers.race`, `helpers.game_data`, `helpers.veterinary`, etc.
+- **Services métier extraits** : la logique de `User.pay()` / `User.earn()` / prime journalière vit désormais dans `services/finance_service.py`. Le domaine cochon a aussi été redécoupé entre `services/pig_service.py` (actions métier), `services/pig_power_service.py` (poids / puissance / progression) et `services/pig_lineage_service.py` (noms / lignée / reproduction).
 - **Exceptions métier partagées** : un nouveau fichier `exceptions.py` centralise les erreurs métier comme `InsufficientFundsError`, `PigTiredError`, `UserNotFoundError` et `PigNotFoundError`.
 - **Routes rebranchées** : les blueprints et helpers appellent maintenant explicitement les services, ce qui supprime les imports locaux dans les modèles et réduit les risques de dépendances circulaires.
 - **Inventaire de céréales** : nouveau modèle `UserCerealInventory` pour séparer l'achat des grains (Bourse) de leur consommation (Mon Cochon).
 - **Factory Flask nettoyée** : `app.py` s'appuie désormais sur `config/app_config.py` pour la configuration d'environnement, et les seeders/commandes CLI vivent dans `cli/seeders.py`.
 - **Service de paris dédié** : la création des tickets PMU est maintenant centralisée dans `services/bet_service.py`, avec une route `/bet` allégée.
 - **Auth et marché sortis des routes** : `services/auth_service.py` gère maintenant inscription, login, mot de passe et magic links, tandis que `services/market_service.py` porte les bids, ventes de cochons et déplacements Bourse.
-- **Pages principales allégées** : les contextes lourds de l'accueil, de l'historique, des règles et du classement sont désormais assemblés dans `services/main_page_service.py`.
+- **Pages principales allégées** : l'accueil vit désormais dans `services/homepage_service.py`, le hub règles dans `services/rules_page_service.py`, l'historique dans `services/history_page_service.py`, et `services/main_page_service.py` est recentré sur le classement.
+- **Sweep code mort** : les constantes orphelines du moteur sont progressivement supprimées ; `RACE_BASE_SPEED_VIT_MULT` n'existe plus dans `config/race_engine_defaults.py`.
 - **Admin commencé côté services** : `services/admin_user_service.py` et `services/admin_settings_service.py` prennent en charge une partie des actions admin utilisateurs et réglages pour réduire `routes/admin.py`.
 - **Routes courses/admin encore amincies** : `services/race_page_service.py`, `services/admin_race_service.py` et `services/admin_bet_service.py` portent maintenant une partie des contextes lourds et actions admin liées aux courses, PNJ et tickets.
 - **Panneau admin largement sorti en services** : les actions admin cochons, événements, notifications SMTP, réglages Truffes, CRUD des données de jeu et gestion des avatars délèguent désormais à `services/admin_pig_service.py`, `services/admin_event_service.py`, `services/admin_notification_service.py`, `services/admin_truffes_service.py`, `services/admin_game_data_service.py` et `services/admin_avatar_service.py`.
@@ -162,7 +163,7 @@ Corrections de failles économiques majeures identifiées par simulation (voir `
     - Contrôle granulaire des paramètres (heure des courses, durée de la bourse, seuils de participants).
     - Bouton "Force Race" pour déclencher une course immédiatement.
     - Annulation de course sécurisée avec remboursement automatique des parieurs.
-    - Les contextes lourds de l'accueil, de l'historique, des règles et du classement ont été sortis du blueprint principal vers `services/main_page_service.py`.
+    - Les contextes lourds de l'accueil, de l'historique, des règles et du classement ont été sortis du blueprint principal vers `services/homepage_service.py` et `services/main_page_service.py`.
     - Les pages `/courses`, `/paris` et plusieurs actions de `/admin/races` délèguent maintenant leurs contextes et opérations à des services dédiés.
 - **Gestion des Joueurs** :
     - Ajustement manuel des soldes (BitGroins) avec journalisation.

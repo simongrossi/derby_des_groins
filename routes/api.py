@@ -9,14 +9,13 @@ from helpers.time_helpers import get_cooldown_remaining, get_seconds_until
 from helpers.veterinary import get_first_injured_pig
 from models import User, Pig, Race, Participant, Bet, UserNotification, ChatMessage
 from services.market_service import get_prix_moyen_groin
-from services.pig_service import (
+from services.pig_power_service import (
     calculate_pig_power,
     get_pig_settings,
     get_weight_profile,
-    kill_pig,
-    update_pig_vitals,
     xp_for_level,
 )
+from services.pig_service import kill_pig, update_pig_vitals
 from services.economy_service import get_progression_settings
 
 api_bp = Blueprint('api', __name__)

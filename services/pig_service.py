@@ -1,7 +1,5 @@
-from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 import json
-import math
 import random
 
 from flask import current_app, has_app_context
@@ -11,78 +9,18 @@ from config.game_rules import (
     PIG_HERITAGE_RULES,
     PIG_INTERACTION_RULES,
     PIG_LIMITS,
-    PIG_OFFSPRING_RULES,
-    PIG_POWER_RULES,
     PIG_TROPHY_RULES,
     PIG_VITALS_RULES,
-    PIG_WEIGHT_RULES,
 )
-from config.economy_defaults import MAX_PIG_SLOTS, RETIREMENT_HERITAGE_MIN_WINS
 from config.gameplay_defaults import (
-    DEFAULT_PIG_WEIGHT_KG,
-    IDEAL_WEIGHT_MALUS_THRESHOLD_RATIO,
-    MAX_INJURY_RISK,
-    MAX_PIG_WEIGHT_KG,
-    MAX_WEIGHT_PERFORMANCE_MALUS,
-    MIN_INJURY_RISK,
-    MIN_PIG_WEIGHT_KG,
     SCHOOL_COOLDOWN_MINUTES,
     SCHOOL_XP_DECAY_FLOOR,
     SCHOOL_XP_DECAY_THRESHOLDS,
     TRAIN_DAILY_CAP,
-    VET_RESPONSE_MINUTES,
 )
 from config.grain_market_defaults import BOURSE_GRAIN_LAYOUT
 from content.flavor_texts import CHARCUTERIE, CHARCUTERIE_PREMIUM, EPITAPHS
-from content.pigs_catalog import PIG_EMOJIS, PIG_ORIGINS, PRELOADED_PIG_NAMES
 from exceptions import InsufficientFundsError, PigNotFoundError, PigTiredError, ValidationError
-
-
-def _utcnow_naive():
-    return datetime.now(UTC).replace(tzinfo=None)
-
-
-@dataclass(frozen=True)
-class PigSettings:
-    max_slots: int
-    retirement_min_wins: int
-    weight_default_kg: float
-    weight_min_kg: float
-    weight_max_kg: float
-    weight_malus_ratio: float
-    weight_malus_max: float
-    injury_min_risk: float
-    injury_max_risk: float
-    vet_response_minutes: int
-
-
-def get_pig_settings():
-    from helpers.config import get_config
-
-    def _f(key, default):
-        try:
-            return float(get_config(key, str(default)))
-        except (TypeError, ValueError):
-            return float(default)
-
-    def _i(key, default):
-        try:
-            return int(float(get_config(key, str(default))))
-        except (TypeError, ValueError):
-            return int(default)
-
-    return PigSettings(
-        max_slots=_i('pig_max_slots', MAX_PIG_SLOTS),
-        retirement_min_wins=_i('pig_retirement_min_wins', RETIREMENT_HERITAGE_MIN_WINS),
-        weight_default_kg=_f('pig_weight_default_kg', PIG_DEFAULTS.weight_kg),
-        weight_min_kg=_f('pig_weight_min_kg', MIN_PIG_WEIGHT_KG),
-        weight_max_kg=_f('pig_weight_max_kg', MAX_PIG_WEIGHT_KG),
-        weight_malus_ratio=_f('pig_weight_malus_ratio', IDEAL_WEIGHT_MALUS_THRESHOLD_RATIO),
-        weight_malus_max=_f('pig_weight_malus_max', MAX_WEIGHT_PERFORMANCE_MALUS),
-        injury_min_risk=_f('pig_injury_min_risk', MIN_INJURY_RISK),
-        injury_max_risk=_f('pig_injury_max_risk', MAX_INJURY_RISK),
-        vet_response_minutes=_i('pig_vet_response_minutes', VET_RESPONSE_MINUTES),
-    )
 
 
 from extensions import db
@@ -90,38 +28,43 @@ from models import Auction, Participant, Pig, Race, Trophy, User, UserCerealInve
 from services.economy_service import (
     calculate_adoption_cost_for_counts,
     get_feeding_multiplier_for_count,
-    get_level_happiness_bonus_value,
     get_progression_settings,
     scale_stat_gains,
-    xp_for_level_value,
 )
 from services.finance_service import debit_user, reserve_pig_challenge_slot
+from services.pig_lineage_service import (
+    PigHeritageSnapshot,
+    apply_origin_bonus,
+    build_unique_pig_name,
+    create_offspring,
+    create_preloaded_admin_pigs,
+    get_lineage_label,
+    get_pig_heritage_value,
+    is_pig_name_taken,
+    normalize_pig_name,
+    random_pig_sex,
+)
+from services.pig_power_service import (
+    PigSettings,
+    adjust_pig_weight,
+    calculate_pig_power,
+    calculate_target_weight_kg,
+    check_level_up,
+    clamp_pig_weight,
+    generate_weight_kg_for_profile,
+    get_freshness_bonus,
+    get_pig_performance_flags,
+    get_pig_settings,
+    get_weight_profile,
+    get_weight_stat,
+    xp_for_level,
+)
 
 from utils.time_utils import calculate_weekend_truce_hours
 
 
-@dataclass(frozen=True)
-class PigHeritageSnapshot:
-    races_won: int
-    level: int
-    rarity: str
-    lineage_boost: float
-
-    @classmethod
-    def from_source(cls, pig):
-        if isinstance(pig, dict):
-            return cls(
-                races_won=int(pig.get('races_won') or 0),
-                level=max(1, int(pig.get('level') or 1)),
-                rarity=str(pig.get('rarity') or 'commun'),
-                lineage_boost=float(pig.get('lineage_boost') or 0.0),
-            )
-        return cls(
-            races_won=int(getattr(pig, 'races_won', 0) or 0),
-            level=max(1, int(getattr(pig, 'level', 1) or 1)),
-            rarity=str(getattr(pig, 'rarity', 'commun') or 'commun'),
-            lineage_boost=float(getattr(pig, 'lineage_boost', 0.0) or 0.0),
-        )
+def _utcnow_naive():
+    return datetime.now(UTC).replace(tzinfo=None)
 
 
 def get_pig_record(pig_or_id):
@@ -140,10 +83,6 @@ def get_user_record(user_or_id):
     if not user:
         raise ValidationError("Utilisateur introuvable.")
     return user
-
-
-def random_pig_sex():
-    return random.choice(['M', 'F'])
 
 
 def get_user_cereal_inventory_entry(user_id, cereal_key):
@@ -721,217 +660,8 @@ def update_pig_vitals(pig_or_id, force_commit=False):
     return pig
 
 
-def get_freshness_bonus(pig):
-    freshness_value = (
-        max(
-            PIG_LIMITS.min_value,
-            min(PIG_LIMITS.max_value, float(getattr(pig, 'freshness', PIG_DEFAULTS.freshness) or PIG_DEFAULTS.freshness)),
-        )
-        if pig else PIG_DEFAULTS.freshness
-    )
-    return {
-        'active': freshness_value >= PIG_INTERACTION_RULES.freshness_bonus_threshold,
-        'multiplier': 1.0,
-        'bonus_percent': 0.0,
-        'hours_remaining': 0.0,
-        'value': round(freshness_value, 1),
-    }
-
-
-def clamp_pig_weight(weight):
-    ps = get_pig_settings()
-    return round(min(ps.weight_max_kg, max(ps.weight_min_kg, weight)), 1)
-
-
-def get_weight_stat(source, stat_name, default=PIG_DEFAULTS.stat):
-    if isinstance(source, dict):
-        value = source.get(stat_name, default)
-    else:
-        value = getattr(source, stat_name, default)
-    return float(default if value is None else value)
-
-
-def calculate_target_weight_kg(source, level=None):
-    force = get_weight_stat(source, 'force')
-    endurance = get_weight_stat(source, 'endurance')
-    agilite = get_weight_stat(source, 'agilite')
-    vitesse = get_weight_stat(source, 'vitesse')
-    if level is None:
-        level = source.get('level', 1) if isinstance(source, dict) else getattr(source, 'level', 1)
-    level = max(1, int(level or 1))
-
-    target = (
-        PIG_WEIGHT_RULES.base_target_weight_kg
-        + (force * PIG_WEIGHT_RULES.target_force_factor)
-        + (endurance * PIG_WEIGHT_RULES.target_endurance_factor)
-        - (agilite * PIG_WEIGHT_RULES.target_agilite_factor)
-        - (vitesse * PIG_WEIGHT_RULES.target_vitesse_factor)
-        + ((level - 1) * PIG_WEIGHT_RULES.target_level_factor)
-    )
-    return round(
-        min(PIG_WEIGHT_RULES.max_target_weight_kg, max(PIG_WEIGHT_RULES.min_target_weight_kg, target)),
-        1,
-    )
-
-
-def generate_weight_kg_for_profile(source, level=None):
-    ideal = calculate_target_weight_kg(source, level=level)
-    return clamp_pig_weight(
-        random.uniform(
-            ideal - PIG_WEIGHT_RULES.spawn_variation_kg,
-            ideal + PIG_WEIGHT_RULES.spawn_variation_kg,
-        )
-    )
-
-
-def adjust_pig_weight(pig, delta):
-    pig.weight_kg = clamp_pig_weight((pig.weight_kg or get_pig_settings().weight_default_kg) + delta)
-    return pig.weight_kg
-
-
-def get_weight_profile(pig):
-    current_weight = clamp_pig_weight(pig.weight_kg or get_pig_settings().weight_default_kg)
-    ideal_weight = calculate_target_weight_kg(pig)
-    tolerance = round(
-        PIG_WEIGHT_RULES.base_tolerance_kg
-        + (pig.endurance * PIG_WEIGHT_RULES.tolerance_endurance_factor)
-        + (pig.force * PIG_WEIGHT_RULES.tolerance_force_factor),
-        1,
-    )
-    delta = round(current_weight - ideal_weight, 1)
-    abs_delta = abs(delta)
-    race_factor = max(
-        PIG_WEIGHT_RULES.race_factor_floor,
-        min(
-            PIG_WEIGHT_RULES.race_factor_cap,
-            PIG_WEIGHT_RULES.race_factor_base
-            - (
-                (
-                    abs_delta
-                    / max(
-                        tolerance * PIG_WEIGHT_RULES.race_factor_window_multiplier,
-                        PIG_WEIGHT_RULES.minimum_ratio_denominator,
-                    )
-                )
-                * PIG_WEIGHT_RULES.race_factor_penalty_factor
-            ),
-        ),
-    )
-    injury_factor = 1.0 + min(
-        PIG_WEIGHT_RULES.injury_factor_cap,
-        abs_delta / max(
-            tolerance * PIG_WEIGHT_RULES.injury_factor_window_multiplier,
-            PIG_WEIGHT_RULES.minimum_ratio_denominator,
-        ),
-    )
-
-    force_mod = 1.0
-    agilite_mod = 1.0
-    if delta > 0:
-        ratio = delta / max(tolerance, PIG_WEIGHT_RULES.minimum_ratio_denominator)
-        force_mod = 1.0 + min(PIG_WEIGHT_RULES.heavy_force_bonus_cap, ratio * PIG_WEIGHT_RULES.heavy_force_bonus_factor)
-        agilite_mod = 1.0 - min(PIG_WEIGHT_RULES.heavy_agilite_penalty_cap, ratio * PIG_WEIGHT_RULES.heavy_agilite_penalty_factor)
-    elif delta < 0:
-        ratio = abs(delta) / max(tolerance, PIG_WEIGHT_RULES.minimum_ratio_denominator)
-        force_mod = 1.0 - min(PIG_WEIGHT_RULES.light_force_penalty_cap, ratio * PIG_WEIGHT_RULES.light_force_penalty_factor)
-        agilite_mod = 1.0 + min(PIG_WEIGHT_RULES.light_agilite_bonus_cap, ratio * PIG_WEIGHT_RULES.light_agilite_bonus_factor)
-
-    if abs_delta <= tolerance * PIG_WEIGHT_RULES.ideal_zone_ratio:
-        status = 'ideal'
-        status_label = 'Zone ideale'
-        note = "Ton cochon est dans son poids de forme. Il transforme mieux ses stats en vitesse utile."
-    elif delta > tolerance:
-        status = 'heavy'
-        status_label = 'Trop lourd'
-        note = "Impact strategique : Il devient un bulldozer (Force+) mais perd toute souplesse (Agilite-)."
-    elif delta < -tolerance:
-        status = 'light'
-        status_label = 'Trop leger'
-        note = "Impact strategique : Il est tres vif (Agilite+) mais manque d'impact face aux autres (Force-)."
-    else:
-        status = 'warning'
-        status_label = 'A surveiller'
-        note = "Le poids reste jouable, mais un petit ajustement peut encore aider en course."
-
-    return {
-        'current_weight': current_weight,
-        'ideal_weight': ideal_weight,
-        'min_weight': round(ideal_weight - tolerance, 1),
-        'max_weight': round(ideal_weight + tolerance, 1),
-        'delta': delta,
-        'status': status,
-        'status_label': status_label,
-        'note': note,
-        'race_factor': round(race_factor, 3),
-        'race_percent': round((race_factor - 1.0) * 100, 1),
-        'injury_factor': round(injury_factor, 3),
-        'score_pct': max(
-            PIG_WEIGHT_RULES.score_floor_percent,
-            min(PIG_LIMITS.max_value, int((race_factor / PIG_WEIGHT_RULES.race_factor_cap) * 100)),
-        ),
-        'force_mod': round(force_mod, 2),
-        'agilite_mod': round(agilite_mod, 2),
-    }
-
-
-def get_pig_performance_flags(pig):
-    weight_profile = get_weight_profile(pig)
-    ideal_weight = max(PIG_WEIGHT_RULES.minimum_ratio_denominator, weight_profile['ideal_weight'])
-    deviation_ratio = abs(weight_profile['current_weight'] - ideal_weight) / ideal_weight
-    return {
-        'hungry_penalty': (pig.hunger or 0) < PIG_POWER_RULES.hungry_penalty_threshold,
-        'weight_penalty': deviation_ratio > get_pig_settings().weight_malus_ratio,
-        'weight_status': weight_profile['status'],
-    }
-
-
 def update_pig_state(pig):
     update_pig_vitals(pig)
-
-
-def calculate_pig_power(pig):
-    profile = get_weight_profile(pig)
-    freshness = get_freshness_bonus(pig)
-    effective_force = pig.force * profile['force_mod']
-    effective_endurance = pig.endurance
-    effective_vitesse = pig.vitesse
-    effective_agilite = pig.agilite * profile['agilite_mod']
-    if (pig.hunger or 0) < PIG_POWER_RULES.hungry_penalty_threshold:
-        effective_force *= PIG_POWER_RULES.hungry_penalty_multiplier
-        effective_endurance *= PIG_POWER_RULES.hungry_penalty_multiplier
-    ps = get_pig_settings()
-    ideal_weight = max(PIG_WEIGHT_RULES.minimum_ratio_denominator, profile['ideal_weight'])
-    deviation_ratio = abs(profile['current_weight'] - ideal_weight) / ideal_weight
-    if deviation_ratio > ps.weight_malus_ratio:
-        excess_ratio = deviation_ratio - ps.weight_malus_ratio
-        penalty = min(ps.weight_malus_max, excess_ratio / ps.weight_malus_ratio * PIG_POWER_RULES.excess_weight_penalty_scale)
-        modifier = 1.0 - penalty
-        effective_vitesse *= modifier
-        effective_agilite *= modifier
-    effective_moral = pig.moral * freshness['multiplier']
-    stats = [effective_vitesse, effective_endurance, effective_agilite, effective_force, pig.intelligence, effective_moral]
-    stat_score = sum(
-        math.sqrt(max(PIG_LIMITS.min_value, stat) / PIG_LIMITS.max_value) * PIG_LIMITS.max_value
-        for stat in stats
-    ) / len(stats)
-    condition_factor = (
-        PIG_POWER_RULES.condition_base
-        + (
-            ((pig.energy + pig.hunger + pig.happiness) / PIG_POWER_RULES.vitals_average_divisor)
-            / PIG_LIMITS.max_value
-        ) * PIG_POWER_RULES.condition_range
-    )
-    return round(stat_score * condition_factor * profile['race_factor'], 2)
-
-
-def xp_for_level(level):
-    return xp_for_level_value(level)
-
-
-def check_level_up(pig):
-    while pig.xp >= xp_for_level(pig.level + 1):
-        pig.level += 1
-        pig.happiness = min(PIG_LIMITS.max_value, pig.happiness + get_level_happiness_bonus_value())
 
 
 def reset_snack_share_limit_if_needed(user, now=None):
@@ -969,22 +699,6 @@ def get_feeding_cost_multiplier(user):
     return get_feeding_multiplier_for_count(active_count)
 
 
-def get_lineage_label(pig):
-    return pig.lineage_name or pig.name
-
-
-def get_pig_heritage_value(pig):
-    heritage = PigHeritageSnapshot.from_source(pig)
-    rarity_bonus = PIG_HERITAGE_RULES.rarity_bonus_by_key.get(heritage.rarity, 0.0)
-    return round(
-        (heritage.races_won * PIG_HERITAGE_RULES.heritage_races_won_factor)
-        + max(0, heritage.level - 1) * PIG_HERITAGE_RULES.heritage_level_factor
-        + heritage.lineage_boost
-        + rarity_bonus,
-        2,
-    )
-
-
 def can_retire_into_heritage(pig):
     return bool(pig and pig.is_alive and not pig.retired_into_heritage and ((pig.races_won or 0) >= get_pig_settings().retirement_min_wins or (pig.rarity == 'legendaire')))
 
@@ -1012,120 +726,6 @@ def retire_pig_into_heritage(user, pig):
     pig.epitaph = f"{pig.name} entre au haras des legends. Sa lignee inspire toute la porcherie (+{bonus:.1f} heritage)."
     db.session.commit()
     return bonus
-
-
-def normalize_pig_name(name):
-    return ' '.join((name or '').split()).casefold()
-
-
-def is_pig_name_taken(name, exclude_pig_id=None):
-    normalized = normalize_pig_name(name)
-    if not normalized:
-        return False
-    pigs = Pig.query
-    if exclude_pig_id is not None:
-        pigs = pigs.filter(Pig.id != exclude_pig_id)
-    return any(normalize_pig_name(pig.name) == normalized for pig in pigs.all())
-
-
-def build_unique_pig_name(base_name, fallback_prefix='Cochon'):
-    candidate = ' '.join((base_name or '').split())[:80]
-    if not candidate:
-        candidate = fallback_prefix
-    if not is_pig_name_taken(candidate):
-        return candidate
-    suffix = 2
-    while True:
-        suffix_label = f' {suffix}'
-        trimmed = candidate[:max(1, 80 - len(suffix_label))].rstrip()
-        unique_name = f'{trimmed}{suffix_label}'
-        if not is_pig_name_taken(unique_name):
-            return unique_name
-        suffix += 1
-
-
-def apply_origin_bonus(pig, origin):
-    base_value = getattr(pig, origin['bonus_stat']) or PIG_DEFAULTS.stat
-    setattr(pig, origin['bonus_stat'], base_value + origin['bonus'])
-
-
-def create_offspring(user, parent_a, parent_b, name=None):
-    if parent_a.sex == parent_b.sex:
-        raise ValidationError("La reproduction nécessite un mâle et une femelle !")
-
-    sire = parent_a if parent_a.sex == 'M' else parent_b
-    dam = parent_a if parent_a.sex == 'F' else parent_b
-    lineage_name = parent_a.lineage_name or parent_b.lineage_name or f"Maison {user.username}"
-    barn_bonus = user.barn_heritage_bonus or 0.0
-    child = Pig(
-        user_id=user.id,
-        name=build_unique_pig_name(name or f"Porcelet {lineage_name}", fallback_prefix='Porcelet'),
-        emoji=random.choice(PIG_EMOJIS),
-        sex=random_pig_sex(),
-        rarity=parent_a.rarity if parent_a.rarity == parent_b.rarity else random.choice([parent_a.rarity, parent_b.rarity, 'commun']),
-        origin_country=random.choice([parent_a.origin_country, parent_b.origin_country]),
-        origin_flag=random.choice([parent_a.origin_flag, parent_b.origin_flag]),
-        lineage_name=lineage_name,
-        generation=max(parent_a.generation or 1, parent_b.generation or 1) + 1,
-        sire_id=sire.id,
-        dam_id=dam.id,
-        lineage_boost=round(
-            ((parent_a.lineage_boost or 0.0) + (parent_b.lineage_boost or 0.0)) * PIG_OFFSPRING_RULES.parent_lineage_factor
-            + (barn_bonus * PIG_OFFSPRING_RULES.barn_bonus_factor),
-            2,
-        ),
-    )
-    for stat in ['vitesse', 'endurance', 'agilite', 'force', 'intelligence', 'moral']:
-        base = (getattr(parent_a, stat, PIG_DEFAULTS.stat) + getattr(parent_b, stat, PIG_DEFAULTS.stat)) / 2
-        inherited = (
-            base * PIG_OFFSPRING_RULES.inherited_stats_parent_average_factor
-            + random.uniform(
-                PIG_OFFSPRING_RULES.inherited_stats_random_min,
-                PIG_OFFSPRING_RULES.inherited_stats_random_max,
-            )
-            + child.lineage_boost
-        )
-        setattr(
-            child,
-            stat,
-            round(min(PIG_LIMITS.max_value, max(PIG_OFFSPRING_RULES.inherited_stat_floor, inherited)), 1),
-        )
-    child.energy = PIG_OFFSPRING_RULES.initial_energy
-    child.hunger = PIG_OFFSPRING_RULES.initial_hunger
-    child.happiness = min(
-        PIG_LIMITS.max_value,
-        round(
-            PIG_OFFSPRING_RULES.initial_happiness_base
-            + (barn_bonus * PIG_OFFSPRING_RULES.initial_happiness_barn_bonus_factor),
-            1,
-        ),
-    )
-    child.weight_kg = generate_weight_kg_for_profile(child, level=child.level)
-    return child
-
-
-def create_preloaded_admin_pigs(admin_user):
-    if not admin_user:
-        return 0
-    created = 0
-    for index, pig_name in enumerate(PRELOADED_PIG_NAMES):
-        if is_pig_name_taken(pig_name):
-            continue
-        origin = PIG_ORIGINS[index % len(PIG_ORIGINS)]
-        pig = Pig(
-            user_id=admin_user.id,
-            name=pig_name,
-            emoji=PIG_EMOJIS[index % len(PIG_EMOJIS)],
-            sex=random_pig_sex(),
-            origin_country=origin['country'],
-            origin_flag=origin['flag'],
-            lineage_name='Maison Admin',
-        )
-        apply_origin_bonus(pig, origin)
-        pig.weight_kg = generate_weight_kg_for_profile(pig)
-        db.session.add(pig)
-        created += 1
-    return created
 
 
 def recommend_best_cereal(pig, inventory_dict):
@@ -1191,4 +791,3 @@ def recommend_best_cereal(pig, inventory_dict):
     res = cereals[best_key].copy()
     res['key'] = best_key
     return res
-

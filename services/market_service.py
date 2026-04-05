@@ -35,7 +35,9 @@ def _get_bourse_movement_divisor():
 
 from services.game_settings_service import get_game_settings
 from services.finance_service import credit_user, credit_user_balance, debit_user
-from services.pig_service import build_unique_pig_name, generate_weight_kg_for_profile, kill_pig, random_pig_sex
+from services.pig_lineage_service import build_unique_pig_name, random_pig_sex
+from services.pig_power_service import generate_weight_kg_for_profile
+from services.pig_service import kill_pig
 from services.notification_service import push_user_notification
 
 

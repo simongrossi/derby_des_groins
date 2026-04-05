@@ -16,7 +16,15 @@ from models import (
 )
 from config.gameplay_defaults import MAX_INJURY_RISK, MIN_INJURY_RISK, VET_RESPONSE_MINUTES
 from content.pigs_catalog import PIG_ORIGINS
-from services.pig_service import adjust_pig_weight, check_level_up, get_pig_settings, kill_pig, retire_pig
+from services.pig_lineage_service import apply_origin_bonus, build_unique_pig_name, random_pig_sex
+from services.pig_power_service import (
+    adjust_pig_weight,
+    check_level_up,
+    generate_weight_kg_for_profile,
+    get_pig_settings,
+    get_weight_profile,
+)
+from services.pig_service import kill_pig, retire_pig
 from race_engine import CourseManager
 
 from helpers.config import get_config
@@ -28,11 +36,6 @@ from services.economy_service import (
     get_recent_race_penalty_multiplier,
 )
 from services.finance_service import credit_user_balance
-from services.pig_service import (
-    apply_origin_bonus, build_unique_pig_name, generate_weight_kg_for_profile,
-    get_weight_profile,
-    random_pig_sex,
-)
 from services.race_service import (
     calculate_bet_odds, generate_course_segments,
     build_bet_outcome_snapshot, get_course_theme, get_next_race_time,

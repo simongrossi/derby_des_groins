@@ -95,7 +95,7 @@ from services.admin_race_service import (
     import_race_npcs_csv,
     save_admin_races_configuration,
 )
-from services.pig_service import get_pig_settings
+from services.pig_power_service import get_pig_settings
 from services.race_engine_service import (
     get_race_engine_settings,
     reset_race_engine_settings,

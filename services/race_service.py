@@ -21,7 +21,8 @@ from services.economy_service import (
 )
 from services.finance_service import credit_user_balance
 from services.game_settings_service import get_game_settings
-from services.pig_service import calculate_pig_power, get_weight_profile, update_pig_state
+from services.pig_power_service import calculate_pig_power, get_weight_profile
+from services.pig_service import update_pig_state
 
 
 class RacePlanningError(Exception):
