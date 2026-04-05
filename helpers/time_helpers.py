@@ -12,7 +12,13 @@ def get_cooldown_remaining(last_action, minutes):
 
 def format_duration_short(total_seconds):
     total_seconds = max(0, int(total_seconds))
-    minutes, seconds = divmod(total_seconds, 60)
+    days, rem = divmod(total_seconds, 86400)
+    hours, rem = divmod(rem, 3600)
+    minutes, seconds = divmod(rem, 60)
+    if days:
+        return f"{days}j {hours:02d}h"
+    if hours:
+        return f"{hours}h {minutes:02d}m"
     if minutes and seconds:
         return f"{minutes}m {seconds:02d}s"
     if minutes:

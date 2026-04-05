@@ -5,22 +5,19 @@ from flask import Blueprint, jsonify, redirect, render_template, request, sessio
 from extensions import db, limiter
 from models import Trophy, User
 from services.finance_service import credit_user_balance
+from services.gameplay_settings_service import get_minigame_settings
 
 agenda_bp = Blueprint('agenda', __name__)
-
-AGENDA_REWARD = 50
-REQUIRED_CATCHES = 5
-GAME_DURATION = 30
-MAX_PLAYS_PER_DAY = 2
 
 
 def _plays_remaining(user):
     """Return the number of plays left today (resets daily). Admins: unlimited."""
+    settings = get_minigame_settings()
     if getattr(user, 'is_admin', False):
-        return MAX_PLAYS_PER_DAY  # always show full for admins
+        return settings.agenda_max_plays_per_day  # always show full for admins
     if not user.last_agenda_at or user.last_agenda_at.date() < date.today():
-        return MAX_PLAYS_PER_DAY
-    return max(0, MAX_PLAYS_PER_DAY - (user.agenda_plays_today or 0))
+        return settings.agenda_max_plays_per_day
+    return max(0, settings.agenda_max_plays_per_day - (user.agenda_plays_today or 0))
 
 
 def _already_played_today(user):
@@ -39,16 +36,17 @@ def agenda():
     user = User.query.get(user_id)
     already_played = _already_played_today(user)
     remaining = _plays_remaining(user)
+    settings = get_minigame_settings()
     return render_template(
         'agenda.html',
         user=user,
         active_page='agenda',
-        reward=AGENDA_REWARD,
-        required_catches=REQUIRED_CATCHES,
-        game_duration=GAME_DURATION,
+        reward=settings.agenda_reward,
+        required_catches=settings.agenda_required_catches,
+        game_duration=settings.agenda_game_duration,
         already_played=already_played,
         plays_remaining=remaining,
-        max_plays=MAX_PLAYS_PER_DAY,
+        max_plays=settings.agenda_max_plays_per_day,
     )
 
 
@@ -64,8 +62,9 @@ def agenda_play():
     if not user:
         return jsonify({'ok': False, 'error': 'Utilisateur introuvable'}), 404
 
+    settings = get_minigame_settings()
     if _already_played_today(user):
-        return jsonify({'ok': False, 'error': 'Tu as déjà utilisé tes 2 parties du jour !'}), 429
+        return jsonify({'ok': False, 'error': f"Tu as déjà utilisé tes {settings.agenda_max_plays_per_day} partie(s) du jour !"}), 429
 
     # Reset counter if new day
     if not user.last_agenda_at or user.last_agenda_at.date() < date.today():
@@ -92,13 +91,14 @@ def agenda_win():
 
     payload = request.get_json(silent=True) or {}
     catches = payload.get('catches', '?')
+    settings = get_minigame_settings()
 
     credit_user_balance(
         user.id,
-        AGENDA_REWARD,
+        settings.agenda_reward,
         reason_code='agenda_win',
         reason_label='GROSMOP atteint',
-        details=f'{catches} GROSMOP(s) attrapé(s) en 30s. Dédommagement pour illusion de management.',
+        details=f'{catches} GROSMOP(s) attrapé(s) en {settings.agenda_game_duration}s. Dédommagement pour illusion de management.',
         reference_type='user',
         reference_id=user.id,
     )
@@ -116,6 +116,6 @@ def agenda_win():
 
     return jsonify({
         'ok': True,
-        'reward': AGENDA_REWARD,
+        'reward': settings.agenda_reward,
         'new_balance': round(user.balance or 0.0, 2),
     })

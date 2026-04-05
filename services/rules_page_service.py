@@ -1,5 +1,4 @@
 from config.economy_defaults import COMPLEX_BET_MIN_SELECTIONS
-from config.gameplay_defaults import SCHOOL_COOLDOWN_MINUTES, SNACK_SHARE_DAILY_LIMIT
 from config.grain_market_defaults import (
     BOURSE_GRID_SIZE,
     BOURSE_MIN_MOVEMENT,
@@ -7,6 +6,7 @@ from config.grain_market_defaults import (
 )
 from content.stats_metadata import STAT_LABELS
 from helpers.game_data import get_cereals_dict, get_school_lessons_dict, get_trainings_dict
+from helpers.time_helpers import format_duration_short
 from services.economy_service import (
     get_adoption_cost_for_active_count,
     get_bet_limits,
@@ -20,6 +20,7 @@ from services.economy_service import (
     get_welcome_bonus_value,
     xp_for_level_value,
 )
+from services.gameplay_settings_service import get_gameplay_settings, get_minigame_settings
 from services.pig_power_service import get_pig_settings
 
 
@@ -47,6 +48,8 @@ def _format_stat_changes(stats):
 def build_rules_page_context():
     economy = get_economy_settings()
     progression = get_progression_settings()
+    gameplay = get_gameplay_settings()
+    minigames = get_minigame_settings()
     rewards = get_race_reward_settings(economy)
     bet_limits = get_bet_limits(economy)
     bet_types = get_configured_bet_types(economy)
@@ -59,7 +62,7 @@ def build_rules_page_context():
         {'label': 'Prime quotidienne', 'value': f"{get_daily_login_reward_value(economy):.0f} 🪙", 'note': "Versée à la première connexion du jour."},
         {'label': 'Quota de courses', 'value': f"{get_weekly_race_quota_value(economy)} / semaine", 'note': "Par cochon vivant."},
         {'label': 'Tickets Bacon', 'value': f"{economy.weekly_bacon_tickets} / semaine", 'note': "Un seul ticket par course."},
-        {'label': 'Fenêtre vétérinaire', 'value': f"{get_pig_settings().vet_response_minutes} min", 'note': "Au-delà, le cochon peut mourir."},
+        {'label': 'Fenêtre vétérinaire', 'value': format_duration_short(get_pig_settings().vet_response_minutes * 60), 'note': "Au-delà, le cochon peut mourir."},
         {
             'label': 'Mise par ticket',
             'value': f"{bet_limits['min_bet_race']:.0f} à {bet_limits['max_bet_race']:.0f} 🪙",
@@ -173,10 +176,17 @@ def build_rules_page_context():
                 "Chaque action ne travaille pas les mêmes stats: nourrir, entraîner, école et Typing Derby ont des rôles différents.",
                 f"Le passage de niveau suit la formule actuelle `XP totale = {progression.level_xp_base:.0f} × niveau^{progression.level_xp_exponent:.1f}`.",
                 f"Chaque level-up donne actuellement +{_fmt_number(progression.level_happiness_bonus)} d’humeur.",
-                f"L’école et le Typing Derby partagent un cooldown de {SCHOOL_COOLDOWN_MINUTES} minutes.",
+                f"L’école et le Typing Derby partagent un cooldown de {gameplay.school_cooldown_minutes} minutes.",
                 f"Le Typing Derby donne {int(round(progression.typing_xp_reward))} XP de base, puis ajoute surtout de la vitesse et de l’agilité selon ta performance.",
-                "🏋️ Entraînement : max 10 sessions par cochon par jour (toutes disciplines). Alerte visuelle dès qu’il reste moins de 3 sessions.",
-                "🎓 École : rendement décroissant par jour. Sessions 1–2 = 100% XP/stats, session 3 = 50%, sessions 4+ = 10%. Le flash message te prévient du multiplicateur actif.",
+                f"🏋️ Entraînement : max {gameplay.train_daily_cap} sessions par cochon par jour (toutes disciplines). Alerte visuelle dès qu’il reste moins de 3 sessions.",
+                (
+                    "🎓 École et Typing Derby : rendement décroissant partagé par jour. "
+                    + ", ".join(
+                        f"avant {threshold} session(s) = {int(round(multiplier * 100))}%"
+                        for threshold, multiplier in gameplay.school_xp_decay_thresholds
+                    )
+                    + f", puis plancher à {int(round(gameplay.school_xp_decay_floor * 100))}%."
+                ),
             ],
         },
         {
@@ -191,9 +201,9 @@ def build_rules_page_context():
                 f"La fraîcheur reste à 100 pendant {progression.freshness_grace_hours:.0f} h sans interaction positive, puis perd {progression.freshness_decay_per_workday:.0f} points par jour ouvré. Le week-end est mis en trêve.",
                 "Toute interaction positive utile remet la fraîcheur à 100. Un retour après plus de 12h sans interaction prépare un bonus comeback pour la prochaine course.",
                 "🌟 Comeback Bonus actif : si le cochon n'a pas été touché depuis +12h et qu'il gagne sa prochaine course, il reçoit ×2 XP, ×2 gains de stats et +10 bonheur. Le bonus se consomme en une seule victoire.",
-                "Le poids idéal dépend des stats et du niveau. Un gros écart par rapport à cette zone fait baisser la performance et monter le risque de blessure.",
+                "Le poids idéal dépend des stats et du niveau. Mon Cochon affiche maintenant la cible exacte en kg, sa zone sûre et le multiplicateur de blessure lié au poids.",
                 f"Un cochon ne peut plus courir si son énergie ou sa satiété tombe à 20 ou moins.",
-                f"Les snacks de bureau servent juste à remonter un peu la satiété: {SNACK_SHARE_DAILY_LIMIT} partage(s) maximum par jour.",
+                f"Les snacks de bureau servent juste à remonter un peu la satiété: {gameplay.snack_share_daily_limit} partage(s) maximum par jour.",
             ],
         },
         {
@@ -206,6 +216,7 @@ def build_rules_page_context():
                 f"Chaque course coûte actuellement {progression.race_energy_cost:.0f} énergie, {progression.race_hunger_cost:.0f} satiété et {abs(progression.race_weight_delta):.1f} kg environ.",
                 f"Si un cochon recourt en moins de 24 h, sa perf prend un multiplicateur de {progression.recent_race_penalty_under_24h:.2f}. Entre 24 h et 48 h, le multiplicateur passe à {progression.recent_race_penalty_under_48h:.2f}.",
                 f"La présence rapporte {rewards['appearance_reward']:.0f} 🪙, puis le podium ajoute {rewards['position_rewards'].get(1, 0):.0f}/{rewards['position_rewards'].get(2, 0):.0f}/{rewards['position_rewards'].get(3, 0):.0f} 🪙.",
+                "Les mini-jeux restent des appoints quotidiens, mais la boucle de carrière et de progression doit maintenant redevenir la course.",
                 "Le niveau n’entre pas directement comme une stat magique en course: il sert surtout via l’XP cumulée, la forme, le poids et les stats construites.",
                 "Mon Cochon affiche aussi les courses restantes du cochon. Quand ce plafond est atteint, il prend automatiquement sa retraite de course.",
             ],
@@ -219,8 +230,8 @@ def build_rules_page_context():
                 f"Le risque de blessure est maintenant borné entre {get_pig_settings().injury_min_risk:.0f}% et {get_pig_settings().injury_max_risk:.0f}% avant modificateurs.",
                 "Les 8 premières courses bénéficient d’une vraie protection de début de carrière: le risque réel monte progressivement pour éviter les morts absurdes trop tôt.",
                 "Fatigue, faim et mauvais poids aggravent ensuite ce risque à chaque arrivée.",
-                f"En cas de blessure, le cochon est bloqué pour les courses, l’entraînement, l’école et le Challenge de la Mort tant qu’il n’est pas soigné. La fenêtre vétérinaire active est de {get_pig_settings().vet_response_minutes} minutes.",
-                f"Une opération réussie réduit maintenant le risque de blessure du cochon de 2 points et coûte {progression.vet_energy_cost:.0f} énergie / {progression.vet_happiness_cost:.0f} humeur.",
+                f"En cas de blessure, le cochon est bloqué pour les courses, l’entraînement, l’école et le Challenge de la Mort tant qu’il n’est pas soigné. La fenêtre vétérinaire active est de {format_duration_short(get_pig_settings().vet_response_minutes * 60)}.",
+                f"Une opération réussie réduit maintenant le risque de blessure du cochon de 2 points. Plus tu attends, plus l’intervention coûte en énergie et en humeur (base actuelle: {progression.vet_energy_cost:.0f} énergie / {progression.vet_happiness_cost:.0f} humeur).",
                 f"Un champion peut aussi quitter la piste volontairement en retraite d’honneur dès {get_pig_settings().retirement_min_wins} victoires, ou immédiatement s’il est légendaire.",
             ],
         },
@@ -248,7 +259,7 @@ def build_rules_page_context():
                 f"Le deuxième cochon et les suivants coûtent de plus en plus cher. La porcherie est plafonnée à {get_pig_settings().max_slots} cochons.",
                 f"La portée coûte actuellement {economy.breeding_cost:.0f} 🪙 et mélange stats, origine, rareté et lignée des parents.",
                 f"Chaque cochon supplémentaire augmente le coût de nourrissage de +{economy.feeding_pressure_per_pig * 100:.0f}% sur tous les achats.",
-                "💸 Taxe progressive anti-baleine : solde > 2 000 🪙 → 20% de taxe sur les crédits économiques entrants ; > 5 000 🪙 → 50%. Les revenus de base, les remboursements et les gains de paris sont exempts pour garder les tickets honnêtes.",
+                "💸 Taxe progressive anti-baleine : solde > 3 000 🪙 → 20% de taxe sur les crédits économiques entrants ; > 10 000 🪙 → 50%. Les revenus de base, les remboursements et les gains de paris sont exempts pour garder les tickets honnêtes.",
                 "🤝 Caisse de Solidarité : les BitGroins taxés alimentent une cagnotte. Si tu tombes sous 50 🪙, tu reçois automatiquement 30 🪙 depuis cette caisse.",
                 "Le journal de compte dans Historique est la source de vérité pour comprendre d’où viennent et où partent les BitGroins.",
                 "Les panneaux admin Économie et Progression permettent de recalibrer ces valeurs sans redéployer le jeu.",
@@ -286,10 +297,10 @@ def build_rules_page_context():
             'title': 'Mini-jeux et à-côtés',
             'summary': "Les mini-jeux servent à détendre le rythme bureau tout en injectant un peu de monnaie ou de progression.",
             'bullets': [
-                "🐷 Cochon Pendu : 3 parties gratuites par jour, puis 5 🪙 par partie supplémentaire. Le quota restant est affiché sous le bouton Rejouer.",
-                "Truffes est un revenu d’appoint gratuit sur 7 clics (limite quotidienne configurable, puis rejouer coûte quelques 🪙).",
+                f"🐷 Cochon Pendu : {minigames.pendu_free_plays_per_day} parties gratuites par jour, puis {minigames.pendu_extra_play_cost:.0f} 🪙 par partie supplémentaire. Le quota restant est affiché sous le bouton Rejouer.",
+                f"Truffes est un revenu d’appoint gratuit sur {minigames.truffe_max_clicks} clics (limite quotidienne configurable, puis rejouer coûte quelques 🪙).",
                 "🎰 Groin Jack : mini-casino en BitGroins. Plafond de 500 🪙 de gains nets par jour — au-delà, les crédits casino sont suspendus jusqu’au lendemain.",
-                "Agenda / Whack-a-Réu se joue 1 fois par jour et récompense les réflexes.",
+                f"Agenda / Whack-a-Réu se joue {minigames.agenda_max_plays_per_day} fois par jour et récompense les réflexes avec une prime plus modeste qu’une vraie journée de course.",
                 "Le replay Live sert à comprendre les arrivées, les accrocs et la narration d’une course terminée.",
             ],
         },

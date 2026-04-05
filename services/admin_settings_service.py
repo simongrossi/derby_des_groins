@@ -21,6 +21,17 @@ def _parse_float_field(form_data, key, default_value):
 
 
 def save_admin_pig_settings(form_data, pig_settings):
+    raw_weight_rules = form_data.get('pig_weight_rules_json', '')
+    weight_rules_json = raw_weight_rules
+    if raw_weight_rules:
+        try:
+            parsed_weight_rules = json.loads(raw_weight_rules)
+        except (TypeError, ValueError) as exc:
+            raise ValidationError(f"JSON poids invalide : {exc}") from exc
+        if not isinstance(parsed_weight_rules, dict):
+            raise ValidationError("Le JSON des règles de poids doit être un objet.")
+        weight_rules_json = json.dumps(parsed_weight_rules, ensure_ascii=False, indent=2)
+
     pig_payload = {
         'pig_max_slots': str(_parse_int_field(form_data, 'pig_max_slots', pig_settings.max_slots)),
         'pig_retirement_min_wins': str(
@@ -28,6 +39,13 @@ def save_admin_pig_settings(form_data, pig_settings):
                 form_data,
                 'pig_retirement_min_wins',
                 pig_settings.retirement_min_wins,
+            )
+        ),
+        'pig_default_max_races': str(
+            _parse_int_field(
+                form_data,
+                'pig_default_max_races',
+                pig_settings.default_max_races,
             )
         ),
         'pig_weight_default_kg': str(
@@ -59,6 +77,9 @@ def save_admin_pig_settings(form_data, pig_settings):
             )
         ),
     }
+    if weight_rules_json:
+        pig_payload['settings_pig_weight_rules'] = weight_rules_json
+
     existing_entries = {
         entry.key: entry
         for entry in GameConfig.query.filter(GameConfig.key.in_(list(pig_payload.keys()))).all()

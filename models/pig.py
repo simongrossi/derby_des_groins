@@ -83,7 +83,10 @@ class Pig(db.Model):
 
     @property
     def races_remaining(self) -> int:
-        return max(0, (self.max_races or PIG_DEFAULTS.max_races) - self.races_entered)
+        from services.pig_power_service import get_pig_settings
+
+        configured_max_races = self.max_races or get_pig_settings().default_max_races
+        return max(0, configured_max_races - self.races_entered)
 
     @property
     def can_race(self) -> bool:

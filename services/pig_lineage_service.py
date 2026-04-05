@@ -6,7 +6,7 @@ from content.pigs_catalog import PIG_EMOJIS, PIG_ORIGINS, PRELOADED_PIG_NAMES
 from exceptions import ValidationError
 from extensions import db
 from models import Pig
-from services.pig_power_service import generate_weight_kg_for_profile
+from services.pig_power_service import generate_weight_kg_for_profile, get_pig_settings
 
 
 @dataclass(frozen=True)
@@ -108,6 +108,7 @@ def create_offspring(user, parent_a, parent_b, name=None):
         generation=max(parent_a.generation or 1, parent_b.generation or 1) + 1,
         sire_id=sire.id,
         dam_id=dam.id,
+        max_races=get_pig_settings().default_max_races,
         lineage_boost=round(
             ((parent_a.lineage_boost or 0.0) + (parent_b.lineage_boost or 0.0)) * PIG_OFFSPRING_RULES.parent_lineage_factor
             + (barn_bonus * PIG_OFFSPRING_RULES.barn_bonus_factor),
@@ -159,6 +160,7 @@ def create_preloaded_admin_pigs(admin_user):
             origin_country=origin['country'],
             origin_flag=origin['flag'],
             lineage_name='Maison Admin',
+            max_races=get_pig_settings().default_max_races,
         )
         apply_origin_bonus(pig, origin)
         pig.weight_kg = generate_weight_kg_for_profile(pig)

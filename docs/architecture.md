@@ -16,6 +16,8 @@
 - **Blueprints allégés progressivement** : `routes/pig.py`, `routes/race.py`, `routes/market.py`, `routes/bourse.py`, `routes/auth.py`, `routes/main.py` et la majeure partie de `routes/admin.py` délèguent désormais leur logique métier à la couche service.
 - **Pages découpées par contexte** : les routes de consultation lourdes s'appuient maintenant sur des builders dédiés (`services/homepage_service.py`, `services/rules_page_service.py`, `services/history_page_service.py`, `services/classement_page_service.py`, `services/race_page_service.py`, `services/admin_race_service.py`, `services/admin_bet_service.py`) pour limiter les requêtes et le code de présentation dans les blueprints.
 - **Administration découpée par domaines** : le panneau admin est désormais réparti entre des services dédiés pour les utilisateurs, réglages, courses, tickets, cochons, événements, SMTP, Truffes, données de jeu et avatars.
+- **Réglages gameplay adminables** : les paramètres de cap d'entraînement, cooldown école, mini-jeux (Pendu, Agenda, Truffes) et règles de poids des cochons sont stockés en tant que blobs JSON dans `GameConfig` et manipulés via `services/gameplay_settings_service.py` et `services/pig_power_service.py`.
+- **Bundle export/import** : `services/game_settings_bundle_service.py` offre un endpoint pour exporter ou importer l'intégralité de la configuration du jeu en un seul JSON versionné (`schema_version: 1`), permettant de cloner ou restaurer facilement un environnement.
 - **Tests moins couplés au dev local** : le mode `testing` pointe vers une base dédiée et `tests/support.py` reset désormais le schéma pour les suites routes/integration les plus sensibles.
 
 ## Structure des Modèles (Database Schema)
@@ -140,6 +142,8 @@ derby_des_groins/
 │   ├── pig_service.py      # Actions cochons, vitals, école, retraite, abattoir
 │   ├── race_page_service.py # Construction des contextes lourds de /courses et /paris
 │   ├── rules_page_service.py # Construction du hub Regles et des tableaux pédagogiques
+│   ├── gameplay_settings_service.py # Réglages gameplay et mini-jeux (dataclasses adminables via GameConfig)
+│   ├── game_settings_bundle_service.py # Export/import de tous les réglages en bundle JSON versionné
 │   └── ...
 ├── exceptions.py           # Exceptions métier partagées
 ├── templates/              # Vues Jinja2 (v3.0 UI Responsive)
@@ -201,5 +205,6 @@ Les pages exemptées de footer : `429.html` (erreur), `auth.html` (login/registe
 
 ## Roadmap Future
 - **PMU Porcin Evolué** : Statistiques globales sur les cotes les plus rentables et tendances de gains.
-- **Webhooks & Alertes** : ✅ Config SMTP en place. Reste : notifications automatiques (résultats de courses, fins d'enchères), intégration Slack/Teams.
-- **Saisons & Ligues** : Mise en place de championnats par divisions avec remise des prix saisonnière.
+- **Webhooks \& Alertes** : ✅ Config SMTP en place. Reste : notifications automatiques (résultats de courses, fins d'enchères), intégration Slack/Teams.
+- **Saisons \& Ligues** : Mise en place de championnats par divisions avec remise des prix saisonnière.
+- **Smart Feed** : Sélection automatique de la céréale optimale selon les besoins du cochon (faim, énergie, stats cibles).

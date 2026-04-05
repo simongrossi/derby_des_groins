@@ -4,7 +4,7 @@ Document de reference des regles joueur actuellement en place dans le depot.
 
 Important:
 - la source de verite fonctionnelle reste le code;
-- les valeurs numeriques ci-dessous correspondent aux reglages actifs au 27 mars 2026 dans le depot;
+- les valeurs numeriques ci-dessous correspondent aux reglages actifs au 5 avril 2026 dans le depot;
 - une partie de ces valeurs est administrable depuis `/admin/economy` et `/admin/progression`;
 - la page publique `/regles` est la synthese joueur exposee dans l'interface.
 
@@ -83,7 +83,7 @@ Les stats permanentes ne suffisent pas. La performance reelle depend aussi de l'
 ### Satiete
 
 - un cochon ne peut plus courir si `satiete <= 20`;
-- la satiete baisse naturellement de `2/h`;
+- la satiete baisse naturellement d'environ `1.2/h`;
 - une course coute actuellement `10` satiete;
 - nourrir remonte la satiete immediatement.
 
@@ -109,6 +109,7 @@ Les stats permanentes ne suffisent pas. La performance reelle depend aussi de l'
 ### Poids
 
 - le poids ideal depend des stats et du niveau du cochon;
+- l'interface `Mon Cochon` affiche maintenant la cible ideale exacte en kg, sa zone sure et le multiplicateur de blessure lie au poids;
 - un cochon trop eloigne de sa zone ideale perd de la performance;
 - ce meme ecart augmente aussi son risque de blessure;
 - nourrir, courir et s'entrainer peuvent faire bouger le poids.
@@ -186,15 +187,19 @@ Cours de base:
 
 Regles:
 - partage le cooldown de l'ecole;
-- donne `20 XP` de base;
+- donne `12 XP` de base;
 - donne surtout vitesse et agilite selon la performance au clavier;
+- partage aussi le rendement decroissant quotidien de l'ecole:
+  - sessions 1-2 : `100%`;
+  - session 3 : `50%`;
+  - sessions 4+ : `10%`;
 - remet aussi la fraicheur a fond.
 
 ## 6. Courses
 
 ### Quota et acces
 
-- quota hebdomadaire actuel: `3` courses par cochon vivant;
+- quota hebdomadaire actuel: `5` courses par cochon vivant (administrable);
 - un cochon blesse ne peut pas courir;
 - un cochon avec `energie <= 20` ou `satiete <= 20` ne peut pas courir.
 
@@ -213,23 +218,23 @@ Pour eviter le spam:
 
 ### Recompenses BitGroins
 
-Recompenses economiques actuelles:
-- participation: `6` BitGroins;
+Recompenses economiques actuelles (administrables):
+- participation: `12` BitGroins;
 - podium:
-  - 1er: `25`
-  - 2e: `12`
-  - 3e: `6`
+  - 1er: `100`
+  - 2e: `60`
+  - 3e: `35`
 
 ### Retraite automatique
 
 Chaque cochon a un plafond `max_races`:
 - si `races_entered >= max_races`, il prend sa retraite automatiquement;
-- les cochons adoptes directement utilisent le plafond par defaut du modele, `80`;
+- les cochons adoptes directement utilisent le plafond par defaut du modele, `40`;
 - les cochons generes via le marche utilisent des plages de rarete:
-  - commun: `20-30`
-  - rare: `30-40`
-  - epique: `40-50`
-  - legendaire: `50-75`
+  - commun: `18-26`
+  - rare: `24-34`
+  - epique: `30-42`
+  - legendaire: `36-50`
 
 ## 7. Blessures, veterinaire et mort
 
@@ -246,12 +251,13 @@ Regles actuelles:
   - il ne peut plus entrer dans le Challenge de la Mort.
 
 Veterinaire:
-- fenetre de sauvetage actuelle: `20 minutes`;
+- fenetre de sauvetage actuelle: `12 heures` (administrable via `vet_response_minutes`, actuellement 720 min);
 - le mini-jeu penalise maintenant une erreur de seulement `5 secondes`;
 - une operation reussie:
   - sauve le cochon;
   - baisse son risque de blessure de `2 points`;
-  - coute `10` energie et `5` humeur;
+  - coute une base de `10` energie et `5` humeur;
+  - **les couts augmentent progressivement** avec le temps ecoule dans la fenetre (jusqu'a x2 en energie, x3 en humeur en fin de fenetre);
 - si la deadline expire, le cochon peut mourir de blessure.
 
 ## 8. Paris
@@ -297,7 +303,7 @@ Formats actuellement disponibles:
 
 ### Pression de nourrissage
 
-Chaque cochon supplementaire augmente le cout des cereales de `+20%`.
+Chaque cochon supplementaire augmente le cout des cereales de `+10%` (base: `FEEDING_PRESSURE_PER_PIG = 0.10`).
 
 Important:
 - cette pression s'applique desormais **au moment de l'achat en Bourse**;
@@ -308,9 +314,9 @@ Multiplicateurs actuels:
 | Cochons actifs | Multiplicateur |
 |---|---:|
 | 1 | x1.00 |
-| 2 | x1.20 |
-| 3 | x1.40 |
-| 4 | x1.60 |
+| 2 | x1.10 |
+| 3 | x1.20 |
+| 4 | x1.30 |
 
 Taxe anti-baleine:
 - la taxe progressive s'applique aux credits economiques entrants;
@@ -365,21 +371,21 @@ La page `/bourse` expose deja une aide "comment ca marche", mais `/regles` est m
 ## 12. Mini-jeux
 
 ### Cochon Pendu
-- deviner le mot porcin lettre par lettre, `7` erreurs autorisees;
-- recompense victoire: `50` BitGroins; defaite: -20 bonheur, -10 energie sur le cochon actif;
-- **quota quotidien: 3 parties gratuites par joueur par jour**; au-dela, chaque partie supplementaire coute `5` BitGroins;
+- deviner le mot porcin lettre par lettre, `7` erreurs autorisees (administrable);
+- recompense victoire: `25` BitGroins (administrable); defaite: -20 bonheur, -10 energie sur le cochon actif;
+- **quota quotidien: 2 parties gratuites par joueur par jour** (administrable); au-dela, chaque partie supplementaire coute `5` BitGroins;
 - le quota restant est affiche sous le bouton "Rejouer".
 
 ### Truffes
-- mini-jeu gratuit (limite configurable par l'admin, actuellement `1` partie gratuite/jour);
-- `7` clics max;
+- mini-jeu gratuit (limite configurable par l'admin via `MinigameSettings`, actuellement `1` partie gratuite/jour);
+- `7` clics max (administrable);
 - recompense actuelle: `20` BitGroins;
 - parties supplementaires payantes (cout configurable, actuellement `2` BitGroins).
 
 ### Agenda / Whack-a-Reu
-- `1` partie par jour;
-- objectif: attraper `5` COMOPs en `30 secondes`;
-- recompense actuelle: `50` BitGroins.
+- `1` partie par jour (administrable via `MinigameSettings`);
+- objectif: attraper `5` COMOPs en `30 secondes` (administreble);
+- recompense actuelle: `25` BitGroins.
 
 ### Groin Jack (Blackjack) et autres jeux de cartes
 - mini-casino en BitGroins;
@@ -413,11 +419,13 @@ A chaque credit de BitGroins (gains de course, mini-jeux, etc.), le jeu applique
 
 | Solde du joueur | Taux de taxe applique |
 |---|---:|
-| Moins de 2 000 BitGroins | 0% (aucune taxe) |
-| Entre 2 000 et 5 000 BitGroins | 20% du gain taxe |
-| Au-dela de 5 000 BitGroins | 50% du gain taxe |
+| Moins de 3 000 BitGroins | 0% (aucune taxe) |
+| Entre 3 000 et 10 000 BitGroins | 20% du gain taxe |
+| Au-dela de 10 000 BitGroins | 50% du gain taxe |
 
-Codes exempts (revenus de base non taxes) : prime quotidienne, secours d'urgence, remboursement portee.
+Note: les seuils (`TAX_THRESHOLD_1 = 3 000`, `TAX_THRESHOLD_2 = 10 000`) sont pilotables via `/admin/economy`.
+
+Codes exempts (revenus de base non taxes) : prime quotidienne, secours d'urgence, remboursement portee, remboursements de tickets et gains de paris.
 
 Les gains taxes alimentent automatiquement la **Caisse de Solidarite Porcine**.
 
@@ -431,7 +439,12 @@ Cagnotte alimentee par la taxe progressive. Logique de redistribution automatiqu
 
 Source de pilotage:
 - `/admin/economy` pour l'economie, les tickets, les rewards, les couts, les caps de payout et les types de paris;
-- `/admin/progression` pour l'energie, la satiete, la fraicheur, la courbe d'XP, l'XP de course, les multiplicateurs de progression et les couts veto.
+- `/admin/economy` (onglet Gameplay) pour le cap d'entrainements quotidiens, le cooldown ecole et le rendement decroissant;
+- `/admin/economy` (onglet Mini-jeux) pour les recompenses / quotas / parametres de Pendu, Agenda et Truffes;
+- `/admin/economy` (onglet Poids cochon) pour les coefficients de poids ideal, tolerances et facteurs de penalite en course;
+- `/admin/progression` pour l'energie, la satiete, la fraicheur, la courbe d'XP, l'XP de course, les multiplicateurs de progression et les couts veto;
+- `GET /admin/settings-bundle/export` — exporte **tous** les reglages admin en un seul fichier JSON portable;
+- `POST /admin/economy` avec `action=import_settings_bundle` — importe un bundle JSON (fichier ou copier-coller) pour restaurer ou cloner une configuration.
 
 Conclusion:
 - le vocabulaire et les principes doivent rester stables;

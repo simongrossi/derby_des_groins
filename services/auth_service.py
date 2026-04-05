@@ -15,7 +15,7 @@ from services.pig_lineage_service import (
     build_unique_pig_name,
     random_pig_sex,
 )
-from services.pig_power_service import generate_weight_kg_for_profile
+from services.pig_power_service import generate_weight_kg_for_profile, get_pig_settings
 
 
 def register_user(username, password):
@@ -60,6 +60,7 @@ def register_user(username, password):
         sex=random_pig_sex(),
         origin_country=origin['country'],
         origin_flag=origin['flag'],
+        max_races=get_pig_settings().default_max_races,
     )
     apply_origin_bonus(pig, origin)
     pig.weight_kg = generate_weight_kg_for_profile(pig)

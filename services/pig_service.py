@@ -12,12 +12,6 @@ from config.game_rules import (
     PIG_TROPHY_RULES,
     PIG_VITALS_RULES,
 )
-from config.gameplay_defaults import (
-    SCHOOL_COOLDOWN_MINUTES,
-    SCHOOL_XP_DECAY_FLOOR,
-    SCHOOL_XP_DECAY_THRESHOLDS,
-    TRAIN_DAILY_CAP,
-)
 from config.grain_market_defaults import BOURSE_GRAIN_LAYOUT
 from content.flavor_texts import CHARCUTERIE, CHARCUTERIE_PREMIUM, EPITAPHS
 from exceptions import InsufficientFundsError, PigNotFoundError, PigTiredError, ValidationError
@@ -32,6 +26,7 @@ from services.economy_service import (
     scale_stat_gains,
 )
 from services.finance_service import debit_user, reserve_pig_challenge_slot
+from services.gameplay_settings_service import get_gameplay_settings
 from services.pig_lineage_service import (
     PigHeritageSnapshot,
     apply_origin_bonus,
@@ -229,14 +224,32 @@ def maybe_award_memorial_trophies(pig):
         )
 
 
-def get_school_decay_multiplier(pig) -> float:
+def get_learning_decay_multiplier(pig) -> float:
     pig = get_pig_record(pig)
     today = datetime.utcnow().date()
     sessions = 0 if pig.last_school_date != today else (pig.daily_school_sessions or 0)
-    for threshold, multiplier in SCHOOL_XP_DECAY_THRESHOLDS:
+    gameplay = get_gameplay_settings()
+    for threshold, multiplier in gameplay.school_xp_decay_thresholds:
         if sessions < threshold:
             return multiplier
-    return SCHOOL_XP_DECAY_FLOOR
+    return gameplay.school_xp_decay_floor
+
+
+def get_school_decay_multiplier(pig) -> float:
+    return get_learning_decay_multiplier(pig)
+
+
+def register_learning_session(pig_or_id, session_time=None):
+    pig = get_pig_record(pig_or_id)
+    session_time = session_time or datetime.utcnow()
+    today = session_time.date()
+    if pig.last_school_date != today:
+        pig.daily_school_sessions = 0
+        pig.last_school_date = today
+    pig.daily_school_sessions = (pig.daily_school_sessions or 0) + 1
+    pig.last_school_at = session_time
+    pig.last_updated = session_time
+    return pig.daily_school_sessions
 
 
 def feed_pig(pig_or_id, cereal, commit=True):
@@ -300,16 +313,11 @@ def study_pig(pig_or_id, lesson, correct, commit=True) -> str:
         raise PigTiredError("Ton cochon boude l'ecole aujourd'hui. Remonte-lui le moral d'abord.")
 
     progression = get_progression_settings()
-    decay = get_school_decay_multiplier(pig)
-    today = datetime.utcnow().date()
-    if pig.last_school_date != today:
-        pig.daily_school_sessions = 0
-        pig.last_school_date = today
-    pig.daily_school_sessions = (pig.daily_school_sessions or 0) + 1
+    decay = get_learning_decay_multiplier(pig)
+    register_learning_session(pig)
 
     pig.energy = max(PIG_LIMITS.min_value, float(pig.energy or 0.0) - lesson['energy_cost'])
     pig.hunger = max(PIG_LIMITS.min_value, float(pig.hunger or 0.0) - lesson['hunger_cost'])
-    pig.last_school_at = datetime.utcnow()
     pig.school_sessions_completed = (pig.school_sessions_completed or 0) + 1
 
     if correct:
@@ -434,9 +442,10 @@ def train_pig_for_user(user_or_id, pig_id, training_key):
     if pig.last_train_date != today:
         pig.daily_train_count = 0
         pig.last_train_date = today
-    if (pig.daily_train_count or 0) >= TRAIN_DAILY_CAP:
+    gameplay = get_gameplay_settings()
+    if (pig.daily_train_count or 0) >= gameplay.train_daily_cap:
         raise ValidationError(
-            f"Ton cochon a atteint sa limite d'entrainement pour aujourd'hui ({TRAIN_DAILY_CAP} sessions). Reviens demain !"
+            f"Ton cochon a atteint sa limite d'entrainement pour aujourd'hui ({gameplay.train_daily_cap} sessions). Reviens demain !"
         )
 
     train_pig(pig, training, commit=False)
@@ -444,7 +453,7 @@ def train_pig_for_user(user_or_id, pig_id, training_key):
     pig.last_train_date = today
     db.session.commit()
 
-    remaining = max(0, TRAIN_DAILY_CAP - pig.daily_train_count)
+    remaining = max(0, gameplay.train_daily_cap - pig.daily_train_count)
     suffix = (
         f" ({remaining} session{'s' if remaining != 1 else ''} restante{'s' if remaining != 1 else ''} aujourd'hui)"
         if remaining < 3 else ""
@@ -455,7 +464,7 @@ def train_pig_for_user(user_or_id, pig_id, training_key):
     }
 
 
-def study_pig_for_user(user_or_id, pig_id, lesson_key, answer_idx, cooldown_minutes=SCHOOL_COOLDOWN_MINUTES):
+def study_pig_for_user(user_or_id, pig_id, lesson_key, answer_idx, cooldown_minutes=None):
     from helpers.game_data import get_school_lessons_dict
     from helpers.time_helpers import format_duration_short, get_cooldown_remaining
 
@@ -468,7 +477,8 @@ def study_pig_for_user(user_or_id, pig_id, lesson_key, answer_idx, cooldown_minu
     if not lesson:
         raise ValidationError("Cours introuvable !")
 
-    cooldown = get_cooldown_remaining(pig.last_school_at, cooldown_minutes)
+    applied_cooldown = get_gameplay_settings().school_cooldown_minutes if cooldown_minutes is None else cooldown_minutes
+    cooldown = get_cooldown_remaining(pig.last_school_at, applied_cooldown)
     if cooldown > 0:
         raise ValidationError(
             f"La salle de classe est fermee pour l'instant. Reviens dans {format_duration_short(cooldown)}."

@@ -2,11 +2,7 @@ from flask import Blueprint, jsonify, render_template, request, redirect, url_fo
 from datetime import datetime
 import random
 
-from config.gameplay_defaults import (
-    OFFICE_SNACKS,
-    SCHOOL_COOLDOWN_MINUTES,
-    SNACK_SHARE_DAILY_LIMIT,
-)
+from config.gameplay_defaults import OFFICE_SNACKS
 from content.flavor_texts import PIG_TYPING_WORDS
 from content.pigs_catalog import PIG_EMOJIS, PIG_ORIGINS, RARITIES
 from content.stats_metadata import STAT_DESCRIPTIONS, STAT_LABELS
@@ -22,6 +18,7 @@ from utils.time_utils import is_weekend_truce_active
 from services.finance_service import (
     credit_user, debit_user, maybe_grant_emergency_relief, release_pig_challenge_slot,
 )
+from services.gameplay_settings_service import get_gameplay_settings
 from services.pig_lineage_service import (
     apply_origin_bonus,
     build_unique_pig_name,
@@ -44,7 +41,8 @@ from services.pig_service import (
     get_active_listing_count, get_pig_slot_count, get_max_pig_slots,
     reset_snack_share_limit_if_needed,
     enter_pig_death_challenge, feed_pig_for_user, kill_pig,
-    get_user_cereal_inventory_dict, study_pig_for_user, train_pig_for_user, update_pig_vitals,
+    get_learning_decay_multiplier, get_user_cereal_inventory_dict, register_learning_session,
+    study_pig_for_user, train_pig_for_user, update_pig_vitals,
 )
 
 pig_bp = Blueprint('pig', __name__)
@@ -67,14 +65,15 @@ def mon_cochon():
     max_slots = get_max_pig_slots(user)
     breeding_cost = get_breeding_cost_value()
     user_inventory = get_user_cereal_inventory_dict(user.id)
+    gameplay = get_gameplay_settings()
 
     pigs_data = []
     for p in pigs:
         update_pig_vitals(p)
-        races_remaining = max(0, (p.max_races or 80) - p.races_entered)
+        races_remaining = p.races_remaining
         age_days = (datetime.utcnow() - p.created_at).days if p.created_at else 0
         rarity_info = RARITIES.get(p.rarity or 'commun', RARITIES['commun'])
-        school_cooldown = get_cooldown_remaining(p.last_school_at, SCHOOL_COOLDOWN_MINUTES)
+        school_cooldown = get_cooldown_remaining(p.last_school_at, gameplay.school_cooldown_minutes)
         vet_seconds_left = get_seconds_until(p.vet_deadline) if p.is_injured else 0
         weight_profile = get_weight_profile(p)
         freshness_bonus = get_freshness_bonus(p)
@@ -96,13 +95,13 @@ def mon_cochon():
             'freshness_bonus': freshness_bonus,
             'performance_flags': get_pig_performance_flags(p),
             'weekend_truce_active': is_weekend_truce_active(),
-            'share_snacks_remaining': max(0, SNACK_SHARE_DAILY_LIMIT - (user.snack_shares_today or 0)),
+            'share_snacks_remaining': max(0, gameplay.snack_share_daily_limit - (user.snack_shares_today or 0)),
         })
 
     available_avatars = PigAvatar.query.order_by(PigAvatar.name).all()
     return render_template('mon_cochon.html',
         user=user, pigs_data=pigs_data, cereals=get_cereals_dict(), trainings=get_trainings_dict(),
-        school_lessons=get_school_lessons_dict(), school_cooldown_minutes=SCHOOL_COOLDOWN_MINUTES,
+        school_lessons=get_school_lessons_dict(), school_cooldown_minutes=gameplay.school_cooldown_minutes,
         pig_emojis=PIG_EMOJIS, stat_labels=STAT_LABELS, stat_descriptions=STAT_DESCRIPTIONS,
         adoption_cost=adoption_cost, active_listing_count=active_listing_count,
         user_inventory=user_inventory, max_slots=max_slots, breeding_cost=breeding_cost,
@@ -149,6 +148,7 @@ def adopt_second_pig():
         origin_country=origin['country'],
         origin_flag=origin['flag'],
         lineage_name=f"Maison {user.username}",
+        max_races=get_pig_settings().default_max_races,
     )
     apply_origin_bonus(new_pig, origin)
     new_pig.weight_kg = generate_weight_kg_for_profile(new_pig)
@@ -200,8 +200,9 @@ def share_snack():
         flash("En-cas de bureau inconnu.", "error")
         return redirect(url_for('pig.mon_cochon'))
 
-    if (user.snack_shares_today or 0) >= SNACK_SHARE_DAILY_LIMIT:
-        flash(f"Tu as deja distribue tes {SNACK_SHARE_DAILY_LIMIT} en-cas solidaires aujourd'hui.", "warning")
+    gameplay = get_gameplay_settings()
+    if (user.snack_shares_today or 0) >= gameplay.snack_share_daily_limit:
+        flash(f"Tu as deja distribue tes {gameplay.snack_share_daily_limit} en-cas solidaires aujourd'hui.", "warning")
         return redirect(url_for('pig.mon_cochon'))
 
     update_pig_vitals(recipient_pig)
@@ -245,7 +246,7 @@ def school():
             request.form.get('pig_id', type=int),
             request.form.get('lesson'),
             request.form.get('answer_idx', type=int),
-            cooldown_minutes=SCHOOL_COOLDOWN_MINUTES,
+            cooldown_minutes=get_gameplay_settings().school_cooldown_minutes,
         )
         flash(result['message'], result.get('category', 'success'))
     except BusinessRuleError as exc:
@@ -452,7 +453,7 @@ def typing_challenge(pig_id):
         flash("Ton cochon est blesse. Rends-toi chez le veterinaire.", "warning")
         return redirect(url_for('pig.mon_cochon'))
     
-    cooldown = get_cooldown_remaining(pig.last_school_at, SCHOOL_COOLDOWN_MINUTES)
+    cooldown = get_cooldown_remaining(pig.last_school_at, get_gameplay_settings().school_cooldown_minutes)
     if cooldown > 0:
         flash(f"La salle de dactylo est fermee. Reviens dans {format_duration_short(cooldown)}.", "warning")
         return redirect(url_for('pig.mon_cochon'))
@@ -480,7 +481,7 @@ def typing_complete():
         return redirect(url_for('pig.mon_cochon'))
 
     # Cooldown check again for safety
-    cooldown = get_cooldown_remaining(pig.last_school_at, SCHOOL_COOLDOWN_MINUTES)
+    cooldown = get_cooldown_remaining(pig.last_school_at, get_gameplay_settings().school_cooldown_minutes)
     if cooldown > 0:
         return redirect(url_for('pig.mon_cochon'))
 
@@ -490,8 +491,9 @@ def typing_complete():
     wpm = (15 / time_taken) * 60 if time_taken > 0 else 0
     
     progression = get_progression_settings()
-    typing_multiplier = progression.typing_stat_gain_multiplier
-    xp_reward = int(round(progression.typing_xp_reward))
+    typing_decay = get_learning_decay_multiplier(pig)
+    typing_multiplier = progression.typing_stat_gain_multiplier * typing_decay
+    xp_reward = int(round(progression.typing_xp_reward * typing_decay))
 
     if wpm > 40 and errors <= 2:
         vitesse_gain = round(1.5 * typing_multiplier, 2)
@@ -509,15 +511,16 @@ def typing_complete():
         bonus_msg = "Tu peux faire mieux !"
         category = "warning"
 
+    session_time = datetime.utcnow()
     pig.xp += xp_reward
-    pig.last_school_at = datetime.utcnow()
-    pig.last_updated = pig.last_school_at
+    register_learning_session(pig, session_time=session_time)
     pig.reset_freshness()
     pig.mark_bad_state_if_needed()
     check_level_up(pig)
     db.session.commit()
 
-    flash(f"🏆 Typing Derby termine ! {bonus_msg} (WPM: {wpm:.1f}, Erreurs: {errors})", category)
+    decay_msg = "" if typing_decay >= 0.999 else f" Rendement du jour: x{typing_decay:.2f}."
+    flash(f"🏆 Typing Derby termine ! {bonus_msg} +{xp_reward} XP. (WPM: {wpm:.1f}, Erreurs: {errors}){decay_msg}", category)
 
     if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
         return jsonify({

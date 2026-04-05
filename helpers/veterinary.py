@@ -3,6 +3,7 @@
 from datetime import datetime
 
 from models import Pig
+from services.pig_power_service import get_pig_settings
 from services.pig_service import kill_pig, retire_pig
 
 
@@ -23,6 +24,21 @@ def check_vet_deadlines():
     for pig in injured_pigs:
         if pig.vet_deadline and now > pig.vet_deadline:
             kill_pig(pig, cause='blessure', commit=False)
+
+
+def get_vet_window_seconds():
+    return max(60, int(get_pig_settings().vet_response_minutes) * 60)
+
+
+def get_vet_care_costs(base_energy_cost, base_happiness_cost, seconds_left):
+    total_window = get_vet_window_seconds()
+    remaining_ratio = max(0.0, min(1.0, float(seconds_left or 0) / float(total_window)))
+    elapsed_ratio = 1.0 - remaining_ratio
+    return {
+        'energy_cost': round(float(base_energy_cost) * (1.0 + elapsed_ratio), 1),
+        'happiness_cost': round(float(base_happiness_cost) * (1.0 + (elapsed_ratio * 2.0)), 1),
+        'severity_ratio': round(elapsed_ratio, 3),
+    }
 
 
 def send_to_abattoir(pig, cause='abattoir', commit=True):

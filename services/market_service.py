@@ -180,7 +180,7 @@ def list_pig_for_sale(user_or_id, pig_id, starting_price):
         pig_moral=pig.moral,
         pig_weight=pig.weight_kg or DEFAULT_PIG_WEIGHT_KG,
         pig_rarity=pig.rarity or 'commun',
-        pig_max_races=max(0, (pig.max_races or 80) - pig.races_entered),
+        pig_max_races=pig.races_remaining,
         pig_origin=pig.origin_country or 'France',
         pig_origin_flag=pig.origin_flag or '🇫🇷',
         starting_price=starting_price,

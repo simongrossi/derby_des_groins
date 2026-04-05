@@ -1,5 +1,6 @@
 from datetime import datetime
 
+from config.game_rules import PIG_DEFAULTS
 from extensions import db
 
 
@@ -40,7 +41,7 @@ class Auction(db.Model):
     pig_moral = db.Column(db.Float, default=10.0)
     pig_weight = db.Column(db.Float, default=112.0)
     pig_rarity = db.Column(db.String(20), default='commun')
-    pig_max_races = db.Column(db.Integer, default=80)
+    pig_max_races = db.Column(db.Integer, default=PIG_DEFAULTS.max_races)
     pig_origin = db.Column(db.String(30), default='France')
     pig_origin_flag = db.Column(db.String(10), default='🇫🇷')
     starting_price = db.Column(db.Float, default=20.0)

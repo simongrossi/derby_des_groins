@@ -73,7 +73,7 @@ class FinanceServiceTests(unittest.TestCase):
             self.assertEqual(round(tx.amount or 0.0, 2), 75.0)
 
     def test_regular_credit_still_uses_progressive_tax(self):
-        ensure_user(self.app, username='Taxed', balance=2500.0)
+        ensure_user(self.app, username='Taxed', balance=3500.0)
 
         with self.app.app_context():
             user = User.query.filter_by(username='Taxed').first()

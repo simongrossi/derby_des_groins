@@ -73,22 +73,22 @@ PIG_NAME_SUFFIXES = [
 RARITIES = {
     'commun': {
         'name': 'Commun', 'color': '#9ca3af', 'emoji': '⚪',
-        'stats_range': (5, 20), 'max_races_range': (20, 30),
+        'stats_range': (5, 20), 'max_races_range': (18, 26),
         'price_range': (15, 30), 'weight': 50,
     },
     'rare': {
         'name': 'Rare', 'color': '#3b82f6', 'emoji': '🔵',
-        'stats_range': (15, 35), 'max_races_range': (30, 40),
+        'stats_range': (15, 35), 'max_races_range': (24, 34),
         'price_range': (30, 60), 'weight': 30,
     },
     'epique': {
         'name': 'Épique', 'color': '#a855f7', 'emoji': '🟣',
-        'stats_range': (25, 50), 'max_races_range': (40, 50),
+        'stats_range': (25, 50), 'max_races_range': (30, 42),
         'price_range': (60, 120), 'weight': 15,
     },
     'legendaire': {
         'name': 'Légendaire', 'color': '#f59e0b', 'emoji': '🟡',
-        'stats_range': (40, 70), 'max_races_range': (50, 75),
+        'stats_range': (40, 70), 'max_races_range': (36, 50),
         'price_range': (120, 250), 'weight': 5,
     },
 }

@@ -22,7 +22,7 @@ class PigDefaults:
     happiness: float = 70.0
     weight_kg: float = 112.0
     freshness: float = 100.0
-    max_races: int = 80
+    max_races: int = 40
     injury_risk: float = 4.0
 
 

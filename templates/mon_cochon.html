@@ -453,7 +453,7 @@
                         <div>
                             {% set weight_txt_color = '#6ee7b7' if weight_profile.status == 'ideal' else ('#fbbf24' if weight_profile.status == 'warning' else '#f87171') %}
                             <h3 class="text-sm font-bold" style="color:{{ weight_txt_color }}">⚖️ Poids de Course</h3>
-                            <p class="text-white/35 text-[11px] font-bold mt-1">{{ weight_profile.status_label }} • objectif {{ "%.1f"|format(weight_profile.min_weight) }} à {{ "%.1f"|format(weight_profile.max_weight) }} kg</p>
+                            <p class="text-white/35 text-[11px] font-bold mt-1">{{ weight_profile.status_label }} • cible ideale {{ "%.1f"|format(weight_profile.ideal_weight) }} kg • zone sure {{ "%.1f"|format(weight_profile.min_weight) }} à {{ "%.1f"|format(weight_profile.max_weight) }} kg</p>
                         </div>
                         <div class="text-right">
                             <p class="font-title text-3xl text-white">{{ "%.1f"|format(weight_profile.current_weight) }}</p>
@@ -487,6 +487,9 @@
                     {% if performance_flags.weight_penalty %}
                     <p class="text-amber-200 text-[11px] font-bold mt-2">🪶 Malus de performance actif : au-dela de 20% d'ecart au poids ideal, la vitesse et l'agilite plongent progressivement.</p>
                     {% endif %}
+                    {% if weight_profile.injury_factor > 1.0 %}
+                    <p class="text-red-200 text-[11px] font-bold mt-2">🩹 Risque de blessure actuel lie au poids : x{{ "%.2f"|format(weight_profile.injury_factor) }}.</p>
+                    {% endif %}
                 </div>
             </div>
 
@@ -500,7 +503,7 @@
                         Temps restant avant complication fatale :
                         <span class="vet-countdown" data-seconds="{{ pd.vet_seconds_left }}">{{ pd.vet_deadline_label }}</span>
                     </p>
-                    <p class="text-white/45 text-[11px] font-bold mb-3">Tu peux encore le nourrir, mais l'entraînement, l'école et le challenge restent verrouillés tant qu'il n'a pas été soigné.</p>
+                    <p class="text-white/45 text-[11px] font-bold mb-3">Tu peux encore le nourrir, mais l'entraînement, l'école et le challenge restent verrouillés tant qu'il n'a pas été soigné. Plus tu attends, plus l'opération pèsera sur son énergie et son humeur.</p>
                     <a href="/veterinaire/{{ pig.id }}" class="block text-center font-title text-lg py-3 rounded-xl text-white" style="background:linear-gradient(135deg,#dc2626,#991b1b)">
                         🏥 Aller Chez Le Vétérinaire →
                     </a>
@@ -915,14 +918,21 @@
         document.querySelectorAll('.vet-countdown').forEach(el => {
             let seconds = Number(el.dataset.seconds || 0);
             const render = () => {
-                const minutes = Math.floor(seconds / 60);
-                const remainingSeconds = seconds % 60;
-                if (minutes > 0 && remainingSeconds > 0) {
+                const safeSeconds = Math.max(0, seconds);
+                const days = Math.floor(safeSeconds / 86400);
+                const hours = Math.floor((safeSeconds % 86400) / 3600);
+                const minutes = Math.floor((safeSeconds % 3600) / 60);
+                const remainingSeconds = safeSeconds % 60;
+                if (days > 0) {
+                    el.textContent = `${days}j ${String(hours).padStart(2, '0')}h`;
+                } else if (hours > 0) {
+                    el.textContent = `${hours}h ${String(minutes).padStart(2, '0')}m`;
+                } else if (minutes > 0 && remainingSeconds > 0) {
                     el.textContent = `${minutes}m ${String(remainingSeconds).padStart(2, '0')}s`;
                 } else if (minutes > 0) {
                     el.textContent = `${minutes}m`;
                 } else {
-                    el.textContent = `${Math.max(0, seconds)}s`;
+                    el.textContent = `${safeSeconds}s`;
                 }
             };
             render();

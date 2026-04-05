@@ -660,7 +660,7 @@ def get_default_simulation_inputs(snapshot, settings=None):
         active_users=max(1, snapshot['users'] or 1),
         pigs_per_user=max(1, min(_get_pig_max_slots(), int(round(snapshot['avg_alive_pigs_per_user'] or 1)) or 1)),
         active_days_per_week=7,
-        races_per_pig_per_week=float(min(economy.weekly_race_quota, 3)),
+        races_per_pig_per_week=float(min(economy.weekly_race_quota, 5)),
         strategy='spread',
         avg_stake=round(min(economy.max_bet_race, max(economy.min_bet_race, suggested_stake)), 2),
         tickets_used_per_user=min(
@@ -889,7 +889,7 @@ def build_profile_matrix(settings=None, snapshot=None):
         spread = _simulate_profile(
             pig_count=pig_count,
             active_users=1,
-            races_per_pig=min(3, economy.weekly_race_quota),
+            races_per_pig=min(5, economy.weekly_race_quota),
             active_days=7,
             strategy='spread',
             avg_stake=economy.min_bet_race,
@@ -902,7 +902,7 @@ def build_profile_matrix(settings=None, snapshot=None):
         focus = _simulate_profile(
             pig_count=pig_count,
             active_users=1,
-            races_per_pig=min(3, economy.weekly_race_quota),
+            races_per_pig=min(5, economy.weekly_race_quota),
             active_days=7,
             strategy='focus_friday',
             avg_stake=economy.min_bet_race,
@@ -950,7 +950,7 @@ def build_distribution_scenarios(settings=None, snapshot=None):
             result = _simulate_profile(
                 pig_count=pig_count,
                 active_users=1,
-                races_per_pig=min(3, economy.weekly_race_quota),
+                races_per_pig=min(5, economy.weekly_race_quota),
                 active_days=7,
                 strategy=strategy,
                 avg_stake=live_avg_stake,
@@ -1009,7 +1009,7 @@ PROGRESSION_STAT_NAMES = ('vitesse', 'endurance', 'agilite', 'force', 'intellige
 PROGRESSION_RACE_POSITIONS = tuple(range(1, 9))
 DEFAULT_LESSON_SUCCESS_RATE = 0.7
 DEFAULT_TYPING_MASTERY = 0.6
-DEFAULT_HUNGER_DECAY_PER_HOUR = 2.0
+DEFAULT_HUNGER_DECAY_PER_HOUR = 1.2
 DEFAULT_ENERGY_REGEN_HUNGER_THRESHOLD = 30.0
 DEFAULT_ENERGY_REGEN_PER_HOUR = 5.0
 DEFAULT_ENERGY_DRAIN_PER_HOUR = 1.0
@@ -1030,8 +1030,8 @@ DEFAULT_SCHOOL_WRONG_XP_MULTIPLIER = 1.0
 DEFAULT_SCHOOL_HAPPINESS_MULTIPLIER = 1.0
 DEFAULT_SCHOOL_WRONG_HAPPINESS_MULTIPLIER = 1.0
 DEFAULT_TYPING_STAT_GAIN_MULTIPLIER = 1.0
-DEFAULT_TYPING_XP_REWARD = 20.0
-DEFAULT_RACE_POSITION_XP = {1: 100, 2: 60, 3: 40, 4: 25, 5: 15, 6: 10, 7: 5, 8: 3}
+DEFAULT_TYPING_XP_REWARD = 12.0
+DEFAULT_RACE_POSITION_XP = {1: 140, 2: 90, 3: 60, 4: 35, 5: 20, 6: 12, 7: 8, 8: 5}
 DEFAULT_RACE_WINNER_STAT_GAIN_MULTIPLIER = 1.0
 DEFAULT_RACE_PODIUM_STAT_GAIN_MULTIPLIER = 1.0
 DEFAULT_RACE_ENERGY_COST = 15.0
@@ -1918,14 +1918,14 @@ def build_progression_cadence_rows(settings=None, snapshot=None):
     live_snapshot = snapshot or build_live_progression_snapshot(progression)
     active_pigs = max(1, int(round(live_snapshot['active_pigs'] or 1)))
     rows = []
-    for races_per_week in (1.0, 2.0, 3.0):
+    for races_per_week in (1.0, 3.0, 5.0):
         inputs = ProgressionSimulationInputs(
             active_pigs=active_pigs,
             active_days_per_week=5,
             races_per_pig_per_week=races_per_week,
-            trainings_per_pig_per_week=1.5 if races_per_week <= 2 else 1.0,
-            rest_sessions_per_pig_per_week=1.0 if races_per_week <= 2 else 1.5,
-            school_sessions_per_pig_per_week=1.0 if races_per_week <= 2 else 0.5,
+            trainings_per_pig_per_week=1.5 if races_per_week <= 3 else 1.0,
+            rest_sessions_per_pig_per_week=1.0 if races_per_week <= 3 else 1.5,
+            school_sessions_per_pig_per_week=1.0 if races_per_week <= 3 else 0.5,
             lesson_success_rate=DEFAULT_LESSON_SUCCESS_RATE,
             typing_sessions_per_pig_per_week=0.5,
             typing_mastery=DEFAULT_TYPING_MASTERY,

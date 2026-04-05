@@ -147,10 +147,10 @@ Le marché génère automatiquement des cochons aux enchères avec 4 niveaux de 
 
 | Rareté | Stats | Durée de vie | Prix départ |
 |--------|-------|-------------|-------------|
-| ⚪ Commun | 5-20 | 20-30 courses | 15-30 🪙 |
-| 🔵 Rare | 15-35 | 30-40 courses | 30-60 🪙 |
-| 🟣 Épique | 25-50 | 40-50 courses | 60-120 🪙 |
-| 🟡 Légendaire | 40-70 | 50-75 courses | 120-250 🪙 |
+| ⚪ Commun | 5-20 | 18-26 courses | 15-30 🪙 |
+| 🔵 Rare | 15-35 | 24-34 courses | 30-60 🪙 |
+| 🟣 Épique | 25-50 | 30-42 courses | 60-120 🪙 |
+| 🟡 Légendaire | 40-70 | 36-50 courses | 120-250 🪙 |
 
 - Enchères avec **countdown en temps réel**
 - Le meilleur enchérisseur remporte le cochon
@@ -394,6 +394,8 @@ derby_des_groins/
 │   ├── galerie_service.py  # Boutiques + marketplace P2P
 │   ├── marketplace_service.py
 │   ├── economy_service.py  # Réglages d'équilibrage + simulateur admin
+│   ├── gameplay_settings_service.py # Réglages gameplay et mini-jeux (dataclasses via GameConfig)
+│   ├── game_settings_bundle_service.py # Export/import de tous les réglages en bundle JSON
 │   └── game_settings_service.py
 │
 ├── templates/              # 38 templates Jinja2
@@ -460,7 +462,7 @@ derby_des_groins/
 9. Le **Vétérinaire** propose un puzzle chronométré : réussite = sauvetage, échec = issue fatale
 10. Chaque joueur reçoit **3 Tickets Bacon par semaine** et ne peut placer **qu'un seul ticket par course**, au choix entre **simple gagnant**, **couple ordre** et **tierce ordre**
 11. Les paris ferment **30 secondes** avant le départ
-12. Après la course : **XP** selon le classement (1er: 100xp, 2e: 60xp, 3e: 40xp...)
+12. Après la course : **XP** selon le classement (1er: 140xp, 2e: 90xp, 3e: 60xp...)
 13. Les éleveurs touchent des **récompenses de participation et de podium**, même sans parier
 14. La faim diminue avec le temps — **nourris ton cochon** ou il ne pourra plus courir
 15. Si un joueur tombe vraiment trop bas en caisse, une **prime d'urgence** l'aide à repartir

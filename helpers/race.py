@@ -83,6 +83,7 @@ def get_user_active_pigs(user):
             origin_country=origin_country,
             origin_flag=origin_flag,
             lineage_name=f"Maison {user.username}",
+            max_races=get_pig_settings().default_max_races,
         )
         apply_origin_bonus(pig, origin)
         pig.weight_kg = generate_weight_kg_for_profile(pig)

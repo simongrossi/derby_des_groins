@@ -3,19 +3,14 @@ from datetime import date, datetime
 
 from flask import Blueprint, jsonify, redirect, render_template, request, session, url_for
 
-from config.gameplay_defaults import PENDU_EXTRA_PLAY_COST, PENDU_FREE_PLAYS_PER_DAY
 from extensions import db, limiter
 from helpers.race import get_user_active_pigs
 from helpers.game_data import get_hangman_words
 from models import User
 from services.finance_service import credit_user_balance, debit_user_balance
+from services.gameplay_settings_service import get_minigame_settings
 
 cochon_pendu_bp = Blueprint('cochon_pendu', __name__)
-
-MAX_ERRORS = 7
-WIN_REWARD = 50
-LOSS_HAPPINESS_PENALTY = 20
-LOSS_ENERGY_PENALTY = 10
 
 
 def _new_game_state():
@@ -54,11 +49,12 @@ def _serialize_state(state):
     word = state['word']
     guessed_letters = state.get('guessed_letters', [])
     masked = _build_masked_word(word, guessed_letters)
+    settings = get_minigame_settings()
     return {
         'masked_word': masked,
         'guessed_letters': guessed_letters,
         'errors': state.get('errors', 0),
-        'max_errors': MAX_ERRORS,
+        'max_errors': settings.pendu_max_errors,
         'status': state.get('status', 'playing'),
         'word': word if state.get('status') in ('won', 'lost') else None,
     }
@@ -77,14 +73,15 @@ def _sync_pendu_daily_counter(user):
 
 def _get_pendu_info(user):
     """Return dict with remaining free plays and extra play cost."""
+    settings = get_minigame_settings()
     if getattr(user, 'is_admin', False):
-        return {'remaining_free': PENDU_FREE_PLAYS_PER_DAY, 'extra_cost': 0, 'plays_today': 0}
+        return {'remaining_free': settings.pendu_free_plays_per_day, 'extra_cost': 0, 'plays_today': 0}
     _sync_pendu_daily_counter(user)
     plays = user.pendu_plays_today or 0
-    remaining = max(0, PENDU_FREE_PLAYS_PER_DAY - plays)
+    remaining = max(0, settings.pendu_free_plays_per_day - plays)
     return {
         'remaining_free': remaining,
-        'extra_cost': PENDU_EXTRA_PLAY_COST,
+        'extra_cost': settings.pendu_extra_play_cost,
         'plays_today': plays,
     }
 
@@ -97,6 +94,7 @@ def cochon_pendu():
 
     user = User.query.get(user_id)
     pendu_info = _get_pendu_info(user)
+    settings = get_minigame_settings()
 
     current_state = session.get('cochon_pendu_game')
     if not current_state:
@@ -110,12 +108,12 @@ def cochon_pendu():
         user=user,
         active_page='cochon_pendu',
         game_state=_serialize_state(session['cochon_pendu_game']),
-        reward=WIN_REWARD,
-        happiness_penalty=LOSS_HAPPINESS_PENALTY,
-        energy_penalty=LOSS_ENERGY_PENALTY,
+        reward=settings.pendu_win_reward,
+        happiness_penalty=settings.pendu_loss_happiness_penalty,
+        energy_penalty=settings.pendu_loss_energy_penalty,
         pendu_info=pendu_info,
-        free_plays=PENDU_FREE_PLAYS_PER_DAY,
-        extra_cost=PENDU_EXTRA_PLAY_COST,
+        free_plays=settings.pendu_free_plays_per_day,
+        extra_cost=settings.pendu_extra_play_cost,
     )
 
 
@@ -139,10 +137,11 @@ def cochon_pendu_new_game():
         return jsonify({'ok': False, 'error': 'Utilisateur introuvable'}), 404
 
     info = _get_pendu_info(user)
+    settings = get_minigame_settings()
 
     if info['remaining_free'] <= 0 and not getattr(user, 'is_admin', False):
         # Paid replay
-        cost = PENDU_EXTRA_PLAY_COST
+        cost = settings.pendu_extra_play_cost
         if (user.balance or 0) < cost:
             return jsonify({
                 'ok': False,
@@ -173,7 +172,7 @@ def cochon_pendu_new_game():
         'ok': True,
         'new_balance': round(user.balance or 0.0, 2),
         'remaining_free': info_after['remaining_free'],
-        'extra_cost': PENDU_EXTRA_PLAY_COST,
+        'extra_cost': settings.pendu_extra_play_cost,
     })
 
 
@@ -187,6 +186,7 @@ def cochon_pendu_guess():
     user = User.query.get(user_id)
     if not user:
         return jsonify({'ok': False, 'error': 'Utilisateur introuvable'}), 404
+    settings = get_minigame_settings()
 
     payload = request.get_json(silent=True) or {}
     letter = (payload.get('letter') or '').strip().upper()
@@ -205,18 +205,18 @@ def cochon_pendu_guess():
     word = state['word']
 
     if letter not in word:
-        state['errors'] = min(MAX_ERRORS, int(state.get('errors', 0)) + 1)
+        state['errors'] = min(settings.pendu_max_errors, int(state.get('errors', 0)) + 1)
 
     masked = _build_masked_word(word, guessed_letters)
     if '_' not in masked:
         state['status'] = 'won'
-    elif state.get('errors', 0) >= MAX_ERRORS:
+    elif state.get('errors', 0) >= settings.pendu_max_errors:
         state['status'] = 'lost'
 
     if state['status'] == 'won' and not state.get('reward_granted'):
         credit_user_balance(
             user.id,
-            WIN_REWARD,
+            settings.pendu_win_reward,
             reason_code='cochon_pendu_win',
             reason_label='Victoire Cochon Pendu',
             details='Mot trouvé dans le mini-jeu Cochon Pendu.',
@@ -229,8 +229,8 @@ def cochon_pendu_guess():
         player_pigs = get_user_active_pigs(user)
         if player_pigs:
             pig = player_pigs[0]
-            pig.happiness = max(0.0, float(pig.happiness or 0.0) - LOSS_HAPPINESS_PENALTY)
-            pig.energy = max(0.0, float(pig.energy or 0.0) - LOSS_ENERGY_PENALTY)
+            pig.happiness = max(0.0, float(pig.happiness or 0.0) - settings.pendu_loss_happiness_penalty)
+            pig.energy = max(0.0, float(pig.energy or 0.0) - settings.pendu_loss_energy_penalty)
         state['penalty_applied'] = True
 
     session['cochon_pendu_game'] = state

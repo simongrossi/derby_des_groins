@@ -1,4 +1,4 @@
-from datetime import UTC, date, datetime
+from datetime import date, datetime, timezone
 
 from flask import Blueprint, jsonify, redirect, render_template, request, session, url_for
 
@@ -6,16 +6,13 @@ from extensions import db, limiter
 from helpers.config import get_config
 from models import User
 from services.finance_service import credit_user_balance, debit_user_balance
+from services.gameplay_settings_service import get_minigame_settings
 
 truffes_bp = Blueprint('truffes', __name__)
 
-TRUFFE_REWARD = 20
-MAX_CLICKS = 7
-GRID_SIZE = 20
-
 
 def _utcnow_naive():
-    return datetime.now(UTC).replace(tzinfo=None)
+    return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
 def _get_truffe_config():
@@ -59,14 +56,15 @@ def truffes():
     already_played = _already_played_today(user)
     limit, replay_cost = _get_truffe_config()
     remaining = _get_remaining_free_plays(user, limit=limit)
+    settings = get_minigame_settings()
     
     return render_template(
         'truffes.html',
         user=user,
         active_page='truffes',
-        reward=TRUFFE_REWARD,
-        max_clicks=MAX_CLICKS,
-        grid_size=GRID_SIZE,
+        reward=settings.truffe_reward,
+        max_clicks=settings.truffe_max_clicks,
+        grid_size=settings.truffe_grid_size,
         already_played=already_played,
         limit=limit,
         replay_cost=replay_cost,
@@ -136,10 +134,11 @@ def truffes_win():
 
     payload = request.get_json(silent=True) or {}
     clicks = payload.get('clicks', '?')
+    settings = get_minigame_settings()
 
     credit_user_balance(
         user.id,
-        TRUFFE_REWARD,
+        settings.truffe_reward,
         reason_code='truffe_found',
         reason_label='Truffe trouvée',
         details=f'Truffe dénichée en {clicks} clic(s). Récompense porcine créditée.',
@@ -151,6 +150,6 @@ def truffes_win():
 
     return jsonify({
         'ok': True,
-        'reward': TRUFFE_REWARD,
+        'reward': settings.truffe_reward,
         'new_balance': round(user.balance or 0.0, 2),
     })

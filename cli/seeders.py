@@ -150,7 +150,7 @@ def seed_users():
                 happiness=54,
                 is_injured=True,
                 injury_risk=28.0,
-                vet_deadline=datetime.utcnow() + timedelta(minutes=30),
+                vet_deadline=datetime.utcnow() + timedelta(hours=12),
                 lineage_name=f"Maison {demo_owner.username}",
             )
             apply_origin_bonus(demo_pig, origin_data)

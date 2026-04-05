@@ -7,6 +7,69 @@ Objectif:
 - garder une trace chronologique exploitable apres chaque phase;
 - faciliter les reprises de contexte et la redaction de changelogs plus visibles plus tard.
 
+## 2026-04-05
+
+### Phase 10 — Gameplay settings adminables, bundle export/import et rééquilibrage
+
+#### Nouveaux services
+- création de `services/gameplay_settings_service.py` :
+  - deux dataclasses immutables : `GameplaySettings` (cap entraînement, cooldown école, rendement décroissant) et `MinigameSettings` (tous les réglages Pendu, Agenda, Truffes) ;
+  - lecture/écriture via `GameConfig` (blobs JSON `settings_gameplay` / `settings_minigames`) ;
+  - builders de formulaire (`build_gameplay_settings_from_form`, `build_minigame_settings_from_form`) ;
+  - parsers pour import de bundle (`parse_bundle_gameplay_settings`, `parse_bundle_minigame_settings`).
+- création de `services/game_settings_bundle_service.py` :
+  - `build_game_settings_bundle_json()` — sérialise **tous** les réglages admin en un seul JSON versionné (`schema_version: 1`) ;
+  - `build_game_settings_bundle_filename()` — nom horodaté `derby-des-groins-settings-<timestamp>.json` ;
+  - `import_game_settings_bundle()` — validation du schema, dispatch par section, appel des services de sauvegarde dédiés, invalidation du cache config.
+- ajout dans `routes/admin.py` :
+  - action `save_gameplay` et `save_minigames` dans `/admin/economy` ;
+  - action `import_settings_bundle` (fichier ou JSON brut) dans `/admin/economy` ;
+  - route `GET /admin/settings-bundle/export` — téléchargement direct du bundle JSON.
+
+#### Règles poids cochon adminables (refactor `pig_power_service`)
+- `PigWeightRules` est maintenant persisté en JSON dans `GameConfig` (`settings_pig_weight_rules`) ;
+- `_load_weight_rules()` le recharge depuis la base (avec fallback sur les constantes statiques de `game_rules.py`) ;
+- `get_pig_settings()` retourne désormais un champ `weight_rules: PigWeightRules` ;
+- `calculate_target_weight_kg`, `get_weight_profile`, `generate_weight_kg_for_profile` sont branchés sur les règles live au lieu des constantes.
+
+#### Rééquilibrages (`config/economy_defaults.py`, `config/game_rules.py`, `config/gameplay_defaults.py`)
+
+| Paramètre | Avant | Après |
+|---|---|---|
+| `FEEDING_PRESSURE_PER_PIG` | 0.20 | 0.10 |
+| `RACE_APPEARANCE_REWARD` | 6 | 12 🪙 |
+| `RACE_POSITION_REWARDS` 2e/3e | 50 / 25 | 60 / 35 🪙 |
+| `WEEKLY_RACE_QUOTA` | 3 | 5 |
+| `TAX_THRESHOLD_1` | 2 000 | 3 000 🪙 |
+| `TAX_THRESHOLD_2` | 5 000 | 10 000 🪙 |
+| `PIG_DEFAULTS.max_races` | 80 | 40 |
+| `PENDU_FREE_PLAYS_PER_DAY` | 3 | 2 |
+| `VET_RESPONSE_MINUTES` | 20 | 720 (12 h) |
+
+- la pression de nourrissage est abaissée pour réduire le coût des porcheries multi-cochons ;
+- les récompenses de course et le quota hebdo montent pour encourager les joueurs occasionnels ;
+- les seuils de taxe anti-baleine remontent pour ne pénaliser que les vrais accumulations ;
+- la durée de vie par défaut des cochons est réduite de moitié (turnover plus rapide) ;
+- le Cochon Pendu passe à 2 parties gratuites (équilibrage quotidien) ;
+- la fenêtre vétérinaire passe à 12 h pour permettre aux joueurs bureau de réagir sur le temps de midi ou le soir.
+
+#### Helpers renforcés
+- `helpers/veterinary.py` :
+  - `get_vet_window_seconds()` — fenêtre dynamique (lit `vet_response_minutes` via `get_pig_settings()`) ;
+  - `get_vet_care_costs(base_energy, base_happiness, seconds_left)` — coûts progressifs selon le temps écoulé dans la fenêtre (pénalité doublée sur le bonheur en fin de fenêtre).
+- `helpers/time_helpers.py` — `format_duration_short` gère maintenant les durées de plusieurs heures/jours (format `Xj YYh` / `Xh YYm`) pour l'affichage du délai vétérinaire.
+- `helpers/config.py` — `init_default_config()` initialise les nouvelles clés : `settings_gameplay`, `settings_minigames`, `settings_pig_weight_rules`, `pig_default_max_races`.
+
+#### Nouvelles suites de tests
+- `tests/test_progression_balance.py` — vérifie les propriétés macroscopiques du système économique (gains nets, inflation) ;
+- `tests/test_settings_bundle_service.py` — import/export du bundle JSON (round-trip, schema invalide, section inconnue) ;
+- `tests/test_veterinary.py` — `get_vet_care_costs` (coûts minimaux, coûts en fin de fenêtre, cas limites).
+
+Vérification locale :
+- `python3 -m py_compile services/gameplay_settings_service.py services/game_settings_bundle_service.py helpers/veterinary.py helpers/time_helpers.py helpers/config.py services/pig_power_service.py services/pig_service.py routes/admin.py` : OK.
+
+---
+
 ## 2026-04-04
 
 ### Phase 9 - Stabilisation de l'infra de test et finitions UI/maintenance

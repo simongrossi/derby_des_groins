@@ -2,13 +2,15 @@ from flask import Blueprint, render_template, request, redirect, url_for, sessio
 from datetime import datetime, timedelta
 import json as _json
 
-from config.gameplay_defaults import DEFAULT_PIG_WEIGHT_KG, SCHOOL_COOLDOWN_MINUTES
+from config.gameplay_defaults import DEFAULT_PIG_WEIGHT_KG
 from extensions import db, limiter, APP_TIMEZONE
 from helpers.race import get_user_active_pigs
-from helpers.time_helpers import get_cooldown_remaining, get_seconds_until
-from helpers.veterinary import get_first_injured_pig
+from helpers.time_helpers import format_duration_short, get_cooldown_remaining, get_seconds_until
+from helpers.veterinary import get_first_injured_pig, get_vet_care_costs
 from models import User, Pig, Race, Participant, Bet, UserNotification, ChatMessage
 from services.market_service import get_prix_moyen_groin
+from services.race_engine_service import get_race_engine_settings
+from services.gameplay_settings_service import get_gameplay_settings
 from services.pig_power_service import (
     calculate_pig_power,
     get_pig_settings,
@@ -42,7 +44,20 @@ def veterinaire(pig_id):
     if not pig.is_injured:
         return redirect(url_for('pig.mon_cochon'))
     seconds_left = get_seconds_until(pig.vet_deadline)
-    return render_template('veterinaire.html', user=user, pig=pig, seconds_left=seconds_left)
+    progression = get_progression_settings()
+    care_costs = get_vet_care_costs(
+        progression.vet_energy_cost,
+        progression.vet_happiness_cost,
+        seconds_left,
+    )
+    return render_template(
+        'veterinaire.html',
+        user=user,
+        pig=pig,
+        seconds_left=seconds_left,
+        seconds_left_label=format_duration_short(seconds_left),
+        care_costs=care_costs,
+    )
 
 
 @api_bp.route('/veterinaire')
@@ -105,16 +120,28 @@ def vet_solve():
         return jsonify({'dead': True, 'message': 'Le délai était dépassé. RIP.'}), 200
 
     progression = get_progression_settings()
+    seconds_left = get_seconds_until(pig.vet_deadline)
+    care_costs = get_vet_care_costs(
+        progression.vet_energy_cost,
+        progression.vet_happiness_cost,
+        seconds_left,
+    )
     pig.heal()
     _min_risk = get_pig_settings().injury_min_risk
     pig.injury_risk = max(
         _min_risk,
         round(max(_min_risk, float(pig.injury_risk or _min_risk)) - 2.0, 1),
     )
-    pig.energy = max(0, pig.energy - progression.vet_energy_cost)
-    pig.happiness = max(0, pig.happiness - progression.vet_happiness_cost)
+    pig.energy = max(0, pig.energy - care_costs['energy_cost'])
+    pig.happiness = max(0, pig.happiness - care_costs['happiness_cost'])
     db.session.commit()
-    return jsonify({'healed': True, 'message': f"{pig.name} s'en sort ! Repos, soupe tiède et pas de sprint tout de suite."})
+    return jsonify({
+        'healed': True,
+        'message': (
+            f"{pig.name} s'en sort ! Intervention: -{care_costs['energy_cost']:.1f} énergie "
+            f"/ -{care_costs['happiness_cost']:.1f} humeur."
+        ),
+    })
 
 
 @api_bp.route('/api/vet/timeout', methods=['POST'])
@@ -193,7 +220,7 @@ def api_pig():
         'origin': pig.origin_country, 'origin_flag': pig.origin_flag,
         'races_entered': pig.races_entered, 'races_won': pig.races_won,
         'school_sessions_completed': pig.school_sessions_completed or 0,
-        'school_cooldown': get_cooldown_remaining(pig.last_school_at, SCHOOL_COOLDOWN_MINUTES),
+        'school_cooldown': get_cooldown_remaining(pig.last_school_at, get_gameplay_settings().school_cooldown_minutes),
         'is_injured': pig.is_injured,
         'injury_risk': round(pig.injury_risk or get_pig_settings().injury_min_risk, 1),
         'vet_seconds_left': get_seconds_until(pig.vet_deadline) if pig.is_injured else 0,
@@ -235,7 +262,7 @@ def api_race_replay(race_id):
         for pig in PigModel.query.filter(PigModel.id.in_(pig_ids)).all():
             pig_avatars[pig.id] = pig.avatar_url
     participant_meta = {
-        str(p.id): {
+        str(p.pig_id or p.id): {
             'emoji': p.emoji,
             'owner': p.owner_name,
             'finish_position': p.finish_position,
@@ -353,12 +380,12 @@ def api_notifications_poll():
         if not pig.vet_deadline:
             continue
         seconds_left = int((pig.vet_deadline - now).total_seconds())
-        if 0 < seconds_left <= 120:
+        if 0 < seconds_left <= 3600:
             events.append({
                 'id': f"vet-urgent:{pig.id}:{int(pig.vet_deadline.timestamp())}",
                 'category': 'error',
                 'title': 'Urgence vétérinaire',
-                'message': f"{pig.name} doit être soigné dans {seconds_left}s !",
+                'message': f"{pig.name} doit être soigné dans {format_duration_short(seconds_left)} !",
                 'created_at': now.isoformat(),
             })
 
@@ -473,7 +500,13 @@ def race_live():
     user = User.query.get(session['user_id']) if 'user_id' in session else None
     race = Race.query.filter_by(status='finished').order_by(Race.finished_at.desc()).first()
     race_id = race.id if race else None
-    return render_template('race_live.html', user=user, race_id=race_id, active_page='live')
+    return render_template(
+        'race_live.html',
+        user=user,
+        race_id=race_id,
+        active_page='live',
+        race_engine_settings=get_race_engine_settings().to_dict(),
+    )
 
 
 @api_bp.route('/api/chat/messages')

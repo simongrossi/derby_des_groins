@@ -4,7 +4,7 @@ import uuid
 from extensions import db
 from helpers.config import set_config
 from models import User
-from routes.truffes import GRID_SIZE, MAX_CLICKS, TRUFFE_REWARD
+from services.gameplay_settings_service import get_minigame_settings
 from tests.support import build_test_app, ensure_user, reset_database
 
 
@@ -18,9 +18,11 @@ class TruffesRouteTests(unittest.TestCase):
         ensure_user(self.app, username='Simon')
 
     def test_constants_match_expected_game_shape(self):
-        self.assertEqual(GRID_SIZE, 20)
-        self.assertEqual(MAX_CLICKS, 7)
-        self.assertEqual(TRUFFE_REWARD, 20)
+        with self.app.app_context():
+            settings = get_minigame_settings()
+            self.assertEqual(settings.truffe_grid_size, 20)
+            self.assertEqual(settings.truffe_max_clicks, 7)
+            self.assertEqual(settings.truffe_reward, 20)
 
     def test_win_route_requires_authentication(self):
         client = self.app.test_client()
@@ -43,11 +45,14 @@ class TruffesRouteTests(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertTrue(payload['ok'])
-        self.assertEqual(payload['reward'], TRUFFE_REWARD)
+        with self.app.app_context():
+            reward = get_minigame_settings().truffe_reward
+
+        self.assertEqual(payload['reward'], reward)
 
         with self.app.app_context():
             refreshed = db.session.get(User, user_id)
-            self.assertEqual(round(refreshed.balance or 0.0, 2), round(before + TRUFFE_REWARD, 2))
+            self.assertEqual(round(refreshed.balance or 0.0, 2), round(before + reward, 2))
             refreshed.balance = before
             db.session.commit()
 

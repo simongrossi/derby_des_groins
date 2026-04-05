@@ -217,7 +217,12 @@
                     <p class="text-white/55 text-sm font-semibold mt-2 max-w-2xl">Replacez les os dans le bon ordre pour soigner votre patient. Chaque erreur coûte du temps, et le chrono tourne vraiment.</p>
                     <div class="flex flex-wrap gap-2 mt-4">
                         <a href="/mon-cochon" class="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-bold text-white bg-white/10 border border-white/10 hover:bg-white/15 transition-colors">← Retour à l'écurie</a>
-                        <span class="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-bold text-red-100 bg-red-500/12 border border-red-400/20">❤️ Chaque seconde compte</span>
+                        <span class="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-bold text-red-100 bg-red-500/12 border border-red-400/20">🕒 Plus tu attends, plus le soin coûte</span>
+                    </div>
+                    <div class="mt-4 inline-flex flex-wrap items-center gap-2 rounded-xl px-4 py-3 text-sm font-bold text-white/90 bg-white/8 border border-white/10">
+                        <span>Fenêtre restante: {{ seconds_left_label }}</span>
+                        <span class="text-white/35">•</span>
+                        <span>Coût actuel: -{{ "%.1f"|format(care_costs.energy_cost) }} énergie / -{{ "%.1f"|format(care_costs.happiness_cost) }} humeur</span>
                     </div>
                 </div>
             </div>
@@ -227,7 +232,7 @@
                         <circle id="chrono-circle" cx="70" cy="70" r="60"></circle>
                         <circle id="chrono-progress" cx="70" cy="70" r="60" stroke-dasharray="377" stroke-dashoffset="0"></circle>
                     </svg>
-                    <div id="chrono-text">{{ "%d:%02d"|format(seconds_left // 60, seconds_left % 60) }}</div>
+                    <div id="chrono-text">{{ seconds_left_label }}</div>
                 </div>
             </div>
         </div>
@@ -250,7 +255,7 @@
         <div id="piece-tray"></div>
 
         <p class="text-center text-white/25 text-xs mt-4">
-            Le chrono tourne. Chaque os mal placé vous coûte 5 secondes.
+            Le chrono tourne. Chaque os mal placé vous coûte 5 secondes, et une intervention tardive fatigue davantage votre cochon.
         </p>
     </section>
 </main>
@@ -420,6 +425,19 @@ function flashBody() {
 
 const CIRCUMFERENCE = 377;
 
+function formatDurationShort(totalSeconds) {
+    const safe = Math.max(0, Math.floor(totalSeconds));
+    const days = Math.floor(safe / 86400);
+    const hours = Math.floor((safe % 86400) / 3600);
+    const minutes = Math.floor((safe % 3600) / 60);
+    const seconds = safe % 60;
+    if (days > 0) return `${days}j ${String(hours).padStart(2, '0')}h`;
+    if (hours > 0) return `${hours}h ${String(minutes).padStart(2, '0')}m`;
+    if (minutes > 0 && seconds > 0) return `${minutes}m ${String(seconds).padStart(2, '0')}s`;
+    if (minutes > 0) return `${minutes}m`;
+    return `${seconds}s`;
+}
+
 function updateChronoDisplay() {
     const frac = TOTAL_SECONDS > 0 ? secondsLeft / TOTAL_SECONDS : 0;
     const offset = CIRCUMFERENCE * (1 - frac);
@@ -427,14 +445,12 @@ function updateChronoDisplay() {
     const text = document.getElementById('chrono-text');
     circle.style.strokeDashoffset = offset;
 
-    const minutes = Math.floor(secondsLeft / 60);
-    const secs = secondsLeft % 60;
-    text.textContent = `${minutes}:${String(secs).padStart(2, '0')}`;
+    text.textContent = formatDurationShort(secondsLeft);
 
-    if (secondsLeft <= 30) {
+    if (secondsLeft <= 1800) {
         circle.style.stroke = '#ef4444';
         text.style.color = '#ef4444';
-    } else if (secondsLeft <= 60) {
+    } else if (secondsLeft <= 3600) {
         circle.style.stroke = '#f59e0b';
         text.style.color = '#f59e0b';
     } else {

@@ -83,6 +83,19 @@ from services.admin_settings_service import (
     save_bourse_settings,
     save_race_engine_settings_json,
 )
+from services.game_settings_bundle_service import (
+    build_game_settings_bundle_filename,
+    build_game_settings_bundle_json,
+    import_game_settings_bundle,
+)
+from services.gameplay_settings_service import (
+    build_gameplay_settings_from_form,
+    build_minigame_settings_from_form,
+    get_gameplay_settings,
+    get_minigame_settings,
+    save_gameplay_settings,
+    save_minigame_settings,
+)
 from services.admin_truffes_service import (
     build_admin_truffes_context,
     save_truffes_settings,
@@ -297,6 +310,8 @@ def admin_balance(user):
     finance = get_finance_settings()
     pig = get_pig_settings()
     engine = get_race_engine_settings()
+    gameplay = get_gameplay_settings()
+    minigames = get_minigame_settings()
 
     if request.method == 'POST':
         action = request.form.get('action')
@@ -311,11 +326,32 @@ def admin_balance(user):
             pig = get_pig_settings()
             flash("Paramètres cochons sauvegardés.", "success")
 
+        elif action == 'save_gameplay':
+            gameplay = build_gameplay_settings_from_form(request.form, gameplay)
+            save_gameplay_settings(gameplay)
+            flash("Paramètres gameplay sauvegardés.", "success")
+
+        elif action == 'save_minigames':
+            minigames = build_minigame_settings_from_form(request.form, minigames)
+            save_minigame_settings(minigames)
+            flash("Paramètres mini-jeux sauvegardés.", "success")
+
         elif action == 'save_engine':
             try:
                 save_race_engine_settings_json(request.form.get('race_engine_json', ''))
                 engine = get_race_engine_settings()
                 flash("Moteur de course sauvegardé.", "success")
+            except BusinessRuleError as exc:
+                flash(str(exc), "error")
+
+        elif action == 'import_settings_bundle':
+            upload = request.files.get('settings_bundle_file')
+            raw_bundle = (request.form.get('settings_bundle_json') or '').strip()
+            if upload and upload.filename:
+                raw_bundle = upload.read().decode('utf-8')
+            try:
+                import_game_settings_bundle(raw_bundle)
+                flash("Bundle JSON importé et appliqué.", "success")
             except BusinessRuleError as exc:
                 flash(str(exc), "error")
 
@@ -335,6 +371,8 @@ def admin_balance(user):
         finance = get_finance_settings()
         pig = get_pig_settings()
         engine = get_race_engine_settings()
+        gameplay = get_gameplay_settings()
+        minigames = get_minigame_settings()
 
     from helpers.config import get_config
     return render_template(
@@ -343,12 +381,25 @@ def admin_balance(user):
         admin_tab='balance',
         finance=finance,
         pig=pig,
+        pig_weight_rules_json=json.dumps(pig.weight_rules.__dict__, ensure_ascii=False, indent=2),
+        gameplay=gameplay,
+        minigames=minigames,
         engine_json=engine.to_json(),
+        settings_bundle_json=build_game_settings_bundle_json(),
         bourse_surcharge_factor=float(get_config('bourse_surcharge_factor', str(BOURSE_SURCHARGE_FACTOR))),
         bourse_movement_divisor=int(float(get_config('bourse_movement_divisor', str(BOURSE_MOVEMENT_DIVISOR)))),
         tax_exempt_codes=sorted(TAX_EXEMPT_REASON_CODES),
         casino_reason_codes=sorted(CASINO_REASON_CODES),
     )
+
+
+@admin_bp.route('/admin/settings-bundle/export')
+@admin_required
+def admin_export_settings_bundle(user):
+    response = make_response(build_game_settings_bundle_json())
+    response.headers['Content-Type'] = 'application/json; charset=utf-8'
+    response.headers['Content-Disposition'] = f'attachment; filename="{build_game_settings_bundle_filename()}"'
+    return response
 
 
 # ══════════════════════════════════════════════════════════════════════════════

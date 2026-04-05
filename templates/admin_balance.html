@@ -113,7 +113,11 @@
                     <input class="input-admin w-full mt-2" type="number" min="0" step="1" name="pig_retirement_min_wins" value="{{ pig.retirement_min_wins }}">
                 </label>
                 <label class="text-white/65 text-sm font-bold">
-                    Fenêtre vétérinaire (min)
+                    Courses max par défaut
+                    <input class="input-admin w-full mt-2" type="number" min="1" step="1" name="pig_default_max_races" value="{{ pig.default_max_races }}">
+                </label>
+                <label class="text-white/65 text-sm font-bold">
+                    Fenêtre vétérinaire (min, 720 = 12h)
                     <input class="input-admin w-full mt-2" type="number" min="1" step="1" name="pig_vet_response_minutes" value="{{ pig.vet_response_minutes }}">
                 </label>
                 <label class="text-white/65 text-sm font-bold">
@@ -147,8 +151,125 @@
                     <span class="text-white/30 text-xs font-semibold mt-1 block">{{ "%.0f"|format(pig.weight_malus_max * 100) }}% de malus max</span>
                 </label>
             </div>
+            <div class="mt-5">
+                <label class="text-white/65 text-sm font-bold block">
+                    Formule de poids avancée (JSON)
+                    <textarea class="input-admin w-full mt-2 min-h-[18rem] font-mono text-xs" name="pig_weight_rules_json">{{ pig_weight_rules_json }}</textarea>
+                    <span class="text-white/35 text-xs font-semibold mt-2 block">Le bundle JSON export/import transporte exactement cette formule. Tu peux donc l’éditer ici ou dans le fichier exporté.</span>
+                </label>
+            </div>
             <div class="mt-6 flex justify-end">
                 <button type="submit" class="btn-success">Sauvegarder cochons</button>
+            </div>
+        </section>
+    </form>
+
+    {# ── Gameplay ─────────────────────────────────────────────────────── #}
+    {% set decay_1 = gameplay.school_xp_decay_thresholds[0] if gameplay.school_xp_decay_thresholds|length > 0 else (2, 1.0) %}
+    {% set decay_2 = gameplay.school_xp_decay_thresholds[1] if gameplay.school_xp_decay_thresholds|length > 1 else (3, 0.5) %}
+    {% set decay_3 = gameplay.school_xp_decay_thresholds[2] if gameplay.school_xp_decay_thresholds|length > 2 else (4, gameplay.school_xp_decay_floor) %}
+    <form method="POST" action="{{ url_for('admin.admin_balance') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="action" value="save_gameplay">
+        <section class="card p-6">
+            <h2 class="font-title text-2xl text-white mb-5">🎛️ Gameplay Bureau</h2>
+            <div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3">
+                <label class="text-white/65 text-sm font-bold">
+                    En-cas solidaires / jour
+                    <input class="input-admin w-full mt-2" type="number" min="0" max="20" step="1" name="gameplay_snack_share_daily_limit" value="{{ gameplay.snack_share_daily_limit }}">
+                </label>
+                <label class="text-white/65 text-sm font-bold">
+                    Cap entraînement / jour
+                    <input class="input-admin w-full mt-2" type="number" min="0" max="100" step="1" name="gameplay_train_daily_cap" value="{{ gameplay.train_daily_cap }}">
+                </label>
+                <label class="text-white/65 text-sm font-bold">
+                    Cooldown école/typing (min)
+                    <input class="input-admin w-full mt-2" type="number" min="0" max="1440" step="1" name="gameplay_school_cooldown_minutes" value="{{ gameplay.school_cooldown_minutes }}">
+                </label>
+                <label class="text-white/65 text-sm font-bold">
+                    Plancher rendement école
+                    <input class="input-admin w-full mt-2" type="number" min="0" max="10" step="0.05" name="gameplay_school_xp_decay_floor" value="{{ gameplay.school_xp_decay_floor }}">
+                </label>
+            </div>
+            <div class="mt-5">
+                <p class="text-white/50 text-xs font-bold uppercase tracking-wider mb-3">Rendement décroissant partagé école + typing</p>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div class="user-row p-3 grid grid-cols-2 gap-3">
+                        <label class="text-white/65 text-xs font-bold">
+                            Seuil 1
+                            <input class="input-admin w-full mt-2" type="number" min="1" step="1" name="gameplay_school_decay_threshold_1" value="{{ decay_1[0] }}">
+                        </label>
+                        <label class="text-white/65 text-xs font-bold">
+                            Multiplicateur 1
+                            <input class="input-admin w-full mt-2" type="number" min="0" max="10" step="0.05" name="gameplay_school_decay_multiplier_1" value="{{ decay_1[1] }}">
+                        </label>
+                    </div>
+                    <div class="user-row p-3 grid grid-cols-2 gap-3">
+                        <label class="text-white/65 text-xs font-bold">
+                            Seuil 2
+                            <input class="input-admin w-full mt-2" type="number" min="1" step="1" name="gameplay_school_decay_threshold_2" value="{{ decay_2[0] }}">
+                        </label>
+                        <label class="text-white/65 text-xs font-bold">
+                            Multiplicateur 2
+                            <input class="input-admin w-full mt-2" type="number" min="0" max="10" step="0.05" name="gameplay_school_decay_multiplier_2" value="{{ decay_2[1] }}">
+                        </label>
+                    </div>
+                    <div class="user-row p-3 grid grid-cols-2 gap-3">
+                        <label class="text-white/65 text-xs font-bold">
+                            Seuil 3
+                            <input class="input-admin w-full mt-2" type="number" min="1" step="1" name="gameplay_school_decay_threshold_3" value="{{ decay_3[0] }}">
+                        </label>
+                        <label class="text-white/65 text-xs font-bold">
+                            Multiplicateur 3
+                            <input class="input-admin w-full mt-2" type="number" min="0" max="10" step="0.05" name="gameplay_school_decay_multiplier_3" value="{{ decay_3[1] }}">
+                        </label>
+                    </div>
+                </div>
+            </div>
+            <div class="mt-6 flex justify-end">
+                <button type="submit" class="btn-success">Sauvegarder gameplay</button>
+            </div>
+        </section>
+    </form>
+
+    {# ── Mini-jeux ────────────────────────────────────────────────────── #}
+    <form method="POST" action="{{ url_for('admin.admin_balance') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="action" value="save_minigames">
+        <section class="card p-6">
+            <h2 class="font-title text-2xl text-white mb-5">🎮 Mini-jeux</h2>
+            <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
+                <div class="user-row p-4">
+                    <p class="text-white/60 text-xs font-bold uppercase tracking-wider mb-3">Cochon Pendu</p>
+                    <div class="grid grid-cols-2 gap-3">
+                        <label class="text-white/65 text-sm font-bold">Parties gratuites<input class="input-admin w-full mt-2" type="number" min="0" step="1" name="minigame_pendu_free_plays_per_day" value="{{ minigames.pendu_free_plays_per_day }}"></label>
+                        <label class="text-white/65 text-sm font-bold">Coût replay<input class="input-admin w-full mt-2" type="number" min="0" step="1" name="minigame_pendu_extra_play_cost" value="{{ minigames.pendu_extra_play_cost }}"></label>
+                        <label class="text-white/65 text-sm font-bold">Récompense<input class="input-admin w-full mt-2" type="number" min="0" step="0.5" name="minigame_pendu_win_reward" value="{{ minigames.pendu_win_reward }}"></label>
+                        <label class="text-white/65 text-sm font-bold">Erreurs max<input class="input-admin w-full mt-2" type="number" min="1" step="1" name="minigame_pendu_max_errors" value="{{ minigames.pendu_max_errors }}"></label>
+                        <label class="text-white/65 text-sm font-bold">Malus humeur<input class="input-admin w-full mt-2" type="number" min="0" step="0.5" name="minigame_pendu_loss_happiness_penalty" value="{{ minigames.pendu_loss_happiness_penalty }}"></label>
+                        <label class="text-white/65 text-sm font-bold">Malus énergie<input class="input-admin w-full mt-2" type="number" min="0" step="0.5" name="minigame_pendu_loss_energy_penalty" value="{{ minigames.pendu_loss_energy_penalty }}"></label>
+                    </div>
+                </div>
+                <div class="user-row p-4">
+                    <p class="text-white/60 text-xs font-bold uppercase tracking-wider mb-3">Agenda / Whack-a-Réu</p>
+                    <div class="grid grid-cols-2 gap-3">
+                        <label class="text-white/65 text-sm font-bold">Récompense<input class="input-admin w-full mt-2" type="number" min="0" step="0.5" name="minigame_agenda_reward" value="{{ minigames.agenda_reward }}"></label>
+                        <label class="text-white/65 text-sm font-bold">Parties / jour<input class="input-admin w-full mt-2" type="number" min="0" step="1" name="minigame_agenda_max_plays_per_day" value="{{ minigames.agenda_max_plays_per_day }}"></label>
+                        <label class="text-white/65 text-sm font-bold">Objectif prises<input class="input-admin w-full mt-2" type="number" min="1" step="1" name="minigame_agenda_required_catches" value="{{ minigames.agenda_required_catches }}"></label>
+                        <label class="text-white/65 text-sm font-bold">Durée (s)<input class="input-admin w-full mt-2" type="number" min="5" step="1" name="minigame_agenda_game_duration" value="{{ minigames.agenda_game_duration }}"></label>
+                    </div>
+                </div>
+                <div class="user-row p-4">
+                    <p class="text-white/60 text-xs font-bold uppercase tracking-wider mb-3">Truffes</p>
+                    <div class="grid grid-cols-2 gap-3">
+                        <label class="text-white/65 text-sm font-bold">Récompense<input class="input-admin w-full mt-2" type="number" min="0" step="0.5" name="minigame_truffe_reward" value="{{ minigames.truffe_reward }}"></label>
+                        <label class="text-white/65 text-sm font-bold">Clics max<input class="input-admin w-full mt-2" type="number" min="1" step="1" name="minigame_truffe_max_clicks" value="{{ minigames.truffe_max_clicks }}"></label>
+                        <label class="text-white/65 text-sm font-bold col-span-2">Taille grille<input class="input-admin w-full mt-2" type="number" min="3" step="1" name="minigame_truffe_grid_size" value="{{ minigames.truffe_grid_size }}"></label>
+                    </div>
+                </div>
+            </div>
+            <div class="mt-6 flex justify-end">
+                <button type="submit" class="btn-success">Sauvegarder mini-jeux</button>
             </div>
         </section>
     </form>
@@ -201,6 +322,37 @@
             </label>
             <div class="mt-6 flex justify-end">
                 <button type="submit" class="btn-success">Sauvegarder moteur</button>
+            </div>
+        </section>
+    </form>
+
+    {# ── Bundle JSON ──────────────────────────────────────────────────── #}
+    <form method="POST" action="{{ url_for('admin.admin_balance') }}" enctype="multipart/form-data">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="action" value="import_settings_bundle">
+        <section class="card p-6">
+            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-5">
+                <div>
+                    <h2 class="font-title text-2xl text-white">🧾 Bundle JSON</h2>
+                    <p class="text-white/40 text-sm font-semibold mt-1">Format portable des réglages du jeu. Le site continue de lire vite depuis la base, mais tu peux exporter, analyser, versionner et réimporter cet état complet.</p>
+                </div>
+                <a href="{{ url_for('admin.admin_export_settings_bundle') }}" class="btn-admin">⬇️ Exporter le JSON</a>
+            </div>
+            <div class="grid grid-cols-1 xl:grid-cols-[280px_minmax(0,1fr)] gap-5">
+                <div class="space-y-4">
+                    <label class="text-white/65 text-sm font-bold block">
+                        Importer un fichier JSON
+                        <input class="input-admin w-full mt-2" type="file" name="settings_bundle_file" accept=".json,application/json">
+                    </label>
+                    <p class="text-white/35 text-xs font-semibold">Tu peux aussi coller directement le JSON dans la zone de droite puis lancer l’import. Les sections connues sont validées avant application.</p>
+                </div>
+                <label class="text-white/65 text-sm font-bold">
+                    Bundle actuel / JSON à importer
+                    <textarea class="input-admin w-full mt-2 font-mono text-xs" rows="22" name="settings_bundle_json" spellcheck="false">{{ settings_bundle_json }}</textarea>
+                </label>
+            </div>
+            <div class="mt-6 flex justify-end">
+                <button type="submit" class="btn-success">Importer ce bundle</button>
             </div>
         </section>
     </form>
