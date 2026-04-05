@@ -5,9 +5,11 @@ from datetime import datetime, timedelta
 import click
 from werkzeug.security import generate_password_hash
 
-from data import BOURSE_DEFAULT_POS, COCHON_PENDU_WORDS, CEREALS, PIG_ORIGINS, SCHOOL_LESSONS, TRAININGS
+from config.grain_market_defaults import BOURSE_DEFAULT_POS
+from content.pigs_catalog import PIG_ORIGINS
+from content.seed_game_items import COCHON_PENDU_WORDS, CEREALS, SCHOOL_LESSONS, TRAININGS
 from extensions import db
-from helpers import ensure_next_race
+from helpers.race import ensure_next_race
 from models import (
     BalanceTransaction,
     CerealItem,

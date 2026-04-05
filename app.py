@@ -13,7 +13,8 @@ _session_interface = None
 from cli import register_cli_commands
 from config.app_config import get_config_class
 from extensions import db, limiter, migrate
-from helpers import init_default_config, get_first_injured_pig
+from helpers.config import init_default_config
+from helpers.veterinary import get_first_injured_pig
 from services.auth_log_service import log_site_action
 from routes import all_blueprints
 from scheduler import start_scheduler, should_autostart_scheduler
@@ -47,15 +48,15 @@ def create_app(config_name=None):
 
     migrate.init_app(app, db)
     limiter.init_app(app)
-    from flask_wtf.csrf import CSRFProtect
-    csrf = CSRFProtect(app)
-
     global _session_interface
     if _session_interface is None:
         _server_session.init_app(app)
         _session_interface = app.session_interface
     else:
         app.session_interface = _session_interface
+
+    from flask_wtf.csrf import CSRFProtect
+    csrf = CSRFProtect(app)
 
     @app.teardown_appcontext
     def shutdown_session(exception=None):

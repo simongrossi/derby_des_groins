@@ -2,19 +2,20 @@ from flask import Blueprint, jsonify, render_template, request, redirect, url_fo
 from datetime import datetime
 import random
 
+from config.gameplay_defaults import (
+    OFFICE_SNACKS,
+    SCHOOL_COOLDOWN_MINUTES,
+    SNACK_SHARE_DAILY_LIMIT,
+)
+from content.flavor_texts import PIG_TYPING_WORDS
+from content.pigs_catalog import PIG_EMOJIS, PIG_ORIGINS, RARITIES
+from content.stats_metadata import STAT_DESCRIPTIONS, STAT_LABELS
 from exceptions import BusinessRuleError, InsufficientFundsError
 from extensions import db, limiter
+from helpers.game_data import get_cereals_dict, get_school_lessons_dict, get_trainings_dict
+from helpers.race import get_user_active_pigs
+from helpers.time_helpers import format_duration_short, get_cooldown_remaining, get_seconds_until
 from models import User, Pig, PigAvatar
-from data import (
-    SCHOOL_COOLDOWN_MINUTES, TRAIN_DAILY_CAP,
-    PIG_EMOJIS, PIG_ORIGINS, STAT_LABELS, STAT_DESCRIPTIONS, RARITIES,
-    OFFICE_SNACKS, SNACK_SHARE_DAILY_LIMIT, PIG_TYPING_WORDS,
-)
-from helpers import (
-    get_user_active_pigs,
-    get_cooldown_remaining, format_duration_short, get_seconds_until,
-    get_cereals_dict, get_trainings_dict, get_school_lessons_dict,
-)
 from services.economy_service import get_breeding_cost_value, get_progression_settings
 from utils.time_utils import is_weekend_truce_active
 

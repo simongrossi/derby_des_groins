@@ -5,13 +5,17 @@ from sqlalchemy import func
 from sqlalchemy import update
 
 from config.game_rules import MARKET_RULES
-from data import (
+from config.gameplay_defaults import DEFAULT_PIG_WEIGHT_KG
+from config.grain_market_defaults import (
     BOURSE_BLOCK_MAX, BOURSE_BLOCK_MIN, BOURSE_DEFAULT_POS, BOURSE_GRAIN_LAYOUT,
     BOURSE_GRID_SIZE, BOURSE_GRID_VALUES, BOURSE_MIN_MOVEMENT, BOURSE_MOVEMENT_DIVISOR,
-    BOURSE_SURCHARGE_FACTOR, CEREALS, DEFAULT_PIG_WEIGHT_KG, PIG_EMOJIS,
-    PIG_NAME_PREFIXES, PIG_NAME_SUFFIXES, PIG_ORIGINS, RARITIES,
+    BOURSE_SURCHARGE_FACTOR,
 )
+from content.pigs_catalog import PIG_EMOJIS, PIG_NAME_PREFIXES, PIG_NAME_SUFFIXES, PIG_ORIGINS, RARITIES
+from content.seed_game_items import CEREALS
 from exceptions import InsufficientFundsError, UserNotFoundError, ValidationError
+from extensions import db
+from models import Auction, BalanceTransaction, GrainMarket, MarketHistory, Pig, User
 
 
 def _get_bourse_surcharge_factor():
@@ -28,8 +32,6 @@ def _get_bourse_movement_divisor():
         return max(1, int(float(get_config('bourse_movement_divisor', str(BOURSE_MOVEMENT_DIVISOR)))))
     except (TypeError, ValueError):
         return int(BOURSE_MOVEMENT_DIVISOR)
-from extensions import db
-from models import Auction, BalanceTransaction, GrainMarket, MarketHistory, Pig, User
 
 from services.game_settings_service import get_game_settings
 from services.finance_service import credit_user, credit_user_balance, debit_user
@@ -418,7 +420,6 @@ def update_vitrine(market, grain_key, user_id):
 
 def log_market_state(market):
     """Enregistre l'état actuel des prix dans l'historique."""
-    from data import CEREALS
     surcharges = get_all_grain_surcharges(market)
     recorded_at = datetime.utcnow()
     for key, surcharge in surcharges.items():

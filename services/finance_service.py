@@ -3,7 +3,7 @@ from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import func, or_, update, Numeric
 
-from data import (
+from config.economy_defaults import (
     EMERGENCY_RELIEF_AMOUNT, EMERGENCY_RELIEF_HOURS, EMERGENCY_RELIEF_THRESHOLD,
     TAX_THRESHOLD_1, TAX_RATE_1, TAX_THRESHOLD_2, TAX_RATE_2, TAX_EXEMPT_REASON_CODES,
     CASINO_REASON_CODES, CASINO_DAILY_WIN_CAP,

@@ -2,15 +2,20 @@ from flask import Blueprint, render_template, request, redirect, url_for, sessio
 from datetime import datetime, timedelta
 import json as _json
 
+from config.gameplay_defaults import DEFAULT_PIG_WEIGHT_KG, SCHOOL_COOLDOWN_MINUTES
 from extensions import db, limiter, APP_TIMEZONE
+from helpers.race import get_user_active_pigs
+from helpers.time_helpers import get_cooldown_remaining, get_seconds_until
+from helpers.veterinary import get_first_injured_pig
 from models import User, Pig, Race, Participant, Bet, UserNotification, ChatMessage
-from data import SCHOOL_COOLDOWN_MINUTES, MIN_INJURY_RISK, DEFAULT_PIG_WEIGHT_KG
-from services.pig_service import get_pig_settings, kill_pig, update_pig_vitals
-from helpers import (
-    get_user_active_pigs, calculate_pig_power,
-    get_weight_profile, get_seconds_until, get_cooldown_remaining,
-    xp_for_level, get_first_injured_pig,
-    get_prix_moyen_groin,
+from services.market_service import get_prix_moyen_groin
+from services.pig_service import (
+    calculate_pig_power,
+    get_pig_settings,
+    get_weight_profile,
+    kill_pig,
+    update_pig_vitals,
+    xp_for_level,
 )
 from services.economy_service import get_progression_settings
 

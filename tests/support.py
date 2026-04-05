@@ -1,7 +1,6 @@
 from app import create_app
 from extensions import db
-from helpers import init_default_config
-from helpers.config import invalidate_config_cache
+from helpers.config import init_default_config, invalidate_config_cache
 from models import User
 
 

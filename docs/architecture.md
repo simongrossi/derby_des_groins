@@ -67,8 +67,13 @@
 derby_des_groins/
 ├── app.py                  # Factory Flask et enregistrement des blueprints/CLI
 ├── config/
+│   ├── __init__.py
 │   ├── app_config.py       # Classes de configuration Flask (dev/test/prod)
-│   └── game_rules.py       # Constantes et règles de gameplay mutualisées
+│   ├── game_rules.py       # Constantes et règles de gameplay mutualisées
+│   ├── gameplay_defaults.py
+│   ├── economy_defaults.py
+│   ├── race_engine_defaults.py
+│   └── grain_market_defaults.py
 ├── models/
 │   ├── __init__.py         # Ré-export central pour compatibilité des imports
 │   ├── user.py             # Utilisateur, GameConfig
@@ -76,8 +81,20 @@ derby_des_groins/
 │   ├── race.py             # Courses, tickets, transactions, planification
 │   └── ...                 # Marché, notifications, poker, boutique, données de jeu
 ├── extensions.py           # Instance db shared pour éviter les cycles
-├── helpers.py              # Logique métier : calcul power, reproduction, PMU, transactions
-├── data.py                 # Constantes du monde, echeanciers, types de courses
+├── helpers/
+│   ├── __init__.py         # Compat minimale du package helpers
+│   ├── config.py           # Cache et lecture/écriture GameConfig
+│   ├── db.py               # Verrous SQLAlchemy et utilitaires DB
+│   ├── time_helpers.py     # Cooldowns, durées, countdowns
+│   ├── veterinary.py       # Véto, abattoir, cimetière
+│   ├── race.py             # Orchestration des courses et historique
+│   ├── game_data.py        # Cache des données de jeu admin/DB
+│   └── market_helpers.py   # Déblocage et statut du marché
+├── content/                # Contenu statique et fallbacks seedés
+│   ├── seed_game_items.py
+│   ├── pigs_catalog.py
+│   ├── flavor_texts.py
+│   └── stats_metadata.py
 ├── scheduler.py            # Configuration APScheduler (tâches cron)
 ├── tests/
 │   ├── __init__.py

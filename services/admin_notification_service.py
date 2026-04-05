@@ -1,7 +1,7 @@
 import logging
 
 from exceptions import ValidationError
-from helpers import get_config, set_config
+from helpers.config import get_config, set_config
 
 
 def get_smtp_config():

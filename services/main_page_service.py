@@ -3,25 +3,18 @@ from statistics import median
 
 from sqlalchemy import func
 
-from data import (
+from config.economy_defaults import COMPLEX_BET_MIN_SELECTIONS
+from config.gameplay_defaults import SCHOOL_COOLDOWN_MINUTES, SNACK_SHARE_DAILY_LIMIT
+from config.grain_market_defaults import (
     BOURSE_GRID_SIZE,
     BOURSE_MIN_MOVEMENT,
     BOURSE_MOVEMENT_DIVISOR,
-    COMPLEX_BET_MIN_SELECTIONS,
-    SCHOOL_COOLDOWN_MINUTES,
-    SNACK_SHARE_DAILY_LIMIT,
-    STAT_LABELS,
 )
+from content.stats_metadata import STAT_LABELS
 from extensions import db
+from helpers.game_data import get_cereals_dict, get_school_lessons_dict, get_trainings_dict
+from helpers.race import ensure_next_race, get_race_history_entries, get_user_active_pigs
 from models import BalanceTransaction, Bet, CoursePlan, Participant, Pig, Race, Trophy, User
-from helpers import (
-    ensure_next_race,
-    get_cereals_dict,
-    get_race_history_entries,
-    get_school_lessons_dict,
-    get_trainings_dict,
-    get_user_active_pigs,
-)
 from services.race_service import attach_bet_outcome_snapshots
 from services.economy_service import (
     get_adoption_cost_for_active_count,
@@ -39,7 +32,13 @@ from services.economy_service import (
 )
 from services.finance_service import claim_daily_reward
 from services.market_service import get_next_market_time, get_prix_moyen_groin, is_market_open
-from services.pig_service import calculate_pig_power, get_pig_settings, get_weight_profile, update_pig_vitals
+from services.pig_service import (
+    calculate_pig_power,
+    get_pig_settings,
+    get_weight_profile,
+    update_pig_vitals,
+    recommend_best_cereal,
+)
 from services.race_service import (
     build_course_schedule,
     get_course_theme,
@@ -234,6 +233,10 @@ def build_homepage_context(user_id=None):
         if next_race:
             user_bets = Bet.query.filter_by(user_id=user.id, race_id=next_race.id).all()
 
+        from models.pig import UserCerealInventory
+        inventory_items = UserCerealInventory.query.filter_by(user_id=user.id).all()
+        inventory = {item.cereal_key: item.quantity for item in inventory_items if item.quantity > 0}
+
     participants = []
     if next_race:
         participants = Participant.query.filter_by(race_id=next_race.id).order_by(Participant.odds).all()
@@ -256,6 +259,10 @@ def build_homepage_context(user_id=None):
             pigs_data,
             participants_by_pig_id,
         )
+        recommended_cereal = recommend_best_cereal(featured_pig['pig'], inventory)
+    else:
+        inventory = {}
+        recommended_cereal = None
 
     return {
         'user': user,
@@ -280,6 +287,8 @@ def build_homepage_context(user_id=None):
         'latest_race_participants': latest_race_participants,
         'news_items': _build_home_news_items(latest_race, latest_race_participants),
         'daily_reward': daily_reward,
+        'inventory': inventory,
+        'recommended_cereal': recommended_cereal,
     }
 
 

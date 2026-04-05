@@ -2,7 +2,7 @@
 
 > Audit realise le 24/03/2026.
 > **Qualite du code** (6 points) : corriges.
-> **Refactorisation helpers.py** : terminee.
+> **Refactorisation architecture** : terminee.
 > **Corrections code** (securite + perf + logging) : terminees.
 
 ---
@@ -28,7 +28,10 @@
 - [x] **3.4** Health check `/health` (verifie DB + scheduler)
 
 ### Phase 4 — Refactorisation ✅
-- [x] **4.1** `helpers.py` (1887 lig.) → package `helpers/` (830 lig., 8 modules)
+- [x] **4.1** Ancien monolithe `helpers.py` supprimé au profit du package `helpers/`
+- [x] **4.2** Ancien fichier `data.py` supprimé ; constantes regroupées dans `config/*_defaults.py` et `content/`
+- [x] **4.3** Imports internes réécrits vers les modules réels (`helpers.config`, `helpers.race`, `services.*`, etc.)
+- [x] **4.4** `helpers/__init__.py` réduit à une couche de compat minimale du package `helpers/`
 
 ### Qualite du code (session precedente) ✅
 - [x] Suppression `update_item.py`

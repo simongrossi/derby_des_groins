@@ -7,12 +7,12 @@ from zoneinfo import ZoneInfo
 
 from exceptions import ValidationError
 from extensions import db
-from helpers import populate_race_participants, run_race_if_needed
 from helpers.config import DEFAULT_RACE_THEMES, get_config, invalidate_config_cache
 from models import GameConfig, Race, User
 from services.finance_service import credit_user
 from services.game_settings_service import get_game_settings
-from services.race_service import get_configured_npcs
+from helpers.race import run_race_if_needed
+from services.race_service import get_configured_npcs, populate_race_participants
 
 
 def _parse_race_npcs_from_lines(lines):

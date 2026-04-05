@@ -161,7 +161,7 @@ La Bourse aux Grains est implementee. Evolutions futures envisageables :
 
 ### Simulations chiffrées (basées sur le code)
 
-Les valeurs utilisées sont extraites directement de `data.py` : XP école = 22–26 (moyenne 24), cooldown 30 min, 1ère place course = 100 BitGroins, quota 3 courses/semaine/cochon.
+Les valeurs utilisées sont extraites directement des modules `config/*_defaults.py` et `content/seed_game_items.py` : XP école = 22–26 (moyenne 24), cooldown 30 min, 1ère place course = 100 BitGroins, quota 3 courses/semaine/cochon.
 
 #### Simulation 1 — Gap XP École (sans correction, 30 jours)
 
@@ -221,7 +221,7 @@ Le compteur repart à zéro à minuit UTC.
 **Impact :** Ratio ×24 → ×3.3 (voir Simulation 2). Quick win à faible effort.
 
 **Fichiers concernés :**
-- `data.py` — ajouter constante `SCHOOL_XP_DECAY_THRESHOLDS`
+- `config/gameplay_defaults.py` — ajouter constante `SCHOOL_XP_DECAY_THRESHOLDS`
 - `routes/pig.py` — endpoint `/school`, lire le compteur quotidien du cochon avant d'appliquer le multiplicateur
 - `services/economy_service.py` — si la logique de multiplicateur est centralisée ici
 - `models.py` — ajouter champ `Pig.daily_school_sessions` (int, reset quotidien)
@@ -353,7 +353,7 @@ Les BitGroins prélevés sont versés dans une **Caisse de Solidarité** (solde 
 
 **Fichiers concernés :**
 - `race_engine.py` — génération de NPC avec profil "boss"
-- `data.py` — configuration NPC `SANGLIER_NOIR_STATS`
+- `content/pigs_catalog.py` — configuration NPC `SANGLIER_NOIR_STATS`
 
 ---
 
@@ -526,6 +526,6 @@ Comparaison : gagner toutes ses courses à la 1ère place avec 4 cochons = **1 2
 
 | # | Problème | Fix appliqué | Fichiers |
 |---|----------|-------------|---------|
-| 1 | Cochon Pendu illimité | 3 parties gratuites/jour, puis 5 BG/partie | `routes/cochon_pendu.py`, `models.py`, `data.py` |
-| 2 | Entraînement sans cap | Cap 10 sessions/jour par cochon | `routes/pig.py`, `models.py` (`daily_train_count`), `data.py` |
+| 1 | Cochon Pendu illimité | 3 parties gratuites/jour, puis 5 BG/partie | `routes/cochon_pendu.py`, `models.py`, `config/gameplay_defaults.py` |
+| 2 | Entraînement sans cap | Cap 10 sessions/jour par cochon | `routes/pig.py`, `models.py` (`daily_train_count`), `config/gameplay_defaults.py` |
 | 3 | Blackjack/Poker sans limite | Plafond 500 BG de gains nets journaliers | `services/finance_service.py`, `models.py` (`daily_casino_wins`) |

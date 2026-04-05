@@ -1,13 +1,13 @@
 """RaceEngineSettings — paramètres du moteur de course stockés en DB.
 
-Toutes les constantes RACE_* de data.py sont regroupées dans un JSON blob
-sous la clé 'race_engine_config'. Les valeurs de data.py servent de fallback
-si la clé n'existe pas en base.
+Toutes les constantes RACE_* sont regroupées dans un JSON blob sous la clé
+`race_engine_config`. Les valeurs de `config.race_engine_defaults` servent de
+fallback si la clé n'existe pas en base.
 """
 import json
 from dataclasses import dataclass, asdict
 
-from data import (
+from config.race_engine_defaults import (
     RACE_MAX_TURNS,
     RACE_ATTACK_THRESHOLD, RACE_NEUTRAL_MAX,
     RACE_STRATEGY_ECONOMY_MIN_MULT, RACE_STRATEGY_ATTACK_MAX_MULT,
@@ -201,5 +201,5 @@ def save_race_engine_settings(settings: RaceEngineSettings):
 
 
 def reset_race_engine_settings():
-    """Réinitialise le moteur aux valeurs par défaut de data.py."""
+    """Réinitialise le moteur aux valeurs par défaut du module dédié."""
     save_race_engine_settings(RaceEngineSettings.defaults())

@@ -1,7 +1,7 @@
 from datetime import datetime
 
 from config.game_rules import BET_RULES
-from data import COMPLEX_BET_MIN_SELECTIONS
+from config.economy_defaults import COMPLEX_BET_MIN_SELECTIONS
 from exceptions import InsufficientFundsError, ValidationError
 from extensions import db
 from helpers.config import get_config

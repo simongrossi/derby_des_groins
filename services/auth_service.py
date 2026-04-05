@@ -3,10 +3,10 @@ from urllib.parse import urlparse
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from config.game_rules import AUTH_RULES
+from content.pigs_catalog import PIG_ORIGINS
 from exceptions import UserNotFoundError, ValidationError
 from extensions import db
 from models import GameConfig, Pig, User
-from data import PIG_ORIGINS
 from services.auth_log_service import log_auth_event
 from services.economy_service import get_welcome_bonus_value
 from services.finance_service import record_balance_transaction

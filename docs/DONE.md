@@ -6,6 +6,8 @@ Liste des fonctionnalités et idées déjà implémentées dans le projet.
 
 ## Architecture et découplage
 - **Découplage critique des modèles** : les modèles SQLAlchemy ont été découpés dans un package `models/` par domaine (`user.py`, `pig.py`, `race.py`, etc.) avec un `models/__init__.py` de compatibilité.
+- **Constantes regroupées par domaine** : l'ancien `data.py` a été supprimé. Les valeurs par défaut vivent désormais dans `config/*_defaults.py` et le contenu statique dans `content/`.
+- **Package helpers clarifié** : l'ancien monolithe `helpers.py` a été supprimé ; les imports runtime pointent désormais directement vers `helpers.config`, `helpers.race`, `helpers.game_data`, `helpers.veterinary`, etc.
 - **Services métier extraits** : la logique de `User.pay()` / `User.earn()` / prime journalière vit désormais dans `services/finance_service.py`, et les actions `Pig.feed()` / `Pig.train()` / `Pig.study()` / vitals / mort / retraite dans `services/pig_service.py`.
 - **Exceptions métier partagées** : un nouveau fichier `exceptions.py` centralise les erreurs métier comme `InsufficientFundsError`, `PigTiredError`, `UserNotFoundError` et `PigNotFoundError`.
 - **Routes rebranchées** : les blueprints et helpers appellent maintenant explicitement les services, ce qui supprime les imports locaux dans les modèles et réduit les risques de dépendances circulaires.
@@ -92,7 +94,7 @@ Corrections de failles économiques majeures identifiées par simulation (voir `
 ### Rendement décroissant à l'école
 - Sessions 1–2 : 100% XP/stats ; session 3 : 50% ; sessions 4+ : 10%.
 - Réduit le ratio XP école de ×24 à ×3.3 entre hardcore et casual.
-- Fichiers : `models.py` (`Pig.study()`, `Pig._school_decay_multiplier()`), `data.py` (`SCHOOL_XP_DECAY_THRESHOLDS`).
+- Fichiers : `models.py` (`Pig.study()`, `Pig._school_decay_multiplier()`), `config/gameplay_defaults.py` (`SCHOOL_XP_DECAY_THRESHOLDS`).
 
 ### Comeback Bonus / Rested XP activé
 - Seuil abaissé de 3 jours → **12 heures** d'inactivité pour déclencher `comeback_bonus_ready = True`.
@@ -103,7 +105,7 @@ Corrections de failles économiques majeures identifiées par simulation (voir `
 ### Taxe progressive sur les crédits
 - Solde > 2 000 🪙 → 20% de taxe sur chaque gain ; > 5 000 🪙 → 50%.
 - Revenus de base exempts : prime quotidienne, secours d'urgence, remboursement portée.
-- Fichiers : `services/finance_service.py` (`credit_user_balance()`), `data.py` (`TAX_THRESHOLD_*`, `TAX_RATE_*`).
+- Fichiers : `services/finance_service.py` (`credit_user_balance()`), `config/economy_defaults.py` (`TAX_THRESHOLD_*`, `TAX_RATE_*`).
 
 ### Caisse de Solidarité Porcine
 - Les BitGroins taxés alimentent une cagnotte commune (`GameConfig.solidarity_fund`).
@@ -174,12 +176,12 @@ Corrections de failles économiques majeures identifiées par simulation (voir `
 - **Configuration SMTP** : Panneau de réglage pour l'envoi d'emails (notifications, liens magiques) avec test d'envoi en direct.
 - **Éditeur de Données (CRUD)** : Interface complète pour ajouter, modifier ou désactiver les Céréales, Entraînements, Leçons d'école et mots du pendu sans toucher au code ni à la base de données brute.
 - **Gestion des avatars** : Upload, édition SVG et suppression des avatars directement depuis l'admin avec validations centralisées côté service.
-- **Seeding Automatique** : Migration automatique des données statiques (`data.py`) vers la base de données au premier lancement pour une flexibilité totale.
+- **Seeding Automatique** : Migration automatique des données statiques (`content/seed_game_items.py`) vers la base de données au premier lancement pour une flexibilité totale.
 
 ## Audit des Paris et Performance (v2.1)
 - **Restriction paris complexes** : Les paris a 3+ selections (tierce, quarte, quinte, rafle) necessitent que le cochon du joueur participe a la course.
 - **Limites de mise** : Minimum 5 BitGroins, maximum 500 BitGroins par pari (`MIN_BET_RACE`, `MAX_BET_RACE`).
-- **Correction du calcul de cotes** : Suppression d'une fonction `calculate_bet_odds` dupliquee dans `helpers.py` qui omettait le facteur factoriel pour les paris non ordonnes, gonflant les cotes jusqu'a 122x. Une seule source de verite dans `race_service.py`.
+- **Correction du calcul de cotes** : Suppression de l'ancienne duplication dans le monolithe `helpers.py` (désormais supprimé) qui omettait le facteur factoriel pour les paris non ordonnes, gonflant les cotes jusqu'a 122x. Une seule source de verite dans `race_service.py`.
 - **Reequilibrage des marges** : quarte 1.30 -> 1.18, quinte 1.35 -> 1.15, two_of_four 1.15 -> 1.10, rafle differenciee du quinte (order_matters=True, house_edge=1.45).
 - **Performance page d'accueil** : Reecriture de `build_course_schedule()` pour remplacer le pattern N+1 (10 962 appels SQL) par des requetes batch (~4 requetes). Temps de reponse : 19.3s -> 0.83s.
 - **Stabilite QueuePool** : Configuration du pool SQLAlchemy (pool_size=10, max_overflow=20, pool_recycle=300), ajout teardown_appcontext, limitation a 3 courses par tick du scheduler.

@@ -1,4 +1,4 @@
-from helpers import get_config, set_config
+from helpers.config import get_config, set_config
 
 
 def save_truffes_settings(form_data):

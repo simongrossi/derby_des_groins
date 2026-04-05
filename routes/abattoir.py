@@ -1,7 +1,7 @@
 from flask import Blueprint, render_template, session
 
+from helpers.veterinary import get_dead_pigs_abattoir, get_legendary_pigs
 from models import User
-from helpers import get_dead_pigs_abattoir, get_legendary_pigs
 
 abattoir_bp = Blueprint('abattoir', __name__)
 

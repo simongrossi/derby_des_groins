@@ -8,7 +8,7 @@ import math
 
 from sqlalchemy import func
 
-from data import (
+from config.economy_defaults import (
     BET_TYPES as DEFAULT_BET_TYPES,
     BREEDING_COST as DEFAULT_BREEDING_COST,
     DAILY_LOGIN_REWARD as DEFAULT_DAILY_LOGIN_REWARD,
@@ -22,8 +22,8 @@ from data import (
     SECOND_PIG_COST as DEFAULT_SECOND_PIG_COST,
     WEEKLY_BACON_TICKETS as DEFAULT_WEEKLY_BACON_TICKETS,
     WEEKLY_RACE_QUOTA as DEFAULT_WEEKLY_RACE_QUOTA,
-    JOURS_FR,
 )
+from content.stats_metadata import JOURS_FR
 from extensions import db
 from models import BalanceTransaction, Bet, GameConfig, Participant, Pig, Race, User
 
@@ -34,7 +34,7 @@ MAX_PARTICIPANTS_PER_RACE = 8
 
 
 def _get_pig_max_slots():
-    """Lit le plafond de cochons depuis la config DB (fallback: constante data.py)."""
+    """Lit le plafond de cochons depuis la config DB."""
     from helpers.config import get_config
     try:
         return max(1, int(float(get_config('pig_max_slots', str(MAX_PIG_SLOTS)))))

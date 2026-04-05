@@ -1,0 +1,26 @@
+"""Gameplay default values and non-admin seed-like defaults."""
+
+IDEAL_WEIGHT_MALUS_THRESHOLD_RATIO = 0.20
+MAX_WEIGHT_PERFORMANCE_MALUS = 0.45
+FRESHNESS_BONUS_HOURS = 2
+FRESHNESS_MORAL_BONUS = 0.10
+SNACK_SHARE_DAILY_LIMIT = 3
+
+OFFICE_SNACKS = {
+    'pomme': {'name': 'Pomme', 'emoji': '🍎', 'hunger_restore': 5},
+    'biscuit': {'name': 'Biscuit', 'emoji': '🍪', 'hunger_restore': 5},
+}
+
+PENDU_FREE_PLAYS_PER_DAY = 3
+PENDU_EXTRA_PLAY_COST = 5
+TRAIN_DAILY_CAP = 10
+SCHOOL_COOLDOWN_MINUTES = 30
+SCHOOL_XP_DECAY_THRESHOLDS = [(2, 1.0), (3, 0.5)]
+SCHOOL_XP_DECAY_FLOOR = 0.1
+
+VET_RESPONSE_MINUTES = 20
+MIN_INJURY_RISK = 2.0
+MAX_INJURY_RISK = 18.0
+DEFAULT_PIG_WEIGHT_KG = 112.0
+MIN_PIG_WEIGHT_KG = 75.0
+MAX_PIG_WEIGHT_KG = 190.0

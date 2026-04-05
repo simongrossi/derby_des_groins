@@ -4,7 +4,9 @@ import atexit
 import os
 
 from extensions import db, APP_TIMEZONE
-from helpers import run_race_if_needed, ensure_next_race, resolve_auctions, check_vet_deadlines, resolve_market_history
+from helpers.race import ensure_next_race, run_race_if_needed
+from helpers.veterinary import check_vet_deadlines
+from services.market_service import resolve_auctions, resolve_market_history
 from services.auth_log_service import purge_old_auth_events
 
 scheduler = None

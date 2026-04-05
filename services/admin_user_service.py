@@ -6,7 +6,7 @@ from werkzeug.security import generate_password_hash
 
 from exceptions import InsufficientFundsError, ValidationError
 from extensions import db
-from helpers import set_config
+from helpers.config import set_config
 from models import User
 from services.finance_service import credit_user, debit_user
 

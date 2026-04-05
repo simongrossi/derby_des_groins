@@ -3,7 +3,7 @@ import random
 from dataclasses import dataclass, field
 from typing import Optional
 
-from data import (
+from config.race_engine_defaults import (
     RACE_BASE_SPEED_CONSTANT, RACE_VARIANCE_MAX, RACE_VARIANCE_MIN,
     RACE_STRATEGY_ECONOMY_MIN_MULT, RACE_STRATEGY_ATTACK_MAX_MULT,
     RACE_MONTEE_TERRAIN_MOD, RACE_DESCENTE_TERRAIN_MOD, RACE_VIRAGE_TERRAIN_MOD,
@@ -170,4 +170,3 @@ class CourseManager:
             'final_ranking_ids': [p.id for p in final_ranking],
             'total_race_distance': self.total_length
         })
-

@@ -3,9 +3,9 @@ from datetime import date, datetime
 
 from flask import Blueprint, jsonify, redirect, render_template, request, session, url_for
 
-from data import PENDU_FREE_PLAYS_PER_DAY, PENDU_EXTRA_PLAY_COST
+from config.gameplay_defaults import PENDU_EXTRA_PLAY_COST, PENDU_FREE_PLAYS_PER_DAY
 from extensions import db, limiter
-from helpers import get_user_active_pigs
+from helpers.race import get_user_active_pigs
 from helpers.game_data import get_hangman_words
 from models import User
 from services.finance_service import credit_user_balance, debit_user_balance

@@ -2,9 +2,9 @@ from flask import Blueprint, render_template, request, redirect, url_for, sessio
 import math
 
 from extensions import db, limiter
+from helpers.market_helpers import get_market_lock_reason, get_market_unlock_progress
 from exceptions import BusinessRuleError, UserNotFoundError, ValidationError
 from models import User, Pig, Bet, Auction, Trophy
-from helpers import get_market_unlock_progress, get_market_lock_reason
 from services.economy_service import get_configured_bet_types
 from services.auth_log_service import log_auth_event
 from services.auth_service import (

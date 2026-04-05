@@ -7,10 +7,8 @@ import random
 from sqlalchemy import func
 
 from config.game_rules import RACE_PLANNING_RULES
-from data import (
-    JOURS_FR, PIGS,
-    PIG_COURSE_SEGMENT_TYPES,
-)
+from content.pigs_catalog import PIGS
+from content.stats_metadata import JOURS_FR, PIG_COURSE_SEGMENT_TYPES
 from extensions import db
 from models import Bet, CoursePlan, Participant, Pig, Race, User
 from race_engine import CourseManager

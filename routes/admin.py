@@ -3,16 +3,20 @@ import json
 import re
 from sqlalchemy import or_
 
+from config.economy_defaults import CASINO_REASON_CODES, TAX_EXEMPT_REASON_CODES
+from config.grain_market_defaults import BOURSE_MOVEMENT_DIVISOR, BOURSE_SURCHARGE_FACTOR
+from content.stats_metadata import JOURS_FR
 from exceptions import BusinessRuleError
 from extensions import db
-from models import User, Race, Pig, Bet, CerealItem, TrainingItem, SchoolLessonItem, HangmanWordItem, PigAvatar, AuthEventLog
-from sqlalchemy.orm import joinedload
-from data import JOURS_FR
-from helpers import (
-    set_config, get_config,
-    get_all_cereals_dict, get_all_trainings_dict, get_all_school_lessons_dict,
+from helpers.config import get_config, set_config
+from helpers.game_data import (
+    get_all_cereals_dict,
+    get_all_school_lessons_dict,
+    get_all_trainings_dict,
     invalidate_game_data_cache,
 )
+from models import User, Race, Pig, Bet, CerealItem, TrainingItem, SchoolLessonItem, HangmanWordItem, PigAvatar, AuthEventLog
+from sqlalchemy.orm import joinedload
 from helpers.auth import admin_required
 from services.economy_service import (
     build_admin_progression_context,
@@ -333,7 +337,6 @@ def admin_balance(user):
         engine = get_race_engine_settings()
 
     from helpers.config import get_config
-    from data import BOURSE_SURCHARGE_FACTOR, BOURSE_MOVEMENT_DIVISOR, TAX_EXEMPT_REASON_CODES, CASINO_REASON_CODES
     return render_template(
         'admin_balance.html',
         user=user,

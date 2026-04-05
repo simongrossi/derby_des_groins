@@ -1,17 +1,21 @@
 from flask import Blueprint, render_template, request, redirect, url_for, session, flash
 from datetime import datetime
 
+from content.pigs_catalog import PIG_ORIGINS, RARITIES
+from content.stats_metadata import JOURS_FR
 from exceptions import BusinessRuleError
 from extensions import limiter
+from helpers.market_helpers import get_market_lock_reason, get_market_unlock_progress
+from helpers.race import get_user_active_pigs
 from models import User, Auction
-from data import RARITIES, PIG_ORIGINS, JOURS_FR, DEFAULT_PIG_WEIGHT_KG
-from helpers import (
-    get_market_unlock_progress, get_market_lock_reason,
-    is_market_open, get_next_market_time,
-    get_prix_moyen_groin, get_user_active_pigs,
-)
 from services.game_settings_service import get_game_settings
-from services.market_service import list_pig_for_sale, place_auction_bid_for_user
+from services.market_service import (
+    get_next_market_time,
+    get_prix_moyen_groin,
+    is_market_open,
+    list_pig_for_sale,
+    place_auction_bid_for_user,
+)
 
 market_bp = Blueprint('market', __name__)
 

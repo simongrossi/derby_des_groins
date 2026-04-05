@@ -1,0 +1,1 @@
+"""Static game content modules."""

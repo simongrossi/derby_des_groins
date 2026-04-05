@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 
 from exceptions import BusinessRuleError
 from extensions import db
-from helpers import ensure_next_race
+from helpers.race import ensure_next_race
 from models import Bet, Participant, Race, User
 from services.bet_service import place_bet_for_user
 from tests.support import build_test_app, ensure_user, reset_database

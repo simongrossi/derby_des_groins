@@ -3,6 +3,7 @@ from datetime import UTC, date, datetime
 from flask import Blueprint, jsonify, redirect, render_template, request, session, url_for
 
 from extensions import db, limiter
+from helpers.config import get_config
 from models import User
 from services.finance_service import credit_user_balance, debit_user_balance
 
@@ -18,7 +19,6 @@ def _utcnow_naive():
 
 
 def _get_truffe_config():
-    from helpers import get_config
     try:
         limit = int(get_config('truffe_daily_limit', '1'))
         replay_cost = int(get_config('truffe_replay_cost', '2'))

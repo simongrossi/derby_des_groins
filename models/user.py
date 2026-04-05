@@ -1,6 +1,6 @@
 from datetime import UTC, datetime, timedelta
 
-from data import WEEKLY_BACON_TICKETS
+from config.economy_defaults import WEEKLY_BACON_TICKETS
 from extensions import db
 
 

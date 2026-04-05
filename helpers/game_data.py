@@ -7,9 +7,9 @@ Call invalidate_game_data_cache() after any admin CRUD operation.
 import time
 from datetime import datetime
 
+from content.seed_game_items import CEREALS, COCHON_PENDU_WORDS, SCHOOL_LESSONS, TRAININGS
 from extensions import db
 from models import CerealItem, TrainingItem, SchoolLessonItem, HangmanWordItem
-from data import CEREALS, COCHON_PENDU_WORDS
 
 # ── In-memory cache ───────────────────────────────────────────────────────
 _game_data_cache = {}
@@ -61,7 +61,6 @@ def get_cereals_dict():
 def get_trainings_dict():
     """Retourne un dict {key: {...}} depuis la DB."""
     def _load():
-        from data import TRAININGS
         items = TrainingItem.query.order_by(TrainingItem.sort_order, TrainingItem.id).all()
         if not items:
             return TRAININGS
@@ -72,7 +71,6 @@ def get_trainings_dict():
 def get_school_lessons_dict():
     """Retourne un dict {key: {...}} depuis la DB."""
     def _load():
-        from data import SCHOOL_LESSONS
         items = SchoolLessonItem.query.order_by(SchoolLessonItem.sort_order, SchoolLessonItem.id).all()
         if not items:
             return SCHOOL_LESSONS

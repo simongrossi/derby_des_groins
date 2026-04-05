@@ -2,7 +2,7 @@ import unittest
 import uuid
 
 from extensions import db
-from helpers import set_config
+from helpers.config import set_config
 from models import User
 from routes.truffes import GRID_SIZE, MAX_CLICKS, TRUFFE_REWARD
 from tests.support import build_test_app, ensure_user, reset_database

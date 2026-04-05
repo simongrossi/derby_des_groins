@@ -1,7 +1,7 @@
 from datetime import datetime
 
+from helpers.race import ensure_next_race, ensure_race_for_slot, get_user_active_pigs
 from models import Bet, Participant, Race, User
-from helpers import ensure_next_race, ensure_race_for_slot, get_user_active_pigs
 from services.economy_service import (
     get_bet_limits,
     get_configured_bet_types,

@@ -17,14 +17,24 @@ from config.game_rules import (
     PIG_VITALS_RULES,
     PIG_WEIGHT_RULES,
 )
-from data import (
-    BOURSE_GRAIN_LAYOUT,
-    CHARCUTERIE, CHARCUTERIE_PREMIUM, EPITAPHS, IDEAL_WEIGHT_MALUS_THRESHOLD_RATIO,
-    MAX_INJURY_RISK, MAX_PIG_SLOTS, MAX_PIG_WEIGHT_KG, MAX_WEIGHT_PERFORMANCE_MALUS,
-    MIN_INJURY_RISK, MIN_PIG_WEIGHT_KG, PIG_EMOJIS, PIG_ORIGINS,
-    PRELOADED_PIG_NAMES, RETIREMENT_HERITAGE_MIN_WINS, SCHOOL_XP_DECAY_FLOOR,
-    SCHOOL_XP_DECAY_THRESHOLDS, SCHOOL_COOLDOWN_MINUTES, TRAIN_DAILY_CAP, VET_RESPONSE_MINUTES,
+from config.economy_defaults import MAX_PIG_SLOTS, RETIREMENT_HERITAGE_MIN_WINS
+from config.gameplay_defaults import (
+    DEFAULT_PIG_WEIGHT_KG,
+    IDEAL_WEIGHT_MALUS_THRESHOLD_RATIO,
+    MAX_INJURY_RISK,
+    MAX_PIG_WEIGHT_KG,
+    MAX_WEIGHT_PERFORMANCE_MALUS,
+    MIN_INJURY_RISK,
+    MIN_PIG_WEIGHT_KG,
+    SCHOOL_COOLDOWN_MINUTES,
+    SCHOOL_XP_DECAY_FLOOR,
+    SCHOOL_XP_DECAY_THRESHOLDS,
+    TRAIN_DAILY_CAP,
+    VET_RESPONSE_MINUTES,
 )
+from config.grain_market_defaults import BOURSE_GRAIN_LAYOUT
+from content.flavor_texts import CHARCUTERIE, CHARCUTERIE_PREMIUM, EPITAPHS
+from content.pigs_catalog import PIG_EMOJIS, PIG_ORIGINS, PRELOADED_PIG_NAMES
 from exceptions import InsufficientFundsError, PigNotFoundError, PigTiredError, ValidationError
 
 
@@ -1116,3 +1126,69 @@ def create_preloaded_admin_pigs(admin_user):
         db.session.add(pig)
         created += 1
     return created
+
+
+def recommend_best_cereal(pig, inventory_dict):
+    """
+    Choisit la meilleure céréale du stock pour ce cochon.
+    Priorité :
+    1. Si faim < 40 : céréale à fort hunger_restore.
+    2. Si énergie < 40 : céréale à fort energy_restore.
+    3. Sinon : céréale boostant les statistiques les plus faibles du cochon (équilibrage).
+    """
+    from helpers.game_data import get_cereals_dict
+    cereals = get_cereals_dict()
+
+    available_keys = [k for k, q in inventory_dict.items() if q > 0]
+    if not available_keys:
+        return None
+
+    # On calcule un score pour chaque céréale dispo
+    scores = {}
+    for key in available_keys:
+        cereal = cereals.get(key)
+        if not cereal:
+            continue
+        score = 0
+
+        # -- Besoin de nourriture (Poids fort) --
+        if pig.hunger < 40:
+            score += cereal.get('hunger_restore', 0) * 1.5
+        elif pig.hunger < 70:
+            score += cereal.get('hunger_restore', 0) * 0.5
+
+        # -- Besoin d'énergie --
+        if pig.energy < 40:
+            score += cereal.get('energy_restore', 0) * 2.0
+        elif pig.energy < 70:
+            score += cereal.get('energy_restore', 0) * 0.8
+
+        # -- Boosts de statistiques (Cœur de la logique demandée) --
+        # On valorise plus les boosts sur les stats où le cochon est faible.
+        c_stats = cereal.get('stats', {})
+        for s_key, s_boost in c_stats.items():
+            if s_boost <= 0:
+                continue
+            
+            p_val = getattr(pig, s_key, 50.0)
+            # Poids multiplicateur : plus la stat est faible, plus le boost vaut de points.
+            # Base 100, on divise pour avoir un multiplicateur entre ~1 et ~10
+            stat_weight = max(1, (100 - p_val) / 10.0)
+            
+            # Bonus spécifique pour le moral car c'est une stat de "forme"
+            if s_key == 'moral':
+                stat_weight *= 1.2
+            
+            score += (s_boost * stat_weight * 8)
+
+        scores[key] = score
+
+    if not scores:
+        best_key = available_keys[0] # Fallback simple
+    else:
+        best_key = max(scores, key=scores.get)
+        
+    res = cereals[best_key].copy()
+    res['key'] = best_key
+    return res
+

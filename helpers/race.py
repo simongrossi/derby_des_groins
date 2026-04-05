@@ -14,10 +14,8 @@ from extensions import db
 from models import (
     Bet, CoursePlan, Participant, Pig, Race, User, Trophy,
 )
-from data import (
-    PIG_ORIGINS,
-    MAX_INJURY_RISK, MIN_INJURY_RISK, VET_RESPONSE_MINUTES,
-)
+from config.gameplay_defaults import MAX_INJURY_RISK, MIN_INJURY_RISK, VET_RESPONSE_MINUTES
+from content.pigs_catalog import PIG_ORIGINS
 from services.pig_service import adjust_pig_weight, check_level_up, get_pig_settings, kill_pig, retire_pig
 from race_engine import CourseManager
 

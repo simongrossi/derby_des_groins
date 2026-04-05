@@ -317,8 +317,13 @@ Le projet suit une architecture **Flask Blueprints** modulaire, découpée par d
 derby_des_groins/
 ├── app.py                  # Factory create_app(), blueprints et bootstrap Flask
 ├── config/
+│   ├── __init__.py
 │   ├── app_config.py       # Config Flask dev/test/prod
-│   └── game_rules.py       # Constantes de gameplay centralisées
+│   ├── game_rules.py       # Règles de gameplay mutualisées
+│   ├── gameplay_defaults.py
+│   ├── economy_defaults.py
+│   ├── race_engine_defaults.py
+│   └── grain_market_defaults.py
 ├── extensions.py           # SQLAlchemy db, timezone partagés
 ├── models/                 # Modèles SQLAlchemy découpés par domaine
 │   ├── __init__.py         # Ré-exports de compatibilité
@@ -326,7 +331,11 @@ derby_des_groins/
 │   ├── pig.py
 │   ├── race.py
 │   └── ...
-├── data.py                 # Constantes de jeu (céréales, entraînements, raretés…)
+├── content/                # Contenu statique et fallbacks seedés
+│   ├── seed_game_items.py  # Céréales, entraînements, école, pendu
+│   ├── pigs_catalog.py     # PNJ, origines, raretés, noms
+│   ├── flavor_texts.py     # Charcuterie, epitaphes, vocabulaire
+│   └── stats_metadata.py   # Labels de stats, jours FR, types de segments
 ├── race_engine.py          # Moteur de simulation de course v2 (Physics-based)
 ├── promote_admin.py        # Script utilitaire de promotion admin
 ├── scheduler.py            # Tâches de fond APScheduler (courses, enchères, véto)
@@ -361,7 +370,7 @@ derby_des_groins/
 │   └── seeders.py          # Seed explicite + maintenance auth logs
 │
 ├── helpers/                # Package helpers modulaire (8 modules)
-│   ├── __init__.py         # Re-exports pour compatibilité
+│   ├── __init__.py         # Couche de compat minimale du package helpers
 │   ├── config.py           # get_config, set_config, caching
 │   ├── db.py               # Row-level locking helpers
 │   ├── time_helpers.py     # Cooldown, formatage durées
@@ -413,8 +422,9 @@ derby_des_groins/
 |--------|------|---------|
 | `extensions.py` | Objets partagés | `db = SQLAlchemy()`, `APP_TIMEZONE` |
 | `models/` | Schéma de données | Modèles SQLAlchemy découpés par domaine avec ré-export central |
-| `data.py` | Données statiques | Céréales, entraînements, école, raretés, origines, constantes |
-| `helpers/` | Logique métier | 8 modules : config, DB, temps, véto, courses, game data, marché |
+| `config/*_defaults.py` | Valeurs par défaut | Économie, gameplay, moteur de course, bourse |
+| `content/` | Données statiques | Céréales, entraînements, école, raretés, origines, textes |
+| `helpers/` | Helpers transverses | config, DB, temps, véto, courses, game data, marché |
 | `services/` | Couche métier | 8 modules : finance, cochon, courses, enchères, boutiques, economie |
 | `scheduler.py` | Tâches de fond | Résolution courses, enchères, deadlines véto, historique marché |
 | `routes/` | 15 Blueprints | Chaque domaine a son fichier avec ses routes |
