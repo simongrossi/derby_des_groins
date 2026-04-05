@@ -1,4 +1,4 @@
-from datetime import date, datetime, timezone
+from datetime import datetime, timezone
 
 from flask import Blueprint, jsonify, redirect, render_template, request, session, url_for
 
@@ -25,9 +25,14 @@ def _get_truffe_config():
 
 
 def _sync_truffe_daily_counter(user):
-    """Reset the daily counter when the stored play date is from a previous day."""
-    today = date.today()
-    if user.last_truffe_at and user.last_truffe_at.date() < today and user.truffe_plays_today:
+    """Reset the daily counter when the stored play date is from a previous UTC day.
+
+    last_truffe_at est stocké en UTC (via _utcnow_naive). On compare donc
+    avec la date UTC courante, non la date locale du serveur, pour éviter
+    tout décalage de fuseau horaire qui réinitialiserait le compteur à tort.
+    """
+    today_utc = datetime.now(timezone.utc).date()
+    if user.last_truffe_at and user.last_truffe_at.date() < today_utc and user.truffe_plays_today:
         user.truffe_plays_today = 0
         db.session.commit()
         db.session.refresh(user)
