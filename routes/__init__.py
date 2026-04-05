@@ -14,6 +14,7 @@ from routes.health import health_bp
 from routes.agenda import agenda_bp
 from routes.poker import poker_bp
 from routes.cochon_pendu import cochon_pendu_bp
+from routes.place_financiere import place_financiere_bp
 
 all_blueprints = [
     auth_bp,
@@ -32,4 +33,5 @@ all_blueprints = [
     agenda_bp,
     poker_bp,
     cochon_pendu_bp,
+    place_financiere_bp,
 ]

@@ -444,6 +444,8 @@ def run_race_if_needed():
             else:
                 bet.status = 'lost'
                 bet.winnings = 0.0
+                from services.place_financiere_service import add_to_tirelire
+                add_to_tirelire(bet.amount)
 
         db.session.commit()
 
