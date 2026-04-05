@@ -14,7 +14,7 @@
 - **Erreurs métier explicites** : les règles bloquantes remontent via `exceptions.py` (`InsufficientFundsError`, `PigTiredError`, etc.) au lieu de dépendre d'imports locaux dans les modèles.
 - **Factory plus propre** : `app.py` charge maintenant sa configuration via `config/app_config.py`, tandis que les seeders et commandes CLI ont été déplacés dans `cli/seeders.py`.
 - **Blueprints allégés progressivement** : `routes/pig.py`, `routes/race.py`, `routes/market.py`, `routes/bourse.py`, `routes/auth.py`, `routes/main.py` et la majeure partie de `routes/admin.py` délèguent désormais leur logique métier à la couche service.
-- **Pages découpées par contexte** : les routes de consultation lourdes s'appuient maintenant sur des builders dédiés (`services/homepage_service.py`, `services/rules_page_service.py`, `services/history_page_service.py`, `services/main_page_service.py`, `services/race_page_service.py`, `services/admin_race_service.py`, `services/admin_bet_service.py`) pour limiter les requêtes et le code de présentation dans les blueprints.
+- **Pages découpées par contexte** : les routes de consultation lourdes s'appuient maintenant sur des builders dédiés (`services/homepage_service.py`, `services/rules_page_service.py`, `services/history_page_service.py`, `services/classement_page_service.py`, `services/race_page_service.py`, `services/admin_race_service.py`, `services/admin_bet_service.py`) pour limiter les requêtes et le code de présentation dans les blueprints.
 - **Administration découpée par domaines** : le panneau admin est désormais réparti entre des services dédiés pour les utilisateurs, réglages, courses, tickets, cochons, événements, SMTP, Truffes, données de jeu et avatars.
 - **Tests moins couplés au dev local** : le mode `testing` pointe vers une base dédiée et `tests/support.py` reset désormais le schéma pour les suites routes/integration les plus sensibles.
 
@@ -133,7 +133,7 @@ derby_des_groins/
 │   ├── finance_service.py  # Débits/crédits, transactions, aides et prime journalière
 │   ├── history_page_service.py # Construction du contexte Historique et de ses courbes
 │   ├── homepage_service.py # Construction du contexte d'accueil
-│   ├── main_page_service.py # Construction du contexte Classement
+│   ├── classement_page_service.py # Construction du contexte Classement
 │   ├── market_service.py   # Encheres cochons, ventes, bids et deplacement de la Bourse
 │   ├── pig_lineage_service.py # Noms, lignée, reproduction, cochons seedés
 │   ├── pig_power_service.py # Poids, puissance, progression, réglages cochon

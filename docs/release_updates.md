@@ -30,7 +30,7 @@ Objectif:
   - horodatages UTC naifs centralises dans plusieurs modules metier.
 
 Verification locale:
-- `python3 -m py_compile config/app_config.py tests/support.py tests/test_betting.py tests/test_auth_logs.py tests/test_admin_auth_logs.py tests/test_admin_hangman_words.py tests/test_truffes.py helpers/auth.py services/bet_service.py services/finance_service.py services/auth_log_service.py routes/truffes.py services/main_page_service.py models/user.py services/pig_service.py`: OK;
+- `python3 -m py_compile config/app_config.py tests/support.py tests/test_betting.py tests/test_auth_logs.py tests/test_admin_auth_logs.py tests/test_admin_hangman_words.py tests/test_truffes.py helpers/auth.py services/bet_service.py services/finance_service.py services/auth_log_service.py routes/truffes.py services/classement_page_service.py models/user.py services/pig_service.py`: OK;
 - `./.venv/bin/python -m unittest tests.test_truffes tests.test_betting tests.test_auth_logs tests.test_admin_auth_logs tests.test_admin_hangman_words`: OK.
 
 ### Phase 8 - Amincissement final du panneau admin (cochons, evenements, notifications, truffes, donnees, avatars)
@@ -93,7 +93,7 @@ Verification locale:
   - les surencheres;
   - la mise en vente des cochons;
   - les deplacements de la Bourse;
-- creation de `services/main_page_service.py` pour deplacer la construction des contextes lourds de:
+- creation initiale de `services/main_page_service.py` pour deplacer la construction des contextes lourds de:
   - l'accueil;
   - l'historique;
   - la page `/regles`;

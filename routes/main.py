@@ -2,13 +2,13 @@ from flask import Blueprint, render_template, redirect, url_for, session, flash,
 import time
 
 from models import User
-from services.history_page_service import build_history_page_context
-from services.homepage_service import build_homepage_context
-from services.rules_page_service import build_rules_page_context
-from services.main_page_service import (
+from services.classement_page_service import (
     build_classement_page_context,
     build_empty_classement_page_context,
 )
+from services.history_page_service import build_history_page_context
+from services.homepage_service import build_homepage_context
+from services.rules_page_service import build_rules_page_context
 
 main_bp = Blueprint('main', __name__)
 

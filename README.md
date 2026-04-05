@@ -384,7 +384,7 @@ derby_des_groins/
 │   ├── finance_service.py  # Transactions BitGroins atomiques
 │   ├── history_page_service.py # Contexte de l'historique et des courbes
 │   ├── homepage_service.py # Contexte de la page d'accueil
-│   ├── main_page_service.py # Contexte du classement
+│   ├── classement_page_service.py # Contexte du classement
 │   ├── pig_lineage_service.py # Noms, lignée, reproduction
 │   ├── pig_power_service.py # Poids, puissance, progression
 │   ├── pig_service.py      # Actions cochon, vitals, école, retraite

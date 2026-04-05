@@ -32,11 +32,11 @@
 - [x] **4.2** Ancien fichier `data.py` supprimé ; constantes regroupées dans `config/*_defaults.py` et `content/`
 - [x] **4.3** Imports internes réécrits vers les modules réels (`helpers.config`, `helpers.race`, `services.*`, etc.)
 - [x] **4.4** `helpers/__init__.py` réduit à un namespace package documenté, sans ré-exports runtime
-- [x] **4.5** Accueil extrait dans `services/homepage_service.py` pour alléger `services/main_page_service.py`
+- [x] **4.5** Accueil extrait dans `services/homepage_service.py`
 - [x] **4.6** Domaine cochon redécoupé entre `services/pig_service.py`, `services/pig_power_service.py` et `services/pig_lineage_service.py`
 - [x] **4.7** Sweep de code mort: suppression de `RACE_BASE_SPEED_VIT_MULT` inutilisé dans `config/race_engine_defaults.py`
 - [x] **4.8** Hub règles extrait dans `services/rules_page_service.py`
-- [x] **4.9** Historique extrait dans `services/history_page_service.py`, `services/main_page_service.py` recentré sur le classement
+- [x] **4.9** Historique extrait dans `services/history_page_service.py`, puis classement sorti dans `services/classement_page_service.py`
 
 ### Qualite du code (session precedente) ✅
 - [x] Suppression `update_item.py`
@@ -123,7 +123,7 @@
   - Resultat actuel : **41 tests OK**
   - Deux regressions moteur reparees au passage dans `race_engine.py` (penalite de course recente + champs replay attendus par le front)
 - [ ] **R3** Dernier decoupage du classement
-  - `services/main_page_service.py` ne porte plus que le classement, mais peut encore etre scinde en un `classement_page_service.py`
+  - Le classement vit maintenant dans `services/classement_page_service.py`
   - Sortir au besoin les agregations SQL et/ou la construction des awards pour finir le nettoyage
 - [ ] **R4** Consolidation post-refactor
   - Ajouter ou mettre a jour quelques tests ciblant `homepage_service`, `rules_page_service`, `history_page_service`, `pig_power_service` et `pig_lineage_service`
