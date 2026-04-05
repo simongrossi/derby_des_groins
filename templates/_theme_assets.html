@@ -11,9 +11,9 @@ html[data-theme="light"] {
     --theme-surface-soft: rgba(255, 247, 251, 0.84);
     --theme-stroke: rgba(214, 170, 191, 0.45);
     --theme-stroke-strong: rgba(214, 170, 191, 0.65);
-    --theme-text: #4b3143;
-    --theme-text-soft: rgba(75, 49, 67, 0.84);
-    --theme-text-faint: rgba(75, 49, 67, 0.68);
+    --theme-text: #432739;
+    --theme-text-soft: rgba(67, 39, 57, 0.9);
+    --theme-text-faint: rgba(67, 39, 57, 0.78);
     --theme-shadow: 0 20px 60px rgba(214, 132, 173, 0.12);
 }
 
@@ -81,6 +81,10 @@ html[data-theme="light"] [class*="bg-fuchsia-400/10"] {
     border-color: var(--theme-stroke-strong) !important;
 }
 
+html[data-theme="light"] .btn-secondary {
+    color: var(--theme-text) !important;
+}
+
 html[data-theme="light"] .text-white,
 html[data-theme="light"] .text-white\/95,
 html[data-theme="light"] .text-white\/90,
@@ -130,7 +134,33 @@ html[data-theme="light"] .text-yellow-50,
 html[data-theme="light"] .text-yellow-100,
 html[data-theme="light"] .text-amber-50,
 html[data-theme="light"] .text-amber-100 {
-    color: #7f4f6c !important;
+    color: #6f435c !important;
+}
+
+html[data-theme="light"] .pill:not(.text-emerald-200):not(.text-cyan-200):not(.text-red-200):not(.text-yellow-100):not(.text-amber-100) {
+    color: var(--theme-text-soft) !important;
+}
+
+html[data-theme="light"] .booth-link:hover {
+    background: linear-gradient(180deg, rgba(255, 251, 253, 0.98), rgba(255, 243, 248, 0.96)) !important;
+    border-color: rgba(214, 170, 191, 0.72) !important;
+    box-shadow: 0 14px 26px rgba(214, 132, 173, 0.14) !important;
+}
+
+html[data-theme="light"] .booth-link:focus-visible {
+    border-color: rgba(236, 72, 153, 0.45) !important;
+    box-shadow:
+        0 0 0 4px rgba(236, 72, 153, 0.12),
+        0 14px 26px rgba(214, 132, 173, 0.14) !important;
+}
+
+html[data-theme="light"] .booth-link-arrow {
+    color: rgba(111, 67, 92, 0.66) !important;
+}
+
+html[data-theme="light"] .booth-link:hover .booth-link-arrow,
+html[data-theme="light"] .booth-link:focus-visible .booth-link-arrow {
+    color: var(--theme-text) !important;
 }
 
 html[data-theme="light"] .sidebar-link:hover {

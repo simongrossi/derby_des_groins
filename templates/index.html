@@ -48,6 +48,36 @@
             border-radius: 1rem;
             padding: 1rem;
         }
+        .booth-link {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: .75rem;
+            transition: transform .18s ease, border-color .18s ease, background .18s ease, box-shadow .18s ease;
+        }
+        .booth-link:hover {
+            transform: translateY(-1px);
+            background: rgba(255, 232, 240, .07);
+            border-color: rgba(255, 205, 226, .18);
+            box-shadow: 0 12px 28px rgba(18, 8, 20, .18);
+        }
+        .booth-link:focus-visible {
+            outline: none;
+            background: rgba(255, 232, 240, .08);
+            border-color: rgba(251, 146, 60, .4);
+            box-shadow: 0 0 0 4px rgba(251, 146, 60, .12);
+        }
+        .booth-link-arrow {
+            color: rgba(255, 255, 255, .56);
+            font-size: 1.1rem;
+            line-height: 1;
+            transition: transform .18s ease, color .18s ease;
+        }
+        .booth-link:hover .booth-link-arrow,
+        .booth-link:focus-visible .booth-link-arrow {
+            color: rgba(255, 255, 255, .92);
+            transform: translateX(2px);
+        }
         #countdown-display {
             font-family:'Lilita One', cursive;
             background:linear-gradient(135deg,#f472b6,#fb7185,#fdba74);
@@ -142,19 +172,25 @@
             {% endif %}
             <div class="mt-4 space-y-2">
                 {% for slot in week_race_cards %}
-                <div class="flex items-center justify-between gap-3 soft px-3 py-2.5">
+                {% if slot.race %}
+                {% set slot_href = url_for('race.paris', race_id=slot.race.id) %}
+                {% set slot_label = 'Parier' %}
+                {% set slot_label_classes = 'bg-emerald-500/12 text-emerald-200 border border-emerald-400/20' %}
+                {% else %}
+                {% set slot_href = url_for('race.paris', slot=slot.slot_key) %}
+                {% set slot_label = 'Voir' %}
+                {% set slot_label_classes = 'bg-cyan-500/12 text-cyan-200 border border-cyan-400/20' %}
+                {% endif %}
+                <a href="{{ slot_href }}" class="soft booth-link px-3 py-2.5 group">
                     <div class="min-w-0">
                         <p class="text-white font-bold text-sm truncate">{{ slot.theme.emoji }} {{ slot.theme.name }}</p>
                         <p class="text-white/35 text-xs font-semibold">{{ slot.day_name }} • {{ slot.slot.strftime('%d/%m %H:%M') }}{% if slot.user_plan_names %} · <span class="text-cyan-300">{{ slot.user_plan_names | join(', ') }}</span>{% endif %}</p>
                     </div>
-                    {% if slot.race and not slot.is_locked %}
-                    <span class="pill bg-emerald-500/12 text-emerald-200 border border-emerald-400/20 shrink-0 text-[10px]">Ouverts</span>
-                    {% elif slot.is_locked %}
-                    <span class="pill bg-white/8 text-white/50 border border-white/10 shrink-0 text-[10px]">Lock</span>
-                    {% else %}
-                    <span class="pill bg-cyan-500/12 text-cyan-200 border border-cyan-400/20 shrink-0 text-[10px]">A venir</span>
-                    {% endif %}
-                </div>
+                    <div class="flex items-center gap-2 shrink-0">
+                        <span class="pill {{ slot_label_classes }} shrink-0 text-[10px]">{{ slot_label }}</span>
+                        <span class="booth-link-arrow" aria-hidden="true">›</span>
+                    </div>
+                </a>
                 {% endfor %}
             </div>
             <div class="mt-auto pt-4 flex flex-wrap gap-3">
