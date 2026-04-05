@@ -23,6 +23,18 @@ def _get_bet_payout_balance_delta(bet):
     return round(float(amount or 0.0), 2)
 
 
+def _get_expected_bet_balance_delta(bet, snapshot):
+    if snapshot.actual_status == 'won':
+        return round(float((bet.amount or 0.0) * (bet.odds_at_bet or 0.0)), 2)
+    return 0.0
+
+
+def _has_bet_balance_mismatch(bet, snapshot):
+    expected_delta = _get_expected_bet_balance_delta(bet, snapshot)
+    current_delta = _get_bet_payout_balance_delta(bet)
+    return round(current_delta, 2) != round(expected_delta, 2)
+
+
 def reconcile_bet_record(bet):
     snapshot = getattr(bet, 'outcome_snapshot', None)
     if snapshot is None:
@@ -31,7 +43,7 @@ def reconcile_bet_record(bet):
     if snapshot is None or snapshot.actual_status is None:
         return False, "Course non terminee: aucun recalcul possible."
 
-    expected_winnings = round(bet.amount * bet.odds_at_bet, 2) if snapshot.actual_status == 'won' else 0.0
+    expected_winnings = _get_expected_bet_balance_delta(bet, snapshot)
     current_payout_delta = _get_bet_payout_balance_delta(bet)
     payout_delta = round(expected_winnings - current_payout_delta, 2)
 
@@ -77,11 +89,19 @@ def build_admin_bets_page_context(status_filter='', race_id_filter=None, usernam
         .all()
     )
     attach_bet_outcome_snapshots(bets)
+    for bet in bets:
+        payout_mismatch = _has_bet_balance_mismatch(bet, bet.outcome_snapshot)
+        setattr(bet, 'payout_consistent', not payout_mismatch)
+        setattr(
+            bet,
+            'is_reconcile_mismatch',
+            (not bet.outcome_snapshot.is_consistent) or payout_mismatch,
+        )
 
     if mismatch_only:
-        bets = [bet for bet in bets if not bet.outcome_snapshot.is_consistent]
+        bets = [bet for bet in bets if bet.is_reconcile_mismatch]
 
-    mismatch_count = sum(1 for bet in bets if not bet.outcome_snapshot.is_consistent)
+    mismatch_count = sum(1 for bet in bets if bet.is_reconcile_mismatch)
     finished_count = sum(1 for bet in bets if bet.outcome_snapshot.race_finished)
 
     return {
@@ -113,7 +133,7 @@ def reconcile_finished_bets():
 
     updated = 0
     for bet in bets:
-        if bet.outcome_snapshot.is_consistent:
+        if bet.outcome_snapshot.is_consistent and not _has_bet_balance_mismatch(bet, bet.outcome_snapshot):
             continue
         did_update, _ = reconcile_bet_record(bet)
         if did_update:

@@ -173,6 +173,7 @@ def run_race_if_needed():
             bets = Bet.query.filter_by(race_id=race.id, status='pending').all()
             for bet in bets:
                 bet.status = 'refunded'
+                bet.winnings = 0.0
                 credit_user_balance(
                     bet.user_id, bet.amount,
                     reason_code='bet_refund',

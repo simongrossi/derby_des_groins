@@ -313,7 +313,8 @@ def cancel_race_and_refund_bets(race):
                 reference_id=race.id,
                 commit=False,
             )
-        bet.status = 'cancelled'
+        bet.status = 'refunded'
+        bet.winnings = 0.0
 
     race_id = race.id
     db.session.delete(race)

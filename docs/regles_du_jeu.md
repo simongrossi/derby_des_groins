@@ -262,6 +262,8 @@ Regles structurelles:
 - fermeture des paris `30 secondes` avant le depart;
 - mise mini `5`, maxi `500` BitGroins;
 - si un cap payout admin est active, il plafonne le gain total du ticket.
+- le gain annonce par la cote est celui qui est effectivement credite si le ticket gagne;
+- si un ticket est rembourse, la mise revient integralement.
 
 Regle speciale:
 - les paris a `3+ selections` exigent que le joueur ait son propre cochon dans la course.
@@ -309,6 +311,10 @@ Multiplicateurs actuels:
 | 2 | x1.20 |
 | 3 | x1.40 |
 | 4 | x1.60 |
+
+Taxe anti-baleine:
+- la taxe progressive s'applique aux credits economiques entrants;
+- elle ne s'applique pas aux remboursements de ticket ni aux gains de paris, pour que la cote prise reste honnete et que le remboursement rende bien 100% de la mise.
 
 ### Reproduction et heritage
 
