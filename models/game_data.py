@@ -2,6 +2,21 @@ from datetime import datetime
 import json
 
 from extensions import db
+from models.user import User
+
+class AcademieScore(db.Model):
+    __tablename__ = 'academie_score'
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    word = db.Column(db.String(80), nullable=False)
+    time_taken = db.Column(db.Float, nullable=False)
+    errors = db.Column(db.Integer, nullable=False)
+    score = db.Column(db.Integer, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    user = db.relationship('User', backref=db.backref('academie_scores', lazy=True, cascade='all, delete-orphan'))
+
 
 
 class CerealItem(db.Model):

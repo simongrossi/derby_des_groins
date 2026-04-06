@@ -378,6 +378,24 @@
     document.getElementById('restart-btn').addEventListener('click', restart);
     document.getElementById('modal-restart').addEventListener('click', restart);
 
+    // Support clavier physique pour la vitesse
+    document.addEventListener('keydown', (e) => {
+      if (gameState && gameState.status === 'playing') {
+        // Ignorer si on tape dans un input (bien qu'il n'y en ait pas ici)
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+        
+        const key = e.key.toUpperCase();
+        if (/^[A-Z]$/.test(key)) {
+          // Trouver le bouton html correspondant
+          const buttons = Array.from(keyboard.querySelectorAll('button'));
+          const btn = buttons.find(b => b.textContent === key);
+          if (btn && !btn.disabled && btn.dataset.used !== '1') {
+            guessLetter(key, btn);
+          }
+        }
+      }
+    });
+
     renderKeyboard();
     updateUi(gameState);
   </script>

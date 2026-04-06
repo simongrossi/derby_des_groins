@@ -1,0 +1,277 @@
+{% include '_site_header.html' %}
+
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Derby des Groins — Dactylo Porcin</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --px-panel: #1b1638;
+      --px-panel-2: #251e49;
+      --px-line: #423580;
+    }
+    body { background: repeating-linear-gradient(180deg,#120e26 0 8px,#0e0b1f 8px 16px); }
+    .pixel-font { font-family: 'Press Start 2P', cursive; letter-spacing: 0.04em; }
+    .retro-font { font-family: 'VT323', monospace; }
+    .pixel-card {
+      border: 4px solid #000;
+      box-shadow: inset 0 0 0 2px var(--px-line), 0 10px 0 #000;
+      background: linear-gradient(180deg, var(--px-panel-2), var(--px-panel));
+    }
+    .pixel-btn {
+      border: 3px solid #000;
+      box-shadow: inset 0 0 0 2px rgba(255,255,255,0.08), 0 4px 0 #000;
+      text-transform: uppercase;
+      transition: transform .05s ease;
+    }
+    .pixel-btn:active { transform: translateY(2px); box-shadow: inset 0 0 0 2px rgba(255,255,255,0.08), 0 2px 0 #000; }
+    .scanlines::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      background: repeating-linear-gradient(180deg, rgba(255,255,255,0.03) 0 2px, transparent 2px 4px);
+      mix-blend-mode: soft-light;
+    }
+    .letter-slot {
+      display: inline-block;
+      width: 2.2rem;
+      height: 2.8rem;
+      line-height: 2.8rem;
+      text-align: center;
+      border: 2px solid #5a4b9e;
+      background: rgba(0,0,0,0.4);
+      font-size: 1.2rem;
+      color: #fff;
+    }
+    .letter-slot.correct { border-color: #34d399; color: #34d399; background: rgba(52,211,153,0.1); }
+    .letter-slot.incorrect { border-color: #f87171; color: #f87171; background: rgba(248,113,113,0.1); }
+    .letter-slot.current { border-bottom: 4px solid #fcd34d; background: rgba(252,211,77,0.1); }
+  </style>
+</head>
+<body class="min-h-screen text-white">
+  <main class="max-w-5xl mx-auto px-4 py-8 space-y-6">
+    <section class="pixel-card relative scanlines p-5 sm:p-7 text-white">
+      <div class="flex flex-wrap items-center justify-between gap-4 relative z-10">
+        <div>
+          <p class="pixel-font text-[10px] text-indigo-300">ACADEMIE PORCINE</p>
+          <h1 class="pixel-font text-xl sm:text-2xl text-indigo-100 mt-3">⌨️ DACTYLO PORCIN</h1>
+          <p class="retro-font text-xl text-white/50 mt-1">Vitesse et précision. Tapez les mots pour marquer des points.</p>
+        </div>
+      </div>
+
+      <div class="mt-8 text-center relative z-10">
+        <div id="game-screen" class="hidden flex-col items-center gap-6">
+          <div class="flex gap-4 mb-4">
+            <div class="bg-black/40 px-4 py-2 border-2 border-indigo-500">
+              <span class="pixel-font text-[10px] text-indigo-300">TEMPS</span>
+              <p id="timer" class="retro-font text-3xl text-yellow-300">0.0s</p>
+            </div>
+            <div class="bg-black/40 px-4 py-2 border-2 border-indigo-500">
+              <span class="pixel-font text-[10px] text-indigo-300">ERREURS</span>
+              <p id="error-count" class="retro-font text-3xl text-red-400">0</p>
+            </div>
+          </div>
+          
+          <div id="word-container" class="pixel-font text-2xl flex gap-2 justify-center flex-wrap max-w-full">
+            <!-- Letters injected here -->
+          </div>
+          
+          <p id="game-feedback" class="retro-font text-2xl h-8 mt-4 text-emerald-300"></p>
+        </div>
+
+        <div id="start-screen" class="py-12">
+          <button id="start-btn" class="pixel-btn pixel-font text-sm bg-indigo-600 hover:bg-indigo-500 px-8 py-4">
+            Demarrer l'entrainement
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Leaderboard -->
+    <section class="pixel-card relative scanlines p-5 sm:p-7 text-white mt-8">
+      <div class="relative z-10 w-full">
+        <h2 class="pixel-font text-lg sm:text-lg text-yellow-300 mb-4 text-center">🏆 CLASSEMENT DES DACTYLOS</h2>
+        {% if top_scores %}
+        <div class="overflow-x-auto">
+          <table class="w-full text-left" style="min-width: 600px;">
+            <thead>
+              <tr class="retro-font text-xl text-indigo-300 border-b-2 border-indigo-900/50">
+                <th class="py-2 px-3 tracking-widest leading-none">RANG</th>
+                <th class="py-2 px-3 tracking-widest leading-none">JOUEUR</th>
+                <th class="py-2 px-3 tracking-widest leading-none">MOT</th>
+                <th class="py-2 px-3 tracking-widest leading-none">TEMPS</th>
+                <th class="py-2 px-3 tracking-widest leading-none text-right">SCORE</th>
+              </tr>
+            </thead>
+            <tbody class="retro-font text-2xl divide-y divide-indigo-900/30">
+              {% for score in top_scores %}
+              <tr class="hover:bg-white/5 transition-colors">
+                <td class="py-2 px-3 text-indigo-100 uppercase">#{{ loop.index }}</td>
+                <td class="py-2 px-3 text-cyan-200 uppercase">{{ score.user.username }}</td>
+                <td class="py-2 px-3 text-white/50 tracking-[0.2em] uppercase">{{ score.word }}</td>
+                <td class="py-2 px-3 text-yellow-200 uppercase">{{ "%.1f"|format(score.time_taken) }}s</td>
+                <td class="py-2 px-3 text-emerald-400 text-right font-bold tracking-widest uppercase">{{ score.score }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <p class="retro-font text-2xl text-center text-white/40 italic py-6">Aucun score enregistré. Soyez le premier !</p>
+        {% endif %}
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const startScreen = document.getElementById('start-screen');
+    const gameScreen = document.getElementById('game-screen');
+    const startBtn = document.getElementById('start-btn');
+    const wordContainer = document.getElementById('word-container');
+    const timerEl = document.getElementById('timer');
+    const errorCountEl = document.getElementById('error-count');
+    const feedbackEl = document.getElementById('game-feedback');
+
+    let currentWord = "";
+    let currentIndex = 0;
+    let errors = 0;
+    let startTime = 0;
+    let timerInterval = null;
+    let isPlaying = false;
+
+    function renderWord() {
+      wordContainer.innerHTML = '';
+      for (let i = 0; i < currentWord.length; i++) {
+        const span = document.createElement('span');
+        span.className = 'letter-slot';
+        span.textContent = currentWord[i];
+        if (i < currentIndex) {
+          span.classList.add('correct');
+        } else if (i === currentIndex) {
+          span.classList.add('current');
+        }
+        wordContainer.appendChild(span);
+      }
+    }
+
+    function updateTimer() {
+      if (!startTime) return;
+      const elapsed = (Date.now() - startTime) / 1000;
+      timerEl.textContent = elapsed.toFixed(1) + 's';
+    }
+
+    async function startGame() {
+      startBtn.disabled = true;
+      feedbackEl.textContent = "Chargement...";
+      
+      try {
+        const res = await fetch('/api/academie/start', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+          }
+        });
+        const data = await res.json();
+        
+        if (!data.ok) throw new Error("Erreur");
+
+        currentWord = data.word;
+        currentIndex = 0;
+        errors = 0;
+        errorCountEl.textContent = "0";
+        feedbackEl.textContent = "";
+
+        startScreen.classList.add('hidden');
+        gameScreen.classList.remove('hidden');
+        gameScreen.classList.add('flex');
+
+        renderWord();
+
+        startTime = Date.now();
+        timerInterval = setInterval(updateTimer, 100);
+        isPlaying = true;
+      } catch (e) {
+        feedbackEl.textContent = "Erreur au lancement de la partie.";
+        startBtn.disabled = false;
+      }
+    }
+
+    async function submitGame() {
+      isPlaying = false;
+      clearInterval(timerInterval);
+      feedbackEl.textContent = "Envoi du score...";
+      feedbackEl.className = "retro-font text-2xl h-8 mt-4 text-emerald-300 animate-pulse";
+
+      try {
+        const res = await fetch('/api/academie/submit', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+          },
+          body: JSON.stringify({ word: currentWord, errors: errors })
+        });
+        const data = await res.json();
+
+        if (data.ok) {
+          feedbackEl.className = "retro-font text-2xl h-8 mt-4 text-yellow-300";
+          feedbackEl.innerHTML = `Terminé en ${data.time_taken}s ! Score: <span class="text-emerald-400 font-bold tracking-widest">${data.score}</span> pts`;
+          setTimeout(() => {
+            window.location.reload();
+          }, 2500);
+        } else {
+          throw new Error(data.error);
+        }
+      } catch (e) {
+        feedbackEl.className = "retro-font text-2xl h-8 mt-4 text-red-400";
+        feedbackEl.textContent = "Erreur de validation: " + e.message;
+        setTimeout(() => {
+            startScreen.classList.remove('hidden');
+            gameScreen.classList.add('hidden');
+            gameScreen.classList.remove('flex');
+            startBtn.disabled = false;
+        }, 2000);
+      }
+    }
+
+    document.addEventListener('keydown', (e) => {
+      if (!isPlaying) return;
+      
+      const key = e.key.toUpperCase();
+      if (!/^[A-Z]$/.test(key)) return; // Ignore non-letters
+
+      const expectedLetter = currentWord[currentIndex];
+      const slots = wordContainer.querySelectorAll('.letter-slot');
+
+      if (key === expectedLetter) {
+        slots[currentIndex].classList.remove('current', 'incorrect');
+        slots[currentIndex].classList.add('correct');
+        currentIndex++;
+        
+        if (currentIndex >= currentWord.length) {
+          submitGame();
+        } else {
+          slots[currentIndex].classList.add('current');
+        }
+      } else {
+        errors++;
+        errorCountEl.textContent = errors;
+        slots[currentIndex].classList.add('incorrect');
+        setTimeout(() => {
+           if (slots[currentIndex]) slots[currentIndex].classList.remove('incorrect');
+        }, 200);
+      }
+    });
+
+    startBtn.addEventListener('click', startGame);
+  </script>
+</body>
+</html>

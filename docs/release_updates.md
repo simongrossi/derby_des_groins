@@ -7,6 +7,22 @@ Objectif:
 - garder une trace chronologique exploitable apres chaque phase;
 - faciliter les reprises de contexte et la redaction de changelogs plus visibles plus tard.
 
+## 2026-04-06
+
+### Phase 11 — Dactylo Porcin et restructuration des mini-jeux
+- séparation stricte du *Cochon Pendu* (pendu classique) et de la nouvelle *Académie Dactylographique* (jeu de vitesse de frappe) ;
+- création de `routes/academie.py` et `templates/academie.html` pour héberger le nouveau jeu de frappe ;
+- ajout de la prise en charge du clavier physique natif `keydown` dans le *Cochon Pendu* pour jouer plus confortablement ;
+- mise en place de la table `academie_score` et du modèle `AcademieScore` (avec relation utilisateur) ;
+- implémentation d'un algorithme de score complexe :
+  - **Difficulté du mot** : +100 points/lettre, +50 points/lettre unique ;
+  - **Bonus de temps** : système de timer dégressif ultra rapide (-50 points par seconde) ;
+  - **Pénalité d'erreur** : -150 points par coquille.
+- intégration d'un classement (Leaderboard) sur la page du jeu affichant le Top 15 ;
+- ajout d'une entrée "Dactylo Porcin" dans le sous-menu de l'Arcade (`_site_header.html`).
+
+---
+
 ## 2026-04-05
 
 ### Phase 10 — Gameplay settings adminables, bundle export/import et rééquilibrage
