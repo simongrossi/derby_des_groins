@@ -361,7 +361,13 @@ derby_des_groins/
 │   ├── blackjack.py        # Groin Jack — blackjack porcin
 │   ├── truffes.py          # Jeu des Truffes — grille 20x20
 │   ├── agenda.py           # La Légende du GROSMOP — mini-jeu réflexe calendrier
-│   ├── admin.py            # panneau admin complet (dashboard, economie, races, users, etc.)
+│   ├── admin/              # panneau admin — package découpé en sous-modules
+│   │   ├── __init__.py     #   Blueprint admin_bp + constantes partagées
+│   │   ├── dashboard.py    #   Dashboard & logs d'authentification
+│   │   ├── economy.py      #   Économie, progression, balance, export settings
+│   │   ├── game_data.py    #   CRUD céréales, entraînements, leçons, mots du pendu
+│   │   ├── entities.py     #   Utilisateurs, cochons, avatars
+│   │   └── operations.py   #   Courses, paris, events, notifications, truffes
 │   ├── api.py              # vétérinaire, countdown, pig API, live-state, avatars
 │   └── health.py           # Health check /health
 │
