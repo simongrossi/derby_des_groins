@@ -1,0 +1,71 @@
+{% extends "admin_base.html" %}
+
+{% block title %}Gestion A Bon Porc - Derby des Groins Admin{% endblock %}
+
+{% block admin_content %}
+<div class="mb-8 flex items-center justify-between">
+    <div>
+        <h1 class="font-title text-3xl text-white">Gestion des parties A Bon Porc</h1>
+        <p class="text-white/50">Surveillez et réinitialisez les tables de jeu en cours.</p>
+    </div>
+    <form action="{{ url_for('admin.abonporc_games_reset') }}" method="POST" onsubmit="return confirm('Voulez-vous vraiment réinitialiser TOUTES les parties A Bon Porc ? Tous les joueurs seront remboursés.');">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit" class="rounded-xl bg-red-600 px-6 py-3 font-black text-white transition-colors hover:bg-red-500 shadow-lg shadow-red-900/20">
+            🔥 TOUT RÉINITIALISER
+        </button>
+    </form>
+</div>
+
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    {% for table in tables %}
+    <div class="rounded-3xl border border-white/10 bg-black/40 p-6 shadow-xl">
+        <div class="flex items-center justify-between mb-4">
+            <span class="px-3 py-1 rounded-full bg-white/5 border border-white/10 text-[10px] font-black uppercase text-white/50">TABLE #{{ table.id }}</span>
+            <span class="px-3 py-1 rounded-full {% if table.status == 'playing' %}bg-green-500/20 text-green-400 border-green-500/30{% elif table.status == 'voting' %}bg-yellow-500/20 text-yellow-400 border-yellow-500/30{% else %}bg-blue-500/20 text-blue-400 border-blue-500/30{% endif %} text-[10px] font-black uppercase tracking-wider">
+                {{ table.status }}
+            </span>
+        </div>
+
+        <div class="space-y-3 mb-6">
+            <div class="flex justify-between text-sm">
+                <span class="text-white/40">Phase :</span>
+                <span class="font-bold text-white">{{ table.phase or '---' }}</span>
+            </div>
+            <div class="flex justify-between text-sm">
+                <span class="text-white/40">Buy-in :</span>
+                <span class="font-bold text-yellow-400">{{ table.buy_in }} 🪙</span>
+            </div>
+            <div class="flex justify-between text-sm">
+                <span class="text-white/40">Joueurs :</span>
+                <span class="font-bold text-white">{{ table.player_count }} / 4</span>
+            </div>
+        </div>
+
+        <div class="border-t border-white/5 pt-4 mb-6">
+            <p class="text-[10px] font-black uppercase text-white/30 mb-2">Cochons à table :</p>
+            <div class="space-y-2">
+                {% for player in table.players %}
+                <div class="flex items-center justify-between text-xs bg-white/5 rounded-lg px-3 py-2">
+                    <span class="font-bold text-white">{{ player.username }} (Siège {{ player.seat }})</span>
+                    <span class="text-white/40">{% if player.vote %}Voté : {{ player.vote }} 🪙{% else %}Pas voté{% endif %}</span>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <form action="{{ url_for('admin.abonporc_games_reset') }}" method="POST" onsubmit="return confirm('Réinitialiser la Table #{{ table.id }} ? Les joueurs inscrits seront remboursés.');">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="table_id" value="{{ table.id }}">
+            <button type="submit" class="w-full rounded-xl bg-white/5 border border-white/10 py-3 text-sm font-bold text-white hover:bg-red-500/20 hover:border-red-500/30 hover:text-red-400 transition-all">
+                Annuler la table
+            </button>
+        </form>
+    </div>
+    {% else %}
+    <div class="col-span-full py-20 text-center bg-black/20 border border-white/5 rounded-3xl">
+        <div class="text-6xl mb-4 opacity-20">🐽</div>
+        <p class="text-white/30 font-bold text-xl uppercase tracking-widest">Aucune partie A Bon Porc en cours.</p>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}
