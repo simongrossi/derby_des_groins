@@ -1,16 +1,13 @@
-from flask import render_template, flash, redirect, url_for, request, jsonify
-from flask_login import login_required, current_user
+from flask import render_template, flash, redirect, url_for, request
 from extensions import db
+from helpers.auth import admin_required
 from models import AbonPorcTable, AbonPorcPlayer, User
 from services.finance_service import credit_user_balance
-from routes.admin import admin_bp # Import the admin blueprint
+from routes.admin import admin_bp
 
 @admin_bp.route('/abonporc_games')
-@login_required
-def abonporc_games():
-    if not current_user.is_admin:
-        flash("Accès non autorisé.", "danger")
-        return redirect(url_for('main.index'))
+@admin_required
+def abonporc_games(user):
 
     active_tables = AbonPorcTable.query.filter(AbonPorcTable.status.in_(['lobby', 'voting', 'playing'])).all()
     
@@ -38,11 +35,8 @@ def abonporc_games():
     return render_template('admin/abonporc_games.html', tables=tables_data)
 
 @admin_bp.route('/abonporc_games/reset', methods=['POST'])
-@login_required
-def abonporc_games_reset():
-    if not current_user.is_admin:
-        flash("Accès non autorisé.", "danger")
-        return redirect(url_for('main.index'))
+@admin_required
+def abonporc_games_reset(user):
 
     table_id = request.form.get('table_id')
     if table_id:
