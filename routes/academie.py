@@ -35,7 +35,7 @@ def academie_start():
     word = random.choice(words).replace(' ', '').upper()
     
     session['academie_active_word'] = word
-    session['academie_start_ts'] = time.time()
+    session['academie_start_ts'] = time.time() + 3.0
     session.modified = True
     
     return jsonify({
@@ -63,7 +63,7 @@ def academie_submit():
     if typed_word != target_word:
         return jsonify({'ok': False, 'error': 'Mot incorrect'}), 400
         
-    time_taken = time.time() - start_ts
+    time_taken = max(0.1, time.time() - start_ts)
     
     clean_word = target_word.replace(' ', '')
     unique_letters = len(set(clean_word))

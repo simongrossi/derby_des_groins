@@ -193,11 +193,23 @@
         gameScreen.classList.remove('hidden');
         gameScreen.classList.add('flex');
 
-        renderWord();
-
-        startTime = Date.now();
-        timerInterval = setInterval(updateTimer, 100);
-        isPlaying = true;
+        wordContainer.innerHTML = '<span class="retro-font text-5xl text-yellow-300 animate-pulse">3</span>';
+        
+        let counter = 3;
+        const countInt = setInterval(() => {
+          counter--;
+          if (counter > 0) {
+            wordContainer.innerHTML = `<span class="retro-font text-5xl text-yellow-300 animate-pulse">${counter}</span>`;
+          } else {
+            clearInterval(countInt);
+            wordContainer.innerHTML = '';
+            renderWord();
+            startTime = Date.now();
+            timerInterval = setInterval(updateTimer, 100);
+            isPlaying = true;
+          }
+        }, 1000);
+        
       } catch (e) {
         feedbackEl.textContent = "Erreur au lancement de la partie.";
         startBtn.disabled = false;
@@ -222,11 +234,13 @@
         const data = await res.json();
 
         if (data.ok) {
-          feedbackEl.className = "retro-font text-2xl h-8 mt-4 text-yellow-300";
-          feedbackEl.innerHTML = `Terminé en ${data.time_taken}s ! Score: <span class="text-emerald-400 font-bold tracking-widest">${data.score}</span> pts`;
+          feedbackEl.className = "retro-font flex flex-col items-center gap-2 mt-4 text-yellow-300";
+          feedbackEl.innerHTML = `<span>Terminé en ${data.time_taken.toFixed(1)}s ! Score: <span class="text-emerald-400 font-bold tracking-widest">${data.score}</span> pts</span>
+                                  <span class="text-indigo-300 text-sm animate-pulse mt-2">Nouveau mot en approche...</span>`;
           setTimeout(() => {
-            window.location.reload();
-          }, 2500);
+            feedbackEl.innerHTML = "";
+            startGame();
+          }, 3000);
         } else {
           throw new Error(data.error);
         }
