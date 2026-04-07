@@ -1,4 +1,4 @@
-from models.game_data import CerealItem, HangmanWordItem, SchoolLessonItem, TrainingItem
+from models.game_data import CerealItem, HangmanWordItem, SchoolLessonItem, TrainingItem, AcademieScore
 from models.market import Auction, GrainMarket, MarketHistory
 from models.notifications import AuthEventLog, ChatMessage, UserNotification
 from models.pig import Pig, PigAvatar, Trophy, UserCerealInventory
@@ -9,6 +9,7 @@ from models.user import GameConfig, User
 
 __all__ = [
     'AuthEventLog',
+    'AcademieScore',
     'Auction',
     'BalanceTransaction',
     'Bet',
