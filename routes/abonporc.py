@@ -12,21 +12,47 @@ BUY_IN_OPTIONS = [10, 20, 50, 100]
 MIN_PLAYERS = 3
 MAX_PLAYERS = 4
 
-# --- Catalogue des Cartes ---
+# --- Catalogue Complet des Cartes ---
 VEHICLES = [
     {"id": "c15", "name": "Le C15 du Seigneur", "type": "vehicle", "v": 5, "c": 1, "count": 3, "desc": "Blanc, rouillé, deux roues dans le vide."},
-    {"id": "john_dindon", "name": "Tracteur John Dindon", "type": "vehicle", "v": 3, "c": 2, "count": 3, "desc": "Vert brillant, un paysan fier."},
-    {"id": "echasses_vignes", "name": "L’Enjambeur 'Échasses-Vignes'", "type": "vehicle", "v": 4, "c": 1, "count": 2, "desc": "Très haut, survole les flics."},
-    {"id": "broyeuse", "name": "Moissonneuse 'La Broyeuse'", "type": "vehicle", "v": 1, "c": 4, "count": 2, "desc": "Large comme trois maisons."},
+    {"id": "john_dindon", "name": "Tracteur John Dindon", "type": "vehicle", "v": 3, "c": 2, "count": 3, "desc": "Vert brillant, paysan fier."},
+    {"id": "vignes", "name": "L’Enjambeur 'Échasses-Vignes'", "type": "vehicle", "v": 4, "c": 1, "count": 2, "desc": "Passe au-dessus des flics."},
+    {"id": "broyeuse", "name": "Moissonneuse 'La Broyeuse'", "type": "vehicle", "v": 1, "c": 4, "count": 2, "desc": "Des flammes sur les côtés."},
     {"id": "boue_man", "name": "Quad 'Boue-Man'", "type": "vehicle", "v": 5, "c": 0, "count": 2, "desc": "On ne voit que des yeux et des dents."},
-    {"id": "smog_agri", "name": "Tracteur Pulvé 'Smog-Agri'", "type": "vehicle", "v": 2, "c": 2, "count": 2, "desc": "Cuves jaunes fluo, fumée suspecte."},
-    {"id": "pony", "name": "Le Pony de 1950", "type": "vehicle", "v": 1, "c": 1, "count": 1, "desc": "Moteur qui tremble, poules sur le siège."}
+    {"id": "smog_agri", "name": "Tracteur Pulvé 'Smog-Agri'", "type": "vehicle", "v": 2, "c": 2, "count": 2, "desc": "Fumée verte suspecte."},
+    {"id": "pony", "name": "Le Pony de 1950", "type": "vehicle", "v": 1, "c": 1, "count": 1, "desc": "Des poules nichent sur le siège."}
 ]
 
-# (Autres listes simplifiées pour l'exemple)
-GRAY_CARDS = [{"id": "gc_c15", "name": "Papier du C15", "type": "gray_card", "power": "Vitesse Lumière (V+3)", "count": 15}]
-TRAILERS = [{"id": "tr_std", "name": "La Bétaillère Standard", "type": "trailer", "plus_c": 1, "count": 10}]
-LARCINS = [{"id": "lar_alco", "name": "Contrôle d'Alcoémie", "type": "larcin", "desc": "Immobilise 1 tour", "count": 20}]
+GRAY_CARDS = [
+    {"id": "gc_c15", "name": "Papier du C15", "type": "gray_card", "power": "Vitesse Lumière (V+3)", "count": 3},
+    {"id": "gc_john", "name": "Tampon John Dindon", "type": "gray_card", "power": "Ligne Droite", "count": 3},
+    {"id": "gc_vignes", "name": "Livret Échasses-Vignes", "type": "gray_card", "power": "Saut d'Obstacle", "count": 2},
+    {"id": "gc_broyeuse", "name": "Facture La Broyeuse", "type": "gray_card", "power": "Indéboulonnable", "count": 2},
+    {"id": "gc_quad", "name": "Certificat Quad", "type": "gray_card", "power": "Raccourci bois", "count": 2},
+    {"id": "gc_smog", "name": "Permis Smog-Agri", "type": "gray_card", "power": "Douche de Lisier", "count": 2},
+    {"id": "gc_pony", "name": "Acte du Pony", "type": "gray_card", "power": "Ancêtre (Pioche 3)", "count": 1}
+]
+
+TRAILERS = [
+    {"id": "tr_std", "name": "La Bétaillère Standard", "type": "trailer", "plus_c": 1, "count": 3},
+    {"id": "tr_hydro", "name": "La Benne Hydraulique", "type": "trailer", "plus_c": 2, "count": 2},
+    {"id": "tr_foin", "name": "Le Plateau à Foin", "type": "trailer", "plus_c": 1, "count": 2},
+    {"id": "tr_velo", "name": "La Remorque à Vélo", "type": "trailer", "plus_c": 0, "count": 2},
+    {"id": "tr_carnaval", "name": "Le Char de Carnaval", "type": "trailer", "plus_c": 3, "count": 1}
+]
+
+LARCINS = [
+    {"id": "lar_alco", "name": "Contrôle d'Alcoémie", "type": "larcin", "desc": "Immobilise 1 tour", "count": 2},
+    {"id": "lar_adblue", "name": "Panne d'AdBlue", "type": "larcin", "desc": "Vitesse à 0", "count": 2},
+    {"id": "lar_radar", "name": "Radars de Campagne", "type": "larcin", "desc": "Adieu véhicule", "count": 2},
+    {"id": "lar_sanglier", "name": "Invasion de Sangliers", "type": "larcin", "desc": "Détruit remorque", "count": 2},
+    {"id": "lar_parisien", "name": "Parisiens en Vacances", "type": "larcin", "desc": "Vitesse -2", "count": 2},
+    {"id": "lar_gazole", "name": "Vol de Gazole", "type": "larcin", "desc": "Vole carte main", "count": 2},
+    {"id": "lar_fosse", "name": "Fossé Glissant", "type": "larcin", "desc": "Bloqué dans boue", "count": 2},
+    {"id": "lar_poste", "name": "Grève de la Poste", "type": "larcin", "desc": "Pas de Carte Grise", "count": 2},
+    {"id": "lar_cloture", "name": "Clôture Électrique", "type": "larcin", "desc": "Lâche le cochon", "count": 2},
+    {"id": "lar_zero", "name": "Zéro de Conduite", "type": "larcin", "desc": "Échange main", "count": 2}
+]
 
 def build_deck():
     deck = []
@@ -59,13 +85,10 @@ def join():
         table = AbonPorcTable(status='lobby')
         db.session.add(table)
         db.session.flush()
-    
     if AbonPorcPlayer.query.filter_by(table_id=table.id, user_id=user.id).first():
         return jsonify({'ok': False, 'error': 'Déjà inscrit'})
-    
     count = AbonPorcPlayer.query.filter_by(table_id=table.id).count()
     if count >= MAX_PLAYERS: return jsonify({'ok': False, 'error': 'Table complète'})
-    
     player = AbonPorcPlayer(table_id=table.id, user_id=user.id, seat=count+1)
     db.session.add(player)
     db.session.commit()
@@ -87,17 +110,24 @@ def start():
     user = _resolve_user()
     table = _get_active_table()
     players = AbonPorcPlayer.query.filter_by(table_id=table.id).all()
-    if len(players) < MIN_PLAYERS: return jsonify({'ok': False, 'error': 'Pas assez de joueurs'})
-    
-    # Tout le monde a voté la même chose ?
+    if len(players) < MIN_PLAYERS: return jsonify({'ok': False, 'error': 'Minimum 3 cochons !'})
     votes = [p.vote for p in players]
-    if None in votes or len(set(votes)) != 1:
-        return jsonify({'ok': False, 'error': 'L\'unanimité est requise !'})
+    if None in votes or len(set(votes)) != 1: return jsonify({'ok': False, 'error': 'Unanimité requise !'})
+    
+    buy_in = votes[0]
+    deck = build_deck()
+    for p in players:
+        u = User.query.get(p.user_id)
+        if not u.can_afford(buy_in): return jsonify({'ok': False, 'error': f'{u.username} est à sec !'})
+        debit_user_balance(u.id, buy_in, reason_code='abonporc_buyin', reason_label='Buy-in A Bon Porc')
+        # Distribution de 6 cartes
+        hand = [deck.pop() for _ in range(6)]
+        p.hand_json = json.dumps(hand)
     
     table.status = 'playing'
-    table.buy_in = votes[0]
-    table.deck_json = json.dumps(build_deck())
-    # Initialisation de la main...
+    table.buy_in = buy_in
+    table.deck_json = json.dumps(deck)
+    table.phase = 'recolte'
     db.session.commit()
     return jsonify({'ok': True})
 
@@ -106,7 +136,6 @@ def state():
     user = _resolve_user()
     table = _get_active_table()
     if not table: return jsonify({'ok': True, 'status': 'no_table'})
-    
     players = AbonPorcPlayer.query.filter_by(table_id=table.id).all()
     p_data = []
     my_p = None
@@ -117,19 +146,13 @@ def state():
             'seat': p.seat, 'username': p.user.username,
             'is_me': is_me, 'vote': p.vote,
             'vehicle': json.loads(p.vehicle_json or 'null'),
-            'victory_pigs': json.loads(p.victory_pigs_json or '[]')
+            'victory_pigs': json.loads(p.victory_pigs_json or '[]'),
+            'hand': json.loads(p.hand_json or '[]') if is_me else None
         })
-    
-    # Vérifier unanimité
     votes = [p.vote for p in players if p.vote]
     unanimous = len(votes) == len(players) and len(players) >= MIN_PLAYERS and len(set(votes)) == 1
-
     return jsonify({
-        'ok': True,
-        'status': table.status,
-        'phase': table.phase,
-        'players': p_data,
-        'my_seat': my_p.seat if my_p else None,
-        'player_count': len(players),
-        'unanimous': unanimous
+        'ok': True, 'status': table.status, 'phase': table.phase,
+        'players': p_data, 'my_seat': my_p.seat if my_p else None,
+        'unanimous': unanimous, 'player_count': len(players)
     })

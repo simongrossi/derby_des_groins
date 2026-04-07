@@ -9,15 +9,30 @@
     <style>
         * { font-family: 'Nunito', sans-serif; }
         .font-title { font-family: 'Lilita One', cursive; }
-        body { background: #1a2a1a; color: #f0f0f0; min-height: 100vh; }
-        .table-area { background: rgba(0,0,0,0.3); border: 4px solid #3d2b1f; border-radius: 50px; padding: 2rem; min-height: 500px; position: relative; }
-        .player-zone { position: absolute; width: 200px; text-align: center; }
+        body { background: #1a2a1a; color: #f0f0f0; min-height: 100vh; overflow-x: hidden; }
+        .table-area { background: rgba(0,0,0,0.3); border: 4px solid #3d2b1f; border-radius: 50px; padding: 2rem; min-height: 500px; position: relative; margin-bottom: 200px; }
+        .player-zone { position: absolute; width: 220px; text-align: center; }
         .zone-top { top: 20px; left: 50%; transform: translateX(-50%); }
         .zone-bottom { bottom: 20px; left: 50%; transform: translateX(-50%); }
         .zone-left { left: 20px; top: 50%; transform: translateY(-50%); }
         .zone-right { right: 20px; top: 50%; transform: translateY(-50%); }
-        .card-visual { width: 80px; height: 120px; background: #fff; color: #333; border-radius: 8px; border: 2px solid #555; display: inline-flex; flex-direction: column; justify-content: space-between; padding: 4px; font-size: 0.6rem; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
-        .my-hand { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.6); padding: 1rem 2rem; border-radius: 20px 20px 0 0; display: flex; gap: 10px; z-index: 100; }
+
+        .card-visual {
+            width: 85px; height: 125px; background: #fff; color: #333; border-radius: 10px; border: 2px solid #444;
+            display: inline-flex; flex-direction: column; justify-content: space-between; padding: 6px;
+            font-size: 0.65rem; box-shadow: 0 4px 8px rgba(0,0,0,0.4); transition: transform 0.2s; cursor: pointer;
+        }
+        .card-visual:hover { transform: translateY(-10px) scale(1.1); z-index: 50; }
+        .card-type-vehicle { background: #e2e8f0; border-color: #64748b; }
+        .card-type-gray_card { background: #dcfce7; border-color: #16a34a; }
+        .card-type-trailer { background: #fef3c7; border-color: #d97706; }
+        .card-type-larcin { background: #fee2e2; border-color: #dc2626; }
+
+        .my-hand {
+            position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
+            background: rgba(0,0,0,0.8); padding: 1.5rem 2.5rem; border-radius: 25px 25px 0 0;
+            display: flex; gap: 15px; z-index: 100; border-top: 2px solid #4ade80;
+        }
     </style>
 </head>
 <body class="p-4">
@@ -25,8 +40,8 @@
 
     <div class="max-w-6xl mx-auto mt-8">
         <div class="flex justify-between items-center mb-6">
-            <h1 class="font-title text-4xl text-green-400">🐽 A BON PORC</h1>
-            <div id="status-badge" class="px-4 py-2 rounded-full bg-yellow-500/20 border border-yellow-500/40 text-yellow-200 font-bold">LOBBY</div>
+            <h1 class="font-title text-5xl text-green-400 drop-shadow-lg">🐽 A BON PORC</h1>
+            <div id="status-badge" class="px-6 py-2 rounded-full bg-green-500/20 border border-green-500/40 text-green-200 font-black tracking-widest uppercase">LOBBY</div>
         </div>
 
         <div class="table-area" id="game-table">
@@ -38,23 +53,23 @@
 
         <div id="my-hand-container" class="my-hand hidden"></div>
 
-        <div id="lobby-ui" class="mt-8 card p-8 bg-black/40 border border-white/10 rounded-2xl text-center">
+        <div id="lobby-ui" class="mt-8 card p-10 bg-black/60 backdrop-blur-md border border-white/10 rounded-3xl text-center shadow-2xl">
             <div id="join-section">
-                <h2 class="font-title text-2xl mb-4">Inscris ton groin !</h2>
-                <button onclick="joinGame()" class="px-8 py-4 bg-green-600 hover:bg-green-500 text-white font-bold rounded-xl text-xl transition transform hover:scale-105">REJOINDRE LA PARTIE</button>
+                <h2 class="font-title text-3xl mb-6">Inscris ton groin !</h2>
+                <button onclick="joinGame()" class="px-10 py-5 bg-green-600 hover:bg-green-500 text-white font-black rounded-2xl text-2xl transition transform hover:scale-105 shadow-xl">REJOINDRE LA PARTIE</button>
             </div>
 
             <div id="vote-section" class="hidden">
-                <p class="font-bold text-lg mb-4">Choisissez le buy-in (Unanimité requise) :</p>
-                <div class="flex justify-center gap-4">
+                <p class="font-bold text-xl mb-6">Choisissez le buy-in (Unanimité requise) :</p>
+                <div class="flex justify-center gap-6">
                     {% for opt in buy_in_options %}
-                    <button id="vote-btn-{{ opt }}" onclick="voteBuyIn({{ opt }})" class="px-6 py-3 bg-white/10 hover:bg-white/20 border border-white/20 rounded-lg font-black transition-all">{{ opt }} 🪙</button>
+                    <button id="vote-btn-{{ opt }}" onclick="voteBuyIn({{ opt }})" class="px-8 py-4 bg-white/5 hover:bg-white/15 border border-white/20 rounded-xl font-black text-xl transition-all">{{ opt }} 🪙</button>
                     {% endfor %}
                 </div>
             </div>
 
-            <div id="start-section" class="hidden mt-6">
-                <button onclick="startGame()" class="px-8 py-4 bg-pink-600 hover:bg-pink-500 text-white font-bold rounded-xl text-xl animate-pulse">LANCER LA PARTIE ! 🐽</button>
+            <div id="start-section" class="hidden mt-8">
+                <button onclick="startGame()" class="px-12 py-6 bg-pink-600 hover:bg-pink-500 text-white font-black rounded-2xl text-3xl animate-pulse shadow-2xl">LANCER LA PARTIE ! 🐽</button>
             </div>
         </div>
     </div>
@@ -79,6 +94,7 @@
             const joinSec = document.getElementById('join-section');
             const voteSec = document.getElementById('vote-section');
             const startSec = document.getElementById('start-section');
+            const handCont = document.getElementById('my-hand-container');
 
             if (gameState.status === 'no_table' || !gameState.my_seat) {
                 joinSec.classList.remove('hidden');
@@ -86,12 +102,11 @@
             } else {
                 joinSec.classList.add('hidden');
                 voteSec.classList.remove('hidden');
-
-                // Highlight my vote
                 const me = gameState.players.find(p => p.is_me);
                 if (me && me.vote) {
-                    document.querySelectorAll('#vote-section button').forEach(b => b.classList.remove('bg-yellow-500', 'text-black'));
-                    document.getElementById('vote-btn-' + me.vote).classList.add('bg-yellow-500', 'text-black');
+                    document.querySelectorAll('#vote-section button').forEach(b => b.classList.remove('bg-yellow-500', 'text-black', 'scale-110'));
+                    const btn = document.getElementById('vote-btn-' + me.vote);
+                    if (btn) btn.classList.add('bg-yellow-500', 'text-black', 'scale-110');
                 }
             }
 
@@ -103,21 +118,23 @@
 
             if (gameState.status === 'playing') {
                 lobbyUi.classList.add('hidden');
-                statusBadge.innerText = "PARTIE EN COURS - " + gameState.phase.toUpperCase();
-            } else if (gameState.status === 'voting') {
-                statusBadge.innerText = "VOTE DU BUY-IN (" + gameState.player_count + "/{{ min_players }} min)";
+                handCont.classList.remove('hidden');
+                statusBadge.innerText = "PHASE: " + gameState.phase.toUpperCase();
+                const me = gameState.players.find(p => p.is_me);
+                if (me && me.hand) {
+                    handCont.innerHTML = me.hand.map(c => renderCard(c)).join('');
+                }
             }
 
-            // Render players
             if (gameState.players) {
                 playersCont.innerHTML = gameState.players.map(p => {
                     const posClass = getPosClass(p.seat, gameState.my_seat || 1);
                     return `
                         <div class="player-zone ${posClass}">
-                            <div class="font-bold text-pink-400 mb-2">${p.username} ${p.is_me ? '(Toi)' : ''}</div>
+                            <div class="font-black text-pink-400 mb-2 uppercase tracking-tighter">${p.username} ${p.is_me ? '(Toi)' : ''}</div>
                             <div class="flex flex-col gap-2 items-center">
-                                ${p.vehicle ? renderCard(p.vehicle, true) : '<div class="w-16 h-20 border-2 border-dashed border-white/10 rounded flex items-center justify-center text-[8px] opacity-20">AUCUN VEHICULE</div>'}
-                                <div class="text-[10px] font-bold ${p.vote ? 'text-green-400' : 'text-white/30'}">${p.vote ? 'VOTE: ' + p.vote + ' 🪙' : 'EN ATTENTE...'}</div>
+                                ${p.vehicle ? renderCard(p.vehicle, true) : '<div class="w-16 h-24 border-2 border-dashed border-white/10 rounded-xl flex items-center justify-center text-[10px] opacity-20 font-bold">AUCUN VEHICULE</div>'}
+                                <div class="text-[10px] font-black uppercase ${p.vote ? 'text-green-400' : 'text-white/30'}">${p.vote ? 'VOTE: ' + p.vote + ' 🪙' : 'EN ATTENTE...'}</div>
                             </div>
                         </div>
                     `;
@@ -127,7 +144,17 @@
         }
 
         function renderCard(c, small = false) {
-            return `<div class="card-visual ${small ? 'w-12 h-16' : 'w-24 h-36'}"><div class="font-black uppercase">${c.name}</div></div>`;
+            return `
+                <div class="card-visual card-type-${c.type} ${small ? 'w-14 h-20 text-[0.4rem]' : ''}">
+                    <div class="font-black uppercase leading-none">${c.name}</div>
+                    <div class="text-[0.5rem] italic opacity-70">${c.desc || c.power || ''}</div>
+                    <div class="flex justify-between font-black text-[0.6rem]">
+                        ${c.v !== undefined ? `<span>V:${c.v}</span>` : ''}
+                        ${c.c !== undefined ? `<span>C:${c.c}</span>` : ''}
+                        ${c.plus_c !== undefined ? `<span>+C:${c.plus_c}</span>` : ''}
+                    </div>
+                </div>
+            `;
         }
 
         function getPosClass(seat, mySeat) {
@@ -140,21 +167,21 @@
         }
 
         async function joinGame() {
-            await fetch('/abonporc/join', { method: 'POST', headers: { 'X-CSRF-Token': csrfToken } });
+            await fetch('/abonporc/join', { method: 'POST', headers: { 'X-CSRFToken': csrfToken } });
             refreshState();
         }
 
         async function voteBuyIn(amount) {
             await fetch('/abonporc/vote', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
                 body: JSON.stringify({ buy_in: amount })
             });
             refreshState();
         }
 
         async function startGame() {
-            const res = await fetch('/abonporc/start', { method: 'POST', headers: { 'X-CSRF-Token': csrfToken } });
+            const res = await fetch('/abonporc/start', { method: 'POST', headers: { 'X-CSRFToken': csrfToken } });
             const data = await res.json();
             if (!data.ok) alert(data.error);
             refreshState();
