@@ -11,39 +11,22 @@
         .font-title { font-family: 'Lilita One', cursive; }
         body { background: #1a2a1a; color: #f0f0f0; min-height: 100vh; overflow-x: hidden; padding-bottom: 250px; }
 
-        .table-area {
-            background: radial-gradient(circle, rgba(40,80,40,0.4) 0%, rgba(0,0,0,0.6) 100%);
-            border: 6px solid #3d2b1f; border-radius: 80px; padding: 2rem;
-            min-height: 550px; position: relative; box-shadow: inset 0 0 50px rgba(0,0,0,0.8);
-        }
-
-        .player-zone { position: absolute; width: 220px; text-align: center; transition: all 0.5s ease; }
+        .table-area { background: radial-gradient(circle, rgba(40,80,40,0.4) 0%, rgba(0,0,0,0.6) 100%); border: 6px solid #3d2b1f; border-radius: 80px; padding: 2rem; min-height: 550px; position: relative; box-shadow: inset 0 0 50px rgba(0,0,0,0.8); }
+        .player-zone { position: absolute; width: 220px; text-align: center; }
         .zone-top { top: 30px; left: 50%; transform: translateX(-50%); }
         .zone-bottom { bottom: 30px; left: 50%; transform: translateX(-50%); }
         .zone-left { left: 40px; top: 50%; transform: translateY(-50%); }
         .zone-right { right: 40px; top: 50%; transform: translateY(-50%); }
 
-        .card-visual {
-            width: 110px; height: 160px; background: #fff; color: #333; border-radius: 12px; border: 3px solid #444;
-            display: inline-flex; flex-direction: column; justify-content: space-between; padding: 8px;
-            font-size: 0.75rem; box-shadow: 0 6px 15px rgba(0,0,0,0.5); transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            position: relative; cursor: pointer; user-select: none;
-        }
-        .card-visual:hover { transform: translateY(-15px) scale(1.05) rotate(1deg); z-index: 100; box-shadow: 0 20px 40px rgba(0,0,0,0.7); border-color: #fff; }
-
+        .card-visual { width: 110px; height: 160px; background: #fff; color: #333; border-radius: 12px; border: 3px solid #444; display: inline-flex; flex-direction: column; justify-content: space-between; padding: 8px; font-size: 0.75rem; box-shadow: 0 6px 15px rgba(0,0,0,0.5); transition: all 0.2s ease; cursor: pointer; position: relative; user-select: none; }
+        .card-visual:hover { transform: translateY(-10px) scale(1.05); z-index: 100; border-color: #fff; }
         .card-type-vehicle { background: linear-gradient(135deg, #f1f5f9 0%, #94a3b8 100%); border-color: #475569; }
-        .card-type-gray_card { background: linear-gradient(135deg, #bbf7d0 0%, #4ade80 100%); border-color: #166534; }
+        .card-type-gray_card { background: linear-gradient(135deg, #dcfce7 0%, #4ade80 100%); border-color: #166534; }
         .card-type-trailer { background: linear-gradient(135deg, #fef9c3 0%, #facc15 100%); border-color: #854d0e; }
         .card-type-larcin { background: linear-gradient(135deg, #fee2e2 0%, #f87171 100%); border-color: #991b1b; }
+        .card-type-victory { background: linear-gradient(135deg, #f0abfc 0%, #c026d3 100%); border-color: #701a75; color: white; }
 
-        .my-hand-wrapper {
-            position: fixed; bottom: 0; left: 0; right: 0;
-            background: linear-gradient(to top, rgba(0,0,0,1) 0%, rgba(20,40,20,0.9) 100%);
-            padding: 20px 40px; border-top: 5px solid #4ade80; z-index: 10000;
-            display: flex; justify-content: center; align-items: flex-end;
-            min-height: 200px;
-        }
-
+        .my-hand-wrapper { position: fixed; bottom: 0; left: 0; right: 0; background: linear-gradient(to top, rgba(0,0,0,1) 0%, rgba(20,40,20,0.9) 100%); padding: 20px 40px; border-top: 5px solid #4ade80; z-index: 9999; display: flex; justify-content: center; align-items: flex-end; min-height: 200px; gap: 10px; }
         .stat-badge { background: rgba(0,0,0,0.7); color: white; padding: 2px 6px; border-radius: 6px; font-weight: 900; font-size: 0.65rem; border: 1px solid rgba(255,255,255,0.2); }
         .hand-label { position: absolute; top: -35px; left: 50%; transform: translateX(-50%); background: #4ade80; color: #1a2a1a; padding: 4px 15px; border-radius: 15px 15px 0 0; font-weight: 900; font-size: 0.8rem; text-transform: uppercase; }
     </style>
@@ -53,50 +36,36 @@
 
     <div class="max-w-7xl mx-auto mt-8">
         <div class="flex justify-between items-center mb-6">
-            <div class="flex items-center gap-4">
-                <span class="text-6xl drop-shadow-lg">🐽</span>
-                <h1 class="font-title text-6xl text-green-400 tracking-tight drop-shadow-[0_0_15px_rgba(74,222,128,0.5)]">A BON PORC</h1>
-            </div>
-            <div id="status-badge" class="px-8 py-3 rounded-2xl bg-black/40 border-2 border-green-500/50 text-green-400 font-black tracking-widest uppercase text-xl">LOBBY</div>
+            <h1 class="font-title text-5xl text-green-400 drop-shadow-lg">🐽 A BON PORC</h1>
+            <div id="status-badge" class="px-8 py-3 rounded-2xl bg-black/40 border-2 border-green-500/50 text-green-400 font-black tracking-widest uppercase">LOBBY</div>
         </div>
 
         <div class="table-area" id="game-table">
             <div id="players-container"></div>
-
-            <div id="center-pigs" class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center bg-black/20 p-8 rounded-full border-2 border-white/5 backdrop-blur-sm">
-                <div id="waiting-msg" class="text-2xl font-black text-white/30 uppercase italic">En attente des gorets...</div>
+            <div id="center-pigs" class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 flex gap-4">
+                <!-- Cochons de victoire ici -->
             </div>
         </div>
 
-        <!-- Main du joueur -->
         <div id="my-hand-container" class="my-hand-wrapper hidden">
             <div class="hand-label">Ma Main de Cochon</div>
-            <div id="cards-row" class="flex gap-4 items-end overflow-x-auto px-10 py-4 max-w-full">
-                <!-- Cartes injectées ici -->
-            </div>
+            <div id="cards-row" class="flex gap-3 items-end"></div>
         </div>
 
-        <div id="lobby-ui" class="mt-8 card p-12 bg-black/70 backdrop-blur-xl border-2 border-white/10 rounded-[2rem] text-center shadow-[0_25px_50px_-12px_rgba(0,0,0,0.8)]">
+        <div id="lobby-ui" class="mt-8 card p-12 bg-black/70 border-2 border-white/10 rounded-[2rem] text-center">
             <div id="join-section">
-                <h2 class="font-title text-4xl mb-8 text-white">Prêt pour la foire ?</h2>
-                <button onclick="joinGame()" class="group relative px-12 py-6 bg-green-600 hover:bg-green-500 text-white font-black rounded-2xl text-3xl transition-all transform hover:scale-105 shadow-[0_0_30px_rgba(22,163,74,0.4)]">
-                    REJOINDRE LA PARTIE
-                </button>
+                <button onclick="joinGame()" class="px-12 py-6 bg-green-600 text-white font-black rounded-2xl text-3xl transition-all transform hover:scale-105">REJOINDRE LA PARTIE</button>
             </div>
-
             <div id="vote-section" class="hidden">
-                <p class="font-bold text-2xl mb-8 text-green-200 uppercase tracking-wide">Misez sur la partie :</p>
+                <p class="font-bold text-2xl mb-8 uppercase">Choisissez le buy-in :</p>
                 <div class="flex justify-center gap-8">
                     {% for opt in buy_in_options %}
-                    <button id="vote-btn-{{ opt }}" onclick="voteBuyIn({{ opt }})" class="px-10 py-5 bg-white/5 hover:bg-white/15 border-2 border-white/20 rounded-2xl font-black text-2xl transition-all hover:border-yellow-500/50">{{ opt }} 🪙</button>
+                    <button id="vote-btn-{{ opt }}" onclick="voteBuyIn({{ opt }})" class="px-10 py-5 bg-white/5 border-2 border-white/20 rounded-2xl font-black text-2xl transition-all">{{ opt }} 🪙</button>
                     {% endfor %}
                 </div>
             </div>
-
-            <div id="start-section" class="hidden mt-10 border-t-2 border-white/5 pt-10">
-                <button onclick="startGame()" class="px-16 py-8 bg-pink-600 hover:bg-pink-500 text-white font-black rounded-[2rem] text-4xl animate-pulse shadow-[0_0_50px_rgba(219,39,119,0.5)] transform hover:scale-110 transition-transform">
-                    LANCER LA PARTIE ! 🐽
-                </button>
+            <div id="start-section" class="hidden mt-10">
+                <button onclick="startGame()" class="px-16 py-8 bg-pink-600 text-white font-black rounded-[2rem] text-4xl animate-pulse">LANCER LA PARTIE ! 🐽</button>
             </div>
         </div>
     </div>
@@ -109,10 +78,9 @@
             try {
                 const res = await fetch('/abonporc/state');
                 const data = await res.json();
-                console.log('API state raw data:', data); // LOG IMPORTANT POUR VOUS
                 gameState = data;
                 renderGame();
-            } catch (e) { console.error('Erreur refresh:', e); }
+            } catch (e) { console.error(e); }
         }
 
         function renderGame() {
@@ -124,19 +92,19 @@
             const startSec = document.getElementById('start-section');
             const handCont = document.getElementById('my-hand-container');
             const cardsRow = document.getElementById('cards-row');
+            const centerPigs = document.getElementById('center-pigs');
 
             if (gameState.status === 'no_table' || !gameState.my_seat) {
                 joinSec.classList.remove('hidden');
                 voteSec.classList.add('hidden');
-                handCont.classList.add('hidden');
             } else {
                 joinSec.classList.add('hidden');
                 voteSec.classList.remove('hidden');
                 const me = gameState.players.find(p => p.is_me);
                 if (me && me.vote) {
-                    document.querySelectorAll('#vote-section button').forEach(b => b.classList.remove('bg-yellow-500', 'text-black', 'scale-110', 'border-yellow-400'));
+                    document.querySelectorAll('#vote-section button').forEach(b => b.classList.remove('bg-yellow-500', 'text-black'));
                     const btn = document.getElementById('vote-btn-' + me.vote);
-                    if (btn) btn.classList.add('bg-yellow-500', 'text-black', 'scale-110', 'border-yellow-400');
+                    if (btn) btn.classList.add('bg-yellow-500', 'text-black');
                 }
             }
 
@@ -149,16 +117,15 @@
             if (gameState.status === 'playing') {
                 lobbyUi.classList.add('hidden');
                 handCont.classList.remove('hidden');
-                statusBadge.innerText = "PHASE: " + (gameState.phase ? gameState.phase.toUpperCase() : 'LIVRAISON');
+                statusBadge.innerText = "PHASE: " + (gameState.phase ? gameState.phase.toUpperCase() : 'RECOLTE');
 
                 const me = gameState.players.find(p => p.is_me);
-                if (me) {
-                    console.log('Current player hand:', me.hand); // LOG IMPORTANT POUR VOUS
-                    if (me.hand && me.hand.length > 0) {
-                        cardsRow.innerHTML = me.hand.map(c => renderCard(c)).join('');
-                    } else {
-                        cardsRow.innerHTML = '<div class="text-white/40 italic font-black text-xl">Ta main de cochon est vide !</div>';
-                    }
+                if (me && me.hand) {
+                    cardsRow.innerHTML = me.hand.map(c => renderCard(c)).join('');
+                }
+
+                if (gameState.center_pigs) {
+                    centerPigs.innerHTML = gameState.center_pigs.map(c => renderCard(c)).join('');
                 }
             }
 
@@ -167,35 +134,29 @@
                     const posClass = getPosClass(p.seat, gameState.my_seat || 1);
                     return `
                         <div class="player-zone ${posClass}">
-                            <div class="font-black text-pink-400 mb-2 uppercase tracking-tighter text-2xl drop-shadow-lg">${p.username} ${p.is_me ? '<span class="text-green-400">(MOI)</span>' : ''}</div>
+                            <div class="font-black text-pink-400 mb-2 uppercase text-xl">${p.username} ${p.is_me ? '(MOI)' : ''}</div>
                             <div class="flex flex-col gap-3 items-center">
-                                ${p.vehicle ? renderCard(p.vehicle, true) : '<div class="w-16 h-24 border-2 border-dashed border-white/20 rounded-2xl flex items-center justify-center text-[8px] opacity-20 font-black uppercase text-center p-2">Emplacement<br>Engin</div>'}
-                                <div class="px-4 py-1 rounded-full bg-black/40 text-xs font-black uppercase tracking-widest ${p.vote ? 'text-green-400' : 'text-white/20'}">
-                                    ${p.vote ? 'MISE: ' + p.vote + ' 🪙' : 'Réfléchit...'}
-                                </div>
+                                ${p.vehicle ? renderCard(p.vehicle, true) : '<div class="w-16 h-24 border-2 border-dashed border-white/20 rounded-xl opacity-20 flex items-center justify-center text-[8px] font-black uppercase">Vide</div>'}
+                                <div class="text-[10px] font-black uppercase ${p.vote ? 'text-green-400' : 'text-white/30'}">${p.vote ? 'Mise: ' + p.vote + ' 🪙' : 'Pense...'}</div>
                             </div>
                         </div>
                     `;
                 }).join('');
-                document.getElementById('waiting-msg').classList.toggle('hidden', gameState.players.length > 0);
             }
         }
 
         function renderCard(c, small = false) {
-            if (!c) return '';
             const sizeClasses = small ? 'w-16 h-24 text-[0.45rem] p-1.5' : 'w-[110px] h-[160px] p-2';
-            const statStyle = small ? 'font-black text-[0.55rem]' : 'font-black text-[0.7rem]';
-
             return `
-                <div class="card-visual card-type-${c.type} ${sizeClasses}" onclick="playCard('${c.id}')">
-                    <div class="font-black uppercase leading-tight border-b-2 border-black/10 pb-1 mb-1 truncate text-center" title="${c.name}">${c.name}</div>
-                    <div class="flex-1 py-1 text-[0.6rem] font-black italic opacity-90 leading-tight overflow-hidden text-center flex items-center justify-center">
-                        ${c.desc || c.power || ''}
-                    </div>
+                <div class="card-visual card-type-${c.type} ${sizeClasses}">
+                    <div class="font-black uppercase leading-tight border-b-2 border-black/10 pb-1 mb-1 truncate text-center">${c.name}</div>
+                    <div class="flex-1 py-1 text-[0.6rem] font-black italic opacity-90 leading-tight text-center flex items-center justify-center">${c.desc || c.power || ''}</div>
                     <div class="flex justify-between items-center mt-auto pt-1 border-t border-black/5">
                         ${c.v !== undefined ? `<span class="stat-badge">V:${c.v}</span>` : ''}
                         ${c.c !== undefined ? `<span class="stat-badge">C:${c.c}</span>` : ''}
                         ${c.plus_c !== undefined ? `<span class="stat-badge">+C:${c.plus_c}</span>` : ''}
+                        ${c.req_v !== undefined ? `<span class="stat-badge">V:${c.req_v}</span>` : ''}
+                        ${c.req_c !== undefined ? `<span class="stat-badge">C:${c.req_c}</span>` : ''}
                     </div>
                 </div>
             `;
@@ -210,31 +171,9 @@
             return 'zone-bottom';
         }
 
-        async function joinGame() {
-            const res = await fetch('/abonporc/join', { method: 'POST', headers: { 'X-CSRFToken': csrfToken } });
-            refreshState();
-        }
-
-        async function voteBuyIn(amount) {
-            await fetch('/abonporc/vote', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
-                body: JSON.stringify({ buy_in: amount })
-            });
-            refreshState();
-        }
-
-        async function startGame() {
-            const res = await fetch('/abonporc/start', { method: 'POST', headers: { 'X-CSRFToken': csrfToken } });
-            const data = await res.json();
-            if (!data.ok) alert(data.error);
-            refreshState();
-        }
-
-        function playCard(cardId) {
-            console.log("On veut jouer la carte :", cardId);
-            // On implémentera l'action de jouer ici
-        }
+        async function joinGame() { await fetch('/abonporc/join', { method: 'POST', headers: { 'X-CSRFToken': csrfToken } }); refreshState(); }
+        async function voteBuyIn(amount) { await fetch('/abonporc/vote', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken }, body: JSON.stringify({ buy_in: amount }) }); refreshState(); }
+        async function startGame() { const res = await fetch('/abonporc/start', { method: 'POST', headers: { 'X-CSRFToken': csrfToken } }); const data = await res.json(); if (!data.ok) alert(data.error); refreshState(); }
 
         setInterval(refreshState, 3000);
         refreshState();

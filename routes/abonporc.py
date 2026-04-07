@@ -46,28 +46,40 @@ LARCINS = [
     {"id": "lar_adblue", "name": "Panne d'AdBlue", "type": "larcin", "desc": "Vitesse à 0", "count": 2},
     {"id": "lar_radar", "name": "Radars de Campagne", "type": "larcin", "desc": "Adieu véhicule", "count": 2},
     {"id": "lar_sanglier", "name": "Invasion de Sangliers", "type": "larcin", "desc": "Détruit remorque", "count": 2},
-    {"id": "lar_parisien", "type": "larcin", "desc": "Vitesse -2", "count": 2},
-    {"id": "lar_gazole", "type": "larcin", "desc": "Vole carte main", "count": 2},
-    {"id": "lar_fosse", "type": "larcin", "desc": "Bloqué dans boue", "count": 2},
-    {"id": "lar_poste", "type": "larcin", "desc": "Pas de Carte Grise", "count": 2},
-    {"id": "lar_cloture", "type": "larcin", "desc": "Lâche le cochon", "count": 2},
-    {"id": "lar_zero", "type": "larcin", "desc": "Échange main", "count": 2}
+    {"id": "lar_parisien", "name": "Parisiens en Vacances", "type": "larcin", "desc": "Vitesse -2", "count": 2},
+    {"id": "lar_gazole", "name": "Vol de Gazole", "type": "larcin", "desc": "Vole carte main", "count": 2},
+    {"id": "lar_fosse", "name": "Fossé Glissant", "type": "larcin", "desc": "Bloqué dans boue", "count": 2},
+    {"id": "lar_poste", "name": "Grève de la Poste", "type": "larcin", "desc": "Pas de Carte Grise", "count": 2},
+    {"id": "lar_cloture", "name": "Clôture Électrique", "type": "larcin", "desc": "Lâche le cochon", "count": 2},
+    {"id": "lar_zero", "name": "Zéro de Conduite", "type": "larcin", "desc": "Échange main", "count": 2}
+]
+
+VICTORY_PIGS = [
+    {"id": "vic_porcelet", "name": "Le Porcelet", "type": "victory", "req_c": 1, "req_v": 3, "desc": "Facile à caser."},
+    {"id": "vic_berta", "name": "La Truie 'Berta'", "type": "victory", "req_c": 2, "req_v": 5, "desc": "Un beau bébé."},
+    {"id": "vic_verrat", "name": "Le Verrat Alpha", "type": "victory", "req_c": 3, "req_v": 8, "desc": "Le roi du salon."}
 ]
 
 def build_deck():
     deck = []
-    for v in VEHICLES: deck.extend([v] * v['count'])
-    for gc in GRAY_CARDS: deck.extend([gc] * gc['count'])
-    for tr in TRAILERS: deck.extend([tr] * tr['count'])
-    for lar in LARCINS: deck.extend([lar] * lar['count'])
+    for v in VEHICLES:
+        for _ in range(v['count']): deck.append(v.copy())
+    for gc in GRAY_CARDS:
+        for _ in range(gc['count']): deck.append(gc.copy())
+    for tr in TRAILERS:
+        for _ in range(tr['count']): deck.append(tr.copy())
+    for lar in LARCINS:
+        for _ in range(lar['count']): deck.append(lar.copy())
     random.shuffle(deck)
+    # On enlève la clé 'count' des instances de cartes pour plus de clarté
+    for c in deck: c.pop('count', None)
     return deck
 
 def _resolve_user():
     uid = session.get('user_id')
     return User.query.get(uid) if uid else None
 
-def _get_active_table() -> AbonPorcTable | None:
+def _get_active_table():
     return AbonPorcTable.query.filter(AbonPorcTable.status.in_(['lobby', 'voting', 'playing'])).order_by(AbonPorcTable.created_at.desc()).first()
 
 @abonporc_bp.route('/abonporc')
@@ -97,11 +109,8 @@ def join():
 @abonporc_bp.route('/abonporc/vote', methods=['POST'])
 def vote():
     user = _resolve_user()
-    if not user: return jsonify({'ok': False, 'error': 'Non connecté'}), 401
     table = _get_active_table()
-    if not table: return jsonify({'ok': False, 'error': 'Pas de table active'}), 400
     player = AbonPorcPlayer.query.filter_by(table_id=table.id, user_id=user.id).first()
-    if not player: return jsonify({'ok': False, 'error': 'Non inscrit à cette table'}), 400
     data = request.get_json() or {}
     player.vote = int(data.get('buy_in', 0))
     table.status = 'voting'
@@ -111,9 +120,7 @@ def vote():
 @abonporc_bp.route('/abonporc/start', methods=['POST'])
 def start():
     user = _resolve_user()
-    if not user: return jsonify({'ok': False, 'error': 'Non connecté'}), 401
     table = _get_active_table()
-    if not table: return jsonify({'ok': False, 'error': 'Pas de table active'}), 400
     players = AbonPorcPlayer.query.filter_by(table_id=table.id).all()
     if len(players) < MIN_PLAYERS: return jsonify({'ok': False, 'error': 'Minimum 3 cochons !'})
     votes = [p.vote for p in players]
@@ -123,32 +130,23 @@ def start():
     deck = build_deck()
     for p in players:
         u = User.query.get(p.user_id)
-        if not u:
-            current_app.logger.error(f"User {p.user_id} not found for player {p.id}")
-            return jsonify({'ok': False, 'error': 'Erreur interne: utilisateur non trouvé.'}), 500
         if not u.can_afford(buy_in): return jsonify({'ok': False, 'error': f'{u.username} est à sec !'})
-        
-        debit_success = debit_user_balance(u.id, buy_in, reason_code='abonporc_buyin', reason_label='Buy-in A Bon Porc')
-        if not debit_success:
-            current_app.logger.error(f"Failed to debit {buy_in} from user {u.id} for AbonPorc buy-in.")
-            return jsonify({'ok': False, 'error': f'Impossible de débiter {u.username}.'}), 500
-
+        debit_user_balance(u.id, buy_in, reason_code='abonporc_buyin', reason_label='Buy-in A Bon Porc')
+        # Distribution de 6 cartes
         hand = [deck.pop() for _ in range(6)]
         p.hand_json = json.dumps(hand)
-        current_app.logger.info(f"Player {u.username} ({u.id}) hand: {hand}") # Log la main distribuée
     
     table.status = 'playing'
     table.buy_in = buy_in
     table.deck_json = json.dumps(deck)
+    table.center_pigs_json = json.dumps(VICTORY_PIGS)
     table.phase = 'recolte'
     db.session.commit()
-    current_app.logger.info(f"AbonPorc game started for table {table.id} with buy-in {buy_in}.")
     return jsonify({'ok': True})
 
 @abonporc_bp.route('/abonporc/state')
 def state():
     user = _resolve_user()
-    if not user: return jsonify({'ok': False, 'error': 'Non connecté'}), 401
     table = _get_active_table()
     if not table: return jsonify({'ok': True, 'status': 'no_table'})
     players = AbonPorcPlayer.query.filter_by(table_id=table.id).all()
@@ -157,22 +155,18 @@ def state():
     for p in players:
         is_me = p.user_id == user.id
         if is_me: my_p = p
-        
-        player_hand = json.loads(p.hand_json or '[]')
-        if is_me:
-            current_app.logger.debug(f"Sending state for {user.username}, hand: {player_hand}") # Log la main envoyée au client
-        
         p_data.append({
             'seat': p.seat, 'username': p.user.username,
             'is_me': is_me, 'vote': p.vote,
             'vehicle': json.loads(p.vehicle_json or 'null'),
             'victory_pigs': json.loads(p.victory_pigs_json or '[]'),
-            'hand': player_hand if is_me else None # N'envoyer la main que si c'est le joueur actuel
+            'hand': json.loads(p.hand_json or '[]') if is_me else None
         })
     votes = [p.vote for p in players if p.vote]
     unanimous = len(votes) == len(players) and len(players) >= MIN_PLAYERS and len(set(votes)) == 1
     return jsonify({
         'ok': True, 'status': table.status, 'phase': table.phase,
         'players': p_data, 'my_seat': my_p.seat if my_p else None,
-        'unanimous': unanimous, 'player_count': len(players)
+        'unanimous': unanimous, 'player_count': len(players),
+        'center_pigs': json.loads(table.center_pigs_json or '[]')
     })
