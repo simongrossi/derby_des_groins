@@ -370,11 +370,11 @@
 <script>
 (function() {
   /* ── Config ── */
-  const GAME_DURATION    = {{ game_duration }};
-  const REQUIRED_CATCHES = {{ required_catches }};
-  const REWARD           = {{ reward }};
-  let   ALREADY_PLAYED   = {{ 'true' if already_played else 'false' }};
-  let   remainingPlays   = {{ plays_remaining }};
+  const GAME_DURATION    = parseInt("{{ game_duration }}", 10);
+  const REQUIRED_CATCHES = parseInt("{{ required_catches }}", 10);
+  const REWARD           = parseInt("{{ reward }}", 10);
+  let   ALREADY_PLAYED   = ("{{ 'true' if already_played else 'false' }}" === "true");
+  let   remainingPlays   = parseInt("{{ plays_remaining }}", 10);
   const FLEE_DISTANCE    = 60;
 
   const DAYS  = [
