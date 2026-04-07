@@ -9,4 +9,6 @@ from routes.admin import dashboard  # noqa
 from routes.admin import economy    # noqa
 from routes.admin import game_data  # noqa
 from routes.admin import entities   # noqa
-from routes.admin import operations # noqa
+from routes.admin import operations     # noqa
+from routes.admin import abonporc_admin  # noqa
+from routes.admin import game_management # noqa
