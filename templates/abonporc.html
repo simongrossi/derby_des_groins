@@ -9,64 +9,15 @@
     <style>
         * { font-family: 'Nunito', sans-serif; }
         .font-title { font-family: 'Lilita One', cursive; }
-        body {
-            background: #1a2a1a;
-            background-image: radial-gradient(circle at 50% 50%, #2a3a2a 0%, #1a2a1a 100%);
-            color: #f0f0f0;
-            min-height: 100vh;
-        }
-        .table-area {
-            background: rgba(0,0,0,0.3);
-            border: 4px solid #3d2b1f;
-            border-radius: 50px;
-            padding: 2rem;
-            min-height: 600px;
-            position: relative;
-        }
-        .player-zone {
-            position: absolute;
-            width: 200px;
-            text-align: center;
-        }
+        body { background: #1a2a1a; color: #f0f0f0; min-height: 100vh; }
+        .table-area { background: rgba(0,0,0,0.3); border: 4px solid #3d2b1f; border-radius: 50px; padding: 2rem; min-height: 500px; position: relative; }
+        .player-zone { position: absolute; width: 200px; text-align: center; }
         .zone-top { top: 20px; left: 50%; transform: translateX(-50%); }
         .zone-bottom { bottom: 20px; left: 50%; transform: translateX(-50%); }
         .zone-left { left: 20px; top: 50%; transform: translateY(-50%); }
         .zone-right { right: 20px; top: 50%; transform: translateY(-50%); }
-
-        .card-visual {
-            width: 80px;
-            height: 120px;
-            background: #fff;
-            color: #333;
-            border-radius: 8px;
-            border: 2px solid #555;
-            display: inline-flex;
-            flex-direction: column;
-            justify-content: space-between;
-            padding: 4px;
-            font-size: 0.6rem;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
-            transition: transform 0.2s;
-            cursor: pointer;
-        }
-        .card-visual:hover { transform: translateY(-10px) scale(1.1); z-index: 50; }
-        .card-type-vehicle { background: #e2e8f0; border-color: #64748b; }
-        .card-type-trailer { background: #fef3c7; border-color: #d97706; }
-        .card-type-gray_card { background: #dcfce7; border-color: #16a34a; }
-        .card-type-larcin { background: #fee2e2; border-color: #dc2626; }
-
-        .my-hand {
-            position: fixed;
-            bottom: 0;
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(0,0,0,0.6);
-            padding: 1rem 2rem;
-            border-radius: 20px 20px 0 0;
-            display: flex;
-            gap: 10px;
-            z-index: 100;
-        }
+        .card-visual { width: 80px; height: 120px; background: #fff; color: #333; border-radius: 8px; border: 2px solid #555; display: inline-flex; flex-direction: column; justify-content: space-between; padding: 4px; font-size: 0.6rem; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
+        .my-hand { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.6); padding: 1rem 2rem; border-radius: 20px 20px 0 0; display: flex; gap: 10px; z-index: 100; }
     </style>
 </head>
 <body class="p-4">
@@ -75,37 +26,35 @@
     <div class="max-w-6xl mx-auto mt-8">
         <div class="flex justify-between items-center mb-6">
             <h1 class="font-title text-4xl text-green-400">🐽 A BON PORC</h1>
-            <div id="status-badge" class="px-4 py-2 rounded-full bg-yellow-500/20 border border-yellow-500/40 text-yellow-200 font-bold">
-                LOBBY - En attente de cochons...
-            </div>
+            <div id="status-badge" class="px-4 py-2 rounded-full bg-yellow-500/20 border border-yellow-500/40 text-yellow-200 font-bold">LOBBY</div>
         </div>
 
         <div class="table-area" id="game-table">
-            <!-- Les joueurs seront injectés ici -->
             <div id="players-container"></div>
-
-            <!-- Centre de la table: Cochons à livrer -->
-            <div id="center-pigs" class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 flex gap-4">
-                <!-- Porcelet, Berta, Verrat -->
+            <div id="center-pigs" class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center">
+                <div id="waiting-msg" class="text-xl font-bold opacity-50">En attente de cochons motivés...</div>
             </div>
         </div>
 
-        <div id="my-hand-container" class="my-hand hidden">
-            <!-- Ma main sera injectée ici -->
-        </div>
+        <div id="my-hand-container" class="my-hand hidden"></div>
 
-        <!-- Lobby Interface -->
-        <div id="lobby-ui" class="mt-8 card p-8 bg-black/40 border border-white/10 rounded-2xl text-center hidden">
-            <h2 class="font-title text-2xl mb-4">Inscris ton groin !</h2>
-            <button onclick="joinGame()" id="join-btn" class="px-8 py-4 bg-green-600 hover:bg-green-500 text-white font-bold rounded-xl text-xl transition transform hover:scale-105">REJOINDRE LA PARTIE</button>
+        <div id="lobby-ui" class="mt-8 card p-8 bg-black/40 border border-white/10 rounded-2xl text-center">
+            <div id="join-section">
+                <h2 class="font-title text-2xl mb-4">Inscris ton groin !</h2>
+                <button onclick="joinGame()" class="px-8 py-4 bg-green-600 hover:bg-green-500 text-white font-bold rounded-xl text-xl transition transform hover:scale-105">REJOINDRE LA PARTIE</button>
+            </div>
 
-            <div id="vote-ui" class="mt-8 hidden">
+            <div id="vote-section" class="hidden">
                 <p class="font-bold text-lg mb-4">Choisissez le buy-in (Unanimité requise) :</p>
                 <div class="flex justify-center gap-4">
                     {% for opt in buy_in_options %}
-                    <button onclick="voteBuyIn({{ opt }})" class="px-6 py-3 bg-white/10 hover:bg-white/20 border border-white/20 rounded-lg font-black">{{ opt }} 🪙</button>
+                    <button id="vote-btn-{{ opt }}" onclick="voteBuyIn({{ opt }})" class="px-6 py-3 bg-white/10 hover:bg-white/20 border border-white/20 rounded-lg font-black transition-all">{{ opt }} 🪙</button>
                     {% endfor %}
                 </div>
+            </div>
+
+            <div id="start-section" class="hidden mt-6">
+                <button onclick="startGame()" class="px-8 py-4 bg-pink-600 hover:bg-pink-500 text-white font-bold rounded-xl text-xl animate-pulse">LANCER LA PARTIE ! 🐽</button>
             </div>
         </div>
     </div>
@@ -124,37 +73,42 @@
         }
 
         function renderGame() {
-            const lobbyUi = document.getElementById('lobby-ui');
-            const voteUi = document.getElementById('vote-ui');
-            const handUi = document.getElementById('my-hand-container');
             const statusBadge = document.getElementById('status-badge');
             const playersCont = document.getElementById('players-container');
+            const lobbyUi = document.getElementById('lobby-ui');
+            const joinSec = document.getElementById('join-section');
+            const voteSec = document.getElementById('vote-section');
+            const startSec = document.getElementById('start-section');
 
-            if (!gameState.table_id && gameState.status === 'lobby') {
-                lobbyUi.classList.remove('hidden');
-                statusBadge.innerText = "LOBBY - Recrutement en cours";
+            if (gameState.status === 'no_table' || !gameState.my_seat) {
+                joinSec.classList.remove('hidden');
+                voteSec.classList.add('hidden');
+            } else {
+                joinSec.classList.add('hidden');
+                voteSec.classList.remove('hidden');
+
+                // Highlight my vote
+                const me = gameState.players.find(p => p.is_me);
+                if (me && me.vote) {
+                    document.querySelectorAll('#vote-section button').forEach(b => b.classList.remove('bg-yellow-500', 'text-black'));
+                    document.getElementById('vote-btn-' + me.vote).classList.add('bg-yellow-500', 'text-black');
+                }
             }
 
-            if (gameState.my_seat) {
-                document.getElementById('join-btn').classList.add('hidden');
-                voteUi.classList.remove('hidden');
+            if (gameState.unanimous && gameState.status !== 'playing') {
+                startSec.classList.remove('hidden');
+            } else {
+                startSec.classList.add('hidden');
             }
 
             if (gameState.status === 'playing') {
                 lobbyUi.classList.add('hidden');
-                handUi.classList.remove('hidden');
-                statusBadge.innerText = "PARTIE EN COURS - Phase: " + gameState.phase;
-
-                // Render hand
-                if (gameState.players) {
-                    const me = gameState.players.find(p => p.is_me);
-                    if (me && me.hand) {
-                        handUi.innerHTML = me.hand.map(c => renderCard(c)).join('');
-                    }
-                }
+                statusBadge.innerText = "PARTIE EN COURS - " + gameState.phase.toUpperCase();
+            } else if (gameState.status === 'voting') {
+                statusBadge.innerText = "VOTE DU BUY-IN (" + gameState.player_count + "/{{ min_players }} min)";
             }
 
-            // Render players on table
+            // Render players
             if (gameState.players) {
                 playersCont.innerHTML = gameState.players.map(p => {
                     const posClass = getPosClass(p.seat, gameState.my_seat || 1);
@@ -162,32 +116,18 @@
                         <div class="player-zone ${posClass}">
                             <div class="font-bold text-pink-400 mb-2">${p.username} ${p.is_me ? '(Toi)' : ''}</div>
                             <div class="flex flex-col gap-2 items-center">
-                                ${p.vehicle ? renderCard(p.vehicle, true) : '<div class="w-16 h-20 border-2 border-dashed border-white/20 rounded"></div>'}
-                                <div class="flex gap-1">
-                                    ${p.trailer ? renderCard(p.trailer, true) : ''}
-                                    ${p.gray_card ? renderCard(p.gray_card, true) : ''}
-                                </div>
+                                ${p.vehicle ? renderCard(p.vehicle, true) : '<div class="w-16 h-20 border-2 border-dashed border-white/10 rounded flex items-center justify-center text-[8px] opacity-20">AUCUN VEHICULE</div>'}
+                                <div class="text-[10px] font-bold ${p.vote ? 'text-green-400' : 'text-white/30'}">${p.vote ? 'VOTE: ' + p.vote + ' 🪙' : 'EN ATTENTE...'}</div>
                             </div>
-                            <div class="mt-2 text-xs text-white/50">Victoires: ${p.victory_pigs.length}/3</div>
                         </div>
                     `;
                 }).join('');
+                document.getElementById('waiting-msg').classList.add('hidden');
             }
         }
 
         function renderCard(c, small = false) {
-            const size = small ? 'w-12 h-16 text-[0.4rem]' : 'w-24 h-36';
-            return `
-                <div class="card-visual card-type-${c.type} ${size}">
-                    <div class="font-black uppercase">${c.name}</div>
-                    <div class="text-[0.5rem] italic leading-tight">${c.desc || c.power || ''}</div>
-                    <div class="flex justify-between font-bold">
-                        ${c.v !== undefined ? `<span>V:${c.v}</span>` : ''}
-                        ${c.c !== undefined ? `<span>C:${c.c}</span>` : ''}
-                        ${c.plus_c !== undefined ? `<span>+C:${c.plus_c}</span>` : ''}
-                    </div>
-                </div>
-            `;
+            return `<div class="card-visual ${small ? 'w-12 h-16' : 'w-24 h-36'}"><div class="font-black uppercase">${c.name}</div></div>`;
         }
 
         function getPosClass(seat, mySeat) {
@@ -196,7 +136,7 @@
             if (diff === 1) return 'zone-left';
             if (diff === 2) return 'zone-top';
             if (diff === 3) return 'zone-right';
-            return '';
+            return 'zone-bottom';
         }
 
         async function joinGame() {
@@ -210,6 +150,13 @@
                 headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
                 body: JSON.stringify({ buy_in: amount })
             });
+            refreshState();
+        }
+
+        async function startGame() {
+            const res = await fetch('/abonporc/start', { method: 'POST', headers: { 'X-CSRF-Token': csrfToken } });
+            const data = await res.json();
+            if (!data.ok) alert(data.error);
             refreshState();
         }
 
