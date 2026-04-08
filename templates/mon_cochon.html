@@ -6,8 +6,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>🐷 Derby des Groins — Mes Cochons</title>
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" crossorigin="anonymous"></script>
+    {% include '_tailwind_assets.html' %}
+    {% include '_chartjs_assets.html' %}
     <link href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
     <style>
         * { font-family: 'Nunito', sans-serif; }
@@ -160,6 +160,7 @@
             opacity: 0.45;
             cursor: not-allowed;
         }
+
     </style>
 </head>
 <body class="page-mon-cochon">
@@ -604,7 +605,14 @@
                 <div class="card p-5 border-amber-500/20 lineage-card" style="background: rgba(245, 158, 11, 0.05);">
                     <div class="flex items-center justify-between mb-2">
                         <h3 class="text-amber-300 font-title">🧬 Lignée & Héritage</h3>
-                        <span class="text-[10px] px-2 py-0.5 rounded bg-amber-500/15 border border-amber-400/20 text-amber-200 font-bold">G{{ pig.generation or 1 }}</span>
+                        <div class="flex items-center gap-2">
+                            <button type="button"
+                                    class="rounded-lg border border-amber-400/20 bg-amber-500/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-amber-100 hover:bg-amber-500/20 transition-colors"
+                                    onclick='openLineageTree({{ pig.id }}, {{ pig.name|tojson }})'>
+                                Voir l'arbre
+                            </button>
+                            <span class="text-[10px] px-2 py-0.5 rounded bg-amber-500/15 border border-amber-400/20 text-amber-200 font-bold">G{{ pig.generation or 1 }}</span>
+                        </div>
                     </div>
                     <p class="text-white/70 text-[11px] font-bold mb-3">{{ pig.name }} appartient à la lignée <span class="text-amber-300">{{ pd.lineage_label }}</span>. Le bonus héréditaire actuel est de +{{ "%.1f"|format(pig.lineage_boost or 0) }}.</p>
                     {% set eligible_partners = pigs_data | selectattr('pig.id', 'ne', pig.id) | selectattr('pig.sex', 'ne', pig.sex) | list %}
@@ -926,6 +934,7 @@
     </div>
 
 </main>
+{% include '_lineage_tree_modal.html' %}
 
 <script>
     function toggleTabs(pigId, tab) {

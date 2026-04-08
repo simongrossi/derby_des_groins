@@ -2,8 +2,6 @@ from datetime import UTC, datetime, timedelta
 import json
 import random
 
-from flask import current_app, has_app_context
-
 from config.game_rules import (
     PIG_DEFAULTS,
     PIG_HERITAGE_RULES,
@@ -54,6 +52,12 @@ from services.pig_power_service import (
     get_weight_stat,
     xp_for_level,
 )
+from services.pig_vitals_buffer_service import (
+    apply_buffered_vitals_to_pig,
+    discard_buffered_pig_vitals,
+    flush_buffered_pig_vitals,
+    queue_buffered_pig_vitals,
+)
 
 from utils.time_utils import calculate_weekend_truce_hours
 
@@ -64,17 +68,17 @@ def _utcnow_naive():
 
 def get_pig_record(pig_or_id):
     if isinstance(pig_or_id, Pig):
-        return pig_or_id
-    pig = Pig.query.get(pig_or_id)
+        return apply_buffered_vitals_to_pig(pig_or_id)
+    pig = db.session.get(Pig, pig_or_id)
     if not pig:
         raise PigNotFoundError("Cochon introuvable.")
-    return pig
+    return apply_buffered_vitals_to_pig(pig)
 
 
 def get_user_record(user_or_id):
     if isinstance(user_or_id, User):
         return user_or_id
-    user = User.query.get(user_or_id)
+    user = db.session.get(User, user_or_id)
     if not user:
         raise ValidationError("Utilisateur introuvable.")
     return user
@@ -127,7 +131,7 @@ def consume_cereal_from_inventory(user_or_id, cereal_key, quantity=1, commit=Tru
 
 
 def get_owned_alive_pig(user_id, pig_id):
-    pig = Pig.query.get(pig_id)
+    pig = get_pig_record(pig_id)
     if not pig or pig.user_id != user_id or not pig.is_alive:
         raise PigNotFoundError("Cochon introuvable !")
     return pig
@@ -348,7 +352,7 @@ def study_pig(pig_or_id, lesson, correct, commit=True) -> str:
 
 def buy_cereal_from_bourse_for_user(user_or_id, cereal_key):
     from helpers.game_data import get_cereals_dict
-    from services.market_service import get_all_grain_surcharges, get_grain_market, is_grain_blocked, update_vitrine
+    from services.market_service import get_all_grain_surcharges, get_grain_block_reason, get_grain_market, update_vitrine
 
     user = get_user_record(user_or_id)
     if cereal_key not in [key for key in BOURSE_GRAIN_LAYOUT.values() if key]:
@@ -360,8 +364,9 @@ def buy_cereal_from_bourse_for_user(user_or_id, cereal_key):
         raise ValidationError("Cereale introuvable !")
 
     market = get_grain_market()
-    if is_grain_blocked(cereal_key, market):
-        raise ValidationError(f"{cereal['name']} est en vitrine ! Achete autre chose pour debloquer.")
+    block_reason = get_grain_block_reason(cereal_key, market)
+    if block_reason:
+        raise ValidationError(block_reason)
 
     surcharges = get_all_grain_surcharges(market)
     surcharge = surcharges.get(cereal_key, 1.0)
@@ -590,16 +595,17 @@ def update_pig_vitals(pig_or_id, force_commit=False):
     pig = get_pig_record(pig_or_id)
     now = _utcnow_naive()
     progression = get_progression_settings()
-    min_commit_interval = PIG_VITALS_RULES.min_commit_interval_seconds
-    if has_app_context():
-        min_commit_interval = current_app.config.get(
-            'PIG_VITALS_COMMIT_INTERVAL_SECONDS',
-            PIG_VITALS_RULES.min_commit_interval_seconds,
-        )
 
     award_longevity_trophies(pig)
+    created_trophies = any(isinstance(obj, Trophy) for obj in db.session.new)
     if not pig.last_updated:
         pig.last_updated = now
+        queue_buffered_pig_vitals(pig, queued_at=now)
+        if force_commit:
+            flush_buffered_pig_vitals(pig_ids=[pig.id])
+        elif created_trophies:
+            db.session.commit()
+            discard_buffered_pig_vitals(pig.id)
         return pig
 
     elapsed_seconds = (now - pig.last_updated).total_seconds()
@@ -612,8 +618,12 @@ def update_pig_vitals(pig_or_id, force_commit=False):
     hours = min(effective_hours, 24)
     if effective_hours < 0.01:
         pig.last_updated = now
-        if force_commit or elapsed_seconds >= min_commit_interval:
+        queue_buffered_pig_vitals(pig, queued_at=now)
+        if force_commit:
+            flush_buffered_pig_vitals(pig_ids=[pig.id])
+        elif created_trophies:
             db.session.commit()
+            discard_buffered_pig_vitals(pig.id)
         return pig
 
     reference_interaction = pig.last_interaction_at or pig.last_updated
@@ -665,8 +675,12 @@ def update_pig_vitals(pig_or_id, force_commit=False):
 
     pig.mark_bad_state_if_needed()
     pig.last_updated = now
-    if force_commit or elapsed_seconds >= min_commit_interval:
+    queue_buffered_pig_vitals(pig, queued_at=now)
+    if force_commit:
+        flush_buffered_pig_vitals(pig_ids=[pig.id])
+    elif created_trophies:
         db.session.commit()
+        discard_buffered_pig_vitals(pig.id)
     return pig
 
 

@@ -1,5 +1,5 @@
 from models.game_data import CerealItem, HangmanWordItem, SchoolLessonItem, TrainingItem, AcademieScore
-from models.market import Auction, GrainMarket, MarketHistory
+from models.market import Auction, GrainFutureContract, GrainMarket, MarketEvent, MarketHistory, MarketPositionHistory
 from models.notifications import AuthEventLog, ChatMessage, UserNotification
 from models.pig import Pig, PigAvatar, Trophy, UserCerealInventory
 from models.poker import PokerHandHistory, PokerPlayer, PokerTable
@@ -19,11 +19,14 @@ __all__ = [
     'CoursePlan',
     'GameConfig',
     'GrainMarket',
+    'GrainFutureContract',
     'HangmanWordItem',
     'InventoryItem',
     'Item',
     'MarketplaceListing',
     'MarketHistory',
+    'MarketEvent',
+    'MarketPositionHistory',
     'Participant',
     'Pig',
     'PigAvatar',

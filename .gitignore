@@ -11,3 +11,4 @@ error.txt
 .claude/worktrees/
 test-results/
 tmp-*.png
+node_modules/

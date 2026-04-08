@@ -1,0 +1,403 @@
+<style>
+    body.lineage-modal-open {
+        overflow: hidden;
+    }
+
+    .lineage-modal-backdrop {
+        position: fixed;
+        inset: 0;
+        background: rgba(11, 7, 16, 0.82);
+        backdrop-filter: blur(10px);
+        z-index: 70;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        padding: 1rem;
+    }
+
+    .lineage-modal-backdrop.open {
+        display: flex;
+    }
+
+    .lineage-modal-panel {
+        width: min(1180px, 100%);
+        max-height: calc(100vh - 2rem);
+        overflow: auto;
+        border-radius: 1.75rem;
+        border: 1px solid rgba(255, 205, 226, 0.14);
+        background: linear-gradient(180deg, rgba(23, 12, 31, 0.98), rgba(15, 9, 22, 0.98));
+        box-shadow: 0 30px 80px rgba(0, 0, 0, 0.42);
+    }
+
+    .lineage-tree-grid {
+        display: grid;
+        gap: 1rem;
+        grid-template-columns: 1fr;
+    }
+
+    @media (min-width: 960px) {
+        .lineage-tree-grid {
+            grid-template-columns: 1fr 320px 1fr;
+            align-items: start;
+        }
+    }
+
+    .lineage-column {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+    }
+
+    .lineage-column-title {
+        font-size: 0.72rem;
+        font-weight: 800;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: rgba(255, 255, 255, 0.45);
+    }
+
+    .lineage-stack {
+        display: flex;
+        flex-direction: column;
+        gap: 0.9rem;
+    }
+
+    .lineage-branch {
+        position: relative;
+        padding-left: 1rem;
+        border-left: 1px solid rgba(251, 191, 36, 0.22);
+    }
+
+    .lineage-branch::before {
+        content: "";
+        position: absolute;
+        left: -1px;
+        top: 1.3rem;
+        width: 0.9rem;
+        border-top: 1px solid rgba(251, 191, 36, 0.22);
+    }
+
+    .lineage-node {
+        border-radius: 1.1rem;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        background: rgba(255, 255, 255, 0.05);
+        padding: 0.9rem 1rem;
+    }
+
+    .lineage-node.focus {
+        background: linear-gradient(180deg, rgba(251, 191, 36, 0.16), rgba(251, 146, 60, 0.08));
+        border-color: rgba(251, 191, 36, 0.34);
+        box-shadow: 0 18px 36px rgba(251, 146, 60, 0.14);
+    }
+
+    .lineage-node-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.75rem;
+    }
+
+    .lineage-node-title {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    .lineage-emoji {
+        font-size: 1.75rem;
+        line-height: 1;
+    }
+
+    .lineage-relation-badge,
+    .lineage-depth-badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 999px;
+        padding: 0.22rem 0.55rem;
+        font-size: 0.62rem;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+    }
+
+    .lineage-relation-badge {
+        background: rgba(245, 158, 11, 0.15);
+        color: #fcd34d;
+        border: 1px solid rgba(245, 158, 11, 0.2);
+    }
+
+    .lineage-depth-badge {
+        background: rgba(255, 255, 255, 0.06);
+        color: rgba(255, 255, 255, 0.55);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .lineage-depth-btn {
+        border-radius: 1rem;
+        border: 1px solid transparent;
+        background: transparent;
+        color: rgba(248, 250, 252, 0.62);
+        padding: 0.65rem 0.9rem;
+        font-size: 0.8rem;
+        font-weight: 800;
+        transition: all 0.2s;
+    }
+
+    .lineage-depth-btn.active {
+        background: rgba(255, 255, 255, 0.08);
+        border-color: rgba(251, 191, 36, 0.22);
+        color: #fff7ed;
+    }
+
+    .lineage-focus-shell {
+        position: sticky;
+        top: 1rem;
+    }
+
+    .lineage-meta-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.55rem;
+        margin-top: 0.9rem;
+    }
+
+    .lineage-meta-pill {
+        border-radius: 0.9rem;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        background: rgba(255, 255, 255, 0.04);
+        padding: 0.6rem 0.75rem;
+    }
+
+    .lineage-empty {
+        border-radius: 1rem;
+        border: 1px dashed rgba(255, 255, 255, 0.12);
+        background: rgba(255, 255, 255, 0.03);
+        padding: 1rem;
+        color: rgba(255, 255, 255, 0.4);
+        font-size: 0.78rem;
+        font-weight: 700;
+        text-align: center;
+    }
+</style>
+
+<div id="lineage-modal" class="lineage-modal-backdrop" onclick="closeLineageTree(event)">
+    <div class="lineage-modal-panel" onclick="event.stopPropagation()">
+        <div class="flex items-start justify-between gap-4 p-6 border-b border-white/8">
+            <div>
+                <p class="text-[11px] font-black uppercase tracking-[0.18em] text-amber-200/60">Arbre genealogique</p>
+                <h2 id="lineage-modal-title" class="font-title text-3xl text-white mt-2">Lignee porcine</h2>
+                <p id="lineage-modal-subtitle" class="text-sm font-semibold text-white/45 mt-2">Chargement...</p>
+            </div>
+            <div class="flex items-center gap-2">
+                <div class="flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 p-1">
+                    <button type="button" class="lineage-depth-btn" data-lineage-depth="2" onclick="changeLineageDepth(2)">2</button>
+                    <button type="button" class="lineage-depth-btn active" data-lineage-depth="4" onclick="changeLineageDepth(4)">4</button>
+                    <button type="button" class="lineage-depth-btn" data-lineage-depth="6" onclick="changeLineageDepth(6)">6</button>
+                </div>
+                <button type="button" class="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-xs font-black uppercase tracking-[0.14em] text-white/65 hover:text-white" onclick="closeLineageTree()">Fermer</button>
+            </div>
+        </div>
+        <div id="lineage-modal-body" class="p-6">
+            <div class="lineage-empty">Chargement de l'arbre genealogique...</div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let activeLineagePigId = null;
+    let activeLineagePigName = '';
+    let activeLineageDepth = 4;
+
+    function escapeHtml(value) {
+        return String(value ?? '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    function relationLabel(relation) {
+        const labels = {
+            focus: 'racine',
+            sire: 'pere',
+            dam: 'mere',
+            child_sire: 'descendant',
+            child_dam: 'descendant'
+        };
+        return labels[relation] || relation || 'branche';
+    }
+
+    function renderLineageNode(node, mode) {
+        const childKey = mode === 'ancestors' ? 'parents' : 'children';
+        const children = Array.isArray(node[childKey]) ? node[childKey] : [];
+        const owner = node.owner_name ? `<p class="text-[10px] font-bold text-white/35 mt-1">${escapeHtml(node.owner_name)}</p>` : '';
+        const relation = node.relation && node.relation !== 'focus'
+            ? `<span class="lineage-relation-badge">${escapeHtml(relationLabel(node.relation))}</span>`
+            : '';
+        const rarity = node.rarity ? node.rarity.toUpperCase() : 'COMMUN';
+        const aliveLabel = node.is_alive ? 'Actif' : 'Archive';
+        const branchHtml = children.length
+            ? `<div class="lineage-stack mt-3">${children.map(child => `<div class="lineage-branch">${renderLineageNode(child, mode)}</div>`).join('')}</div>`
+            : '';
+
+        return `
+            <div class="lineage-node">
+                <div class="lineage-node-header">
+                    <div class="lineage-node-title">
+                        <span class="lineage-emoji">${escapeHtml(node.emoji || '🐷')}</span>
+                        <div>
+                            <p class="text-sm font-black text-white">${escapeHtml(node.name)}</p>
+                            <p class="text-[11px] font-semibold text-white/45">
+                                ${escapeHtml(node.lineage_label || node.lineage_name || 'Lignee inconnue')} • G${escapeHtml(node.generation || 1)}
+                            </p>
+                            ${owner}
+                        </div>
+                    </div>
+                    <div class="flex flex-col items-end gap-2">
+                        ${relation}
+                        <span class="lineage-depth-badge">Profondeur ${escapeHtml(node.depth || 0)}</span>
+                    </div>
+                </div>
+                <div class="lineage-meta-grid">
+                    <div class="lineage-meta-pill">
+                        <p class="text-[10px] font-bold uppercase tracking-[0.12em] text-white/35">Rarete</p>
+                        <p class="mt-1 text-xs font-black text-white">${escapeHtml(rarity)}</p>
+                    </div>
+                    <div class="lineage-meta-pill">
+                        <p class="text-[10px] font-bold uppercase tracking-[0.12em] text-white/35">Etat</p>
+                        <p class="mt-1 text-xs font-black text-white">${escapeHtml(aliveLabel)}</p>
+                    </div>
+                    <div class="lineage-meta-pill">
+                        <p class="text-[10px] font-bold uppercase tracking-[0.12em] text-white/35">Niveau</p>
+                        <p class="mt-1 text-xs font-black text-white">${escapeHtml(node.level || 1)}</p>
+                    </div>
+                    <div class="lineage-meta-pill">
+                        <p class="text-[10px] font-bold uppercase tracking-[0.12em] text-white/35">Victoires</p>
+                        <p class="mt-1 text-xs font-black text-white">${escapeHtml(node.races_won || 0)}</p>
+                    </div>
+                </div>
+                ${branchHtml}
+            </div>
+        `;
+    }
+
+    function renderLineageTree(payload) {
+        const focus = payload.focus || {};
+        const meta = payload.meta || {};
+        const parents = Array.isArray(focus.parents) ? focus.parents : [];
+        const children = Array.isArray(focus.children) ? focus.children : [];
+
+        const ancestorsHtml = parents.length
+            ? parents.map(node => `<div class="lineage-branch">${renderLineageNode(node, 'ancestors')}</div>`).join('')
+            : '<div class="lineage-empty">Aucun ancetre connu dans la base pour cette profondeur.</div>';
+        const descendantsHtml = children.length
+            ? children.map(node => `<div class="lineage-branch">${renderLineageNode(node, 'descendants')}</div>`).join('')
+            : '<div class="lineage-empty">Aucun descendant connu dans la base pour cette profondeur.</div>';
+
+        return `
+            <div class="lineage-tree-grid">
+                <section class="lineage-column">
+                    <p class="lineage-column-title">Ascendance</p>
+                    <div class="lineage-stack">${ancestorsHtml}</div>
+                </section>
+                <section class="lineage-focus-shell">
+                    <div class="lineage-node focus">
+                        <div class="lineage-node-header">
+                            <div class="lineage-node-title">
+                                <span class="lineage-emoji">${escapeHtml(focus.emoji || '🐷')}</span>
+                                <div>
+                                    <p class="text-lg font-black text-white">${escapeHtml(focus.name || 'Cochon')}</p>
+                                    <p class="text-[12px] font-semibold text-white/45 mt-1">
+                                        ${escapeHtml(focus.lineage_label || focus.lineage_name || 'Lignee inconnue')} • Generation ${escapeHtml(focus.generation || 1)}
+                                    </p>
+                                </div>
+                            </div>
+                            <span class="lineage-relation-badge">pivot</span>
+                        </div>
+                        <div class="lineage-meta-grid">
+                            <div class="lineage-meta-pill">
+                                <p class="text-[10px] font-bold uppercase tracking-[0.12em] text-white/35">Noeuds</p>
+                                <p class="mt-1 text-sm font-black text-white">${escapeHtml(meta.node_count || 1)}</p>
+                            </div>
+                            <div class="lineage-meta-pill">
+                                <p class="text-[10px] font-bold uppercase tracking-[0.12em] text-white/35">Ancetres</p>
+                                <p class="mt-1 text-sm font-black text-white">${escapeHtml(meta.ancestor_count || 0)}</p>
+                            </div>
+                            <div class="lineage-meta-pill">
+                                <p class="text-[10px] font-bold uppercase tracking-[0.12em] text-white/35">Descendants</p>
+                                <p class="mt-1 text-sm font-black text-white">${escapeHtml(meta.descendant_count || 0)}</p>
+                            </div>
+                            <div class="lineage-meta-pill">
+                                <p class="text-[10px] font-bold uppercase tracking-[0.12em] text-white/35">Profondeur</p>
+                                <p class="mt-1 text-sm font-black text-white">${escapeHtml(meta.max_depth || activeLineageDepth)}</p>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+                <section class="lineage-column">
+                    <p class="lineage-column-title">Descendance</p>
+                    <div class="lineage-stack">${descendantsHtml}</div>
+                </section>
+            </div>
+        `;
+    }
+
+    async function loadLineageTree(pigId, depth = activeLineageDepth) {
+        activeLineagePigId = pigId;
+        activeLineageDepth = depth;
+        document.querySelectorAll('[data-lineage-depth]').forEach(button => {
+            button.classList.toggle('active', Number(button.dataset.lineageDepth) === depth);
+        });
+
+        const modal = document.getElementById('lineage-modal');
+        const body = document.getElementById('lineage-modal-body');
+        const subtitle = document.getElementById('lineage-modal-subtitle');
+        modal.classList.add('open');
+        document.body.classList.add('lineage-modal-open');
+        body.innerHTML = '<div class="lineage-empty">Chargement de l\\'arbre genealogique...</div>';
+        subtitle.textContent = `Exploration jusqu'à ${depth} generation(s).`;
+
+        try {
+            const response = await fetch(`/api/pigs/${pigId}/lineage-tree?depth=${depth}`, {
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            });
+            const payload = await response.json();
+            if (!response.ok) {
+                throw new Error(payload.error || 'Impossible de charger l\\'arbre genealogique.');
+            }
+            body.innerHTML = renderLineageTree(payload);
+            subtitle.textContent = `${payload.meta.ancestor_count} ancetre(s), ${payload.meta.descendant_count} descendant(s), ${payload.meta.node_count} noeud(s) relies.`;
+        } catch (error) {
+            body.innerHTML = `<div class="lineage-empty">${escapeHtml(error.message)}</div>`;
+        }
+    }
+
+    function openLineageTree(pigId, pigName) {
+        activeLineagePigName = pigName || 'Cochon';
+        document.getElementById('lineage-modal-title').textContent = `Arbre de ${activeLineagePigName}`;
+        loadLineageTree(pigId, activeLineageDepth);
+    }
+
+    function changeLineageDepth(depth) {
+        if (!activeLineagePigId) {
+            return;
+        }
+        loadLineageTree(activeLineagePigId, depth);
+    }
+
+    function closeLineageTree(event) {
+        if (event && event.target && event.target.id !== 'lineage-modal') {
+            return;
+        }
+        document.getElementById('lineage-modal').classList.remove('open');
+        document.body.classList.remove('lineage-modal-open');
+    }
+
+    document.addEventListener('keydown', event => {
+        if (event.key === 'Escape' && document.getElementById('lineage-modal')?.classList.contains('open')) {
+            closeLineageTree();
+        }
+    });
+</script>
