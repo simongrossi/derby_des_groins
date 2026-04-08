@@ -1,8 +1,7 @@
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 import random
 
-from sqlalchemy import func
-from sqlalchemy import update
+from sqlalchemy import func, or_, update
 
 from config.game_rules import MARKET_RULES
 from config.gameplay_defaults import DEFAULT_PIG_WEIGHT_KG
@@ -15,7 +14,17 @@ from content.pigs_catalog import PIG_EMOJIS, PIG_NAME_PREFIXES, PIG_NAME_SUFFIXE
 from content.seed_game_items import CEREALS
 from exceptions import InsufficientFundsError, UserNotFoundError, ValidationError
 from extensions import db
-from models import Auction, BalanceTransaction, GrainMarket, MarketHistory, Pig, User
+from models import (
+    Auction,
+    BalanceTransaction,
+    GrainFutureContract,
+    GrainMarket,
+    MarketEvent,
+    MarketHistory,
+    MarketPositionHistory,
+    Pig,
+    User,
+)
 
 
 def _get_bourse_surcharge_factor():
@@ -41,6 +50,10 @@ from services.pig_service import kill_pig
 from services.notification_service import push_user_notification
 
 
+def _utcnow_naive():
+    return datetime.now(UTC).replace(tzinfo=None)
+
+
 def get_prix_moyen_groin():
     recent_sales = Auction.query.filter_by(status='sold').order_by(Auction.ends_at.desc()).limit(10).all()
     if recent_sales:
@@ -52,10 +65,179 @@ def get_prix_moyen_groin():
 
 
 def _get_market_user(user_or_id):
-    user = user_or_id if isinstance(user_or_id, User) else User.query.get(user_or_id)
+    user = user_or_id if isinstance(user_or_id, User) else db.session.get(User, user_or_id)
     if not user:
         raise UserNotFoundError("Utilisateur introuvable.")
     return user
+
+
+def _get_cereal_or_raise(cereal_key):
+    if cereal_key not in [key for key in BOURSE_GRAIN_LAYOUT.values() if key]:
+        raise ValidationError("Cereale inconnue ou pas dans le bloc.")
+    cereal = CEREALS.get(cereal_key)
+    if not cereal:
+        raise ValidationError("Cereale introuvable !")
+    return cereal
+
+
+def _calculate_average_surcharge_for_position(cursor_x, cursor_y):
+    values = []
+    for (dx, dy), cereal_key in BOURSE_GRAIN_LAYOUT.items():
+        if cereal_key is None:
+            continue
+        gx = cursor_x + dx
+        gy = cursor_y + dy
+        values.append(get_grain_surcharge(gx, gy))
+    return round(sum(values) / len(values), 3) if values else 1.0
+
+
+def snapshot_market_position(market=None, recorded_at=None):
+    market = market or get_grain_market()
+    recorded_at = recorded_at or _utcnow_naive()
+    latest = (
+        MarketPositionHistory.query
+        .order_by(MarketPositionHistory.recorded_at.desc(), MarketPositionHistory.id.desc())
+        .first()
+    )
+    if (
+        latest
+        and latest.cursor_x == market.cursor_x
+        and latest.cursor_y == market.cursor_y
+        and latest.recorded_at
+        and (recorded_at - latest.recorded_at).total_seconds() < 300
+    ):
+        return latest
+
+    snapshot = MarketPositionHistory(
+        cursor_x=market.cursor_x,
+        cursor_y=market.cursor_y,
+        average_surcharge=_calculate_average_surcharge_for_position(market.cursor_x, market.cursor_y),
+        recorded_at=recorded_at,
+    )
+    db.session.add(snapshot)
+    return snapshot
+
+
+def get_market_position_history(days=7, now=None):
+    now = now or _utcnow_naive()
+    since = now - timedelta(days=days)
+    return (
+        MarketPositionHistory.query
+        .filter(MarketPositionHistory.recorded_at >= since)
+        .order_by(MarketPositionHistory.recorded_at.asc(), MarketPositionHistory.id.asc())
+        .all()
+    )
+
+
+def calculate_market_trend(days=7, now=None):
+    now = now or _utcnow_naive()
+    rows = get_market_position_history(days=days, now=now)
+    current_market = get_grain_market()
+
+    if not rows:
+        current_avg = _calculate_average_surcharge_for_position(current_market.cursor_x, current_market.cursor_y)
+        return {
+            'direction': 'stable',
+            'label': 'Stable',
+            'tone': 'neutral',
+            'delta_avg_surcharge': 0.0,
+            'delta_pct': 0.0,
+            'start_cursor': (current_market.cursor_x, current_market.cursor_y),
+            'current_cursor': (current_market.cursor_x, current_market.cursor_y),
+            'snapshots_count': 0,
+            'summary': "Pas encore assez d'historique pour dégager une tendance fiable.",
+        }
+
+    start = rows[0]
+    end = rows[-1]
+    delta = round(float(end.average_surcharge or 0.0) - float(start.average_surcharge or 0.0), 3)
+    delta_pct = round(delta * 100, 1)
+    if delta > 0.03:
+        direction, label, tone = 'hausse', 'Hausse', 'danger'
+    elif delta < -0.03:
+        direction, label, tone = 'baisse', 'Baisse', 'success'
+    else:
+        direction, label, tone = 'stable', 'Stable', 'neutral'
+
+    return {
+        'direction': direction,
+        'label': label,
+        'tone': tone,
+        'delta_avg_surcharge': delta,
+        'delta_pct': delta_pct,
+        'start_cursor': (start.cursor_x, start.cursor_y),
+        'current_cursor': (end.cursor_x, end.cursor_y),
+        'snapshots_count': len(rows),
+        'summary': (
+            f"Tendance {label.lower()} sur {len(rows)} snapshot(s) "
+            f"({start.cursor_x},{start.cursor_y}) → ({end.cursor_x},{end.cursor_y}), "
+            f"variation moyenne {delta_pct:+.1f}%."
+        ),
+    }
+
+
+def get_active_market_events(now=None):
+    now = now or _utcnow_naive()
+    return (
+        MarketEvent.query
+        .filter(
+            MarketEvent.starts_at <= now,
+            or_(MarketEvent.ends_at.is_(None), MarketEvent.ends_at > now),
+        )
+        .order_by(MarketEvent.created_at.desc(), MarketEvent.id.desc())
+        .all()
+    )
+
+
+def get_active_grain_purchase_ban(grain_key, now=None):
+    now = now or _utcnow_naive()
+    return (
+        MarketEvent.query
+        .filter(
+            MarketEvent.event_type == 'purchase_ban',
+            MarketEvent.blocked_cereal_key == grain_key,
+            MarketEvent.starts_at <= now,
+            or_(MarketEvent.ends_at.is_(None), MarketEvent.ends_at > now),
+        )
+        .order_by(MarketEvent.created_at.desc(), MarketEvent.id.desc())
+        .first()
+    )
+
+
+def serialize_market_event(event):
+    if not event:
+        return None
+    return {
+        'id': event.id,
+        'event_type': event.event_type,
+        'title': event.title,
+        'description': event.description,
+        'severity': event.severity,
+        'blocked_cereal_key': event.blocked_cereal_key,
+        'cursor_shift_x': event.cursor_shift_x,
+        'cursor_shift_y': event.cursor_shift_y,
+        'starts_at': event.starts_at,
+        'ends_at': event.ends_at,
+    }
+
+
+def list_user_grain_future_contracts(user_id, active_only=True):
+    query = GrainFutureContract.query.filter_by(user_id=user_id)
+    if active_only:
+        query = query.filter(GrainFutureContract.status == 'active')
+    return query.order_by(GrainFutureContract.delivery_due_at.asc(), GrainFutureContract.id.asc()).all()
+
+
+def get_grain_block_reason(grain_key, market=None, now=None):
+    market = market or get_grain_market()
+    if market.vitrine_grain == grain_key:
+        cereal = CEREALS.get(grain_key, {})
+        return f"{cereal.get('name', grain_key)} est en vitrine. Achete un autre grain pour le debloquer."
+
+    active_ban = get_active_grain_purchase_ban(grain_key, now=now)
+    if active_ban:
+        return active_ban.description
+    return None
 
 
 def _ensure_market_access(user):
@@ -217,7 +399,8 @@ def move_bourse_for_user(user_or_id, dx, dy):
         raise ValidationError("Deplacement impossible (bord de grille ou points insuffisants).")
 
     market.last_move_user_id = user.id
-    market.last_move_at = datetime.utcnow()
+    market.last_move_at = _utcnow_naive()
+    snapshot_market_position(market)
     db.session.commit()
 
     direction = []
@@ -313,7 +496,7 @@ def resolve_auctions():
             continue
         if auction.bidder_id and auction.current_bid > 0:
             auction.status = 'sold'
-            winner = User.query.get(auction.bidder_id)
+            winner = db.session.get(User, auction.bidder_id)
             if winner:
                 active_pigs = Pig.query.filter_by(user_id=winner.id, is_alive=True).order_by(Pig.id).all()
                 if len(active_pigs) >= 2:
@@ -333,7 +516,7 @@ def resolve_auctions():
         else:
             auction.status = 'expired'
             if auction.seller_id and auction.source_pig_id:
-                returned_pig = Pig.query.get(auction.source_pig_id)
+                returned_pig = db.session.get(Pig, auction.source_pig_id)
                 if returned_pig and returned_pig.user_id == auction.seller_id:
                     returned_pig.is_alive = True
                     returned_pig.death_date = None
@@ -354,6 +537,7 @@ def get_grain_market():
     if market is None:
         market = GrainMarket(id=1, cursor_x=BOURSE_DEFAULT_POS, cursor_y=BOURSE_DEFAULT_POS)
         db.session.add(market)
+        snapshot_market_position(market)
         db.session.commit()
     return market
 
@@ -382,7 +566,7 @@ def get_all_grain_surcharges(market):
 
 
 def get_bourse_movement_points(user_id):
-    user = User.query.get(user_id)
+    user = db.session.get(User, user_id)
     if user and user.is_admin:
         return 99
     total_purchases = db.session.query(func.count(BalanceTransaction.id)).filter(BalanceTransaction.user_id == user_id, BalanceTransaction.reason_code == 'feed_purchase').scalar() or 0
@@ -409,21 +593,22 @@ def move_bourse_cursor(market, dx, dy, max_points):
 
 
 def is_grain_blocked(grain_key, market):
-    return market.vitrine_grain == grain_key
+    return bool(get_grain_block_reason(grain_key, market))
 
 
 def update_vitrine(market, grain_key, user_id):
     market.vitrine_grain = grain_key
     market.vitrine_user_id = user_id
-    market.last_purchase_at = datetime.utcnow()
+    market.last_purchase_at = _utcnow_naive()
     market.total_transactions = (market.total_transactions or 0) + 1
     log_market_state(market)
+    snapshot_market_position(market)
 
 
 def log_market_state(market):
     """Enregistre l'état actuel des prix dans l'historique."""
     surcharges = get_all_grain_surcharges(market)
-    recorded_at = datetime.utcnow()
+    recorded_at = _utcnow_naive()
     for key, surcharge in surcharges.items():
         base_cost = CEREALS[key]['cost']
         history = MarketHistory(
@@ -440,7 +625,192 @@ def resolve_market_history():
     Pour l'instant, on se contente de logger de temps en temps."""
     market = get_grain_market()
     log_market_state(market)
+    snapshot_market_position(market)
     db.session.commit()
+
+
+def create_grain_future_contract_for_user(
+    user_or_id,
+    cereal_key,
+    quantity=1,
+    delivery_days=2,
+    premium_rate=0.10,
+):
+    from services.pig_service import get_feeding_cost_multiplier
+
+    user = _get_market_user(user_or_id)
+    cereal = _get_cereal_or_raise(cereal_key)
+    quantity = int(quantity or 0)
+    delivery_days = int(delivery_days or 0)
+    premium_rate = float(premium_rate or 0.0)
+
+    if quantity <= 0:
+        raise ValidationError("Quantite invalide pour le contrat a terme.")
+    if delivery_days < 1 or delivery_days > 7:
+        raise ValidationError("Le delai de livraison doit etre compris entre 1 et 7 jours.")
+    if premium_rate < 0.0 or premium_rate > 0.5:
+        raise ValidationError("Prime de blocage invalide.")
+
+    market = get_grain_market()
+    block_reason = get_grain_block_reason(cereal_key, market)
+    if block_reason:
+        raise ValidationError(block_reason)
+
+    surcharges = get_all_grain_surcharges(market)
+    surcharge = float(surcharges.get(cereal_key, 1.0) or 1.0)
+    feeding_multiplier = float(get_feeding_cost_multiplier(user) or 1.0)
+    base_unit_price = round(float(cereal['cost']) * surcharge * feeding_multiplier, 2)
+    locked_unit_price = round(base_unit_price * (1.0 + premium_rate), 2)
+    total_price_paid = round(locked_unit_price * quantity, 2)
+
+    try:
+        debit_user(
+            user,
+            total_price_paid,
+            reason_code='grain_future_lock',
+            reason_label='Contrat a terme sur cereales',
+            details=(
+                f"Blocage du prix de {cereal['name']} pour {quantity} unite(s), "
+                f"livraison dans {delivery_days} jour(s). Prime x{1.0 + premium_rate:.2f}."
+            ),
+            reference_type='user',
+            reference_id=user.id,
+            commit=False,
+        )
+    except InsufficientFundsError:
+        raise InsufficientFundsError("Pas assez de BitGroins pour bloquer ce contrat a terme !") from None
+
+    contract = GrainFutureContract(
+        user_id=user.id,
+        cereal_key=cereal_key,
+        quantity=quantity,
+        base_unit_price=base_unit_price,
+        locked_unit_price=locked_unit_price,
+        surcharge_locked=round(surcharge, 2),
+        feeding_multiplier_locked=round(feeding_multiplier, 2),
+        premium_rate=round(premium_rate, 2),
+        total_price_paid=total_price_paid,
+        delivery_due_at=_utcnow_naive() + timedelta(days=delivery_days),
+        status='active',
+    )
+    db.session.add(contract)
+    db.session.commit()
+    return contract
+
+
+def resolve_due_grain_future_contracts(now=None):
+    from services.pig_service import add_cereal_to_inventory
+
+    now = now or _utcnow_naive()
+    due_contracts = (
+        GrainFutureContract.query
+        .filter(
+            GrainFutureContract.status == 'active',
+            GrainFutureContract.delivery_due_at <= now,
+        )
+        .order_by(GrainFutureContract.delivery_due_at.asc(), GrainFutureContract.id.asc())
+        .all()
+    )
+
+    delivered_count = 0
+    for contract in due_contracts:
+        add_cereal_to_inventory(contract.user_id, contract.cereal_key, quantity=contract.quantity, commit=False)
+        contract.status = 'delivered'
+        contract.delivered_at = now
+        delivered_count += 1
+        push_user_notification(
+            user_id=contract.user_id,
+            title="Bourse aux Grains",
+            message=(
+                f"Livraison terminee : {contract.quantity} x {CEREALS.get(contract.cereal_key, {}).get('name', contract.cereal_key)} "
+                f"ont ete ajoutes a ton stock."
+            ),
+            category='success',
+            event_key=f"grain_future_delivered:{contract.id}:{int(now.timestamp())}",
+        )
+
+    if delivered_count:
+        db.session.commit()
+    return delivered_count
+
+
+def _apply_market_cursor_shift(market, shift_x, shift_y):
+    start_x = market.cursor_x
+    start_y = market.cursor_y
+    market.cursor_x = max(BOURSE_BLOCK_MIN, min(BOURSE_BLOCK_MAX, market.cursor_x + shift_x))
+    market.cursor_y = max(BOURSE_BLOCK_MIN, min(BOURSE_BLOCK_MAX, market.cursor_y + shift_y))
+    return market.cursor_x - start_x, market.cursor_y - start_y
+
+
+def trigger_market_event(now=None, force_type=None, target_cereal_key=None):
+    now = now or _utcnow_naive()
+    if not force_type and get_active_market_events(now=now):
+        return None
+
+    market = get_grain_market()
+    event_type = force_type or random.choice(['price_shock', 'purchase_ban'])
+
+    if event_type == 'price_shock':
+        requested_shift_x, requested_shift_y = random.choice([
+            (-2, 0),
+            (2, 0),
+            (0, -2),
+            (0, 2),
+            (-1, 1),
+            (1, -1),
+        ])
+        shift_x, shift_y = _apply_market_cursor_shift(market, requested_shift_x, requested_shift_y)
+        if shift_x == 0 and shift_y == 0:
+            shift_x, shift_y = _apply_market_cursor_shift(market, 1 if market.cursor_x < BOURSE_BLOCK_MAX else -1, 0)
+
+        event = MarketEvent(
+            event_type='price_shock',
+            title='Onde de panique',
+            description="Un choc de marche a deplace brutalement le bloc de cotation.",
+            severity='high',
+            cursor_shift_x=shift_x,
+            cursor_shift_y=shift_y,
+            starts_at=now,
+            ends_at=now + timedelta(hours=4),
+        )
+        db.session.add(event)
+        log_market_state(market)
+        snapshot_market_position(market, recorded_at=now)
+        db.session.commit()
+        return event
+
+    if event_type == 'purchase_ban':
+        cereal_candidates = [key for key in BOURSE_GRAIN_LAYOUT.values() if key]
+        if target_cereal_key:
+            cereal_key = target_cereal_key
+        else:
+            active_banned = {event.blocked_cereal_key for event in get_active_market_events(now=now) if event.blocked_cereal_key}
+            remaining = [key for key in cereal_candidates if key not in active_banned]
+            cereal_key = random.choice(remaining or cereal_candidates)
+        cereal = _get_cereal_or_raise(cereal_key)
+        event = MarketEvent(
+            event_type='purchase_ban',
+            title='Crise d-approvisionnement',
+            description=f"{cereal['name']} est temporairement indisponible sur ordre sanitaire du marche.",
+            severity='medium',
+            blocked_cereal_key=cereal_key,
+            starts_at=now,
+            ends_at=now + timedelta(hours=6),
+        )
+        db.session.add(event)
+        db.session.commit()
+        return event
+
+    raise ValidationError("Type d'evenement de marche inconnu.")
+
+
+def maybe_trigger_market_event(now=None, probability=0.35):
+    now = now or _utcnow_naive()
+    if get_active_market_events(now=now):
+        return None
+    if random.random() > probability:
+        return None
+    return trigger_market_event(now=now)
 
 
 def get_bourse_cereals(market, feeding_multiplier=1.0):
@@ -462,7 +832,8 @@ def get_bourse_cereals(market, feeding_multiplier=1.0):
         c['grid_x'] = gx
         c['grid_y'] = gy
         c['cell_value'] = _cell_value(gx) + _cell_value(gy)
-        c['is_blocked'] = is_grain_blocked(cereal_key, market)
+        c['blocked_reason'] = get_grain_block_reason(cereal_key, market)
+        c['is_blocked'] = bool(c['blocked_reason'])
         c['block_dx'] = dx
         c['block_dy'] = dy
         result[cereal_key] = c

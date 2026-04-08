@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Derby des Groins -- Groin-der</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" crossorigin="anonymous"></script>
+    {% include '_tailwind_assets.html' %}
+    {% include '_chartjs_assets.html' %}
     <link href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
     <style>
         * { font-family: 'Nunito', sans-serif; }
@@ -111,6 +111,12 @@
                     <p>🏁 {{ pig.races_won }} victoires · {{ pig.haras_services_count }} match{{ 'es' if pig.haras_services_count != 1 else '' }}</p>
                     <p>{{ pig.origin_flag }} {{ pig.origin_country }}</p>
                 </div>
+
+                <button type="button"
+                    class="rounded-xl border border-amber-400/25 bg-amber-400/10 px-3 py-2 text-xs font-black uppercase tracking-[0.12em] text-amber-100 hover:bg-amber-400/18 transition-colors"
+                    onclick='openLineageTree({{ pig.id }}, {{ pig.name|tojson }})'>
+                    Voir l'arbre
+                </button>
 
                 <!-- Radar ADN -->
                 <div class="flex items-center justify-center">
@@ -276,6 +282,7 @@
 
 </main>
 
+{% include '_lineage_tree_modal.html' %}
 {% include '_footer.html' %}
 </body>
 </html>

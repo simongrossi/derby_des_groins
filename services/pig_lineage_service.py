@@ -1,6 +1,8 @@
 from dataclasses import dataclass
 import random
 
+from sqlalchemy import text
+
 from config.game_rules import PIG_DEFAULTS, PIG_HERITAGE_RULES, PIG_LIMITS, PIG_OFFSPRING_RULES
 from content.pigs_catalog import PIG_EMOJIS, PIG_ORIGINS, PRELOADED_PIG_NAMES
 from exceptions import ValidationError
@@ -51,6 +53,209 @@ def get_pig_heritage_value(pig):
         + rarity_bonus,
         2,
     )
+
+
+def _serialize_lineage_pig_node(pig, relation=None, depth=0):
+    if not pig:
+        return None
+    return {
+        'id': pig.id,
+        'name': pig.name,
+        'emoji': pig.emoji or '🐷',
+        'sex': pig.sex or 'M',
+        'generation': pig.generation or 1,
+        'lineage_name': pig.lineage_name,
+        'lineage_label': get_lineage_label(pig),
+        'rarity': pig.rarity or 'commun',
+        'level': pig.level or 1,
+        'races_won': pig.races_won or 0,
+        'lineage_boost': round(float(pig.lineage_boost or 0.0), 2),
+        'is_alive': bool(pig.is_alive),
+        'owner_name': pig.owner.username if getattr(pig, 'owner', None) else None,
+        'relation': relation,
+        'depth': depth,
+    }
+
+
+def _fetch_lineage_relations(root_pig_id, max_depth=4):
+    query = text(
+        """
+        WITH RECURSIVE ancestor_links AS (
+            SELECT
+                p.id AS pig_id,
+                p.sire_id AS sire_id,
+                p.dam_id AS dam_id,
+                CAST(NULL AS INTEGER) AS relative_id,
+                CAST(NULL AS TEXT) AS relation,
+                0 AS depth
+            FROM pig AS p
+            WHERE p.id = :pig_id
+            UNION ALL
+            SELECT
+                parent.id AS pig_id,
+                parent.sire_id AS sire_id,
+                parent.dam_id AS dam_id,
+                child.pig_id AS relative_id,
+                CASE
+                    WHEN child.sire_id = parent.id THEN 'sire'
+                    WHEN child.dam_id = parent.id THEN 'dam'
+                    ELSE NULL
+                END AS relation,
+                child.depth + 1 AS depth
+            FROM pig AS parent
+            JOIN ancestor_links AS child
+                ON parent.id = child.sire_id OR parent.id = child.dam_id
+            WHERE child.depth < :max_depth
+        ),
+        descendant_links AS (
+            SELECT
+                p.id AS pig_id,
+                p.sire_id AS sire_id,
+                p.dam_id AS dam_id,
+                CAST(NULL AS INTEGER) AS relative_id,
+                CAST(NULL AS TEXT) AS relation,
+                0 AS depth
+            FROM pig AS p
+            WHERE p.id = :pig_id
+            UNION ALL
+            SELECT
+                child.id AS pig_id,
+                child.sire_id AS sire_id,
+                child.dam_id AS dam_id,
+                parent.pig_id AS relative_id,
+                CASE
+                    WHEN child.sire_id = parent.pig_id THEN 'child_sire'
+                    WHEN child.dam_id = parent.pig_id THEN 'child_dam'
+                    ELSE NULL
+                END AS relation,
+                parent.depth + 1 AS depth
+            FROM pig AS child
+            JOIN descendant_links AS parent
+                ON child.sire_id = parent.pig_id OR child.dam_id = parent.pig_id
+            WHERE parent.depth < :max_depth
+        )
+        SELECT pig_id, relative_id, relation, depth, 'ancestor' AS branch
+        FROM ancestor_links
+        UNION ALL
+        SELECT pig_id, relative_id, relation, depth, 'descendant' AS branch
+        FROM descendant_links
+        """
+    )
+    rows = db.session.execute(query, {'pig_id': int(root_pig_id), 'max_depth': int(max_depth)}).mappings().all()
+    return [dict(row) for row in rows]
+
+
+def _build_ancestor_branch(root_pig_id, pigs_by_id, parent_map, depth_map):
+    if root_pig_id not in pigs_by_id:
+        return None
+    root_node = _serialize_lineage_pig_node(pigs_by_id[root_pig_id], depth=0)
+    root_node['parents'] = []
+    for relation in ('sire', 'dam'):
+        parent_id = parent_map.get(root_pig_id, {}).get(relation)
+        if not parent_id or parent_id not in pigs_by_id:
+            continue
+        parent_node = _build_ancestor_branch(parent_id, pigs_by_id, parent_map, depth_map)
+        if not parent_node:
+            continue
+        parent_node['relation'] = relation
+        parent_node['depth'] = depth_map.get(parent_id, 1)
+        root_node['parents'].append(parent_node)
+    return root_node
+
+
+def _build_descendant_branch(root_pig_id, pigs_by_id, child_map, depth_map):
+    if root_pig_id not in pigs_by_id:
+        return None
+    root_node = _serialize_lineage_pig_node(pigs_by_id[root_pig_id], depth=0)
+    root_node['children'] = []
+    children = child_map.get(root_pig_id, [])
+    children.sort(key=lambda item: (depth_map.get(item[0], 0), item[1], item[0]))
+    for child_id, relation in children:
+        if child_id not in pigs_by_id:
+            continue
+        child_node = _build_descendant_branch(child_id, pigs_by_id, child_map, depth_map)
+        if not child_node:
+            continue
+        child_node['relation'] = relation
+        child_node['depth'] = depth_map.get(child_id, 1)
+        root_node['children'].append(child_node)
+    return root_node
+
+
+def build_pig_lineage_tree(pig_or_id, max_depth=4):
+    pig_id = int(pig_or_id.id if isinstance(pig_or_id, Pig) else pig_or_id)
+    relations = _fetch_lineage_relations(pig_id, max_depth=max_depth)
+    if not relations:
+        return None
+
+    unique_ids = {row['pig_id'] for row in relations if row['pig_id']}
+    pigs = (
+        Pig.query
+        .filter(Pig.id.in_(unique_ids))
+        .all()
+    )
+    pigs_by_id = {pig.id: pig for pig in pigs}
+    if pig_id not in pigs_by_id:
+        return None
+
+    parent_map = {}
+    child_map = {}
+    ancestor_depths = {pig_id: 0}
+    descendant_depths = {pig_id: 0}
+
+    for row in relations:
+        current_id = row['pig_id']
+        relative_id = row['relative_id']
+        relation = row['relation']
+        depth = int(row['depth'] or 0)
+        branch = row['branch']
+
+        if branch == 'ancestor':
+            ancestor_depths[current_id] = min(depth, ancestor_depths.get(current_id, depth))
+            if relative_id and relation in ('sire', 'dam'):
+                parent_map.setdefault(relative_id, {})
+                if relation not in parent_map[relative_id]:
+                    parent_map[relative_id][relation] = current_id
+        else:
+            descendant_depths[current_id] = min(depth, descendant_depths.get(current_id, depth))
+            if relative_id and relation in ('child_sire', 'child_dam'):
+                existing_children = child_map.setdefault(relative_id, [])
+                pair = (current_id, relation)
+                if pair not in existing_children:
+                    existing_children.append(pair)
+
+    focus_node = _serialize_lineage_pig_node(pigs_by_id[pig_id], relation='focus', depth=0)
+    focus_node['parents'] = []
+    focus_node['children'] = []
+
+    for relation in ('sire', 'dam'):
+        parent_id = parent_map.get(pig_id, {}).get(relation)
+        if parent_id:
+            branch = _build_ancestor_branch(parent_id, pigs_by_id, parent_map, ancestor_depths)
+            if branch:
+                branch['relation'] = relation
+                branch['depth'] = ancestor_depths.get(parent_id, 1)
+                focus_node['parents'].append(branch)
+
+    children = child_map.get(pig_id, [])
+    children.sort(key=lambda item: (descendant_depths.get(item[0], 0), item[1], item[0]))
+    for child_id, relation in children:
+        branch = _build_descendant_branch(child_id, pigs_by_id, child_map, descendant_depths)
+        if branch:
+            branch['relation'] = relation
+            branch['depth'] = descendant_depths.get(child_id, 1)
+            focus_node['children'].append(branch)
+
+    return {
+        'focus': focus_node,
+        'meta': {
+            'pig_id': pig_id,
+            'max_depth': max_depth,
+            'ancestor_count': max(0, len(ancestor_depths) - 1),
+            'descendant_count': max(0, len(descendant_depths) - 1),
+            'node_count': len(unique_ids),
+        },
+    }
 
 
 def normalize_pig_name(name):

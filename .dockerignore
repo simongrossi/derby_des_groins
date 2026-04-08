@@ -11,6 +11,8 @@ instance/
 .claude/
 .gemini/
 .pytest_cache/
+node_modules/
+frontend/node_modules/
 tests/
 TODO_PRODUCTION.md
 LICENSE

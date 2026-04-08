@@ -7,8 +7,17 @@ from exceptions import BusinessRuleError
 from helpers.game_data import get_cereals_dict
 from models import User, BalanceTransaction, MarketHistory
 from services.market_service import (
-    get_grain_market, get_all_grain_surcharges, get_bourse_movement_points,
-    get_bourse_cereals, get_bourse_grid_data, move_bourse_for_user,
+    calculate_market_trend,
+    create_grain_future_contract_for_user,
+    get_active_market_events,
+    get_all_grain_surcharges,
+    get_bourse_cereals,
+    get_bourse_grid_data,
+    get_bourse_movement_points,
+    get_grain_market,
+    list_user_grain_future_contracts,
+    move_bourse_for_user,
+    serialize_market_event,
 )
 from services.pig_service import buy_cereal_from_bourse_for_user, get_feeding_cost_multiplier
 
@@ -29,6 +38,9 @@ def bourse():
     feeding_multiplier = get_feeding_cost_multiplier(user)
     cereals = get_bourse_cereals(market, feeding_multiplier)
     grid = get_bourse_grid_data(market)
+    market_trend = calculate_market_trend(days=7)
+    active_market_events = [serialize_market_event(event) for event in get_active_market_events()]
+    user_future_contracts = list_user_grain_future_contracts(user.id)
 
     # Compteur d'achats total de l'utilisateur (pour affichage)
     total_purchases = db.session.query(db.func.count(BalanceTransaction.id)).filter(
@@ -65,6 +77,9 @@ def bourse():
         grid=grid,
         total_purchases=total_purchases,
         last_movers=last_movers,
+        market_trend=market_trend,
+        active_market_events=active_market_events,
+        user_future_contracts=user_future_contracts,
         block_min=BOURSE_BLOCK_MIN,
         block_max=BOURSE_BLOCK_MAX,
     )
@@ -103,6 +118,35 @@ def bourse_buy():
         flash(result['message'], result.get('category', 'success'))
     except BusinessRuleError as exc:
         flash(str(exc), "error")
+    return redirect(url_for('bourse.bourse'))
+
+
+@bourse_bp.route('/bourse/future', methods=['POST'])
+@limiter.limit("10 per minute")
+def bourse_future():
+    if 'user_id' not in session:
+        return redirect(url_for('auth.login'))
+    user = User.query.get(session['user_id'])
+    if not user:
+        session.pop('user_id', None)
+        return redirect(url_for('auth.login'))
+
+    try:
+        contract = create_grain_future_contract_for_user(
+            user.id,
+            request.form.get('cereal'),
+            request.form.get('quantity', 1, type=int),
+            request.form.get('delivery_days', 2, type=int),
+        )
+        flash(
+            (
+                f"Contrat a terme valide : {contract.quantity} x {contract.cereal_key} "
+                f"livrable(s) le {contract.delivery_due_at.strftime('%d/%m a %H:%M')}."
+            ),
+            'success',
+        )
+    except BusinessRuleError as exc:
+        flash(str(exc), 'error')
     return redirect(url_for('bourse.bourse'))
 
 

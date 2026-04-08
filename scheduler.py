@@ -7,7 +7,9 @@ from extensions import db, APP_TIMEZONE
 from helpers.race import ensure_next_race, run_race_if_needed
 from helpers.veterinary import check_vet_deadlines
 from services.market_service import resolve_auctions, resolve_market_history
+from services.market_service import maybe_trigger_market_event, resolve_due_grain_future_contracts
 from services.auth_log_service import purge_old_auth_events
+from services.pig_vitals_buffer_service import flush_due_buffered_pig_vitals
 
 scheduler = None
 
@@ -62,6 +64,30 @@ def start_scheduler(app):
         lambda: run_scheduler_job(app, 'market_history_tick', resolve_market_history),
         IntervalTrigger(minutes=10, timezone=APP_TIMEZONE),
         id='market-history-tick',
+        replace_existing=True,
+        max_instances=1,
+        coalesce=True,
+    )
+    scheduler.add_job(
+        lambda: run_scheduler_job(app, 'pig_vitals_flush_tick', flush_due_buffered_pig_vitals),
+        IntervalTrigger(seconds=15, timezone=APP_TIMEZONE),
+        id='pig-vitals-flush-tick',
+        replace_existing=True,
+        max_instances=1,
+        coalesce=True,
+    )
+    scheduler.add_job(
+        lambda: run_scheduler_job(app, 'grain_future_delivery_tick', resolve_due_grain_future_contracts),
+        IntervalTrigger(minutes=15, timezone=APP_TIMEZONE),
+        id='grain-future-delivery-tick',
+        replace_existing=True,
+        max_instances=1,
+        coalesce=True,
+    )
+    scheduler.add_job(
+        lambda: run_scheduler_job(app, 'market_event_tick', maybe_trigger_market_event),
+        IntervalTrigger(hours=6, timezone=APP_TIMEZONE),
+        id='market-event-tick',
         replace_existing=True,
         max_instances=1,
         coalesce=True,
