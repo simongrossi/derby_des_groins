@@ -1,3 +1,15 @@
+FROM node:22-alpine AS assets
+
+WORKDIR /app
+
+COPY package.json package-lock.json tailwind.config.js ./
+COPY frontend ./frontend
+COPY templates ./templates
+COPY static ./static
+
+RUN npm ci \
+    && npm run build:css
+
 FROM python:3.12-slim
 
 # gcc + libpq-dev : nécessaires pour compiler psycopg2-binary
@@ -14,6 +26,7 @@ RUN pip install --upgrade pip \
     && pip install --no-cache-dir -r requirements.txt
 
 COPY . .
+COPY --from=assets /app/static/css/tailwind.css /app/static/css/tailwind.css
 
 RUN chmod +x docker-entrypoint.sh
 

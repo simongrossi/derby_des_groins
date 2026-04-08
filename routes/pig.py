@@ -21,6 +21,7 @@ from services.finance_service import (
 from services.gameplay_settings_service import get_gameplay_settings
 from services.pig_lineage_service import (
     apply_origin_bonus,
+    build_pig_lineage_tree,
     build_unique_pig_name,
     create_offspring,
     get_lineage_label, get_pig_heritage_value,
@@ -46,6 +47,38 @@ from services.pig_service import (
 )
 
 pig_bp = Blueprint('pig', __name__)
+
+
+def _can_view_lineage(user, pig):
+    return bool(
+        user
+        and pig
+        and (
+            user.is_admin
+            or pig.user_id == user.id
+            or pig.haras_listed
+            or not pig.is_alive
+        )
+    )
+
+
+@pig_bp.route('/api/pigs/<int:pig_id>/lineage-tree')
+def pig_lineage_tree(pig_id):
+    if 'user_id' not in session:
+        return jsonify({'error': 'Non connecté'}), 401
+
+    user = db.session.get(User, session['user_id'])
+    pig = db.session.get(Pig, pig_id)
+    if not user or not pig:
+        return jsonify({'error': 'Cochon introuvable'}), 404
+    if not _can_view_lineage(user, pig):
+        return jsonify({'error': 'Accès interdit'}), 403
+
+    max_depth = max(1, min(6, request.args.get('depth', 4, type=int)))
+    payload = build_pig_lineage_tree(pig.id, max_depth=max_depth)
+    if payload is None:
+        return jsonify({'error': 'Arbre généalogique introuvable'}), 404
+    return jsonify(payload)
 
 
 @pig_bp.route('/mon-cochon')
