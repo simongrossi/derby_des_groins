@@ -155,6 +155,9 @@
                 </a>
 
                 <div class="sidebar-section">Jeu</div>
+                <a href="{{ url_for('admin.abonporc_games') }}" class="sidebar-link {{ 'active' if admin_tab == 'abonporc' }}">
+                    <span class="text-base w-6 text-center">🐽</span> A Bon Porc
+                </a>
                 <a href="{{ url_for('admin.admin_races') }}" class="sidebar-link {{ 'active' if admin_tab == 'races' }}">
                     <span class="text-base w-6 text-center">🏁</span> Courses & March&eacute;
                 </a>
