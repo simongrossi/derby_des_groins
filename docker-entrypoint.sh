@@ -33,6 +33,11 @@ else
     echo "RUN_DB_MIGRATIONS=0, skipping migrations."
 fi
 
+if [[ "$#" -gt 0 ]]; then
+    echo "Executing custom command: $*"
+    exec "$@"
+fi
+
 exec gunicorn \
     --bind 0.0.0.0:5001 \
     --workers 1 \
