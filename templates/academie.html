@@ -39,20 +39,53 @@
       background: repeating-linear-gradient(180deg, rgba(255,255,255,0.03) 0 2px, transparent 2px 4px);
       mix-blend-mode: soft-light;
     }
-    .letter-slot {
-      display: inline-block;
-      width: 2.2rem;
-      height: 2.8rem;
-      line-height: 2.8rem;
-      text-align: center;
+
+    #typing-input {
+      font-family: 'VT323', monospace;
+      font-size: 1.6rem;
+      background: rgba(0,0,0,0.5);
       border: 2px solid #5a4b9e;
-      background: rgba(0,0,0,0.4);
-      font-size: 1.2rem;
       color: #fff;
+      caret-color: #fcd34d;
+      outline: none;
+      transition: border-color 0.1s;
     }
-    .letter-slot.correct { border-color: #34d399; color: #34d399; background: rgba(52,211,153,0.1); }
-    .letter-slot.incorrect { border-color: #f87171; color: #f87171; background: rgba(248,113,113,0.1); }
-    .letter-slot.current { border-bottom: 4px solid #fcd34d; background: rgba(252,211,77,0.1); }
+    #typing-input:focus { border-color: #fcd34d; }
+    #typing-input.error-flash { border-color: #f87171; background: rgba(248,113,113,0.1); }
+
+    .word-display { line-height: 1.8; }
+    .word-char { transition: color 0.05s; }
+    .word-char.typed { color: #34d399; }
+    .word-char.current { color: #fcd34d; text-decoration: underline; text-underline-offset: 4px; }
+    .word-char.error { color: #f87171; }
+    .word-char.pending { color: rgba(255,255,255,0.25); }
+    .word-space { display: inline-block; width: 0.6em; }
+    .word-space.typed { background: rgba(52,211,153,0.15); }
+
+    .timer-bar {
+      height: 6px;
+      background: rgba(255,255,255,0.08);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+    .timer-bar-fill {
+      height: 100%;
+      border-radius: 3px;
+      transition: width 0.1s linear, background-color 0.3s;
+    }
+
+    .stat-pill {
+      background: rgba(0,0,0,0.4);
+      border: 2px solid #5a4b9e;
+      padding: 0.5rem 1rem;
+    }
+
+    @keyframes scorePopIn {
+      0% { transform: scale(0.5); opacity: 0; }
+      60% { transform: scale(1.1); }
+      100% { transform: scale(1); opacity: 1; }
+    }
+    .score-pop { animation: scorePopIn 0.4s ease-out; }
   </style>
 </head>
 <body class="min-h-screen text-white">
@@ -62,35 +95,84 @@
         <div>
           <p class="pixel-font text-[10px] text-indigo-300">ACADEMIE PORCINE</p>
           <h1 class="pixel-font text-xl sm:text-2xl text-indigo-100 mt-3">⌨️ DACTYLO PORCIN</h1>
-          <p class="retro-font text-xl text-white/50 mt-1">Vitesse et précision. Tapez les mots pour marquer des points.</p>
+          <p class="retro-font text-xl text-white/50 mt-1">Enchaine les mots en {{ game_duration }} secondes. Vitesse et precision !</p>
         </div>
       </div>
 
-      <div class="mt-8 text-center relative z-10">
-        <div id="game-screen" class="hidden flex-col items-center gap-6">
-          <div class="flex gap-4 mb-4">
-            <div class="bg-black/40 px-4 py-2 border-2 border-indigo-500">
-              <span class="pixel-font text-[10px] text-indigo-300">TEMPS</span>
-              <p id="timer" class="retro-font text-3xl text-yellow-300">0.0s</p>
-            </div>
-            <div class="bg-black/40 px-4 py-2 border-2 border-indigo-500">
-              <span class="pixel-font text-[10px] text-indigo-300">ERREURS</span>
-              <p id="error-count" class="retro-font text-3xl text-red-400">0</p>
-            </div>
-          </div>
-          
-          <div id="word-container" class="pixel-font text-2xl flex gap-2 justify-center flex-wrap max-w-full">
-            <!-- Letters injected here -->
-          </div>
-          
-          <p id="game-feedback" class="retro-font text-2xl h-8 mt-4 text-emerald-300"></p>
+      <!-- Start Screen -->
+      <div id="start-screen" class="mt-8 text-center relative z-10 py-12">
+        <p class="retro-font text-2xl text-white/60 mb-6">Tape un maximum de mots en {{ game_duration }}s.<br>Les espaces comptent entre les mots !</p>
+        <button id="start-btn" class="pixel-btn pixel-font text-sm bg-indigo-600 hover:bg-indigo-500 px-8 py-4">
+          Demarrer l'entrainement
+        </button>
+      </div>
+
+      <!-- Game Screen -->
+      <div id="game-screen" class="hidden mt-6 relative z-10">
+        <!-- Timer bar -->
+        <div class="timer-bar mb-4">
+          <div id="timer-bar-fill" class="timer-bar-fill bg-emerald-400" style="width: 100%"></div>
         </div>
 
-        <div id="start-screen" class="py-12">
-          <button id="start-btn" class="pixel-btn pixel-font text-sm bg-indigo-600 hover:bg-indigo-500 px-8 py-4">
-            Demarrer l'entrainement
-          </button>
+        <!-- Stats row -->
+        <div class="flex flex-wrap gap-3 justify-center mb-5">
+          <div class="stat-pill text-center">
+            <span class="pixel-font text-[8px] text-indigo-300 block">TEMPS</span>
+            <span id="timer" class="retro-font text-2xl text-yellow-300">{{ game_duration }}s</span>
+          </div>
+          <div class="stat-pill text-center">
+            <span class="pixel-font text-[8px] text-indigo-300 block">MOTS</span>
+            <span id="word-count" class="retro-font text-2xl text-emerald-300">0</span>
+          </div>
+          <div class="stat-pill text-center">
+            <span class="pixel-font text-[8px] text-indigo-300 block">ERREURS</span>
+            <span id="error-count" class="retro-font text-2xl text-red-400">0</span>
+          </div>
+          <div class="stat-pill text-center">
+            <span class="pixel-font text-[8px] text-indigo-300 block">CAR/S</span>
+            <span id="cps-display" class="retro-font text-2xl text-cyan-300">0</span>
+          </div>
         </div>
+
+        <!-- Word display -->
+        <div id="word-display" class="word-display retro-font text-3xl sm:text-4xl text-center px-4 py-6 bg-black/30 border-2 border-indigo-900/50 rounded-lg min-h-[120px] mb-4"></div>
+
+        <!-- Input -->
+        <input type="text" id="typing-input" class="w-full px-4 py-3 rounded-lg text-center" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Tape ici...">
+      </div>
+
+      <!-- Result Screen -->
+      <div id="result-screen" class="hidden mt-8 text-center relative z-10 py-6">
+        <p class="pixel-font text-lg text-yellow-300 mb-6">🏁 TEMPS ECOULE !</p>
+        <div class="score-pop mb-6">
+          <p class="pixel-font text-[10px] text-indigo-300 mb-2">SCORE FINAL</p>
+          <p id="final-score" class="pixel-font text-4xl text-emerald-400">0</p>
+        </div>
+        <div class="flex flex-wrap gap-4 justify-center mb-8">
+          <div class="stat-pill text-center">
+            <span class="pixel-font text-[8px] text-indigo-300 block">MOTS</span>
+            <span id="result-words" class="retro-font text-2xl text-white">0</span>
+          </div>
+          <div class="stat-pill text-center">
+            <span class="pixel-font text-[8px] text-indigo-300 block">CAR.</span>
+            <span id="result-chars" class="retro-font text-2xl text-white">0</span>
+          </div>
+          <div class="stat-pill text-center">
+            <span class="pixel-font text-[8px] text-indigo-300 block">ERREURS</span>
+            <span id="result-errors" class="retro-font text-2xl text-red-400">0</span>
+          </div>
+          <div class="stat-pill text-center">
+            <span class="pixel-font text-[8px] text-indigo-300 block">MPM</span>
+            <span id="result-wpm" class="retro-font text-2xl text-cyan-300">0</span>
+          </div>
+          <div class="stat-pill text-center">
+            <span class="pixel-font text-[8px] text-indigo-300 block">PRECISION</span>
+            <span id="result-accuracy" class="retro-font text-2xl text-yellow-300">0%</span>
+          </div>
+        </div>
+        <button id="restart-btn" class="pixel-btn pixel-font text-sm bg-indigo-600 hover:bg-indigo-500 px-8 py-4">
+          Rejouer
+        </button>
       </div>
     </section>
 
@@ -105,8 +187,8 @@
               <tr class="retro-font text-xl text-indigo-300 border-b-2 border-indigo-900/50">
                 <th class="py-2 px-3 tracking-widest leading-none">RANG</th>
                 <th class="py-2 px-3 tracking-widest leading-none">JOUEUR</th>
-                <th class="py-2 px-3 tracking-widest leading-none">MOT</th>
-                <th class="py-2 px-3 tracking-widest leading-none">TEMPS</th>
+                <th class="py-2 px-3 tracking-widest leading-none">RESUME</th>
+                <th class="py-2 px-3 tracking-widest leading-none">ERREURS</th>
                 <th class="py-2 px-3 tracking-widest leading-none text-right">SCORE</th>
               </tr>
             </thead>
@@ -115,8 +197,8 @@
               <tr class="hover:bg-white/5 transition-colors">
                 <td class="py-2 px-3 text-indigo-100 uppercase">#{{ loop.index }}</td>
                 <td class="py-2 px-3 text-cyan-200 uppercase">{{ score.user.username }}</td>
-                <td class="py-2 px-3 text-white/50 tracking-[0.2em] uppercase">{{ score.word }}</td>
-                <td class="py-2 px-3 text-yellow-200 uppercase">{{ "%.1f"|format(score.time_taken) }}s</td>
+                <td class="py-2 px-3 text-white/50 tracking-[0.1em]">{{ score.word }}</td>
+                <td class="py-2 px-3 text-red-300">{{ score.errors }}</td>
                 <td class="py-2 px-3 text-emerald-400 text-right font-bold tracking-widest uppercase">{{ score.score }}</td>
               </tr>
               {% endfor %}
@@ -131,46 +213,90 @@
   </main>
 
   <script>
+    const GAME_DURATION = {{ game_duration }};
     const startScreen = document.getElementById('start-screen');
     const gameScreen = document.getElementById('game-screen');
+    const resultScreen = document.getElementById('result-screen');
     const startBtn = document.getElementById('start-btn');
-    const wordContainer = document.getElementById('word-container');
+    const restartBtn = document.getElementById('restart-btn');
+    const wordDisplay = document.getElementById('word-display');
+    const typingInput = document.getElementById('typing-input');
     const timerEl = document.getElementById('timer');
+    const timerBarFill = document.getElementById('timer-bar-fill');
+    const wordCountEl = document.getElementById('word-count');
     const errorCountEl = document.getElementById('error-count');
-    const feedbackEl = document.getElementById('game-feedback');
+    const cpsEl = document.getElementById('cps-display');
 
-    let currentWord = "";
-    let currentIndex = 0;
+    let words = [];
+    let fullText = '';       // All words joined by spaces
+    let charIndex = 0;       // Current position in fullText
     let errors = 0;
+    let wordsCompleted = 0;
+    let totalCharsTyped = 0;
     let startTime = 0;
     let timerInterval = null;
     let isPlaying = false;
 
-    function renderWord() {
-      wordContainer.innerHTML = '';
-      for (let i = 0; i < currentWord.length; i++) {
-        const span = document.createElement('span');
-        span.className = 'letter-slot';
-        span.textContent = currentWord[i];
-        if (i < currentIndex) {
-          span.classList.add('correct');
-        } else if (i === currentIndex) {
-          span.classList.add('current');
+    function showScreen(name) {
+      startScreen.classList.add('hidden');
+      gameScreen.classList.add('hidden');
+      resultScreen.classList.add('hidden');
+      if (name === 'start') startScreen.classList.remove('hidden');
+      else if (name === 'game') gameScreen.classList.remove('hidden');
+      else if (name === 'result') resultScreen.classList.remove('hidden');
+    }
+
+    function renderText() {
+      let html = '';
+      for (let i = 0; i < fullText.length; i++) {
+        const ch = fullText[i];
+        const isSpace = ch === ' ';
+        if (i < charIndex) {
+          html += isSpace
+            ? '<span class="word-space typed"></span>'
+            : `<span class="word-char typed">${ch}</span>`;
+        } else if (i === charIndex) {
+          html += isSpace
+            ? '<span class="word-space current" style="background:rgba(252,211,77,0.3);border-bottom:2px solid #fcd34d;">&nbsp;</span>'
+            : `<span class="word-char current">${ch}</span>`;
+        } else {
+          html += isSpace
+            ? '<span class="word-space"></span>'
+            : `<span class="word-char pending">${ch}</span>`;
         }
-        wordContainer.appendChild(span);
+      }
+      wordDisplay.innerHTML = html;
+
+      // Auto-scroll: keep current char visible
+      const currentEl = wordDisplay.querySelector('.current');
+      if (currentEl) {
+        currentEl.scrollIntoView({ block: 'nearest', inline: 'nearest' });
       }
     }
 
     function updateTimer() {
-      if (!startTime) return;
       const elapsed = (Date.now() - startTime) / 1000;
-      timerEl.textContent = elapsed.toFixed(1) + 's';
+      const remaining = Math.max(0, GAME_DURATION - elapsed);
+      timerEl.textContent = remaining.toFixed(1) + 's';
+
+      const pct = (remaining / GAME_DURATION) * 100;
+      timerBarFill.style.width = pct + '%';
+      if (pct < 20) timerBarFill.className = 'timer-bar-fill bg-red-500';
+      else if (pct < 50) timerBarFill.className = 'timer-bar-fill bg-yellow-400';
+      else timerBarFill.className = 'timer-bar-fill bg-emerald-400';
+
+      // CPS
+      if (elapsed > 0) cpsEl.textContent = (totalCharsTyped / elapsed).toFixed(1);
+
+      if (remaining <= 0) {
+        endGame();
+      }
     }
 
     async function startGame() {
       startBtn.disabled = true;
-      feedbackEl.textContent = "Chargement...";
-      
+      restartBtn.disabled = true;
+
       try {
         const res = await fetch('/api/academie/start', {
           method: 'POST',
@@ -180,47 +306,55 @@
           }
         });
         const data = await res.json();
-        
-        if (!data.ok) throw new Error("Erreur");
+        if (!data.ok) throw new Error('Erreur serveur');
 
-        currentWord = data.word;
-        currentIndex = 0;
+        words = data.words;
+        fullText = words.join(' ');
+        charIndex = 0;
         errors = 0;
-        errorCountEl.textContent = "0";
-        feedbackEl.textContent = "";
+        wordsCompleted = 0;
+        totalCharsTyped = 0;
 
-        startScreen.classList.add('hidden');
-        gameScreen.classList.remove('hidden');
-        gameScreen.classList.add('flex');
+        errorCountEl.textContent = '0';
+        wordCountEl.textContent = '0';
+        cpsEl.textContent = '0';
+        timerEl.textContent = GAME_DURATION + 's';
+        timerBarFill.style.width = '100%';
+        timerBarFill.className = 'timer-bar-fill bg-emerald-400';
 
-        wordContainer.innerHTML = '<span class="retro-font text-5xl text-yellow-300 animate-pulse">3</span>';
-        
+        showScreen('game');
+        typingInput.value = '';
+
+        // Countdown 3-2-1
+        wordDisplay.innerHTML = '<span class="retro-font text-5xl text-yellow-300 animate-pulse">3</span>';
+        typingInput.disabled = true;
+
         let counter = 3;
         const countInt = setInterval(() => {
           counter--;
           if (counter > 0) {
-            wordContainer.innerHTML = `<span class="retro-font text-5xl text-yellow-300 animate-pulse">${counter}</span>`;
+            wordDisplay.innerHTML = `<span class="retro-font text-5xl text-yellow-300 animate-pulse">${counter}</span>`;
           } else {
             clearInterval(countInt);
-            wordContainer.innerHTML = '';
-            renderWord();
+            renderText();
+            typingInput.disabled = false;
+            typingInput.focus();
             startTime = Date.now();
             timerInterval = setInterval(updateTimer, 100);
             isPlaying = true;
           }
         }, 1000);
-        
+
       } catch (e) {
-        feedbackEl.textContent = "Erreur au lancement de la partie.";
+        showScreen('start');
         startBtn.disabled = false;
       }
     }
 
-    async function submitGame() {
+    async function endGame() {
       isPlaying = false;
       clearInterval(timerInterval);
-      feedbackEl.textContent = "Envoi du score...";
-      feedbackEl.className = "retro-font text-2xl h-8 mt-4 text-emerald-300 animate-pulse";
+      typingInput.disabled = true;
 
       try {
         const res = await fetch('/api/academie/submit', {
@@ -229,63 +363,115 @@
             'Content-Type': 'application/json',
             'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
           },
-          body: JSON.stringify({ word: currentWord, errors: errors })
+          body: JSON.stringify({
+            words_completed: wordsCompleted,
+            total_chars: totalCharsTyped,
+            errors: errors,
+          })
         });
         const data = await res.json();
 
         if (data.ok) {
-          feedbackEl.className = "retro-font flex flex-col items-center gap-2 mt-4 text-yellow-300";
-          feedbackEl.innerHTML = `<span>Terminé en ${data.time_taken.toFixed(1)}s ! Score: <span class="text-emerald-400 font-bold tracking-widest">${data.score}</span> pts</span>
-                                  <span class="text-indigo-300 text-sm animate-pulse mt-2">Nouveau mot en approche...</span>`;
-          setTimeout(() => {
-            feedbackEl.innerHTML = "";
-            startGame();
-          }, 3000);
-        } else {
-          throw new Error(data.error);
+          document.getElementById('final-score').textContent = data.score;
+          document.getElementById('result-words').textContent = data.words_completed;
+          document.getElementById('result-chars').textContent = data.total_chars;
+          document.getElementById('result-errors').textContent = data.errors;
+          document.getElementById('result-wpm').textContent = data.wpm;
+          document.getElementById('result-accuracy').textContent = data.accuracy + '%';
         }
       } catch (e) {
-        feedbackEl.className = "retro-font text-2xl h-8 mt-4 text-red-400";
-        feedbackEl.textContent = "Erreur de validation: " + e.message;
-        setTimeout(() => {
-            startScreen.classList.remove('hidden');
-            gameScreen.classList.add('hidden');
-            gameScreen.classList.remove('flex');
-            startBtn.disabled = false;
-        }, 2000);
+        // silently fail display
       }
+
+      showScreen('result');
+      restartBtn.disabled = false;
     }
 
-    document.addEventListener('keydown', (e) => {
+    // Handle typing
+    typingInput.addEventListener('input', () => {
       if (!isPlaying) return;
-      
-      const key = e.key.toUpperCase();
-      if (!/^[A-Z]$/.test(key)) return; // Ignore non-letters
 
-      const expectedLetter = currentWord[currentIndex];
-      const slots = wordContainer.querySelectorAll('.letter-slot');
+      const val = typingInput.value;
+      // We only care about the last character typed
+      const lastChar = val.slice(-1).toUpperCase();
+      const expected = fullText[charIndex];
 
-      if (key === expectedLetter) {
-        slots[currentIndex].classList.remove('current', 'incorrect');
-        slots[currentIndex].classList.add('correct');
-        currentIndex++;
-        
-        if (currentIndex >= currentWord.length) {
-          submitGame();
+      if (!expected) return;
+
+      if (expected === ' ') {
+        // Expect a space
+        if (lastChar === ' ' || val.endsWith(' ')) {
+          charIndex++;
+          totalCharsTyped++;
+          wordsCompleted++;
+          wordCountEl.textContent = wordsCompleted;
+          typingInput.value = '';
+          renderText();
         } else {
-          slots[currentIndex].classList.add('current');
+          // Non-space when space expected — typed a wrong char
+          errors++;
+          errorCountEl.textContent = errors;
+          typingInput.classList.add('error-flash');
+          setTimeout(() => typingInput.classList.remove('error-flash'), 100);
+          typingInput.value = '';
         }
       } else {
-        errors++;
-        errorCountEl.textContent = errors;
-        slots[currentIndex].classList.add('incorrect');
-        setTimeout(() => {
-           if (slots[currentIndex]) slots[currentIndex].classList.remove('incorrect');
-        }, 200);
+        // Expect a letter
+        if (lastChar === expected) {
+          charIndex++;
+          totalCharsTyped++;
+          renderText();
+
+          // Check if we just finished the last word (no more chars)
+          if (charIndex >= fullText.length) {
+            wordsCompleted++;
+            wordCountEl.textContent = wordsCompleted;
+            endGame();
+            return;
+          }
+        } else if (lastChar === ' ') {
+          // Pressed space mid-word — error
+          errors++;
+          errorCountEl.textContent = errors;
+          typingInput.classList.add('error-flash');
+          setTimeout(() => typingInput.classList.remove('error-flash'), 100);
+          typingInput.value = '';
+        } else {
+          // Wrong letter
+          errors++;
+          errorCountEl.textContent = errors;
+          typingInput.classList.add('error-flash');
+          setTimeout(() => typingInput.classList.remove('error-flash'), 100);
+          typingInput.value = '';
+        }
+      }
+    });
+
+    // Also handle space via keydown for reliability
+    typingInput.addEventListener('keydown', (e) => {
+      if (!isPlaying) return;
+      if (e.key === ' ') {
+        e.preventDefault();
+        const expected = fullText[charIndex];
+        if (expected === ' ') {
+          charIndex++;
+          totalCharsTyped++;
+          wordsCompleted++;
+          wordCountEl.textContent = wordsCompleted;
+          typingInput.value = '';
+          renderText();
+        } else {
+          errors++;
+          errorCountEl.textContent = errors;
+          typingInput.classList.add('error-flash');
+          setTimeout(() => typingInput.classList.remove('error-flash'), 100);
+          typingInput.value = '';
+        }
       }
     });
 
     startBtn.addEventListener('click', startGame);
+    restartBtn.addEventListener('click', startGame);
   </script>
 </body>
 </html>
