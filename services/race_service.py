@@ -586,8 +586,24 @@ def populate_race_participants(race, respect_course_plans=True, allow_rebuild_if
             planned_order = {pig_id: index for index, pig_id in enumerate(planned_ids)}
             fit_pigs.sort(key=lambda pig: (0 if pig.id in planned_order else 1, planned_order.get(pig.id, 999), -calculate_pig_power(pig)))
     fit_pigs = fit_pigs[:max_participants]
-    Participant.query.filter_by(race_id=race.id).delete(synchronize_session=False)
-    db.session.flush()
+
+    # --- Upsert: keep existing participant IDs stable ---
+    existing_participants = Participant.query.filter_by(race_id=race.id).all()
+    existing_by_pig_id = {}
+    existing_npcs_by_name = {}
+    for p in existing_participants:
+        if p.pig_id is not None:
+            existing_by_pig_id[p.pig_id] = p
+        else:
+            existing_npcs_by_name[p.name] = p
+
+    desired_pig_ids = {pig.id for pig in fit_pigs}
+
+    # Remove real-pig participants whose pig is no longer in the desired set
+    for p in existing_participants:
+        if p.pig_id is not None and p.pig_id not in desired_pig_ids:
+            db.session.delete(p)
+
     participants_list, all_powers, player_powers = [], [], []
     for pig in fit_pigs:
         power = calculate_pig_power(pig)
@@ -600,29 +616,61 @@ def populate_race_participants(race, respect_course_plans=True, allow_rebuild_if
             if plan
             else RACE_PLANNING_RULES.default_strategy_profile()
         )
-        participant = Participant(
-            race_id=race.id,
-            name=pig.name,
-            emoji=pig.emoji,
-            avatar_url=pig.avatar_url,
-            pig_id=pig.id,
-            owner_name=owner.username if owner else None,
-            strategy=plan_profile['phase_1'],
-            odds=0,
-            win_probability=0,
-        )
-        db.session.add(participant)
-        participants_list.append(participant)
+        existing_p = existing_by_pig_id.get(pig.id)
+        if existing_p:
+            # Update mutable fields; keep the row (and its id) stable
+            existing_p.name = pig.name
+            existing_p.emoji = pig.emoji
+            existing_p.avatar_url = pig.avatar_url
+            existing_p.owner_name = owner.username if owner else None
+            existing_p.strategy = plan_profile['phase_1']
+            participants_list.append(existing_p)
+        else:
+            participant = Participant(
+                race_id=race.id,
+                name=pig.name,
+                emoji=pig.emoji,
+                avatar_url=pig.avatar_url,
+                pig_id=pig.id,
+                owner_name=owner.username if owner else None,
+                strategy=plan_profile['phase_1'],
+                odds=0,
+                win_probability=0,
+            )
+            db.session.add(participant)
+            participants_list.append(participant)
+
+    # --- NPCs: reuse existing ones, only sample new if count must grow ---
     player_names = {pig.name for pig in fit_pigs}
     available_npcs = [npc for npc in get_configured_npcs() if npc['name'] not in player_names]
-    npc_count = min(max_participants - len(fit_pigs), len(available_npcs))
-    if npc_count > 0:
-        avg_player_power = sum(player_powers) / len(player_powers) if player_powers else 34.0
-        npc_min_power = max(22.0, avg_player_power * 0.9)
-        npc_max_power = max(npc_min_power + 2.0, avg_player_power * 1.1)
-        for npc in random.sample(available_npcs, npc_count):
+    desired_npc_count = min(max_participants - len(fit_pigs), len(available_npcs))
+
+    avg_player_power = sum(player_powers) / len(player_powers) if player_powers else 34.0
+    npc_min_power = max(22.0, avg_player_power * 0.9)
+    npc_max_power = max(npc_min_power + 2.0, avg_player_power * 1.1)
+
+    available_npc_names = {npc['name'] for npc in available_npcs}
+    kept_npcs = []
+    for name, p in existing_npcs_by_name.items():
+        if name in available_npc_names and len(kept_npcs) < desired_npc_count:
+            kept_npcs.append(p)
+        else:
+            db.session.delete(p)
+
+    for p in kept_npcs:
+        all_powers.append(random.uniform(npc_min_power, npc_max_power))
+        participants_list.append(p)
+
+    new_npc_count = desired_npc_count - len(kept_npcs)
+    if new_npc_count > 0:
+        kept_npc_names = {p.name for p in kept_npcs}
+        remaining_npcs = [npc for npc in available_npcs if npc['name'] not in kept_npc_names]
+        for npc in random.sample(remaining_npcs, min(new_npc_count, len(remaining_npcs))):
             all_powers.append(random.uniform(npc_min_power, npc_max_power))
-            participant = Participant(race_id=race.id, name=npc['name'], emoji=npc['emoji'], avatar_url=None, pig_id=None, owner_name=None, odds=0, win_probability=0)
+            participant = Participant(
+                race_id=race.id, name=npc['name'], emoji=npc['emoji'],
+                avatar_url=None, pig_id=None, owner_name=None, odds=0, win_probability=0,
+            )
             db.session.add(participant)
             participants_list.append(participant)
     total_power = sum(all_powers) if all_powers else 1
