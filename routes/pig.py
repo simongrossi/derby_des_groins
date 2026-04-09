@@ -250,6 +250,9 @@ def share_snack():
 
     recipient_name = recipient_pig.owner.username if recipient_pig.owner else 'ton collegue'
     flash(f"Tu as lance un trognon de pomme au cochon de {recipient_name}, quel geste noble !", "success")
+    redirect_to = request.form.get('redirect_to', '').strip()
+    if redirect_to:
+        return redirect(url_for('auth.profil_public', username=redirect_to))
     return redirect(url_for('pig.mon_cochon'))
 
 

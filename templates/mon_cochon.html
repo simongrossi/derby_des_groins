@@ -672,28 +672,6 @@
                     {% endif %}
                 </div>
 
-                <!-- En-cas Solidaire -->
-                <div class="card p-5 border-emerald-500/20 share-snack-card" style="background: rgba(16, 185, 129, 0.05);">
-                    <div class="flex items-center justify-between mb-2">
-                        <h3 class="text-emerald-400 font-title">🍎 En-cas Solidaire</h3>
-                        <span class="text-[10px] bg-emerald-600 px-2 py-0.5 rounded text-white font-bold">{{ pd.share_snacks_remaining }} restants</span>
-                    </div>
-                    <p class="text-white/70 text-[11px] font-bold mb-3">Lance un trognon de pomme au cochon d'un collegue pour l'aider ! C'est gratuit et ca restaure un peu sa faim.</p>
-                    {% if pd.share_snacks_remaining > 0 %}
-                    <form method="POST" action="/share-snack" class="space-y-2">
-                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                        <input type="hidden" name="pig_id" value="{{ pig.id }}">
-                        <input type="hidden" name="snack" value="apple_core">
-                        <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-500 py-2 rounded-lg text-[10px] font-bold uppercase transition-colors"
-                                {% if pig.user_id == user.id %}disabled title="Impossible sur ton propre cochon"{% endif %}>
-                            Lancer un en-cas solidaires
-                        </button>
-                    </form>
-                    {% else %}
-                    <p class="text-white/35 text-[10px] font-bold">Limite quotidienne atteinte.</p>
-                    {% endif %}
-                </div>
-
                 <!-- Tabs Nourriture/Entrainement -->
                 <div class="card overflow-hidden">
                     <div class="flex border-b border-white/5">

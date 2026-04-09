@@ -1,0 +1,206 @@
+{% from '_pig_avatar.html' import pig_display %}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>👤 Derby des Groins — {{ target_user.username }}</title>
+    {% include '_tailwind_assets.html' %}
+    <link href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * { font-family: 'Nunito', sans-serif; }
+        .font-title { font-family: 'Lilita One', cursive; }
+
+        body {
+            background: #160b20;
+            background-image:
+                radial-gradient(ellipse at 18% 18%, rgba(244, 114, 182, 0.16) 0%, transparent 45%),
+                radial-gradient(ellipse at 80% 30%, rgba(251, 146, 60, 0.10) 0%, transparent 50%),
+                radial-gradient(ellipse at 50% 80%, rgba(190, 24, 93, 0.12) 0%, transparent 55%);
+            min-height: 100vh;
+        }
+
+        .card {
+            background: rgba(255,255,255,.04);
+            border: 1px solid rgba(255,255,255,.08);
+            border-radius: 1rem;
+        }
+        .hero-card {
+            background: linear-gradient(135deg, rgba(244,114,182,.12), rgba(251,146,60,.08));
+            border: 1px solid rgba(244,114,182,.2);
+            border-radius: 1.5rem;
+        }
+        .stat-card {
+            background: rgba(255,255,255,.03);
+            border: 1px solid rgba(255,255,255,.06);
+            border-radius: 0.75rem;
+        }
+        .pig-pill {
+            background: rgba(255,255,255,.03);
+            border: 1px solid rgba(255,255,255,.06);
+            border-radius: 0.75rem;
+        }
+        .status-ok { background: rgba(16,185,129,.15); color: #6ee7b7; border: 1px solid rgba(16,185,129,.3); }
+        .status-warn { background: rgba(245,158,11,.15); color: #fcd34d; border: 1px solid rgba(245,158,11,.3); }
+    </style>
+</head>
+<body>
+{% include "_site_header.html" %}
+
+<main class="max-w-6xl mx-auto px-4 py-8">
+    {% include '_flash.html' %}
+
+    <section class="hero-card p-8 mb-8">
+        <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+            <div>
+                <p class="text-cyan-300/80 font-bold uppercase tracking-widest text-xs mb-2">Profil éleveur</p>
+                <h1 class="font-title text-3xl md:text-4xl text-white mb-2">👤 {{ target_user.username }}</h1>
+                <p class="text-white/55 font-semibold text-sm">
+                    Membre depuis le {{ target_user.created_at.strftime('%d/%m/%Y') if target_user.created_at else 'inconnu' }}
+                </p>
+            </div>
+            <div class="grid grid-cols-2 gap-3 min-w-[260px]">
+                <div class="stat-card p-4 text-center">
+                    <p class="text-3xl font-title text-pink-300">{{ active_pigs|length }}</p>
+                    <p class="text-white/45 text-xs font-bold uppercase tracking-wide">Cochons actifs</p>
+                </div>
+                <div class="stat-card p-4 text-center">
+                    <p class="text-3xl font-title text-green-300">{{ total_wins }}</p>
+                    <p class="text-white/45 text-xs font-bold uppercase tracking-wide">Victoires</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+        <section class="xl:col-span-1 space-y-6">
+            <div class="card p-6">
+                <h2 class="font-title text-2xl text-white mb-4">Infos</h2>
+                <div class="space-y-3 text-sm font-semibold">
+                    <div class="flex items-center justify-between gap-4">
+                        <span class="text-white/45">Pseudo</span>
+                        <span class="text-white">{{ target_user.username }}</span>
+                    </div>
+                    <div class="flex items-center justify-between gap-4">
+                        <span class="text-white/45">Compte créé</span>
+                        <span class="text-white">{{ target_user.created_at.strftime('%d/%m/%Y') if target_user.created_at else 'N/A' }}</span>
+                    </div>
+                    <div class="flex items-center justify-between gap-4">
+                        <span class="text-white/45">Meilleur champion</span>
+                        <span class="text-white">
+                            {% if best_pig %}
+                            {{ pig_display(best_pig, 'text-sm', 18) }} {{ best_pig.name }}
+                            {% else %}
+                            Aucun pour l'instant
+                            {% endif %}
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card p-6">
+                <div class="flex items-center justify-between gap-3 mb-4">
+                    <h2 class="font-title text-2xl text-white">Palmares memoire</h2>
+                    <span class="px-3 py-1 rounded-full text-xs font-bold status-ok">{{ memorial_trophies|length }} trophée{{ 's' if memorial_trophies|length != 1 else '' }}</span>
+                </div>
+                {% if memorial_trophies %}
+                <div class="space-y-3">
+                    {% for trophy in memorial_trophies %}
+                    <div class="pig-pill p-4">
+                        <div class="flex items-start gap-3">
+                            <div class="text-2xl">{{ trophy.emoji }}</div>
+                            <div>
+                                <p class="text-white font-bold">{{ trophy.label }}</p>
+                                <p class="text-white/55 text-sm font-semibold">{{ trophy.description }}</p>
+                                <p class="text-white/35 text-xs font-bold mt-1">{{ trophy.pig_name or 'Elevage' }} • {{ trophy.earned_at.strftime('%d/%m/%Y') if trophy.earned_at else 'archive' }}</p>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="text-white/45 text-sm font-semibold">Aucun trophée mémoriel pour l'instant.</p>
+                {% endif %}
+            </div>
+
+            {% if viewer and active_pigs and share_snacks_remaining > 0 %}
+            <div class="card p-6 border-emerald-500/20" style="background: rgba(16, 185, 129, 0.05);">
+                <div class="flex items-center justify-between mb-2">
+                    <h2 class="font-title text-xl text-emerald-400">🍎 En-cas Solidaire</h2>
+                    <span class="text-[10px] bg-emerald-600 px-2 py-0.5 rounded text-white font-bold">{{ share_snacks_remaining }} restants</span>
+                </div>
+                <p class="text-white/70 text-[11px] font-bold mb-3">Lance un en-cas au cochon de {{ target_user.username }} pour l'aider !</p>
+                {% for pig in active_pigs %}
+                <form method="POST" action="/share-snack" class="flex items-center gap-3 mb-2">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="pig_id" value="{{ pig.id }}">
+                    <input type="hidden" name="snack" value="pomme">
+                    <input type="hidden" name="redirect_to" value="{{ target_user.username }}">
+                    <span class="text-lg">{{ pig_display(pig, 'text-lg', 24) }}</span>
+                    <span class="text-white font-bold text-sm flex-1 min-w-0 truncate">{{ pig.name }}</span>
+                    <button type="submit" class="shrink-0 bg-emerald-600 hover:bg-emerald-500 px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase transition-colors text-white">
+                        🍎 Lancer
+                    </button>
+                </form>
+                {% endfor %}
+            </div>
+            {% elif viewer and share_snacks_remaining <= 0 %}
+            <div class="card p-6 border-emerald-500/20" style="background: rgba(16, 185, 129, 0.05);">
+                <h2 class="font-title text-xl text-emerald-400 mb-2">🍎 En-cas Solidaire</h2>
+                <p class="text-white/35 text-[10px] font-bold">Limite quotidienne atteinte. Reviens demain !</p>
+            </div>
+            {% endif %}
+        </section>
+
+        <section class="xl:col-span-2 space-y-6">
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                <div class="stat-card p-5 text-center">
+                    <p class="text-3xl font-title text-pink-300">{{ pigs|length }}</p>
+                    <p class="text-white/45 text-xs font-bold uppercase tracking-wide mt-1">Cochons élevés</p>
+                </div>
+                <div class="stat-card p-5 text-center">
+                    <p class="text-3xl font-title text-green-300">{{ total_wins }}</p>
+                    <p class="text-white/45 text-xs font-bold uppercase tracking-wide mt-1">Victoires</p>
+                </div>
+                <div class="stat-card p-5 text-center">
+                    <p class="text-3xl font-title text-cyan-300">{{ "%.1f"|format(race_win_rate) }}%</p>
+                    <p class="text-white/45 text-xs font-bold uppercase tracking-wide mt-1">Taux victoire courses</p>
+                </div>
+                <div class="stat-card p-5 text-center">
+                    <p class="text-3xl font-title text-yellow-300">{{ "%.1f"|format(bet_win_rate) }}%</p>
+                    <p class="text-white/45 text-xs font-bold uppercase tracking-wide mt-1">Taux victoire paris</p>
+                </div>
+            </div>
+
+            <div class="card p-6">
+                <h2 class="font-title text-2xl text-white mb-4">Cochons</h2>
+                {% if pigs %}
+                <div class="space-y-3">
+                    {% for pig in pigs %}
+                    <div class="pig-pill p-4 flex items-center justify-between gap-4">
+                        <div class="flex items-center gap-3">
+                            <span>{{ pig_display(pig, 'text-3xl', 40) }}</span>
+                            <div>
+                                <p class="text-white font-bold">{{ pig.name }}</p>
+                                <p class="text-white/40 text-xs font-semibold">
+                                    Niveau {{ pig.level }} • {{ pig.origin_flag }} {{ pig.origin_country }} • {{ pig.rarity|capitalize }}
+                                </p>
+                            </div>
+                        </div>
+                        <span class="text-xs font-bold px-3 py-1 rounded-full {{ 'status-ok' if pig.is_alive else 'status-warn' }}">
+                            {% if pig.is_alive %}Actif{% else %}{{ pig.death_cause or 'Retiré' }}{% endif %}
+                        </span>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="text-white/45 text-sm font-semibold">Aucun cochon enregistré.</p>
+                {% endif %}
+            </div>
+        </section>
+    </div>
+</main>
+
+{% include '_footer.html' %}
+</body>
+</html>

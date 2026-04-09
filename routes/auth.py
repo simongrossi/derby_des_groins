@@ -14,7 +14,9 @@ from services.auth_service import (
     register_user,
     resolve_safe_next_url,
 )
-from services.pig_service import get_active_listing_count
+from services.pig_service import get_active_listing_count, reset_snack_share_limit_if_needed
+from services.gameplay_service import get_gameplay_settings
+from config.gameplay_defaults import OFFICE_SNACKS
 
 auth_bp = Blueprint('auth', __name__)
 
@@ -167,4 +169,54 @@ def profil():
         active_listing_count=get_active_listing_count(user),
         active_listing_ids=active_listing_ids,
         memorial_trophies=memorial_trophies,
+    )
+
+
+@auth_bp.route('/joueur/<username>')
+def profil_public(username):
+    target_user = User.query.filter_by(username=username).first()
+    if not target_user:
+        flash("Joueur introuvable.", "error")
+        return redirect(url_for('main.index'))
+
+    viewer = User.query.get(session['user_id']) if 'user_id' in session else None
+    if viewer and viewer.id == target_user.id:
+        return redirect(url_for('auth.profil'))
+
+    pigs = Pig.query.filter_by(user_id=target_user.id).order_by(Pig.created_at.desc()).all()
+    active_pigs = [pig for pig in pigs if pig.is_alive]
+    bets = Bet.query.filter_by(user_id=target_user.id).order_by(Bet.placed_at.desc()).all()
+
+    total_races = sum((pig.races_entered or 0) for pig in pigs)
+    total_wins = sum((pig.races_won or 0) for pig in pigs)
+    race_win_rate = round((total_wins / total_races) * 100, 1) if total_races else 0.0
+
+    won_bets = [bet for bet in bets if bet.status == 'won']
+    lost_bets = [bet for bet in bets if bet.status == 'lost']
+    settled_bets = won_bets + lost_bets
+    bet_win_rate = round((len(won_bets) / len(settled_bets)) * 100, 1) if settled_bets else 0.0
+
+    best_pig = max(pigs, key=lambda p: ((p.races_won or 0), (p.level or 0), (p.xp or 0)), default=None)
+    memorial_trophies = Trophy.query.filter_by(user_id=target_user.id).order_by(Trophy.earned_at.desc(), Trophy.id.desc()).all()
+
+    share_snacks_remaining = 0
+    if viewer:
+        reset_snack_share_limit_if_needed(viewer)
+        gameplay = get_gameplay_settings()
+        share_snacks_remaining = max(0, gameplay.snack_share_daily_limit - (viewer.snack_shares_today or 0))
+
+    return render_template(
+        'profil_public.html',
+        target_user=target_user,
+        viewer=viewer,
+        pigs=pigs,
+        active_pigs=active_pigs,
+        best_pig=best_pig,
+        total_races=total_races,
+        total_wins=total_wins,
+        race_win_rate=race_win_rate,
+        bet_win_rate=bet_win_rate,
+        memorial_trophies=memorial_trophies,
+        share_snacks_remaining=share_snacks_remaining,
+        office_snacks=OFFICE_SNACKS,
     )
