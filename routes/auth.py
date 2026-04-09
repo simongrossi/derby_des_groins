@@ -15,7 +15,7 @@ from services.auth_service import (
     resolve_safe_next_url,
 )
 from services.pig_service import get_active_listing_count, reset_snack_share_limit_if_needed
-from services.gameplay_service import get_gameplay_settings
+from services.gameplay_settings_service import get_gameplay_settings
 from config.gameplay_defaults import OFFICE_SNACKS
 
 auth_bp = Blueprint('auth', __name__)
