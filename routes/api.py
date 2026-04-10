@@ -115,7 +115,9 @@ def vet_solve():
         return jsonify({'dead': True, 'message': "Trop tard... il est passé de l'autre côté."}), 200
     if not pig.is_injured:
         return jsonify({'already_healed': True}), 200
-    if pig.vet_deadline and datetime.utcnow() > pig.vet_deadline:
+    _ps = get_pig_settings()
+    grace_delta = timedelta(minutes=_ps.vet_grace_minutes)
+    if pig.vet_deadline and datetime.utcnow() > pig.vet_deadline + grace_delta:
         kill_pig(pig, cause='blessure')
         return jsonify({'dead': True, 'message': 'Le délai était dépassé. RIP.'}), 200
 
@@ -127,10 +129,9 @@ def vet_solve():
         seconds_left,
     )
     pig.heal()
-    _min_risk = get_pig_settings().injury_min_risk
     pig.injury_risk = max(
-        _min_risk,
-        round(max(_min_risk, float(pig.injury_risk or _min_risk)) - 2.0, 1),
+        _ps.injury_min_risk,
+        round(max(_ps.injury_min_risk, float(pig.injury_risk or _ps.injury_min_risk)) - _ps.injury_risk_vet_reduction, 1),
     )
     pig.energy = max(0, pig.energy - care_costs['energy_cost'])
     pig.happiness = max(0, pig.happiness - care_costs['happiness_cost'])

@@ -673,6 +673,19 @@ def update_pig_vitals(pig_or_id, force_commit=False):
     ):
         pig.weight_kg = clamp_pig_weight(current_weight - hours * PIG_VITALS_RULES.active_weight_loss_per_hour)
 
+    # Passive injury risk decay — rest and good care reduce accumulated risk
+    if not pig.is_injured and pig.is_alive:
+        _ps = get_pig_settings()
+        current_risk = float(pig.injury_risk or _ps.injury_min_risk)
+        if current_risk > _ps.injury_min_risk:
+            decay_rate = _ps.injury_risk_decay_per_hour
+            if pig.energy > 60 and pig.hunger > 50:
+                decay_rate *= _ps.injury_risk_good_care_multiplier
+            pig.injury_risk = max(
+                _ps.injury_min_risk,
+                round(current_risk - (hours * decay_rate), 2),
+            )
+
     pig.mark_bad_state_if_needed()
     pig.last_updated = now
     queue_buffered_pig_vitals(pig, queued_at=now)

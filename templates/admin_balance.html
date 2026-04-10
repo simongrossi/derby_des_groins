@@ -117,7 +117,7 @@
                     <input class="input-admin w-full mt-2" type="number" min="1" step="1" name="pig_default_max_races" value="{{ pig.default_max_races }}">
                 </label>
                 <label class="text-white/65 text-sm font-bold">
-                    Fenêtre vétérinaire (min, 720 = 12h)
+                    Fenêtre vétérinaire (min, 1440 = 24h)
                     <input class="input-admin w-full mt-2" type="number" min="1" step="1" name="pig_vet_response_minutes" value="{{ pig.vet_response_minutes }}">
                 </label>
                 <label class="text-white/65 text-sm font-bold">
@@ -127,6 +127,22 @@
                 <label class="text-white/65 text-sm font-bold">
                     Risque blessure max (%)
                     <input class="input-admin w-full mt-2" type="number" min="0" max="100" step="0.5" name="pig_injury_max_risk" value="{{ pig.injury_max_risk }}">
+                </label>
+                <label class="text-white/65 text-sm font-bold">
+                    Decay risque blessure (/h)
+                    <input class="input-admin w-full mt-2" type="number" min="0" max="1" step="0.01" name="pig_injury_risk_decay_per_hour" value="{{ pig.injury_risk_decay_per_hour }}">
+                </label>
+                <label class="text-white/65 text-sm font-bold">
+                    Multiplicateur bon soin (decay)
+                    <input class="input-admin w-full mt-2" type="number" min="1" max="5" step="0.1" name="pig_injury_risk_good_care_multiplier" value="{{ pig.injury_risk_good_care_multiplier }}">
+                </label>
+                <label class="text-white/65 text-sm font-bold">
+                    Reduction veterinaire (pts)
+                    <input class="input-admin w-full mt-2" type="number" min="0" max="10" step="0.5" name="pig_injury_risk_vet_reduction" value="{{ pig.injury_risk_vet_reduction }}">
+                </label>
+                <label class="text-white/65 text-sm font-bold">
+                    Grace veterinaire (min, apres deadline)
+                    <input class="input-admin w-full mt-2" type="number" min="0" max="720" step="10" name="pig_vet_grace_minutes" value="{{ pig.vet_grace_minutes }}">
                 </label>
                 <label class="text-white/65 text-sm font-bold">
                     Poids défaut (kg)

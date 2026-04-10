@@ -76,6 +76,22 @@ def save_admin_pig_settings(form_data, pig_settings):
                 pig_settings.vet_response_minutes,
             )
         ),
+        'pig_vet_grace_minutes': str(
+            _parse_int_field(
+                form_data,
+                'pig_vet_grace_minutes',
+                pig_settings.vet_grace_minutes,
+            )
+        ),
+        'pig_injury_risk_decay_per_hour': str(
+            _parse_float_field(form_data, 'pig_injury_risk_decay_per_hour', pig_settings.injury_risk_decay_per_hour)
+        ),
+        'pig_injury_risk_good_care_multiplier': str(
+            _parse_float_field(form_data, 'pig_injury_risk_good_care_multiplier', pig_settings.injury_risk_good_care_multiplier)
+        ),
+        'pig_injury_risk_vet_reduction': str(
+            _parse_float_field(form_data, 'pig_injury_risk_vet_reduction', pig_settings.injury_risk_vet_reduction)
+        ),
     }
     if weight_rules_json:
         pig_payload['settings_pig_weight_rules'] = weight_rules_json

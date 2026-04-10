@@ -197,6 +197,13 @@ Regles:
 
 ## 6. Courses
 
+### Inscription aux courses
+
+- un cochon ne participe a une course **que s'il a ete inscrit explicitement** par son proprietaire via la page Courses (CoursePlan);
+- un cochon non inscrit ne sera jamais ajoute automatiquement a une course;
+- les places non prises par des cochons joueurs sont completees par des PNJ (cochons ordinateur);
+- l'inscription se fait sur un creneau horaire precis et peut inclure un profil de strategie en 3 phases.
+
 ### Quota et acces
 
 - quota hebdomadaire actuel: `5` courses par cochon vivant (administrable);
@@ -240,36 +247,43 @@ Chaque cochon a un plafond `max_races`:
 
 La mortalite rapide ne vient pas d'un systeme de vieillesse "cache". Elle vient surtout des blessures.
 
+### Risque de blessure
+
 Regles actuelles:
 - risque de blessure borne entre `2%` et `18%` avant modificateurs;
 - les 8 premieres courses ont une vraie protection de debut de carriere: le risque reelle monte progressivement;
 - la fatigue, la faim et le mauvais poids aggravent le risque;
+- **accumulation conditionnelle**: un cochon bien nourri (energie > 50, satiete > 40 apres course) accumule 2x moins de risque par course qu'un cochon neglige;
+- **decroissance naturelle au repos**: le risque de blessure descend passivement de `0.05` point par heure de repos. Un cochon bien soigne (energie > 60, satiete > 50) decroit 2x plus vite. Le repos est donc recompense;
 - si blessure:
   - le cochon est retire des courses;
   - il ne peut plus s'entrainer;
   - il ne peut plus aller a l'ecole;
   - il ne peut plus entrer dans le Challenge de la Mort.
 
-Veterinaire:
-- fenetre de sauvetage actuelle: `12 heures` (administrable via `vet_response_minutes`, actuellement 720 min);
+### Veterinaire
+
+- fenetre de sauvetage actuelle: `24 heures` (administrable via `vet_response_minutes`, actuellement 1440 min);
+- **periode de grace**: apres expiration de la fenetre, un sursis de `2 heures` (administrable) est accorde avant la mort effective;
+- **treve weekend**: les deadlines veterinaires sont gelees pendant la treve du weekend (meme logique que la fraicheur);
 - le mini-jeu penalise maintenant une erreur de seulement `5 secondes`;
 - une operation reussie:
   - sauve le cochon;
-  - baisse son risque de blessure de `2 points`;
+  - baisse son risque de blessure de `3 points` (administrable);
   - coute une base de `10` energie et `5` humeur;
   - **les couts augmentent progressivement** avec le temps ecoule dans la fenetre (jusqu'a x2 en energie, x3 en humeur en fin de fenetre);
-- si la deadline expire, le cochon peut mourir de blessure.
+- si la deadline + grace expire, le cochon peut mourir de blessure.
 
 ## 8. Paris
 
 Regles structurelles:
 - `3` Tickets Bacon maximum par semaine;
 - `1` seul ticket par course et par joueur;
-- fermeture des paris `30 secondes` avant le depart;
+- fermeture des paris `30 secondes` avant le depart (inclus: un pari tente a exactement 30s est refuse);
 - mise mini `5`, maxi `500` BitGroins;
-- si un cap payout admin est active, il plafonne le gain total du ticket.
+- si un cap payout admin est active, il plafonne le gain total du ticket;
 - le gain annonce par la cote est celui qui est effectivement credite si le ticket gagne;
-- si un ticket est rembourse, la mise revient integralement.
+- si un ticket est rembourse (course annulee, participants insuffisants ou simulation sans resultat), la mise revient integralement.
 
 Regle speciale:
 - les paris a `3+ selections` exigent que le joueur ait son propre cochon dans la course.
@@ -282,6 +296,7 @@ Formats actuellement disponibles:
 | place | 1 | finir dans le top 3 |
 | exacta | 2 | top 2 dans l'ordre |
 | quinela_place | 2 | 2 cochons dans le top 3 |
+| two_of_four | 2 | 2 cochons parmi le top 4 |
 | tierce_any | 3 | top 3 dans n'importe quel ordre |
 | tierce | 3 | top 3 dans l'ordre |
 | quarte | 4 | top 4 dans n'importe quel ordre |

@@ -13,11 +13,15 @@ from config.game_rules import (
 from config.economy_defaults import MAX_PIG_SLOTS, RETIREMENT_HERITAGE_MIN_WINS
 from config.gameplay_defaults import (
     IDEAL_WEIGHT_MALUS_THRESHOLD_RATIO,
+    INJURY_RISK_DECAY_PER_HOUR,
+    INJURY_RISK_GOOD_CARE_MULTIPLIER,
+    INJURY_RISK_VET_REDUCTION,
     MAX_INJURY_RISK,
     MAX_PIG_WEIGHT_KG,
     MAX_WEIGHT_PERFORMANCE_MALUS,
     MIN_INJURY_RISK,
     MIN_PIG_WEIGHT_KG,
+    VET_GRACE_MINUTES,
     VET_RESPONSE_MINUTES,
 )
 from services.economy_service import get_level_happiness_bonus_value, xp_for_level_value
@@ -35,7 +39,11 @@ class PigSettings:
     weight_malus_max: float
     injury_min_risk: float
     injury_max_risk: float
+    injury_risk_decay_per_hour: float
+    injury_risk_good_care_multiplier: float
+    injury_risk_vet_reduction: float
     vet_response_minutes: int
+    vet_grace_minutes: int
     weight_rules: 'PigWeightSettings'
 
 
@@ -148,7 +156,11 @@ def get_pig_settings():
         weight_malus_max=_coerce_float(get_config('pig_weight_malus_max', MAX_WEIGHT_PERFORMANCE_MALUS), MAX_WEIGHT_PERFORMANCE_MALUS),
         injury_min_risk=_coerce_float(get_config('pig_injury_min_risk', MIN_INJURY_RISK), MIN_INJURY_RISK),
         injury_max_risk=_coerce_float(get_config('pig_injury_max_risk', MAX_INJURY_RISK), MAX_INJURY_RISK),
+        injury_risk_decay_per_hour=_coerce_float(get_config('pig_injury_risk_decay_per_hour', INJURY_RISK_DECAY_PER_HOUR), INJURY_RISK_DECAY_PER_HOUR),
+        injury_risk_good_care_multiplier=_coerce_float(get_config('pig_injury_risk_good_care_multiplier', INJURY_RISK_GOOD_CARE_MULTIPLIER), INJURY_RISK_GOOD_CARE_MULTIPLIER),
+        injury_risk_vet_reduction=_coerce_float(get_config('pig_injury_risk_vet_reduction', INJURY_RISK_VET_REDUCTION), INJURY_RISK_VET_REDUCTION),
         vet_response_minutes=_coerce_int(get_config('pig_vet_response_minutes', str(VET_RESPONSE_MINUTES)), VET_RESPONSE_MINUTES),
+        vet_grace_minutes=_coerce_int(get_config('pig_vet_grace_minutes', str(VET_GRACE_MINUTES)), VET_GRACE_MINUTES),
         weight_rules=_load_weight_rules(),
     )
 

@@ -1,10 +1,11 @@
 """Veterinary, abattoir and pig death helpers."""
 
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from models import Pig
 from services.pig_power_service import get_pig_settings
 from services.pig_service import kill_pig, retire_pig
+from utils.time_utils import is_weekend_truce_active
 
 
 def get_first_injured_pig(user_id):
@@ -19,10 +20,14 @@ def get_first_injured_pig(user_id):
 
 
 def check_vet_deadlines():
+    if is_weekend_truce_active():
+        return
     now = datetime.utcnow()
+    _ps = get_pig_settings()
+    grace_delta = timedelta(minutes=_ps.vet_grace_minutes)
     injured_pigs = Pig.query.filter_by(is_injured=True, is_alive=True).all()
     for pig in injured_pigs:
-        if pig.vet_deadline and now > pig.vet_deadline:
+        if pig.vet_deadline and now > pig.vet_deadline + grace_delta:
             kill_pig(pig, cause='blessure', commit=False)
 
 

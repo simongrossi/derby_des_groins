@@ -60,14 +60,18 @@ Les fichiers a conserver a jour:
 ## Ce qui doit toujours etre visible pour un joueur
 
 Liste minimale de transparence:
+- inscription explicite requise pour participer a une course (pas d'inscription automatique);
 - seuils bloquants de course: energie et satiete;
 - cooldown ecole / typing;
 - quota de courses par semaine;
 - nombre de Tickets Bacon;
 - mise mini / maxi;
-- fermeture des paris 30 secondes avant le depart;
+- fermeture des paris 30 secondes avant le depart (inclus);
 - existence d'un cap payout si actif;
-- fenetre veterinaire;
+- remboursement integral des tickets en cas d'annulation de course;
+- fenetre veterinaire (24h par defaut + 2h de grace + treve weekend);
+- decroissance naturelle du risque de blessure au repos;
+- accumulation reduite du risque pour les cochons bien soignes;
 - regle d'acces au marche;
 - pression de nourrissage par cochon supplementaire;
 - conditions de retraite d'honneur;

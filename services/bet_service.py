@@ -47,7 +47,7 @@ def place_bet_for_user(user_or_id, race_id, bet_type_raw, selection_raw, amount)
     if not race or race.status != 'open':
         raise ValidationError("Cette course n'accepte plus de paris.")
 
-    if (race.scheduled_at - datetime.now()).total_seconds() < BET_RULES.closing_window_seconds:
+    if (race.scheduled_at - datetime.now()).total_seconds() <= BET_RULES.closing_window_seconds:
         raise ValidationError(
             f"Les paris ferment {BET_RULES.closing_window_seconds} secondes avant le départ."
         )

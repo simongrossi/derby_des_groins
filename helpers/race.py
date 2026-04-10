@@ -273,6 +273,18 @@ def run_race_if_needed():
         if not order:
             race.status = 'cancelled'
             race.finished_at = now
+            cancelled_bets = Bet.query.filter_by(race_id=race.id, status='pending').all()
+            for bet in cancelled_bets:
+                bet.status = 'refunded'
+                bet.winnings = 0.0
+                credit_user_balance(
+                    bet.user_id, bet.amount,
+                    reason_code='bet_refund',
+                    reason_label='Remboursement pari',
+                    details=f"Course #{race.id} annulee (simulation sans resultat).",
+                    reference_type='race',
+                    reference_id=race.id,
+                )
             db.session.commit()
             continue
 
@@ -410,9 +422,15 @@ def run_race_if_needed():
                     pig.vet_deadline = datetime.utcnow() + timedelta(minutes=_ps.vet_response_minutes)
                     pig.challenge_mort_wager = 0
                 else:
+                    condition_factor = 1.0
+                    if pig.energy > 50 and pig.hunger > 40:
+                        condition_factor = 0.5
+                    elif pig.energy > 30 and pig.hunger > 25:
+                        condition_factor = 0.75
+                    risk_gain = random.uniform(0.05, 0.2) * condition_factor
                     pig.injury_risk = min(
                         _ps.injury_max_risk,
-                        max(_ps.injury_min_risk, float(pig.injury_risk or _ps.injury_min_risk)) + random.uniform(0.1, 0.3),
+                        max(_ps.injury_min_risk, float(pig.injury_risk or _ps.injury_min_risk)) + risk_gain,
                     )
 
                 if pig.max_races and pig.races_entered >= pig.max_races:
