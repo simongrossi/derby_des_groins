@@ -582,9 +582,11 @@ def populate_race_participants(race, respect_course_plans=True, allow_rebuild_if
     fit_pigs = get_race_ready_pigs()
     if respect_course_plans:
         planned_ids = get_planned_pig_ids_for_slot(race.scheduled_at)
+        planned_set = set(planned_ids)
+        fit_pigs = [pig for pig in fit_pigs if pig.id in planned_set]
         if planned_ids:
             planned_order = {pig_id: index for index, pig_id in enumerate(planned_ids)}
-            fit_pigs.sort(key=lambda pig: (0 if pig.id in planned_order else 1, planned_order.get(pig.id, 999), -calculate_pig_power(pig)))
+            fit_pigs.sort(key=lambda pig: (planned_order.get(pig.id, 999), -calculate_pig_power(pig)))
     fit_pigs = fit_pigs[:max_participants]
 
     # --- Upsert: keep existing participant IDs stable ---
