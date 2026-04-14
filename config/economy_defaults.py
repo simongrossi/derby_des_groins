@@ -35,6 +35,7 @@ TAX_EXEMPT_REASON_CODES = frozenset({
     'solidarity_relief', 'breed_refund',
     'bet_payout', 'bet_payout_adjustment', 'bet_refund',
     'tirelire_explosion',
+    'octogroin_refund', 'octogroin_prize',
 })
 
 CASINO_REASON_CODES = frozenset({

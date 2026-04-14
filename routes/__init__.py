@@ -18,6 +18,7 @@ from routes.cochon_pendu import cochon_pendu_bp
 from routes.place_financiere import place_financiere_bp
 from routes.haras import haras_bp
 from routes.academie import academie_bp
+from routes.octogroin import octogroin_bp
 
 all_blueprints = [
     auth_bp,
@@ -40,4 +41,5 @@ all_blueprints = [
     place_financiere_bp,
     haras_bp,
     academie_bp,
+    octogroin_bp,
 ]

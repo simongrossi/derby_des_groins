@@ -182,6 +182,11 @@ def init_default_config():
         # Bourse aux grains
         'bourse_surcharge_factor': '0.05',
         'bourse_movement_divisor': '10',
+        # Octogroin — duels de boue PvP
+        'octogroin_min_stake': '10',
+        'octogroin_max_stake': '5000',
+        'octogroin_round_duration_sec': '30',
+        'octogroin_house_tax': '0.10',
     }
     # Moteur de course : JSON blob (inséré séparément pour éviter un import circulaire)
     if not GameConfig.query.filter_by(key='race_engine_config').first():

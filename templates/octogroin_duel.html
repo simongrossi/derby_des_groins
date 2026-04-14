@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🥊 Duel Octogroin #{{ duel.id }}</title>
+    {% include '_tailwind_assets.html' %}
+    <link href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        * { font-family: 'Nunito', sans-serif; }
+        .font-title { font-family: 'Lilita One', cursive; }
+
+        .arena-card { background: linear-gradient(135deg, rgba(244,114,182,0.08), rgba(255,255,255,0.025)); border: 1px solid rgba(244,114,182,0.18); border-radius: 1.5rem; }
+
+        .flaque { position: relative; height: 110px; border-radius: 1rem; overflow: hidden;
+            background: radial-gradient(ellipse at center, #6b4423 0%, #3a2516 70%, #241408 100%);
+            border: 3px solid #2a1708;
+            box-shadow: inset 0 0 40px rgba(0,0,0,0.7), 0 8px 24px rgba(0,0,0,0.5);
+        }
+        .flaque::before { content: ''; position: absolute; inset: 0; background-image: radial-gradient(rgba(255,255,255,0.05) 1px, transparent 1px); background-size: 12px 12px; opacity: 0.5; }
+        .edge { position: absolute; top: 0; bottom: 0; width: 8px; background: linear-gradient(180deg, rgba(255,200,120,0.35), rgba(255,200,120,0.08)); }
+        .edge-left { left: 0; }
+        .edge-right { right: 0; }
+        .pig-marker { position: absolute; top: 50%; transform: translate(-50%, -50%); font-size: 48px; transition: left 0.8s cubic-bezier(.4,1.6,.5,1); filter: drop-shadow(0 4px 8px rgba(0,0,0,0.6)); z-index: 2; }
+        .pig-marker .tag { position: absolute; bottom: -10px; left: 50%; transform: translateX(-50%); font-size: 10px; background: rgba(0,0,0,0.7); color: #fef3c7; padding: 1px 5px; border-radius: 6px; font-weight: 900; letter-spacing: 0.05em; white-space: nowrap; }
+        .pig-marker.bump { animation: bump 0.4s ease; }
+        @keyframes bump { 0% { transform: translate(-50%, -50%) scale(1); } 40% { transform: translate(-50%, -60%) scale(1.15) rotate(-8deg); } 100% { transform: translate(-50%, -50%) scale(1); } }
+        .pig-marker.crit { animation: crit 0.6s ease; }
+        @keyframes crit { 0% { transform: translate(-50%, -50%) scale(1); } 40% { transform: translate(-50%, -80%) scale(1.35) rotate(20deg); } 100% { transform: translate(-50%, -50%) scale(1); } }
+
+        .splash { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 64px; pointer-events: none; opacity: 0; z-index: 3; }
+        .splash.show { animation: splash 1s ease-out; }
+        @keyframes splash { 0% { opacity: 0; transform: translate(-50%, -50%) scale(0.5); } 30% { opacity: 1; transform: translate(-50%, -50%) scale(1.3); } 100% { opacity: 0; transform: translate(-50%, -50%) scale(1.8); } }
+
+        .endurance { height: 10px; background: rgba(0,0,0,0.45); border-radius: 999px; overflow: hidden; border: 1px solid rgba(255,255,255,0.08); }
+        .endurance > div { height: 100%; background: linear-gradient(90deg, #22c55e, #facc15); transition: width 0.5s ease; }
+        .endurance.low > div { background: linear-gradient(90deg, #ef4444, #f97316); }
+
+        .action-btn { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 14px 10px; border-radius: 14px; border: 2px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.04); transition: all 0.15s; cursor: pointer; color: #fff; }
+        .action-btn:hover:not(:disabled) { border-color: rgba(244,114,182,0.5); background: rgba(244,114,182,0.12); transform: translateY(-1px); }
+        .action-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+        .action-btn .emoji { font-size: 26px; }
+        .action-btn .label { font-size: 12px; font-weight: 900; letter-spacing: 0.04em; }
+        .action-btn .cost { font-size: 10px; color: rgba(255,255,255,0.5); }
+        .slot { flex: 1; min-height: 74px; border: 2px dashed rgba(255,255,255,0.18); border-radius: 14px; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(0,0,0,0.25); transition: all 0.2s; cursor: pointer; }
+        .slot.filled { border-style: solid; border-color: rgba(244,114,182,0.5); background: rgba(244,114,182,0.1); }
+        .slot .slot-emoji { font-size: 28px; line-height: 1; }
+        .slot .slot-label { font-size: 11px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.05em; margin-top: 2px; color: rgba(255,255,255,0.7); }
+        .slot .slot-idx { position: absolute; top: 4px; left: 6px; font-size: 10px; color: rgba(255,255,255,0.35); font-weight: 900; }
+
+        .event-bubble { background: rgba(0,0,0,0.45); border: 1px solid rgba(244,114,182,0.2); border-radius: 12px; padding: 10px 14px; font-size: 13px; animation: popin 0.3s ease; }
+        @keyframes popin { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+        .winner-banner { background: linear-gradient(135deg, rgba(250,204,21,0.2), rgba(244,114,182,0.15)); border: 2px solid rgba(250,204,21,0.5); border-radius: 1.5rem; }
+        .winner-banner.loss { background: linear-gradient(135deg, rgba(239,68,68,0.15), rgba(0,0,0,0.3)); border-color: rgba(239,68,68,0.4); }
+        .winner-banner.draw { background: linear-gradient(135deg, rgba(99,102,241,0.15), rgba(0,0,0,0.3)); border-color: rgba(99,102,241,0.4); }
+
+        .countdown { font-family: 'Lilita One', cursive; font-size: 2rem; letter-spacing: 0.08em; }
+        .countdown.urgent { color: #f87171; animation: pulse 0.5s ease infinite alternate; }
+        @keyframes pulse { from { opacity: 0.7; } to { opacity: 1; transform: scale(1.08); } }
+    </style>
+</head>
+<body class="bg-[#1a0b29] text-white min-h-screen">
+    {% include '_site_header.html' %}
+
+    <main class="max-w-4xl mx-auto px-4 py-8">
+        {% include '_flash.html' %}
+
+        <header class="mb-6 flex items-center justify-between gap-4 flex-wrap">
+            <h1 class="font-title text-4xl text-pink-300">🥊 Duel #{{ duel.id }}</h1>
+            <div class="flex items-center gap-3 flex-wrap">
+                <span id="status-pill" class="px-3 py-1 rounded-full text-xs font-black uppercase tracking-widest bg-white/5 border border-white/10">
+                    {{ duel.status }}
+                </span>
+                <span class="px-3 py-1 rounded-full bg-yellow-400/15 border border-yellow-400/25 text-yellow-300 text-xs font-black">
+                    {{ "%.0f"|format(duel.stake) }} 🪙 par joueur · pot {{ "%.0f"|format(duel.stake * 2) }}
+                </span>
+                <a href="{{ url_for('octogroin.lobby') }}" class="text-xs text-pink-200 underline">← Lobby</a>
+            </div>
+        </header>
+
+        <section class="arena-card p-6 mb-6">
+            <div class="grid md:grid-cols-2 gap-6 mb-4">
+                <div>
+                    <h2 class="font-title text-xl text-pink-200">🔴 {{ duel.player1.username }}</h2>
+                    <p class="text-white/80 font-bold">{{ duel.pig1.emoji if duel.pig1 else '' }} {{ duel.pig1.name if duel.pig1 else '—' }}</p>
+                    {% if duel.pig1 %}
+                    <p class="text-[11px] text-white/50 mb-2">F{{ duel.pig1.force|round(0) }} · A{{ duel.pig1.agilite|round(0) }} · V{{ duel.pig1.vitesse|round(0) }} · {{ duel.pig1.weight_kg|round(0) }}kg</p>
+                    {% endif %}
+                    <div class="flex items-center gap-2 text-xs text-white/70">
+                        <span>Endurance</span>
+                        <div class="endurance flex-1"><div id="p1-endurance-bar" style="width: {{ duel.pig1_endurance|round(0) }}%"></div></div>
+                        <span id="p1-endurance-val">{{ duel.pig1_endurance|round(0) }}</span>
+                    </div>
+                </div>
+                <div class="md:text-right">
+                    <h2 class="font-title text-xl text-pink-200">
+                        🔵
+                        {% if duel.player2 %}{{ duel.player2.username }}
+                        {% elif duel.visibility == 'direct' and duel.challenged_user %}défi → {{ duel.challenged_user.username }}
+                        {% else %}En attente d'un challenger…{% endif %}
+                    </h2>
+                    <p class="text-white/80 font-bold">{{ duel.pig2.emoji if duel.pig2 else '' }} {{ duel.pig2.name if duel.pig2 else '—' }}</p>
+                    {% if duel.pig2 %}
+                    <p class="text-[11px] text-white/50 mb-2">F{{ duel.pig2.force|round(0) }} · A{{ duel.pig2.agilite|round(0) }} · V{{ duel.pig2.vitesse|round(0) }} · {{ duel.pig2.weight_kg|round(0) }}kg</p>
+                    {% endif %}
+                    <div class="flex items-center gap-2 text-xs text-white/70 md:flex-row-reverse">
+                        <span>Endurance</span>
+                        <div class="endurance flex-1"><div id="p2-endurance-bar" style="width: {{ duel.pig2_endurance|round(0) }}%"></div></div>
+                        <span id="p2-endurance-val">{{ duel.pig2_endurance|round(0) }}</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex items-center justify-between text-[11px] uppercase tracking-widest text-white/55 mb-1">
+                <span>Bord 🔴</span>
+                <span>Manche <span id="round-num">{{ duel.current_round or 0 }}</span> / 5</span>
+                <span>Bord 🔵</span>
+            </div>
+            <div class="flaque">
+                <div class="edge edge-left"></div>
+                <div class="edge edge-right"></div>
+                <div id="marker1" class="pig-marker">{{ duel.pig1.emoji if duel.pig1 else '🐷' }}<span class="tag">{{ duel.player1.username[:8] }}</span></div>
+                <div id="marker2" class="pig-marker">{{ duel.pig2.emoji if duel.pig2 else '🐽' }}<span class="tag">{% if duel.player2 %}{{ duel.player2.username[:8] }}{% else %}?{% endif %}</span></div>
+                <div id="splash" class="splash">💥</div>
+            </div>
+        </section>
+
+        <div id="winner-zone" class="hidden mb-6"></div>
+
+        {% if duel.status == 'waiting' and duel.player1_id == user.id %}
+        <section class="arena-card p-4 mb-6 flex items-center justify-between gap-4 flex-wrap">
+            <p class="text-white/70 text-sm">Tant que personne n'a rejoint, tu peux annuler : ta mise te sera remboursée.</p>
+            <form method="post" action="{{ url_for('octogroin.cancel', duel_id=duel.id) }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button class="px-4 py-2 rounded-xl border border-red-400/40 text-red-200 font-bold hover:bg-red-500/15">Annuler le duel</button>
+            </form>
+        </section>
+        {% endif %}
+
+        <section id="programming-panel" class="arena-card p-6 mb-6 hidden">
+            <div class="flex items-center justify-between mb-4 gap-4 flex-wrap">
+                <h2 class="font-title text-xl text-pink-200">Programme 3 actions</h2>
+                <div id="countdown" class="countdown text-pink-200">--s</div>
+            </div>
+
+            <div class="grid grid-cols-3 gap-3 mb-4">
+                <div class="slot relative" data-slot="0"><span class="slot-idx">#1</span><span class="slot-emoji">·</span><span class="slot-label">vide</span></div>
+                <div class="slot relative" data-slot="1"><span class="slot-idx">#2</span><span class="slot-emoji">·</span><span class="slot-label">vide</span></div>
+                <div class="slot relative" data-slot="2"><span class="slot-idx">#3</span><span class="slot-emoji">·</span><span class="slot-label">vide</span></div>
+            </div>
+
+            <div class="grid grid-cols-4 gap-2 mb-4">
+                <button type="button" class="action-btn" data-action="charge">
+                    <span class="emoji">💥</span><span class="label">Charge</span><span class="cost">-20 endu</span>
+                </button>
+                <button type="button" class="action-btn" data-action="ancrage">
+                    <span class="emoji">🧱</span><span class="label">Ancrage</span><span class="cost">-10 endu</span>
+                </button>
+                <button type="button" class="action-btn" data-action="esquive">
+                    <span class="emoji">💨</span><span class="label">Esquive</span><span class="cost">-15 endu</span>
+                </button>
+                <button type="button" class="action-btn" data-action="repos">
+                    <span class="emoji">💤</span><span class="label">Repos</span><span class="cost">+25 endu</span>
+                </button>
+            </div>
+
+            <div class="flex items-center justify-between gap-3">
+                <button id="reset-btn" type="button" class="px-4 py-2 rounded-xl border border-white/15 text-white/70 text-sm font-bold hover:bg-white/5">Reset</button>
+                <button id="submit-btn" type="button" disabled
+                        class="px-6 py-3 rounded-2xl bg-gradient-to-r from-pink-500 via-rose-500 to-orange-400 font-black text-white disabled:opacity-40 disabled:cursor-not-allowed">
+                    Soumettre la manche
+                </button>
+            </div>
+        </section>
+
+        <section id="waiting-panel" class="arena-card p-6 text-center hidden">
+            <p class="font-title text-xl text-pink-200 mb-1">⏳ En attente de l'adversaire</p>
+            <p class="text-white/60 text-sm">Tes actions sont verrouillées. La résolution part dès que l'autre joueur aura rendu ses 3 cartes.</p>
+        </section>
+
+        <section id="spectator-panel" class="arena-card p-4 text-center text-white/60 text-sm hidden">
+            👁️ Mode spectateur — tu regardes le duel se dérouler.
+        </section>
+
+        <section class="arena-card p-4 mb-10">
+            <h3 class="font-title text-sm uppercase tracking-widest text-pink-200 mb-2">📜 Journal</h3>
+            <div id="event-log" class="space-y-2 max-h-72 overflow-y-auto">
+                <p class="text-xs text-white/40">Le compte-rendu des manches apparaîtra ici.</p>
+            </div>
+        </section>
+    </main>
+
+    <script>
+    (function () {
+        const DUEL_ID = {{ duel.id }};
+        const STATE_URL = "{{ url_for('octogroin.duel_state', duel_id=duel.id) }}";
+        const REPLAY_URL = "{{ url_for('octogroin.duel_replay', duel_id=duel.id) }}";
+        const ACTIONS_URL = "{{ url_for('octogroin.submit', duel_id=duel.id) }}";
+        const CSRF = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+
+        const ACTION_META = {
+            charge:  { emoji: '💥', label: 'Charge',  desc: 'pousse' },
+            ancrage: { emoji: '🧱', label: 'Ancrage', desc: 'encaisse' },
+            esquive: { emoji: '💨', label: 'Esquive', desc: 'évite' },
+            repos:   { emoji: '💤', label: 'Repos',   desc: 'récupère' },
+            null:    { emoji: '😵', label: 'Essoufflé', desc: 'raté' },
+        };
+
+        const OUTCOME_TEXT = {
+            clash_p1_wins: '🔴 domine le clash frontal',
+            clash_p2_wins: '🔵 domine le clash frontal',
+            clash_tie: 'Clash à forces égales',
+            p1_splat_on_ancrage: '🔴 s\'écrase sur le mur 🧱 de 🔵',
+            p2_splat_on_ancrage: '🔵 s\'écrase sur le mur 🧱 de 🔴',
+            p1_whiffs_p2_dodges: '🔵 esquive, 🔴 glisse vers son bord',
+            p2_whiffs_p1_dodges: '🔴 esquive, 🔵 glisse vers son bord',
+            p1_lands_despite_esquive: "🔴 touche malgré l'esquive de 🔵",
+            p2_lands_despite_esquive: "🔵 touche malgré l'esquive de 🔴",
+            p1_crit_on_rest: '💥 COUP CRITIQUE sur 🔵 qui se reposait !',
+            p2_crit_on_rest: '💥 COUP CRITIQUE sur 🔴 qui se reposait !',
+            p1_charges_essouffle: '🔴 charge un 🔵 essoufflé',
+            p2_charges_essouffle: '🔵 charge un 🔴 essoufflé',
+            no_contact: 'Pas de contact',
+        };
+
+        // ── State locales ────────────────────────────────────────────────
+        let slots = [null, null, null];
+        let lastAnimatedRound = 0;
+        let animating = false;
+        let pollTimer = null;
+        let tickTimer = null;
+        let remoteDeadline = null;
+
+        // ── DOM ─────────────────────────────────────────────────────────
+        const $ = (id) => document.getElementById(id);
+        const marker1 = $('marker1');
+        const marker2 = $('marker2');
+        const splash = $('splash');
+        const statusPill = $('status-pill');
+        const roundNum = $('round-num');
+        const p1Bar = $('p1-endurance-bar');
+        const p2Bar = $('p2-endurance-bar');
+        const p1Val = $('p1-endurance-val');
+        const p2Val = $('p2-endurance-val');
+        const panelProg = $('programming-panel');
+        const panelWait = $('waiting-panel');
+        const panelSpec = $('spectator-panel');
+        const winnerZone = $('winner-zone');
+        const eventLog = $('event-log');
+        const submitBtn = $('submit-btn');
+        const resetBtn = $('reset-btn');
+        const countdownEl = $('countdown');
+        const slotEls = document.querySelectorAll('.slot');
+        const actionBtns = document.querySelectorAll('.action-btn');
+
+        function setMarkers(pos1, pos2) {
+            // pig1 position is how far it's been pushed toward its own (left) edge.
+            // [0,100] → CSS left [40%, 2%]. Same on the other side for pig2.
+            const x1 = Math.max(2, 40 - pos1 * 0.38);
+            const x2 = Math.min(98, 60 + pos2 * 0.38);
+            marker1.style.left = x1 + '%';
+            marker2.style.left = x2 + '%';
+        }
+
+        function setEndurance(v1, v2) {
+            p1Bar.style.width = Math.max(0, Math.min(100, v1)) + '%';
+            p2Bar.style.width = Math.max(0, Math.min(100, v2)) + '%';
+            p1Val.textContent = Math.round(v1);
+            p2Val.textContent = Math.round(v2);
+            p1Bar.parentElement.classList.toggle('low', v1 < 25);
+            p2Bar.parentElement.classList.toggle('low', v2 < 25);
+        }
+
+        function flashSplash(symbol) {
+            splash.textContent = symbol;
+            splash.classList.remove('show');
+            // force reflow to restart animation
+            void splash.offsetWidth;
+            splash.classList.add('show');
+        }
+
+        function bump(marker, cls = 'bump') {
+            marker.classList.remove('bump', 'crit');
+            void marker.offsetWidth;
+            marker.classList.add(cls);
+        }
+
+        function pushLog(html) {
+            // clear placeholder
+            const ph = eventLog.querySelector('p.text-xs.text-white\\/40');
+            if (ph) ph.remove();
+            const div = document.createElement('div');
+            div.className = 'event-bubble';
+            div.innerHTML = html;
+            eventLog.appendChild(div);
+            eventLog.scrollTop = eventLog.scrollHeight;
+        }
+
+        async function playEvent(ev) {
+            const a1 = ACTION_META[ev.p1_action] || ACTION_META.null;
+            const a2 = ACTION_META[ev.p2_action] || ACTION_META.null;
+            const outcomeTxt = OUTCOME_TEXT[ev.outcome] || ev.outcome;
+            pushLog(
+                `<div class="flex items-center gap-2 flex-wrap">`
+                + `<span class="text-[10px] uppercase tracking-widest text-white/40">M${ev.round} · ${ev.step}/3</span>`
+                + `<span>🔴 ${a1.emoji} ${a1.label}</span>`
+                + `<span class="text-white/30">vs</span>`
+                + `<span>🔵 ${a2.emoji} ${a2.label}</span>`
+                + `<span class="w-full text-pink-200 font-bold">${outcomeTxt}</span>`
+                + `</div>`
+            );
+            setMarkers(ev.p1_position_after, ev.p2_position_after);
+            setEndurance(ev.p1_endurance_after, ev.p2_endurance_after);
+
+            if (ev.outcome === 'clash_p1_wins' || ev.outcome === 'clash_p2_wins' || ev.outcome === 'clash_tie') {
+                flashSplash('💥'); bump(marker1); bump(marker2);
+            } else if (ev.outcome === 'p1_crit_on_rest') { flashSplash('⚡'); bump(marker2, 'crit'); }
+            else if (ev.outcome === 'p2_crit_on_rest') { flashSplash('⚡'); bump(marker1, 'crit'); }
+            else if (ev.outcome === 'p1_splat_on_ancrage') { flashSplash('🧱'); bump(marker1); }
+            else if (ev.outcome === 'p2_splat_on_ancrage') { flashSplash('🧱'); bump(marker2); }
+            else if (ev.outcome.includes('whiffs')) { flashSplash('💨'); }
+
+            await sleep(900);
+        }
+
+        function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+        async function playRound(block) {
+            pushLog(`<div class="text-xs uppercase tracking-widest text-pink-300 font-black">— Manche ${block.round} —</div>`);
+            for (const ev of (block.events || [])) {
+                await playEvent(ev);
+            }
+            roundNum.textContent = block.round;
+            if (block.verdict && block.verdict.ended) {
+                showVerdict(block.verdict);
+            }
+        }
+
+        function showVerdict(verdict) {
+            const winner = verdict.winner;
+            let cls = 'draw';
+            let title = '🤝 Match nul — mises remboursées';
+            let detail = 'Les deux cochons se regardent en chiens de faïence.';
+            const youAre = window.__youAre;
+            if (winner === 'p1') {
+                cls = youAre === 'p1' ? '' : (youAre === 'p2' ? 'loss' : '');
+                title = youAre === 'p1' ? '🏆 Victoire !' : (youAre === 'p2' ? '💀 Défaite' : '🏆 Victoire de 🔴');
+                detail = '🔴 a gagné par ' + verdict.reason;
+            } else if (winner === 'p2') {
+                cls = youAre === 'p2' ? '' : (youAre === 'p1' ? 'loss' : '');
+                title = youAre === 'p2' ? '🏆 Victoire !' : (youAre === 'p1' ? '💀 Défaite' : '🏆 Victoire de 🔵');
+                detail = '🔵 a gagné par ' + verdict.reason;
+            }
+            winnerZone.className = 'mb-6';
+            winnerZone.innerHTML = `<div class="winner-banner ${cls} p-6 text-center">
+                <p class="font-title text-3xl mb-1">${title}</p>
+                <p class="text-sm text-white/75">${detail}</p>
+            </div>`;
+        }
+
+        // ── UI : programmation des actions ──────────────────────────────
+        function renderSlots() {
+            slotEls.forEach((el, i) => {
+                const action = slots[i];
+                const emoji = action ? ACTION_META[action].emoji : '·';
+                const label = action ? ACTION_META[action].label : 'vide';
+                el.classList.toggle('filled', !!action);
+                el.querySelector('.slot-emoji').textContent = emoji;
+                el.querySelector('.slot-label').textContent = label;
+            });
+            submitBtn.disabled = slots.some(s => s === null);
+        }
+        slotEls.forEach((el, i) => {
+            el.addEventListener('click', () => {
+                slots[i] = null;
+                renderSlots();
+            });
+        });
+        actionBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                const action = btn.dataset.action;
+                const firstEmpty = slots.findIndex(s => s === null);
+                if (firstEmpty === -1) return;
+                slots[firstEmpty] = action;
+                renderSlots();
+            });
+        });
+        resetBtn.addEventListener('click', () => {
+            slots = [null, null, null];
+            renderSlots();
+        });
+        submitBtn.addEventListener('click', async () => {
+            if (slots.some(s => s === null)) return;
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Envoi…';
+            try {
+                const r = await fetch(ACTIONS_URL, {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': CSRF,
+                    },
+                    body: JSON.stringify({actions: slots}),
+                });
+                const data = await r.json();
+                if (!data.ok) {
+                    alert(data.error || 'Erreur');
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = 'Soumettre la manche';
+                    return;
+                }
+                slots = [null, null, null];
+                renderSlots();
+                submitBtn.textContent = 'Soumettre la manche';
+                // Force an immediate poll to pick up new state / replay
+                poll();
+            } catch (e) {
+                alert('Erreur réseau');
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Soumettre la manche';
+            }
+        });
+
+        // ── Countdown timer ─────────────────────────────────────────────
+        function tickCountdown() {
+            if (!remoteDeadline) { countdownEl.textContent = '--s'; countdownEl.classList.remove('urgent'); return; }
+            const ms = remoteDeadline.getTime() - Date.now();
+            if (ms <= 0) {
+                countdownEl.textContent = '⏱ expiré';
+                countdownEl.classList.add('urgent');
+                return;
+            }
+            const s = Math.ceil(ms / 1000);
+            countdownEl.textContent = s + 's';
+            countdownEl.classList.toggle('urgent', s <= 8);
+        }
+
+        // ── Polling + state reconciliation ──────────────────────────────
+        async function poll() {
+            if (animating) return;
+            try {
+                const r = await fetch(STATE_URL, {credentials: 'same-origin'});
+                const s = await r.json();
+                if (!s.ok) return;
+                await reconcile(s);
+            } catch (e) { /* silent */ }
+        }
+
+        async function reconcile(s) {
+            statusPill.textContent = s.status;
+            roundNum.textContent = s.current_round;
+            remoteDeadline = s.round_deadline_at ? new Date(s.round_deadline_at) : null;
+            window.__youAre = s.you_are;
+
+            // If a new round has been resolved server-side, fetch the replay
+            // and animate the missing rounds before touching the UI further.
+            if (s.current_round > lastAnimatedRound + 1 || (s.status === 'finished' && lastAnimatedRound === 0) || (s.status === 'finished' && s.current_round > lastAnimatedRound)) {
+                await animatePendingRounds();
+            } else if (!animating) {
+                // No pending replay: just sync the static state (for freshly-loaded pages).
+                setMarkers(s.pig1_position, s.pig2_position);
+                setEndurance(s.pig1_endurance, s.pig2_endurance);
+            }
+
+            // Panels
+            const isSpec = s.you_are === 'spectator';
+            const isParticipant = s.you_are === 'p1' || s.you_are === 'p2';
+            const mySubmitted = (s.you_are === 'p1' && s.p1_submitted) || (s.you_are === 'p2' && s.p2_submitted);
+
+            if (s.status === 'active' && isParticipant && !mySubmitted && !animating) {
+                panelProg.classList.remove('hidden');
+                panelWait.classList.add('hidden');
+                panelSpec.classList.add('hidden');
+            } else if (s.status === 'active' && isParticipant && mySubmitted) {
+                panelProg.classList.add('hidden');
+                panelWait.classList.remove('hidden');
+                panelSpec.classList.add('hidden');
+            } else if (s.status === 'active' && isSpec) {
+                panelProg.classList.add('hidden');
+                panelWait.classList.add('hidden');
+                panelSpec.classList.remove('hidden');
+            } else {
+                panelProg.classList.add('hidden');
+                panelWait.classList.add('hidden');
+                panelSpec.classList.add('hidden');
+            }
+
+            if (s.status === 'finished' || s.status === 'cancelled') {
+                clearInterval(pollTimer);
+                clearInterval(tickTimer);
+                countdownEl.textContent = '—';
+                countdownEl.classList.remove('urgent');
+            }
+        }
+
+        async function animatePendingRounds() {
+            if (animating) return;
+            animating = true;
+            try {
+                const r = await fetch(REPLAY_URL, {credentials: 'same-origin'});
+                const data = await r.json();
+                if (!data.ok) return;
+                const pending = (data.rounds || []).filter(b => b.round > lastAnimatedRound);
+                for (const block of pending) {
+                    await playRound(block);
+                    lastAnimatedRound = block.round;
+                }
+            } finally {
+                animating = false;
+            }
+            // After animating, re-poll to refresh UI panels
+            poll();
+        }
+
+        // ── Boot ────────────────────────────────────────────────────────
+        window.__youAre = "{{ 'p1' if duel.player1_id == user.id else ('p2' if duel.player2 and duel.player2_id == user.id else 'spectator') }}";
+        setMarkers({{ duel.pig1_position }}, {{ duel.pig2_position }});
+        setEndurance({{ duel.pig1_endurance|round(2) }}, {{ duel.pig2_endurance|round(2) }});
+        renderSlots();
+
+        const initialStatus = "{{ duel.status }}";
+        if (initialStatus === 'active' || initialStatus === 'finished') {
+            // Animate all existing rounds on load (for returning players)
+            animatePendingRounds().then(() => poll());
+        } else {
+            poll();
+        }
+
+        if (initialStatus === 'active' || initialStatus === 'waiting') {
+            pollTimer = setInterval(poll, 2500);
+            tickTimer = setInterval(tickCountdown, 250);
+        }
+    })();
+    </script>
+</body>
+</html>
