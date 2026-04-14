@@ -9,6 +9,7 @@ from services.octogroin_service import (
     cancel_duel,
     create_duel,
     finish_duel,
+    get_matchup_rating,
     join_duel,
     list_open_duels,
     list_user_duels,
@@ -351,6 +352,41 @@ class OctogroinServiceTests(unittest.TestCase):
             duel = db.session.get(Duel, ids['duel'])
             self.assertEqual(duel.status, 'finished')
             self.assertIsNotNone(duel.replay_json)
+
+    def test_get_matchup_rating_none_when_waiting(self):
+        ids = self._fixture()
+        with self.app.app_context():
+            a = db.session.get(User, ids['a'])
+            pa = db.session.get(Pig, ids['pa'])
+            duel = create_duel(a, pa, 25.0, 'public')
+            self.assertIsNone(get_matchup_rating(duel))
+
+    def test_get_matchup_rating_populated_when_active(self):
+        ids = self._start_duel()
+        with self.app.app_context():
+            duel = db.session.get(Duel, ids['duel'])
+            matchup = get_matchup_rating(duel)
+            self.assertIsNotNone(matchup)
+            for key in ('p1_pct', 'p2_pct', 'gap', 'level', 'favorite',
+                        'p1_rating', 'p2_rating', 'stats', 'level_label'):
+                self.assertIn(key, matchup)
+            self.assertEqual(len(matchup['stats']), 6)
+
+    def test_matchup_rating_independent_of_live_state(self):
+        ids = self._start_duel()
+        with self.app.app_context():
+            duel = db.session.get(Duel, ids['duel'])
+            before = get_matchup_rating(duel)
+            # Mess with live state — rating must stay the same.
+            duel.pig1_position = 90.0
+            duel.pig1_endurance = 5.0
+            duel.pig2_position = 10.0
+            duel.pig2_endurance = 95.0
+            db.session.commit()
+            after = get_matchup_rating(duel)
+            self.assertEqual(before['p1_pct'], after['p1_pct'])
+            self.assertEqual(before['p2_pct'], after['p2_pct'])
+            self.assertEqual(before['favorite'], after['favorite'])
 
     def test_direct_duel_hidden_from_uninvited_viewer(self):
         ids = self._fixture()

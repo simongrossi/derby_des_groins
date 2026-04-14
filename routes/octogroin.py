@@ -7,6 +7,7 @@ from services.octogroin_service import (
     OctogroinError,
     cancel_duel,
     create_duel,
+    get_matchup_rating,
     get_round_duration_seconds,
     get_stake_bounds,
     get_visible_duel,
@@ -158,6 +159,8 @@ def duel_view(duel_id):
     if can_join:
         my_pigs = [p for p in user.pigs if p.is_alive and not p.is_injured]
 
+    matchup = get_matchup_rating(duel)
+
     return render_template(
         'octogroin_duel.html',
         user=user,
@@ -166,6 +169,7 @@ def duel_view(duel_id):
         round_duration=get_round_duration_seconds(),
         can_join=can_join,
         my_pigs=my_pigs,
+        matchup=matchup,
     )
 
 
@@ -246,4 +250,5 @@ def duel_state(duel_id):
         'p2_submitted': bool(duel.round_actions_p2),
         'you_are': 'p1' if user.id == duel.player1_id else ('p2' if user.id == duel.player2_id else 'spectator'),
         'allowed_actions': list(ACTIONS),
+        'matchup': get_matchup_rating(duel),
     })

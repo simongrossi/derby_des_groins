@@ -13,9 +13,18 @@ from services.finance_service import credit_user_balance, debit_user_balance
 from services.octogroin_engine import (
     ACTIONS,
     PigState,
+    compute_matchup_odds,
     evaluate_end_of_duel,
     resolve_round as engine_resolve_round,
 )
+
+
+MATCHUP_LEVEL_LABELS = {
+    'even':   'Combat équilibré',
+    'slight': 'Léger favori',
+    'marked': 'Favori marqué',
+    'huge':   'Gros déséquilibre',
+}
 
 
 class OctogroinError(Exception):
@@ -258,6 +267,22 @@ def _pig_to_state(pig, position, endurance):
         position=float(position or 0.0),
         endurance=float(endurance or 0.0),
     )
+
+
+def get_matchup_rating(duel):
+    """Return a matchup dict for the Pronostics UI block, or None if the duel
+    has no second pig yet. The rating is intentionally based on the pigs' raw
+    stats (neutral position + full endurance) so it doesn't drift during the
+    duel — it's a judgement of the matchup, not the live state."""
+    if duel is None or duel.pig1 is None or duel.pig2 is None:
+        return None
+    state1 = _pig_to_state(duel.pig1, 0.0, 100.0)
+    state2 = _pig_to_state(duel.pig2, 0.0, 100.0)
+    matchup = compute_matchup_odds(state1, state2)
+    matchup['level_label'] = MATCHUP_LEVEL_LABELS.get(
+        matchup['level'], MATCHUP_LEVEL_LABELS['even']
+    )
+    return matchup
 
 
 def _append_replay(duel, events_block):

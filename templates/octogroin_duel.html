@@ -112,6 +112,48 @@
                 </div>
             </div>
 
+            {% if matchup %}
+            <div id="matchup-block" class="rounded-2xl border border-white/10 bg-black/20 p-4 mb-4" data-level="{{ matchup.level }}">
+                <div class="flex items-center justify-between gap-3 mb-2 text-[11px] uppercase tracking-widest">
+                    <span class="font-black flex items-center gap-1 {% if matchup.favorite == 'p1' %}px-2 py-0.5 rounded-full bg-amber-400/15 border border-amber-400/30 text-amber-200{% else %}text-white/60{% endif %}">
+                        🔴 {{ 'Favori' if matchup.favorite == 'p1' else ('Outsider' if matchup.favorite == 'p2' else 'Équilibré') }}
+                    </span>
+                    <span class="text-white/70 font-bold normal-case tracking-normal">Pronostics — {{ matchup.level_label }}</span>
+                    <span class="font-black flex items-center gap-1 {% if matchup.favorite == 'p2' %}px-2 py-0.5 rounded-full bg-amber-400/15 border border-amber-400/30 text-amber-200{% else %}text-white/60{% endif %}">
+                        {{ 'Favori' if matchup.favorite == 'p2' else ('Outsider' if matchup.favorite == 'p1' else 'Équilibré') }} 🔵
+                    </span>
+                </div>
+
+                <div class="flex items-center gap-2 text-xs text-white/80 mb-3">
+                    <span class="font-black w-10 text-right">{{ matchup.p1_pct }}%</span>
+                    <div class="flex-1 h-3 rounded-full overflow-hidden bg-black/40 border border-white/10 flex">
+                        <div class="h-full bg-gradient-to-r from-red-500 to-rose-400" style="width: {{ matchup.p1_pct }}%"></div>
+                        <div class="h-full bg-gradient-to-r from-blue-400 to-indigo-500" style="width: {{ matchup.p2_pct }}%"></div>
+                    </div>
+                    <span class="font-black w-10">{{ matchup.p2_pct }}%</span>
+                </div>
+
+                <div class="grid grid-cols-2 md:grid-cols-3 gap-x-3 gap-y-2 text-[11px] text-white/80">
+                    {% for stat in matchup.stats %}
+                        {% set p1_ratio = (stat.p1 / stat.max * 100)|round(1) %}
+                        {% set p2_ratio = (stat.p2 / stat.max * 100)|round(1) %}
+                        {% set tot_ratio = (p1_ratio + p2_ratio) if (p1_ratio + p2_ratio) > 0 else 1 %}
+                        {% set share = (p1_ratio / tot_ratio * 100)|round(0) %}
+                        <div class="space-y-0.5">
+                            <div class="flex justify-between">
+                                <span class="font-bold">{{ stat.label }}</span>
+                                <span class="text-white/50">{{ stat.p1|round(0) }} · {{ stat.p2|round(0) }}</span>
+                            </div>
+                            <div class="h-1.5 rounded-full overflow-hidden bg-black/40 flex">
+                                <div class="h-full bg-red-500/70" style="width: {{ share }}%"></div>
+                                <div class="h-full bg-blue-500/70 flex-1"></div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+
             <div class="flex items-center justify-between text-[11px] uppercase tracking-widest text-white/55 mb-1">
                 <span>Bord 🔴</span>
                 <span>Manche <span id="round-num">{{ duel.current_round or 0 }}</span> / 5</span>
@@ -533,6 +575,15 @@
             roundNum.textContent = s.current_round;
             remoteDeadline = s.round_deadline_at ? new Date(s.round_deadline_at) : null;
             window.__youAre = s.you_are;
+
+            // When P2 has just joined a previously-waiting duel, the matchup
+            // block (rendered server-side) is missing from the DOM. Reload
+            // once to get the full UI populated rather than synthesizing the
+            // block in JS.
+            if (s.matchup && !document.getElementById('matchup-block')) {
+                window.location.reload();
+                return;
+            }
 
             // If a new round has been resolved server-side, fetch the replay
             // and animate the missing rounds before touching the UI further.

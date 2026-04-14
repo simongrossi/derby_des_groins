@@ -37,6 +37,35 @@ ENDURANCE_MAX = 100.0
 SPLAT_ENDURANCE_PENALTY = 30.0  # attacker smashes into an Ancrage
 CRIT_REST_MULTIPLIER = 1.5  # Charge on a Repos is a crit
 
+# Matchup rating — used only for the "Pronostics" indicator on the duel page.
+# These weights describe how much each stat contributes to a global combat
+# rating. They MUST sum to 1.0 (invariant covered by a unit test).
+COMBAT_RATING_WEIGHTS = {
+    'force':        0.35,
+    'weight_kg':    0.20,
+    'agilite':      0.20,
+    'vitesse':      0.15,
+    'moral':        0.05,
+    'intelligence': 0.05,
+}
+
+# Normalisation cap per stat (value above which we flatten to 1.0).
+COMBAT_RATING_STAT_CAPS = {
+    'force':        100.0,
+    'weight_kg':    200.0,
+    'agilite':      100.0,
+    'vitesse':      100.0,
+    'moral':        100.0,
+    'intelligence': 100.0,
+}
+
+# Thresholds for the gap-level label (in percentage points of p1_pct - p2_pct).
+MATCHUP_LEVEL_THRESHOLDS = [
+    (8.0,  'even'),
+    (18.0, 'slight'),
+    (30.0, 'marked'),
+]  # anything above 30 → 'huge'
+
 
 @dataclass
 class PigState:
@@ -69,6 +98,75 @@ def _clamp(value: float, lo: float, hi: float) -> float:
 def _power(pig: PigState) -> float:
     """Brute-force score used to arbitrate a Charge vs Charge clash."""
     return pig.force * (1.0 + pig.weight_kg / 200.0) + pig.vitesse * 0.5
+
+
+def compute_combat_rating(pig: PigState) -> float:
+    """Return a 0–100 score describing the pig's overall combat strength.
+
+    Unlike `_power()` (restricted to clash arbitration), this blends all the
+    pertinent stats so the UI can present a fair "combat rating". Never used
+    for gameplay resolution, only for display."""
+    score = 0.0
+    for stat_key, weight in COMBAT_RATING_WEIGHTS.items():
+        value = float(getattr(pig, stat_key, 0.0) or 0.0)
+        cap = COMBAT_RATING_STAT_CAPS[stat_key]
+        normalized = _clamp(value / cap if cap else 0.0, 0.0, 1.0)
+        score += normalized * weight * 100.0
+    return _clamp(score, 0.0, 100.0)
+
+
+def _level_for_gap(gap: float) -> str:
+    for threshold, level in MATCHUP_LEVEL_THRESHOLDS:
+        if gap < threshold:
+            return level
+    return 'huge'
+
+
+def compute_matchup_odds(pig1: PigState, pig2: PigState) -> dict:
+    """Return a dict describing the matchup for the "Pronostics" UI block.
+
+    Keys returned:
+        p1_rating / p2_rating : raw ratings 0–100
+        p1_pct / p2_pct       : normalized to sum to 100
+        gap                   : abs difference in percentage points
+        level                 : 'even' | 'slight' | 'marked' | 'huge'
+        favorite              : 'p1' | 'p2' | None (None iff p1_pct == p2_pct)
+        stats                 : list of per-stat comparison dicts for the UI
+    """
+    r1 = compute_combat_rating(pig1)
+    r2 = compute_combat_rating(pig2)
+    total = r1 + r2 or 1.0
+    p1_pct = round(r1 / total * 100.0, 1)
+    p2_pct = round(100.0 - p1_pct, 1)
+    gap = round(abs(p1_pct - p2_pct), 1)
+    level = _level_for_gap(gap)
+
+    if p1_pct > p2_pct:
+        favorite = 'p1'
+    elif p2_pct > p1_pct:
+        favorite = 'p2'
+    else:
+        favorite = None
+
+    stats_block = [
+        {'key': 'force',        'label': 'Force',        'p1': pig1.force,        'p2': pig2.force,        'max': COMBAT_RATING_STAT_CAPS['force']},
+        {'key': 'agilite',      'label': 'Agilité',      'p1': pig1.agilite,      'p2': pig2.agilite,      'max': COMBAT_RATING_STAT_CAPS['agilite']},
+        {'key': 'vitesse',      'label': 'Vitesse',      'p1': pig1.vitesse,      'p2': pig2.vitesse,      'max': COMBAT_RATING_STAT_CAPS['vitesse']},
+        {'key': 'weight_kg',    'label': 'Poids',        'p1': pig1.weight_kg,    'p2': pig2.weight_kg,    'max': COMBAT_RATING_STAT_CAPS['weight_kg']},
+        {'key': 'moral',        'label': 'Moral',        'p1': pig1.moral,        'p2': pig2.moral,        'max': COMBAT_RATING_STAT_CAPS['moral']},
+        {'key': 'intelligence', 'label': 'Intelligence', 'p1': pig1.intelligence, 'p2': pig2.intelligence, 'max': COMBAT_RATING_STAT_CAPS['intelligence']},
+    ]
+
+    return {
+        'p1_rating': round(r1, 1),
+        'p2_rating': round(r2, 1),
+        'p1_pct': p1_pct,
+        'p2_pct': p2_pct,
+        'gap': gap,
+        'level': level,
+        'favorite': favorite,
+        'stats': stats_block,
+    }
 
 
 def _esquive_success_chance(defender: PigState) -> float:

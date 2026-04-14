@@ -3,8 +3,11 @@ import unittest
 
 from services.octogroin_engine import (
     ACTIONS,
+    COMBAT_RATING_WEIGHTS,
     ENDURANCE_DELTA,
     PigState,
+    compute_combat_rating,
+    compute_matchup_odds,
     evaluate_end_of_duel,
     resolve_round,
 )
@@ -170,6 +173,86 @@ class EngineResolutionTests(unittest.TestCase):
     def test_evaluate_mid_duel(self):
         v = evaluate_end_of_duel(make_pig(position=20.0), make_pig(position=30.0), 2)
         self.assertFalse(v['ended'])
+
+
+class MatchupRatingTests(unittest.TestCase):
+    def test_rating_weights_sum_to_one(self):
+        self.assertAlmostEqual(sum(COMBAT_RATING_WEIGHTS.values()), 1.0, places=6)
+
+    def test_rating_in_bounds(self):
+        # All stats at their cap → rating near 100
+        max_pig = PigState(force=100, weight_kg=200, agilite=100,
+                           intelligence=100, moral=100, vitesse=100,
+                           position=0, endurance=100)
+        self.assertAlmostEqual(compute_combat_rating(max_pig), 100.0, places=1)
+
+        # All stats at 0 → rating 0
+        min_pig = PigState(force=0, weight_kg=0, agilite=0,
+                           intelligence=0, moral=0, vitesse=0,
+                           position=0, endurance=0)
+        self.assertEqual(compute_combat_rating(min_pig), 0.0)
+
+    def test_rating_force_dominates(self):
+        # Only force differs — the pig with more force has a higher rating.
+        base = dict(weight_kg=112, agilite=60, intelligence=60, moral=60,
+                    vitesse=60, position=0, endurance=100)
+        low = PigState(force=60, **base)
+        high = PigState(force=90, **base)
+        self.assertGreater(compute_combat_rating(high), compute_combat_rating(low))
+
+    def test_rating_clamps_above_cap(self):
+        # Pathological: a stat overflow should not push rating past 100.
+        overflow = PigState(force=9999, weight_kg=9999, agilite=9999,
+                            intelligence=9999, moral=9999, vitesse=9999,
+                            position=0, endurance=100)
+        self.assertLessEqual(compute_combat_rating(overflow), 100.0)
+
+    def test_odds_symmetric_for_identical_pigs(self):
+        p = PigState(force=60, weight_kg=112, agilite=60,
+                     intelligence=60, moral=60, vitesse=60,
+                     position=0, endurance=100)
+        odds = compute_matchup_odds(p, PigState(**p.to_dict()))
+        self.assertEqual(odds['p1_pct'], 50.0)
+        self.assertEqual(odds['p2_pct'], 50.0)
+        self.assertEqual(odds['level'], 'even')
+        self.assertIsNone(odds['favorite'])
+
+    def test_odds_huge_gap_flags_huge_level(self):
+        strong = PigState(force=100, weight_kg=200, agilite=100,
+                          intelligence=100, moral=100, vitesse=100,
+                          position=0, endurance=100)
+        weak = PigState(force=10, weight_kg=75, agilite=10,
+                        intelligence=10, moral=10, vitesse=10,
+                        position=0, endurance=100)
+        odds = compute_matchup_odds(strong, weak)
+        self.assertEqual(odds['favorite'], 'p1')
+        self.assertGreater(odds['p1_pct'], 65.0)
+        self.assertEqual(odds['level'], 'huge')
+
+    def test_odds_levels_cover_each_threshold(self):
+        # Build synthetic pairs where only `force` varies so we can tune the gap.
+        def mkpig(force):
+            return PigState(force=force, weight_kg=112, agilite=60,
+                            intelligence=60, moral=60, vitesse=60,
+                            position=0, endurance=100)
+
+        # Equal → even
+        self.assertEqual(compute_matchup_odds(mkpig(60), mkpig(60))['level'], 'even')
+        # Moderate force delta → slight (gap ~12 points)
+        self.assertEqual(compute_matchup_odds(mkpig(40), mkpig(80))['level'], 'slight')
+        # Big force delta → marked (gap ~24 points)
+        self.assertEqual(compute_matchup_odds(mkpig(20), mkpig(100))['level'], 'marked')
+        # Extreme: 'huge' is covered by test_odds_huge_gap_flags_huge_level.
+
+    def test_stats_block_shape(self):
+        p = PigState(force=60, weight_kg=112, agilite=60,
+                     intelligence=60, moral=60, vitesse=60,
+                     position=0, endurance=100)
+        odds = compute_matchup_odds(p, p)
+        self.assertEqual(len(odds['stats']), 6)
+        for entry in odds['stats']:
+            for key in ('key', 'label', 'p1', 'p2', 'max'):
+                self.assertIn(key, entry)
 
 
 if __name__ == '__main__':
