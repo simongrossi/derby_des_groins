@@ -148,12 +148,24 @@ def duel_view(duel_id):
         flash("Duel introuvable.", 'error')
         return redirect(url_for('octogroin.lobby'))
 
+    # Compute whether this user can join (used to render the Rejoindre form).
+    can_join = (
+        duel.status == 'waiting'
+        and duel.player1_id != user.id
+        and (duel.visibility == 'public' or duel.challenged_user_id == user.id)
+    )
+    my_pigs = []
+    if can_join:
+        my_pigs = [p for p in user.pigs if p.is_alive and not p.is_injured]
+
     return render_template(
         'octogroin_duel.html',
         user=user,
         active_page='octogroin',
         duel=duel,
         round_duration=get_round_duration_seconds(),
+        can_join=can_join,
+        my_pigs=my_pigs,
     )
 
 

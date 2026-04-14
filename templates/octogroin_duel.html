@@ -180,6 +180,44 @@
         </section>
         {% endif %}
 
+        {% if can_join %}
+        <section class="arena-card p-5 mb-6">
+            <h2 class="font-title text-xl text-pink-200 mb-1">🥊 Rejoindre ce duel</h2>
+            <p class="text-white/70 text-sm mb-3">
+                Choisis ton cochon et valide. Ta mise de <strong>{{ "%.0f"|format(duel.stake) }} 🪙</strong> sera prélevée immédiatement ;
+                la manche 1 démarre dès que tu valides.
+            </p>
+            {% if my_pigs %}
+            <form method="post" action="{{ url_for('octogroin.join', duel_id=duel.id) }}" class="flex items-end gap-3 flex-wrap">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <label class="flex flex-col gap-1 text-sm flex-1 min-w-[220px]">
+                    <span class="font-bold text-white/80">Mon cochon</span>
+                    <select name="pig_id" required class="bg-black/40 border border-white/15 rounded-xl px-3 py-2 text-white">
+                        {% for pig in my_pigs %}
+                        <option value="{{ pig.id }}">{{ pig.emoji }} {{ pig.name }} — F{{ pig.force|round(0) }} / A{{ pig.agilite|round(0) }} / {{ pig.weight_kg|round(0) }}kg</option>
+                        {% endfor %}
+                    </select>
+                </label>
+                <button type="submit" class="px-6 py-3 rounded-2xl bg-gradient-to-r from-pink-500 via-rose-500 to-orange-400 font-black text-white hover:shadow-[0_8px_24px_rgba(244,114,182,0.28)]">
+                    Rejoindre le duel
+                </button>
+            </form>
+            {% else %}
+            <p class="text-sm text-red-200">Tu n'as aucun cochon disponible (vivant et non blessé) pour rejoindre ce duel.</p>
+            {% endif %}
+        </section>
+        {% elif duel.status == 'waiting' and duel.player1_id != user.id %}
+        <section class="arena-card p-4 mb-6">
+            <p class="text-white/70 text-sm">
+                {% if duel.visibility == 'direct' %}
+                🎯 Ce duel est un défi direct adressé à un autre joueur. Tu ne peux pas le rejoindre.
+                {% else %}
+                Ce duel n'est pas ouvert au join pour le moment.
+                {% endif %}
+            </p>
+        </section>
+        {% endif %}
+
         <section id="programming-panel" class="arena-card p-6 mb-6 hidden">
             <div class="flex items-center justify-between mb-4 gap-4 flex-wrap">
                 <h2 class="font-title text-xl text-pink-200">Programme 3 actions</h2>

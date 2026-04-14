@@ -45,8 +45,77 @@
             </div>
         </details>
 
+        <section class="mb-8">
+            <h2 class="font-title text-2xl text-pink-200 mb-4">Mes duels en cours</h2>
+            {% if my_duels %}
+            <div class="grid gap-3">
+                {% for duel in my_duels %}
+                <a href="{{ url_for('octogroin.duel_view', duel_id=duel.id) }}" class="arena-card p-4 flex items-center justify-between hover:border-pink-300/40 transition">
+                    <div>
+                        <div class="font-bold text-pink-100">Duel #{{ duel.id }} — {{ duel.status|upper }}</div>
+                        <div class="text-xs text-white/60">
+                            {{ duel.pig1.name if duel.pig1 else '?' }}
+                            vs
+                            {{ duel.pig2.name if duel.pig2 else '⏳ en attente' }}
+                            {% if duel.visibility == 'direct' and duel.challenged_user %} • défi à {{ duel.challenged_user.username }}{% endif %}
+                        </div>
+                    </div>
+                    <span class="stake-pill">{{ "%.0f"|format(duel.stake) }} 🪙</span>
+                </a>
+                {% endfor %}
+            </div>
+            {% else %}
+            <p class="text-white/50 text-sm">Aucun duel en cours.</p>
+            {% endif %}
+        </section>
+
+        <section class="mb-8">
+            <h2 class="font-title text-2xl text-pink-200 mb-4">Duels ouverts — rejoindre</h2>
+            {% if open_duels %}
+            <div class="grid gap-3">
+                {% for duel in open_duels %}
+                <div class="arena-card p-4 flex items-center justify-between gap-4 flex-wrap">
+                    <div class="min-w-0">
+                        <div class="font-bold text-pink-100">
+                            {{ duel.player1.username }} — {{ duel.pig1.name if duel.pig1 else '?' }}
+                            <span class="text-white/40">#{{ duel.id }}</span>
+                        </div>
+                        <div class="text-xs text-white/60">
+                            Ouvert {{ duel.created_at.strftime('%d/%m %H:%M') }}
+                        </div>
+                    </div>
+                    <span class="stake-pill">{{ "%.0f"|format(duel.stake) }} 🪙</span>
+                    {% if duel.player1_id != user.id %}
+                        {% if my_pigs %}
+                        <form method="post" action="{{ url_for('octogroin.join', duel_id=duel.id) }}" class="flex items-center gap-2">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <select name="pig_id" required class="bg-black/40 border border-white/15 rounded-xl px-2 py-1.5 text-sm text-white">
+                                {% for pig in my_pigs %}
+                                <option value="{{ pig.id }}">{{ pig.emoji }} {{ pig.name }}</option>
+                                {% endfor %}
+                            </select>
+                            <button class="px-4 py-1.5 rounded-xl bg-pink-500 hover:bg-pink-400 text-sm font-black">Rejoindre</button>
+                        </form>
+                        {% else %}
+                        <span class="text-xs text-white/40">Aucun cochon disponible</span>
+                        {% endif %}
+                    {% else %}
+                        <form method="post" action="{{ url_for('octogroin.cancel', duel_id=duel.id) }}">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button class="px-4 py-1.5 rounded-xl border border-red-400/40 text-red-200 text-sm font-bold hover:bg-red-500/15">Annuler</button>
+                        </form>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <p class="text-white/50 text-sm">Aucun duel public ouvert pour le moment. Ouvre le tien ci-dessous pour attirer un challenger.</p>
+            {% endif %}
+        </section>
+
         <section class="arena-card p-6 mb-8">
-            <h2 class="font-title text-2xl text-pink-200 mb-4">Créer un duel</h2>
+            <h2 class="font-title text-2xl text-pink-200 mb-1">Ouvrir un nouveau duel</h2>
+            <p class="text-white/60 text-sm mb-4">À n'utiliser que si aucun duel ci-dessus ne te convient. Chaque nouveau duel crée une salle distincte en attente d'un adversaire.</p>
             {% if my_pigs %}
             <form method="post" action="{{ url_for('octogroin.create') }}" class="grid gap-4 md:grid-cols-2">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -87,74 +156,6 @@
             </form>
             {% else %}
             <p class="text-white/60">Aucun cochon disponible. Il te faut au moins un cochon vivant et non blessé pour entrer dans l'arène.</p>
-            {% endif %}
-        </section>
-
-        <section class="mb-8">
-            <h2 class="font-title text-2xl text-pink-200 mb-4">Mes duels en cours</h2>
-            {% if my_duels %}
-            <div class="grid gap-3">
-                {% for duel in my_duels %}
-                <a href="{{ url_for('octogroin.duel_view', duel_id=duel.id) }}" class="arena-card p-4 flex items-center justify-between hover:border-pink-300/40 transition">
-                    <div>
-                        <div class="font-bold text-pink-100">Duel #{{ duel.id }} — {{ duel.status|upper }}</div>
-                        <div class="text-xs text-white/60">
-                            {{ duel.pig1.name if duel.pig1 else '?' }}
-                            vs
-                            {{ duel.pig2.name if duel.pig2 else '⏳ en attente' }}
-                            {% if duel.visibility == 'direct' and duel.challenged_user %} • défi à {{ duel.challenged_user.username }}{% endif %}
-                        </div>
-                    </div>
-                    <span class="stake-pill">{{ "%.0f"|format(duel.stake) }} 🪙</span>
-                </a>
-                {% endfor %}
-            </div>
-            {% else %}
-            <p class="text-white/50 text-sm">Aucun duel en cours.</p>
-            {% endif %}
-        </section>
-
-        <section>
-            <h2 class="font-title text-2xl text-pink-200 mb-4">Duels ouverts</h2>
-            {% if open_duels %}
-            <div class="grid gap-3">
-                {% for duel in open_duels %}
-                <div class="arena-card p-4 flex items-center justify-between gap-4 flex-wrap">
-                    <div class="min-w-0">
-                        <div class="font-bold text-pink-100">
-                            {{ duel.player1.username }} — {{ duel.pig1.name if duel.pig1 else '?' }}
-                            <span class="text-white/40">#{{ duel.id }}</span>
-                        </div>
-                        <div class="text-xs text-white/60">
-                            Ouvert {{ duel.created_at.strftime('%d/%m %H:%M') }}
-                        </div>
-                    </div>
-                    <span class="stake-pill">{{ "%.0f"|format(duel.stake) }} 🪙</span>
-                    {% if duel.player1_id != user.id %}
-                        {% if my_pigs %}
-                        <form method="post" action="{{ url_for('octogroin.join', duel_id=duel.id) }}" class="flex items-center gap-2">
-                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                            <select name="pig_id" required class="bg-black/40 border border-white/15 rounded-xl px-2 py-1.5 text-sm text-white">
-                                {% for pig in my_pigs %}
-                                <option value="{{ pig.id }}">{{ pig.emoji }} {{ pig.name }}</option>
-                                {% endfor %}
-                            </select>
-                            <button class="px-4 py-1.5 rounded-xl bg-pink-500 hover:bg-pink-400 text-sm font-black">Rejoindre</button>
-                        </form>
-                        {% else %}
-                        <span class="text-xs text-white/40">Aucun cochon disponible</span>
-                        {% endif %}
-                    {% else %}
-                        <form method="post" action="{{ url_for('octogroin.cancel', duel_id=duel.id) }}">
-                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                            <button class="px-4 py-1.5 rounded-xl border border-red-400/40 text-red-200 text-sm font-bold hover:bg-red-500/15">Annuler</button>
-                        </form>
-                    {% endif %}
-                </div>
-                {% endfor %}
-            </div>
-            {% else %}
-            <p class="text-white/50 text-sm">Aucun duel public ouvert pour le moment. Sois le premier à descendre dans la boue !</p>
             {% endif %}
         </section>
     </main>
