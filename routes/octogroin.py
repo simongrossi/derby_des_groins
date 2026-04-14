@@ -15,6 +15,7 @@ from services.octogroin_service import (
     join_duel,
     list_open_duels,
     list_user_duels,
+    maybe_auto_resolve_overdue,
     submit_actions,
 )
 from services.octogroin_cards import CARDS
@@ -151,6 +152,12 @@ def duel_view(duel_id):
         flash("Duel introuvable.", 'error')
         return redirect(url_for('octogroin.lobby'))
 
+    # Lazy auto-forfeit : si la deadline + 60 s est dépassée, on résout.
+    try:
+        maybe_auto_resolve_overdue(duel)
+    except Exception:
+        db.session.rollback()
+
     # Compute whether this user can join (used to render the Rejoindre form).
     can_join = (
         duel.status == 'waiting'
@@ -238,6 +245,11 @@ def duel_state(duel_id):
     duel = get_visible_duel(duel_id, user)
     if duel is None:
         return jsonify({'ok': False, 'error': 'Duel introuvable'}), 404
+
+    try:
+        maybe_auto_resolve_overdue(duel)
+    except Exception:
+        db.session.rollback()
 
     return jsonify({
         'ok': True,

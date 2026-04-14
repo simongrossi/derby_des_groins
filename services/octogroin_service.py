@@ -262,6 +262,49 @@ def _player_slot(duel, user_id):
     return None
 
 
+# ── Auto-forfait : grace period après expiration du round_deadline_at ────
+# Au-delà de cette marge, si un joueur n'a pas soumis ses actions, on les
+# remplace par 3x Repos pour ne pas bloquer le duel indéfiniment. Cette
+# fonction est appelée de manière paresseuse (lecture GET duel/state) donc
+# aucune tâche de fond nécessaire.
+FORFEIT_GRACE_SECONDS = 60
+
+DEFAULT_FORFEIT_PAYLOAD = json.dumps({
+    'actions': ['repos', 'repos', 'repos'],
+    'cards':   [None, None, None],
+})
+
+
+def maybe_auto_resolve_overdue(duel):
+    """Si la deadline + 60 s est dépassée et qu'au moins un joueur n'a pas
+    soumis, remplir ses actions par un Repos×3 forfaitaire puis résoudre.
+
+    Retourne True si une résolution a été déclenchée, False sinon. Commit
+    la transaction uniquement en cas de résolution."""
+    if duel.status != 'active' or duel.round_deadline_at is None:
+        return False
+    grace_cutoff = duel.round_deadline_at + timedelta(seconds=FORFEIT_GRACE_SECONDS)
+    if datetime.utcnow() < grace_cutoff:
+        return False
+    # Si les deux ont déjà soumis, laisser submit_actions faire son job.
+    if duel.round_actions_p1 and duel.round_actions_p2:
+        return False
+
+    changed = False
+    if not duel.round_actions_p1:
+        duel.round_actions_p1 = DEFAULT_FORFEIT_PAYLOAD
+        changed = True
+    if not duel.round_actions_p2:
+        duel.round_actions_p2 = DEFAULT_FORFEIT_PAYLOAD
+        changed = True
+    if not changed:
+        return False
+
+    resolve_round_now(duel)
+    db.session.commit()
+    return True
+
+
 def _validate_actions(actions):
     if not isinstance(actions, (list, tuple)):
         raise OctogroinError("Les actions doivent être une liste.")

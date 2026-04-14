@@ -5,6 +5,7 @@ from config.game_rules import PIG_DEFAULTS
 from extensions import db
 from models import BalanceTransaction, Duel, Pig, User
 from services.octogroin_service import (
+    FORFEIT_GRACE_SECONDS,
     OctogroinError,
     cancel_duel,
     create_duel,
@@ -15,6 +16,7 @@ from services.octogroin_service import (
     list_open_duels,
     list_user_duels,
     get_visible_duel,
+    maybe_auto_resolve_overdue,
     submit_actions,
 )
 from services.octogroin_cards import CARDS, HAND_SIZE
@@ -443,6 +445,61 @@ class OctogroinServiceTests(unittest.TestCase):
             with self.assertRaises(OctogroinError):
                 submit_actions(duel, a, ['charge', 'repos', 'ancrage'],
                                cards=[hand[0], hand[1], None])
+
+    def test_auto_resolve_noop_within_grace(self):
+        ids = self._start_duel()
+        with self.app.app_context():
+            duel = db.session.get(Duel, ids['duel'])
+            # Deadline encore dans le futur → pas de résolution.
+            self.assertFalse(maybe_auto_resolve_overdue(duel))
+            duel = db.session.get(Duel, ids['duel'])
+            self.assertEqual(duel.current_round, 1)
+
+    def test_auto_resolve_when_both_absent_after_grace(self):
+        from datetime import timedelta
+        ids = self._start_duel()
+        with self.app.app_context():
+            duel = db.session.get(Duel, ids['duel'])
+            # Force la deadline au passé + buffer + 1s
+            duel.round_deadline_at = datetime.utcnow() - timedelta(seconds=FORFEIT_GRACE_SECONDS + 1)
+            db.session.commit()
+            duel = db.session.get(Duel, ids['duel'])
+            self.assertTrue(maybe_auto_resolve_overdue(duel))
+            duel = db.session.get(Duel, ids['duel'])
+            # Deux Repos×3 simultanés = pas de contact, endurance max, round suivant.
+            self.assertEqual(duel.current_round, 2)
+            self.assertEqual(duel.pig1_endurance, 100.0)
+            self.assertEqual(duel.pig2_endurance, 100.0)
+
+    def test_auto_resolve_fills_absent_side_only(self):
+        from datetime import timedelta
+        ids = self._start_duel()
+        with self.app.app_context():
+            duel = db.session.get(Duel, ids['duel'])
+            a = db.session.get(User, ids['a'])
+            submit_actions(duel, a, ['charge', 'charge', 'charge'])
+            duel = db.session.get(Duel, ids['duel'])
+            duel.round_deadline_at = datetime.utcnow() - timedelta(seconds=FORFEIT_GRACE_SECONDS + 1)
+            db.session.commit()
+            duel = db.session.get(Duel, ids['duel'])
+            self.assertTrue(maybe_auto_resolve_overdue(duel))
+            duel = db.session.get(Duel, ids['duel'])
+            # B a été forfaité avec Repos×3 → A a pu charger gratuitement.
+            self.assertGreater(duel.pig2_position, 0.0)
+            self.assertEqual(duel.current_round, 2)
+
+    def test_auto_resolve_skips_when_both_submitted(self):
+        ids = self._start_duel()
+        with self.app.app_context():
+            duel = db.session.get(Duel, ids['duel'])
+            a = db.session.get(User, ids['a'])
+            b = db.session.get(User, ids['b'])
+            submit_actions(duel, a, ['repos', 'repos', 'repos'])
+            duel = db.session.get(Duel, ids['duel'])
+            submit_actions(duel, b, ['repos', 'repos', 'repos'])
+            duel = db.session.get(Duel, ids['duel'])
+            # Déjà résolu automatiquement par submit_actions ; auto-forfait est no-op.
+            self.assertFalse(maybe_auto_resolve_overdue(duel))
 
     def test_direct_duel_hidden_from_uninvited_viewer(self):
         ids = self._fixture()
