@@ -34,6 +34,7 @@ from services.pig_power_service import (
     generate_weight_kg_for_profile,
     get_freshness_bonus,
     get_pig_performance_flags,
+    get_pig_settings,
     get_weight_profile,
     xp_for_level,
 )
