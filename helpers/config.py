@@ -118,6 +118,7 @@ def init_default_config():
                 {"threshold": 3, "multiplier": 0.5},
             ],
             "school_xp_decay_floor": 0.1,
+            "race_max_per_tick": 3,
         }),
         'settings_minigames': json.dumps({
             "pendu_free_plays_per_day": 2,

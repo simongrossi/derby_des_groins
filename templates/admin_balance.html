@@ -206,6 +206,11 @@
                     Plancher rendement école
                     <input class="input-admin w-full mt-2" type="number" min="0" max="10" step="0.05" name="gameplay_school_xp_decay_floor" value="{{ gameplay.school_xp_decay_floor }}">
                 </label>
+                <label class="text-white/65 text-sm font-bold">
+                    Courses max par tick
+                    <input class="input-admin w-full mt-2" type="number" min="1" max="50" step="1" name="gameplay_race_max_per_tick" value="{{ gameplay.race_max_per_tick }}">
+                    <span class="text-white/30 text-xs font-semibold mt-1 block">Courses exécutées par cycle scheduler</span>
+                </label>
             </div>
             <div class="mt-5">
                 <p class="text-white/50 text-xs font-bold uppercase tracking-wider mb-3">Rendement décroissant partagé école + typing</p>

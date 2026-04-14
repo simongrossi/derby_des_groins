@@ -6,6 +6,7 @@ import json
 from config.gameplay_defaults import (
     PENDU_EXTRA_PLAY_COST,
     PENDU_FREE_PLAYS_PER_DAY,
+    RACE_MAX_PER_TICK,
     SCHOOL_COOLDOWN_MINUTES,
     SCHOOL_XP_DECAY_FLOOR,
     SCHOOL_XP_DECAY_THRESHOLDS,
@@ -38,6 +39,7 @@ class GameplaySettings:
     school_cooldown_minutes: int
     school_xp_decay_thresholds: list[tuple[int, float]]
     school_xp_decay_floor: float
+    race_max_per_tick: int
 
     def to_dict(self):
         payload = asdict(self)
@@ -152,6 +154,12 @@ def _normalize_gameplay_settings(payload=None) -> GameplaySettings:
             SCHOOL_XP_DECAY_FLOOR,
             minimum=0.0,
             maximum=10.0,
+        ),
+        race_max_per_tick=_coerce_int(
+            source.get('race_max_per_tick', RACE_MAX_PER_TICK),
+            RACE_MAX_PER_TICK,
+            minimum=1,
+            maximum=50,
         ),
     )
 
@@ -277,6 +285,7 @@ def build_gameplay_settings_from_form(form, current_settings=None):
         'school_cooldown_minutes': form.get('gameplay_school_cooldown_minutes', current.school_cooldown_minutes),
         'school_xp_decay_thresholds': thresholds or current.school_xp_decay_thresholds,
         'school_xp_decay_floor': form.get('gameplay_school_xp_decay_floor', current.school_xp_decay_floor),
+        'race_max_per_tick': form.get('gameplay_race_max_per_tick', current.race_max_per_tick),
     })
 
 

@@ -24,6 +24,7 @@ from services.pig_power_service import (
     get_pig_settings,
     get_weight_profile,
 )
+from services.gameplay_settings_service import get_gameplay_settings
 from services.pig_service import kill_pig, retire_pig
 from race_engine import CourseManager
 
@@ -147,13 +148,13 @@ def ensure_race_for_slot(slot_time):
 
 def run_race_if_needed():
     now = datetime.now()
-    MAX_RACES_PER_TICK = 3
+    gameplay = get_gameplay_settings()
     progression = get_progression_settings()
     due_races = (
         Race.query
         .filter(Race.status == 'open', Race.scheduled_at <= now)
         .order_by(Race.scheduled_at)
-        .limit(MAX_RACES_PER_TICK)
+        .limit(gameplay.race_max_per_tick)
         .all()
     )
 
