@@ -5,6 +5,7 @@ from config.grain_market_defaults import (
     BOURSE_MOVEMENT_DIVISOR,
 )
 from content.stats_metadata import STAT_LABELS
+from helpers.config import get_config
 from helpers.game_data import get_cereals_dict, get_school_lessons_dict, get_trainings_dict
 from helpers.time_helpers import format_duration_short
 from services.economy_service import (
@@ -306,6 +307,23 @@ def build_rules_page_context():
                 "🎰 Groin Jack : mini-casino en BitGroins. Plafond de 500 🪙 de gains nets par jour — au-delà, les crédits casino sont suspendus jusqu'au lendemain.",
                 f"Agenda / Whack-a-Réu se joue {minigames.agenda_max_plays_per_day} fois par jour et récompense les réflexes avec une prime plus modeste qu'une vraie journée de course.",
                 "Le replay Live sert à comprendre les arrivées, les accrocs et la narration d'une course terminée.",
+            ],
+        },
+        {
+            'emoji': '🥊',
+            'title': "L'Octogroin — duel de boue PvP",
+            'summary': "Arène 1v1 à résolution simultanée. Deux cochons programment 3 actions par manche et tentent de se pousser hors de la flaque avant la fin de la 5ᵉ manche.",
+            'bullets': [
+                f"Mise par joueur : entre {int(float(get_config('octogroin_min_stake', '10'))):d} et {int(float(get_config('octogroin_max_stake', '5000'))):d} 🪙, choisie par le créateur du duel. Le deuxième joueur doit couvrir la même somme pour rejoindre.",
+                f"Pot commun = 2 × mise. Le gagnant empoche {int(round((1 - float(get_config('octogroin_house_tax', '0.10'))) * 100)):d} % du pot ; le reste ({int(round(float(get_config('octogroin_house_tax', '0.10')) * 100)):d} %) est prélevé par la maison. En cas de match nul, chaque joueur récupère sa mise.",
+                "Jauge de position de 0 à 100 par cochon : 0 = centre, 100 = bord arrière → sorti de la flaque = défaite instantanée. Après 5 manches sans sortie, la victoire revient au cochon le moins reculé (territorial).",
+                "Endurance de départ : 100. Arriver à 0 rend le cochon « essoufflé » : son action suivante échoue automatiquement.",
+                "💥 Charge (−20 endu) : pousse l'adversaire (distance ≈ force/4). Deux charges simultanées = clash ; le gagnant est déterminé par force × (1 + poids/200) + vitesse/2.",
+                "🧱 Ancrage (−10 endu) : contre une charge frontale, l'attaquant s'écrase et perd −30 endu en plus. Face à tout le reste, aucun effet.",
+                "💨 Esquive (−15 endu) : face à une charge, chance de réussite = agilité / 100 (bornée 20–95 %). Succès → l'attaquant glisse vers son propre bord (force/3). Échec → la charge passe normalement.",
+                "💤 Repos (+25 endu) : récupère de l'endurance mais très vulnérable à une charge adverse dans le même créneau (poussée ×1.5 = coup critique).",
+                "Matchmaking : duels publics visibles dans le lobby ou défis directs par nom d'utilisateur (invisibles au lobby public). Un même cochon ne peut être engagé que dans un seul duel actif à la fois.",
+                "Tant qu'aucun adversaire n'a rejoint, le créateur peut annuler son duel pour un remboursement intégral de la mise.",
             ],
         },
     ]
