@@ -28,6 +28,11 @@ class Duel(db.Model):
     round_actions_p2 = db.Column(db.Text, nullable=True)
     round_deadline_at = db.Column(db.DateTime, nullable=True)
 
+    # Octogroin trump / counter cards — drawn at join_duel time, consumed as played.
+    # JSON list of card ids, e.g. ["berserk", "patine", "grognement"].
+    hand_p1_json = db.Column(db.Text, nullable=True)
+    hand_p2_json = db.Column(db.Text, nullable=True)
+
     replay_json = db.Column(db.Text, nullable=True)
     winner_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True, index=True)
 

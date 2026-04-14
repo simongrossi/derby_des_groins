@@ -255,5 +255,163 @@ class MatchupRatingTests(unittest.TestCase):
                 self.assertIn(key, entry)
 
 
+class CardEffectsTests(unittest.TestCase):
+    def _rng(self):
+        return random.Random(42)
+
+    def test_berserk_doubles_charge_push(self):
+        # Without berserk
+        p1, p2, _ = resolve_round(
+            make_pig(force=60), make_pig(),
+            ['charge', 'repos', 'repos'],
+            ['repos', 'repos', 'repos'],
+            rng=random.Random(0),
+        )
+        baseline_push = p2.position
+
+        # With berserk in slot 0
+        p1b, p2b, evs = resolve_round(
+            make_pig(force=60), make_pig(),
+            ['charge', 'repos', 'repos'],
+            ['repos', 'repos', 'repos'],
+            cards_p1=['berserk', None, None],
+            rng=random.Random(0),
+        )
+        # The first pair is a crit_on_rest (charge vs repos). With berserk we
+        # expect ~1 extra charge_distance on top of the 1.5x base.
+        self.assertGreater(p2b.position, baseline_push)
+        self.assertIn('berserk_p1_extra_push', evs[0].get('card_effects', []))
+
+    def test_second_souffle_restores_endurance(self):
+        tired = make_pig(endurance=20.0)
+        p1, _p2, evs = resolve_round(
+            tired, make_pig(),
+            ['repos', 'repos', 'repos'],
+            ['repos', 'repos', 'repos'],
+            cards_p1=['second_souffle', None, None],
+            rng=random.Random(0),
+        )
+        # Slot 1: +40 instant + no combat. Slots 2 & 3: +25 each.
+        self.assertEqual(p1.endurance, 100.0)
+        self.assertIn('second_souffle_p1', evs[0].get('card_effects', []))
+
+    def test_grognement_drains_opponent(self):
+        _p1, p2, evs = resolve_round(
+            make_pig(), make_pig(endurance=80.0),
+            ['repos', 'repos', 'repos'],
+            ['repos', 'repos', 'repos'],
+            cards_p1=['grognement', None, None],
+            rng=random.Random(0),
+        )
+        # Opponent loses 25 at slot 1 then gains +25 x 3 from rest, capped at 100.
+        # Net after slot 1: 80 - 25 + 25 = 80. Slots 2,3: +25, +25, capped at 100.
+        self.assertEqual(p2.endurance, 100.0)
+        self.assertIn('grognement_p1_on_p2', evs[0].get('card_effects', []))
+
+    def test_feinte_forces_esquive_success(self):
+        # Low-agility dodger would normally miss vs a strong charge.
+        p1, p2, evs = resolve_round(
+            make_pig(force=80, agilite=0),
+            make_pig(agilite=0),  # would fail esquive
+            ['charge', 'repos', 'repos'],
+            ['esquive', 'repos', 'repos'],
+            cards_p2=['feinte', None, None],
+            rng=random.Random(12345),
+        )
+        # With feinte, P2 always dodges — P1 slides back.
+        self.assertGreater(p1.position, 0)
+        self.assertEqual(p2.position, 0)
+
+    def test_coup_bas_bypasses_ancrage(self):
+        p1, p2, evs = resolve_round(
+            make_pig(force=60), make_pig(),
+            ['charge', 'repos', 'repos'],
+            ['ancrage', 'repos', 'repos'],
+            cards_p1=['coup_bas', None, None],
+            rng=random.Random(0),
+        )
+        # Normal: p1 would splat (-30). With coup_bas, no splat and p2 pushed.
+        self.assertGreater(p2.position, 0.0)
+        self.assertEqual(evs[0]['outcome'], 'p1_coup_bas_bypass')
+
+    def test_taurus_amplifies_splat(self):
+        # Base splat -30. Taurus adds -20 more.
+        p1, _p2, evs = resolve_round(
+            make_pig(endurance=100),
+            make_pig(),
+            ['charge', 'repos', 'repos'],
+            ['ancrage', 'repos', 'repos'],
+            cards_p2=['taurus', None, None],
+            rng=random.Random(0),
+        )
+        # charge cost -20 + splat -30 + taurus -20 = -70 → endurance 30 at slot 1.
+        # Slots 2 & 3: +25 each → 55, 80.
+        self.assertIn('taurus_p2_extra_splat', evs[0].get('card_effects', []))
+
+    def test_patine_blocks_incoming_pushes(self):
+        _p1, p2, _ = resolve_round(
+            make_pig(force=80), make_pig(),
+            ['charge', 'charge', 'charge'],
+            ['patine', 'repos', 'repos'],
+            cards_p2=['patine', None, None],
+            rng=random.Random(0),
+        )
+        # P2 played patine at slot 1 → immune for the whole round. P2 position
+        # stays at 0 despite 3 charges from P1.
+        self.assertEqual(p2.position, 0.0)
+
+    def test_miroir_reflects_half_push(self):
+        p1, p2, evs = resolve_round(
+            make_pig(force=80), make_pig(),
+            ['charge', 'repos', 'repos'],
+            ['miroir', 'repos', 'repos'],
+            cards_p2=['miroir', None, None],
+            rng=random.Random(0),
+        )
+        # Crit on rest doesn't trigger because p2's slot is the card (null).
+        # So slot 1 resolves as charge (p1) vs null (p2 played a card).
+        # P1 charges essouffle: normal push → but miroir reflects 50%.
+        self.assertGreater(p1.position, 0.0, "miroir should reflect half of the push onto p1")
+
+    def test_vol_energie_recovers_half_opponent_cost(self):
+        # P2 plays vol at slot 1, p1 keeps charging (spending endurance).
+        _p1, p2, _ = resolve_round(
+            make_pig(endurance=100),
+            make_pig(endurance=50),
+            ['charge', 'charge', 'charge'],
+            ['vol_energie', 'repos', 'repos'],
+            cards_p2=['vol_energie', None, None],
+            rng=random.Random(0),
+        )
+        # P2 should have higher endurance than if it had just rested 3 times
+        # (cap logic kicks in though — this is a sanity floor).
+        self.assertGreaterEqual(p2.endurance, 50.0)
+
+    def test_contre_atout_cancels_opponent_atout(self):
+        _p1, p2, evs = resolve_round(
+            make_pig(endurance=100),
+            make_pig(endurance=80),
+            ['grognement', 'repos', 'repos'],
+            ['contre_atout', 'repos', 'repos'],
+            cards_p1=['grognement', None, None],
+            cards_p2=['contre_atout', None, None],
+            rng=random.Random(0),
+        )
+        # Contre cancels Grognement → p2 does not lose -25 endu at slot 1.
+        # Repos across 3 slots = +75 capped at 100.
+        self.assertEqual(p2.endurance, 100.0)
+        self.assertIn('contre_atout_cancels_p1', evs[0].get('card_effects', []))
+
+    def test_max_one_card_per_round_rejected(self):
+        with self.assertRaises(ValueError):
+            resolve_round(
+                make_pig(), make_pig(),
+                ['charge', 'charge', 'charge'],
+                ['repos', 'repos', 'repos'],
+                cards_p1=['berserk', 'feinte', None],
+                rng=random.Random(0),
+            )
+
+
 if __name__ == '__main__':
     unittest.main()

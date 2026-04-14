@@ -8,6 +8,7 @@ from services.octogroin_service import (
     cancel_duel,
     create_duel,
     get_matchup_rating,
+    get_player_hand,
     get_round_duration_seconds,
     get_stake_bounds,
     get_visible_duel,
@@ -16,6 +17,7 @@ from services.octogroin_service import (
     list_user_duels,
     submit_actions,
 )
+from services.octogroin_cards import CARDS
 from services.octogroin_engine import ACTIONS
 
 octogroin_bp = Blueprint('octogroin', __name__)
@@ -160,6 +162,8 @@ def duel_view(duel_id):
         my_pigs = [p for p in user.pigs if p.is_alive and not p.is_injured]
 
     matchup = get_matchup_rating(duel)
+    my_hand = get_player_hand(duel, user) if duel.status == 'active' else []
+    hand_cards = [CARDS[c] for c in my_hand if c in CARDS]
 
     return render_template(
         'octogroin_duel.html',
@@ -170,6 +174,8 @@ def duel_view(duel_id):
         can_join=can_join,
         my_pigs=my_pigs,
         matchup=matchup,
+        hand_cards=hand_cards,
+        all_cards=CARDS,
     )
 
 
@@ -186,9 +192,10 @@ def submit(duel_id):
 
     payload = request.get_json(silent=True) or {}
     actions = payload.get('actions')
+    cards = payload.get('cards')
 
     try:
-        result = submit_actions(duel, user, actions)
+        result = submit_actions(duel, user, actions, cards=cards)
     except OctogroinError as exc:
         db.session.rollback()
         return jsonify({'ok': False, 'error': str(exc)}), 400
@@ -251,4 +258,5 @@ def duel_state(duel_id):
         'you_are': 'p1' if user.id == duel.player1_id else ('p2' if user.id == duel.player2_id else 'spectator'),
         'allowed_actions': list(ACTIONS),
         'matchup': get_matchup_rating(duel),
+        'hand': get_player_hand(duel, user),
     })

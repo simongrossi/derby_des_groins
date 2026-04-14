@@ -10,6 +10,7 @@ from extensions import db
 from helpers.config import get_config
 from models import Duel, Pig, User
 from services.finance_service import credit_user_balance, debit_user_balance
+from services.octogroin_cards import CARDS, HAND_SIZE, MAX_CARDS_PER_ROUND, draw_hand
 from services.octogroin_engine import (
     ACTIONS,
     PigState,
@@ -25,6 +26,11 @@ MATCHUP_LEVEL_LABELS = {
     'marked': 'Favori marqué',
     'huge':   'Gros déséquilibre',
 }
+
+
+def _hand_seed(duel_id: int, slot: str) -> int:
+    # Distinct seed per player so both hands differ, but deterministic per duel.
+    return (duel_id or 0) * 97 + (1 if slot == 'p1' else 2)
 
 
 class OctogroinError(Exception):
@@ -163,8 +169,25 @@ def join_duel(duel, player, pig):
     duel.current_round = 1
     duel.round_deadline_at = now + timedelta(seconds=get_round_duration_seconds())
 
+    # Draw card hands (3 cards each, deterministic from duel.id).
+    duel.hand_p1_json = json.dumps(draw_hand(_hand_seed(duel.id, 'p1'), HAND_SIZE))
+    duel.hand_p2_json = json.dumps(draw_hand(_hand_seed(duel.id, 'p2'), HAND_SIZE))
+
     db.session.commit()
     return duel
+
+
+def get_player_hand(duel, player) -> list[str]:
+    if player.id == duel.player1_id:
+        payload = duel.hand_p1_json
+    elif player.id == duel.player2_id:
+        payload = duel.hand_p2_json
+    else:
+        return []
+    try:
+        return json.loads(payload) if payload else []
+    except (TypeError, ValueError):
+        return []
 
 
 def cancel_duel(duel, player):
@@ -299,7 +322,39 @@ def _round_rng(duel):
     return random.Random((duel.id or 0) * 1009 + (duel.current_round or 0))
 
 
-def submit_actions(duel, player, actions):
+def _validate_cards(cards, player_hand):
+    """Return a cleaned `cards` list of 3 (each None or a card id) after checking
+    length, card existence, max-one-per-round, and that every card played is
+    actually in the player's current hand."""
+    if cards is None:
+        return [None, None, None]
+    if not isinstance(cards, (list, tuple)) or len(cards) != ACTIONS_PER_ROUND:
+        raise OctogroinError("Le champ `cards` doit être une liste de 3 éléments (ou null).")
+
+    clean: list[str | None] = []
+    played: list[str] = []
+    for raw in cards:
+        if raw is None or raw == '':
+            clean.append(None)
+            continue
+        if not isinstance(raw, str):
+            raise OctogroinError("Identifiant de carte invalide.")
+        card_id = raw.strip()
+        if card_id not in CARDS:
+            raise OctogroinError(f"Carte inconnue : {card_id!r}.")
+        if card_id not in player_hand:
+            raise OctogroinError("Tu n'as pas cette carte dans ta main.")
+        played.append(card_id)
+        clean.append(card_id)
+
+    if len(played) > MAX_CARDS_PER_ROUND:
+        raise OctogroinError(f"Tu ne peux jouer qu'{MAX_CARDS_PER_ROUND} carte par manche.")
+    if len(played) != len(set(played)):
+        raise OctogroinError("La même carte ne peut pas être jouée deux fois.")
+    return clean
+
+
+def submit_actions(duel, player, actions, cards=None):
     if duel.status != 'active':
         raise OctogroinError("Ce duel n'est pas en cours.")
 
@@ -307,8 +362,10 @@ def submit_actions(duel, player, actions):
     if slot is None:
         raise OctogroinError("Tu n'es pas un participant de ce duel.")
 
-    clean = _validate_actions(actions)
-    payload = json.dumps(clean)
+    clean_actions = _validate_actions(actions)
+    hand = get_player_hand(duel, player)
+    clean_cards = _validate_cards(cards, hand)
+    payload = json.dumps({'actions': clean_actions, 'cards': clean_cards})
 
     if slot == 'p1':
         if duel.round_actions_p1:
@@ -319,6 +376,17 @@ def submit_actions(duel, player, actions):
             raise OctogroinError("Actions déjà programmées pour cette manche.")
         duel.round_actions_p2 = payload
 
+    # Remove played cards from the hand (consumed at submit time so re-submit
+    # validation catches an attempt to replay the same card on a later round).
+    played_ids = [c for c in clean_cards if c]
+    if played_ids:
+        remaining = [c for c in hand if c not in played_ids]
+        remaining_payload = json.dumps(remaining)
+        if slot == 'p1':
+            duel.hand_p1_json = remaining_payload
+        else:
+            duel.hand_p2_json = remaining_payload
+
     resolved = False
     if duel.round_actions_p1 and duel.round_actions_p2:
         resolve_round_now(duel)
@@ -328,13 +396,26 @@ def submit_actions(duel, player, actions):
     return {'resolved': resolved, 'duel': duel}
 
 
+def _decode_round_payload(raw):
+    """Accept both the legacy `["charge", ...]` format and the new
+    `{"actions": [...], "cards": [...]}` format."""
+    if raw is None:
+        return [], [None, None, None]
+    data = json.loads(raw)
+    if isinstance(data, list):
+        return data, [None, None, None]
+    actions = data.get('actions', [])
+    cards = data.get('cards') or [None, None, None]
+    return actions, cards
+
+
 def resolve_round_now(duel):
     """Resolve the pending round, update duel state, append events, finish if needed."""
     if not duel.round_actions_p1 or not duel.round_actions_p2:
         raise OctogroinError("Les deux joueurs n'ont pas encore programmé leurs actions.")
 
-    actions_p1 = json.loads(duel.round_actions_p1)
-    actions_p2 = json.loads(duel.round_actions_p2)
+    actions_p1, cards_p1 = _decode_round_payload(duel.round_actions_p1)
+    actions_p2, cards_p2 = _decode_round_payload(duel.round_actions_p2)
 
     state1 = _pig_to_state(duel.pig1, duel.pig1_position, duel.pig1_endurance)
     state2 = _pig_to_state(duel.pig2, duel.pig2_position, duel.pig2_endurance)
@@ -342,6 +423,7 @@ def resolve_round_now(duel):
     rng = _round_rng(duel)
     state1_after, state2_after, events = engine_resolve_round(
         state1, state2, actions_p1, actions_p2,
+        cards_p1=cards_p1, cards_p2=cards_p2,
         round_number=duel.current_round, rng=rng,
     )
 
@@ -355,6 +437,8 @@ def resolve_round_now(duel):
         'round': duel.current_round,
         'actions_p1': actions_p1,
         'actions_p2': actions_p2,
+        'cards_p1': cards_p1,
+        'cards_p2': cards_p2,
         'events': events,
         'verdict': verdict,
     })

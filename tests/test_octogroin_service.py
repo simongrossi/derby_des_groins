@@ -10,12 +10,14 @@ from services.octogroin_service import (
     create_duel,
     finish_duel,
     get_matchup_rating,
+    get_player_hand,
     join_duel,
     list_open_duels,
     list_user_duels,
     get_visible_duel,
     submit_actions,
 )
+from services.octogroin_cards import CARDS, HAND_SIZE
 from tests.support import build_test_app, reset_database
 
 
@@ -387,6 +389,60 @@ class OctogroinServiceTests(unittest.TestCase):
             self.assertEqual(before['p1_pct'], after['p1_pct'])
             self.assertEqual(before['p2_pct'], after['p2_pct'])
             self.assertEqual(before['favorite'], after['favorite'])
+
+    def test_join_duel_deals_card_hands(self):
+        ids = self._start_duel()
+        with self.app.app_context():
+            duel = db.session.get(Duel, ids['duel'])
+            a = db.session.get(User, ids['a'])
+            b = db.session.get(User, ids['b'])
+            hand_a = get_player_hand(duel, a)
+            hand_b = get_player_hand(duel, b)
+            self.assertEqual(len(hand_a), HAND_SIZE)
+            self.assertEqual(len(hand_b), HAND_SIZE)
+            for cid in hand_a + hand_b:
+                self.assertIn(cid, CARDS)
+            # Two distinct seeds => typically distinct hands.
+            self.assertNotEqual(hand_a, hand_b)
+
+    def test_submit_with_card_consumes_it(self):
+        ids = self._start_duel()
+        with self.app.app_context():
+            duel = db.session.get(Duel, ids['duel'])
+            a = db.session.get(User, ids['a'])
+            hand_before = get_player_hand(duel, a)
+            chosen = hand_before[0]
+            submit_actions(duel, a, ['charge', 'repos', 'ancrage'],
+                           cards=[chosen, None, None])
+            duel = db.session.get(Duel, ids['duel'])
+            hand_after = get_player_hand(duel, a)
+            self.assertNotIn(chosen, hand_after)
+            self.assertEqual(len(hand_after), HAND_SIZE - 1)
+
+    def test_submit_rejects_card_not_in_hand(self):
+        ids = self._start_duel()
+        with self.app.app_context():
+            duel = db.session.get(Duel, ids['duel'])
+            a = db.session.get(User, ids['a'])
+            hand = get_player_hand(duel, a)
+            # Find a card NOT in the hand.
+            all_ids = list(CARDS.keys())
+            not_in_hand = [c for c in all_ids if c not in hand][0]
+            with self.assertRaises(OctogroinError):
+                submit_actions(duel, a, ['charge', 'repos', 'ancrage'],
+                               cards=[not_in_hand, None, None])
+
+    def test_submit_rejects_more_than_one_card(self):
+        ids = self._start_duel()
+        with self.app.app_context():
+            duel = db.session.get(Duel, ids['duel'])
+            a = db.session.get(User, ids['a'])
+            hand = get_player_hand(duel, a)
+            if len(hand) < 2:
+                self.skipTest("hand too small")
+            with self.assertRaises(OctogroinError):
+                submit_actions(duel, a, ['charge', 'repos', 'ancrage'],
+                               cards=[hand[0], hand[1], None])
 
     def test_direct_duel_hidden_from_uninvited_viewer(self):
         ids = self._fixture()

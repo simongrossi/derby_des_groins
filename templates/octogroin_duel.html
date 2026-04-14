@@ -44,6 +44,8 @@
         .action-btn .cost { font-size: 10px; color: rgba(255,255,255,0.5); }
         .slot { flex: 1; min-height: 74px; border: 2px dashed rgba(255,255,255,0.18); border-radius: 14px; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(0,0,0,0.25); transition: all 0.2s; cursor: pointer; }
         .slot.filled { border-style: solid; border-color: rgba(244,114,182,0.5); background: rgba(244,114,182,0.1); }
+        .slot.card-filled { border-color: rgba(251,191,36,0.6); background: rgba(251,191,36,0.12); box-shadow: 0 0 12px rgba(251,191,36,0.2); }
+        .card-btn.card-equipped { border-color: rgba(251,191,36,0.7); background: rgba(251,191,36,0.16); box-shadow: 0 0 14px rgba(251,191,36,0.25); }
         .slot .slot-emoji { font-size: 28px; line-height: 1; }
         .slot .slot-label { font-size: 11px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.05em; margin-top: 2px; color: rgba(255,255,255,0.7); }
         .slot .slot-idx { position: absolute; top: 4px; left: 6px; font-size: 10px; color: rgba(255,255,255,0.35); font-weight: 900; }
@@ -287,6 +289,38 @@
                 </button>
             </div>
 
+            {% if hand_cards %}
+            <div class="mb-4">
+                <div class="flex items-center justify-between mb-2">
+                    <h3 class="text-xs uppercase tracking-widest text-pink-200 font-black">🃏 Ta main ({{ hand_cards|length }} carte{{ 's' if hand_cards|length > 1 else '' }})</h3>
+                    <span class="text-[11px] text-white/50">1 carte max par manche · remplace une action</span>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-2" id="hand-row">
+                    {% for card in hand_cards %}
+                    <button type="button"
+                            class="card-btn text-left rounded-xl border-2 border-white/10 bg-white/5 p-2 hover:border-pink-300/50 transition"
+                            data-card="{{ card.id }}"
+                            data-kind="{{ card.kind }}"
+                            title="{{ card.description }}">
+                        <div class="flex items-center gap-2">
+                            <span class="text-2xl">{{ card.emoji }}</span>
+                            <div class="flex-1 min-w-0">
+                                <div class="flex items-center justify-between gap-1">
+                                    <span class="font-black text-sm truncate">{{ card.label }}</span>
+                                    <span class="text-[10px] uppercase tracking-widest font-black
+                                        {% if card.kind == 'atout' %}text-amber-200{% else %}text-cyan-200{% endif %}">
+                                        {{ 'ATOUT' if card.kind == 'atout' else 'CONTRE' }}
+                                    </span>
+                                </div>
+                                <p class="text-[11px] text-white/70 mt-0.5 leading-tight">{{ card.description }}</p>
+                            </div>
+                        </div>
+                    </button>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+
             <div class="flex items-center justify-between gap-3">
                 <button id="reset-btn" type="button" class="px-4 py-2 rounded-xl border border-white/15 text-white/70 text-sm font-bold hover:bg-white/5">Reset</button>
                 <button id="submit-btn" type="button" disabled
@@ -343,16 +377,25 @@
             p2_crit_on_rest: '💥 COUP CRITIQUE sur 🔴 qui se reposait !',
             p1_charges_essouffle: '🔴 charge un 🔵 essoufflé',
             p2_charges_essouffle: '🔵 charge un 🔴 essoufflé',
+            p1_coup_bas_bypass: '🤥 Coup bas de 🔴 — l\'Ancrage de 🔵 ne résiste pas !',
+            p2_coup_bas_bypass: '🤥 Coup bas de 🔵 — l\'Ancrage de 🔴 ne résiste pas !',
             no_contact: 'Pas de contact',
         };
 
         // ── State locales ────────────────────────────────────────────────
-        let slots = [null, null, null];
+        let slots = [null, null, null];         // action per slot
+        let cardSlots = [null, null, null];     // card per slot (at most one non-null)
         let lastAnimatedRound = 0;
         let animating = false;
         let pollTimer = null;
         let tickTimer = null;
         let remoteDeadline = null;
+
+        const CARD_META = {
+            {% for cid, card in all_cards.items() %}
+            {{ cid|tojson }}: {label: {{ card.label|tojson }}, emoji: {{ card.emoji|tojson }}, kind: {{ card.kind|tojson }}},
+            {% endfor %}
+        };
 
         // ── DOM ─────────────────────────────────────────────────────────
         const $ = (id) => document.getElementById(id);
@@ -423,13 +466,26 @@
             const a1 = ACTION_META[ev.p1_action] || ACTION_META.null;
             const a2 = ACTION_META[ev.p2_action] || ACTION_META.null;
             const outcomeTxt = OUTCOME_TEXT[ev.outcome] || ev.outcome;
+            // If cards were played, show them instead of the pseudo-action.
+            const c1 = ev.p1_card ? CARD_META[ev.p1_card] : null;
+            const c2 = ev.p2_card ? CARD_META[ev.p2_card] : null;
+            const leftText = c1
+                ? `🎴 ${c1.emoji} ${c1.label}`
+                : `${a1.emoji} ${a1.label}`;
+            const rightText = c2
+                ? `🎴 ${c2.emoji} ${c2.label}`
+                : `${a2.emoji} ${a2.label}`;
+            const cardEffectsHtml = (ev.card_effects || []).length
+                ? `<span class="w-full text-[10px] uppercase tracking-widest text-amber-200">✨ ${ev.card_effects.join(', ')}</span>`
+                : '';
             pushLog(
                 `<div class="flex items-center gap-2 flex-wrap">`
                 + `<span class="text-[10px] uppercase tracking-widest text-white/40">M${ev.round} · ${ev.step}/3</span>`
-                + `<span>🔴 ${a1.emoji} ${a1.label}</span>`
+                + `<span>🔴 ${leftText}</span>`
                 + `<span class="text-white/30">vs</span>`
-                + `<span>🔵 ${a2.emoji} ${a2.label}</span>`
+                + `<span>🔵 ${rightText}</span>`
                 + `<span class="w-full text-pink-200 font-bold">${outcomeTxt}</span>`
+                + cardEffectsHtml
                 + `</div>`
             );
             setMarkers(ev.p1_position_after, ev.p2_position_after);
@@ -482,38 +538,86 @@
         }
 
         // ── UI : programmation des actions ──────────────────────────────
+        const cardBtns = document.querySelectorAll('.card-btn');
         function renderSlots() {
             slotEls.forEach((el, i) => {
                 const action = slots[i];
-                const emoji = action ? ACTION_META[action].emoji : '·';
-                const label = action ? ACTION_META[action].label : 'vide';
-                el.classList.toggle('filled', !!action);
+                const card = cardSlots[i];
+                let emoji = '·';
+                let label = 'vide';
+                if (card) {
+                    emoji = CARD_META[card].emoji;
+                    label = CARD_META[card].label;
+                } else if (action) {
+                    emoji = ACTION_META[action].emoji;
+                    label = ACTION_META[action].label;
+                }
+                el.classList.toggle('filled', !!(action || card));
+                el.classList.toggle('card-filled', !!card);
                 el.querySelector('.slot-emoji').textContent = emoji;
                 el.querySelector('.slot-label').textContent = label;
             });
-            submitBtn.disabled = slots.some(s => s === null);
+            // Card buttons: highlight the equipped one, dim the others.
+            cardBtns.forEach(btn => {
+                const equipped = cardSlots.includes(btn.dataset.card);
+                btn.classList.toggle('card-equipped', equipped);
+            });
+            // Submit requires 3 slots filled (actions OR cards).
+            const filled = slots.map((a, i) => a || cardSlots[i]);
+            submitBtn.disabled = filled.some(x => x === null);
         }
         slotEls.forEach((el, i) => {
             el.addEventListener('click', () => {
                 slots[i] = null;
+                cardSlots[i] = null;
                 renderSlots();
             });
         });
         actionBtns.forEach(btn => {
             btn.addEventListener('click', () => {
                 const action = btn.dataset.action;
-                const firstEmpty = slots.findIndex(s => s === null);
+                // Find first slot that has no action AND no card equipped.
+                const firstEmpty = slots.findIndex((a, i) => !a && !cardSlots[i]);
                 if (firstEmpty === -1) return;
                 slots[firstEmpty] = action;
                 renderSlots();
             });
         });
+        cardBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                const cardId = btn.dataset.card;
+                // Toggle: if already equipped, remove it.
+                const equippedIdx = cardSlots.indexOf(cardId);
+                if (equippedIdx !== -1) {
+                    cardSlots[equippedIdx] = null;
+                    renderSlots();
+                    return;
+                }
+                // Only 1 card per round — unequip previous if any.
+                for (let i = 0; i < cardSlots.length; i++) cardSlots[i] = null;
+                // Place card in first slot that has no action and no card.
+                const firstEmpty = slots.findIndex((a, i) => !a && !cardSlots[i]);
+                if (firstEmpty === -1) {
+                    // All slots filled with actions → replace slot 0's action.
+                    slots[0] = null;
+                    cardSlots[0] = cardId;
+                } else {
+                    cardSlots[firstEmpty] = cardId;
+                }
+                renderSlots();
+            });
+        });
         resetBtn.addEventListener('click', () => {
             slots = [null, null, null];
+            cardSlots = [null, null, null];
             renderSlots();
         });
         submitBtn.addEventListener('click', async () => {
-            if (slots.some(s => s === null)) return;
+            const filled = slots.map((a, i) => a || cardSlots[i]);
+            if (filled.some(x => x === null)) return;
+            // If a card is in a slot, the engine ignores the "action" there,
+            // but we still send a placeholder so the array shape matches.
+            const actionsPayload = slots.map((a, i) => a || 'repos');
             submitBtn.disabled = true;
             submitBtn.textContent = 'Envoi…';
             try {
@@ -524,7 +628,7 @@
                         'Content-Type': 'application/json',
                         'X-CSRFToken': CSRF,
                     },
-                    body: JSON.stringify({actions: slots}),
+                    body: JSON.stringify({actions: actionsPayload, cards: cardSlots}),
                 });
                 const data = await r.json();
                 if (!data.ok) {
@@ -534,6 +638,7 @@
                     return;
                 }
                 slots = [null, null, null];
+                cardSlots = [null, null, null];
                 renderSlots();
                 submitBtn.textContent = 'Soumettre la manche';
                 // Force an immediate poll to pick up new state / replay
