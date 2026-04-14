@@ -498,10 +498,22 @@
         async function playEvent(ev) {
             const a1 = ACTION_META[ev.p1_action] || ACTION_META.null;
             const a2 = ACTION_META[ev.p2_action] || ACTION_META.null;
-            const outcomeTxt = OUTCOME_TEXT[ev.outcome] || ev.outcome;
             // If cards were played, show them instead of the pseudo-action.
             const c1 = ev.p1_card ? CARD_META[ev.p1_card] : null;
             const c2 = ev.p2_card ? CARD_META[ev.p2_card] : null;
+            // Re-narrate engine outcomes when a card is involved so we don't
+            // say "charge un essoufflé" while the opponent actually played a card.
+            let outcomeTxt = OUTCOME_TEXT[ev.outcome] || ev.outcome;
+            if (ev.outcome === 'p1_charges_essouffle' && c2) {
+                outcomeTxt = `🔴 charge pendant que 🔵 pose ${c2.emoji} ${c2.label}`;
+            } else if (ev.outcome === 'p2_charges_essouffle' && c1) {
+                outcomeTxt = `🔵 charge pendant que 🔴 pose ${c1.emoji} ${c1.label}`;
+            } else if (ev.outcome === 'no_contact' && (c1 || c2)) {
+                const parts = [];
+                if (c1) parts.push(`🔴 pose ${c1.emoji} ${c1.label}`);
+                if (c2) parts.push(`🔵 pose ${c2.emoji} ${c2.label}`);
+                outcomeTxt = parts.join(' · ');
+            }
             const leftText = c1
                 ? `🎴 ${c1.emoji} ${c1.label}`
                 : `${a1.emoji} ${a1.label}`;
