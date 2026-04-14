@@ -19,10 +19,31 @@
     <main class="max-w-5xl mx-auto px-4 py-8">
         {% include '_flash.html' %}
 
-        <header class="mb-8">
+        <header class="mb-6">
             <h1 class="font-title text-5xl text-pink-300 drop-shadow">🥊 L'Octogroin</h1>
             <p class="text-white/70 mt-2 max-w-2xl">Duels 1v1 dans la flaque de boue : programme 3 actions par manche, pousse ton adversaire hors de l'arène. Mises de {{ "%.0f"|format(min_stake) }} à {{ "%.0f"|format(max_stake) }} BitGroins.</p>
         </header>
+
+        <details class="arena-card mb-8 group" open>
+            <summary class="cursor-pointer flex items-center justify-between gap-3 p-4 list-none">
+                <span class="font-title text-lg text-pink-200 flex items-center gap-2">📖 En bref</span>
+                <span class="text-xs text-white/45 group-open:hidden">Déplier</span>
+                <span class="text-xs text-white/45 hidden group-open:inline">Replier</span>
+            </summary>
+            <div class="px-4 pb-4 text-sm text-white/75 grid md:grid-cols-2 gap-3">
+                <div class="space-y-2">
+                    <p><strong class="text-pink-100">But :</strong> pousser l'adversaire hors de la flaque (jauge 0→100) en maximum 5 manches. Chaque manche = 3 actions programmées face cachée et résolues simultanément.</p>
+                    <p><strong class="text-pink-100">Mise :</strong> chacun paie. Pot = 2× la mise. Gagnant prend 90 % du pot (10 % pour la maison). Nul = chacun récupère sa mise.</p>
+                </div>
+                <div class="grid grid-cols-2 gap-2 text-xs">
+                    <div class="rounded-lg border border-white/10 bg-white/5 p-2"><strong>💥 Charge</strong> <span class="text-red-300">−20</span><br><span class="text-white/60">pousse (force/4)</span></div>
+                    <div class="rounded-lg border border-white/10 bg-white/5 p-2"><strong>🧱 Ancrage</strong> <span class="text-red-300">−10</span><br><span class="text-white/60">contre charge, −30 à l'attaquant</span></div>
+                    <div class="rounded-lg border border-white/10 bg-white/5 p-2"><strong>💨 Esquive</strong> <span class="text-red-300">−15</span><br><span class="text-white/60">chance = agilité/100</span></div>
+                    <div class="rounded-lg border border-white/10 bg-white/5 p-2"><strong>💤 Repos</strong> <span class="text-green-300">+25</span><br><span class="text-white/60">crit ×1.5 si chargé</span></div>
+                </div>
+                <p class="md:col-span-2 text-xs text-white/55">Endurance à 0 = essoufflé, l'action échoue. Règles détaillées : <a href="/regles#section-l-octogroin-duel-de-boue-pvp" class="underline text-pink-200 hover:text-pink-100">page Règles</a>.</p>
+            </div>
+        </details>
 
         <section class="arena-card p-6 mb-8">
             <h2 class="font-title text-2xl text-pink-200 mb-4">Créer un duel</h2>

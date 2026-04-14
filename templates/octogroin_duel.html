@@ -128,6 +128,48 @@
 
         <div id="winner-zone" class="hidden mb-6"></div>
 
+        <details class="arena-card mb-6 group" open>
+            <summary class="cursor-pointer flex items-center justify-between gap-3 p-4 list-none">
+                <span class="font-title text-lg text-pink-200 flex items-center gap-2">📖 Comment jouer</span>
+                <span class="text-xs text-white/45 group-open:hidden">Déplier</span>
+                <span class="text-xs text-white/45 hidden group-open:inline">Replier</span>
+            </summary>
+            <div class="px-4 pb-4 text-sm text-white/75 space-y-3">
+                <p>
+                    <strong class="text-pink-100">Objectif :</strong>
+                    pousse le cochon adverse hors de la flaque (jauge de 0 à 100 par cochon ; 100 = sorti).
+                    À la fin de la 5ᵉ manche, si personne n'est tombé, c'est le moins reculé qui gagne.
+                </p>
+                <p>
+                    <strong class="text-pink-100">Chaque manche :</strong>
+                    tu programmes <strong>3 actions</strong> face cachée. Les deux joueurs révèlent en même temps,
+                    le serveur résout chaque pair (action&nbsp;#1 contre action&nbsp;#1, etc.) puis l'animation défile.
+                </p>
+                <div class="grid sm:grid-cols-2 gap-2">
+                    <div class="rounded-xl border border-white/10 bg-white/5 p-3">
+                        <div class="flex items-center gap-2 font-bold"><span class="text-xl">💥</span> Charge <span class="ml-auto text-[11px] text-red-300">−20 endu</span></div>
+                        <p class="text-xs text-white/65 mt-1">Pousse l'adversaire (force/4). Deux charges simultanées = <em>clash</em>, le plus <strong>fort + lourd + rapide</strong> gagne.</p>
+                    </div>
+                    <div class="rounded-xl border border-white/10 bg-white/5 p-3">
+                        <div class="flex items-center gap-2 font-bold"><span class="text-xl">🧱</span> Ancrage <span class="ml-auto text-[11px] text-red-300">−10 endu</span></div>
+                        <p class="text-xs text-white/65 mt-1">Contre une charge : l'attaquant s'écrase et perd <strong>−30 endu</strong> bonus. Aucun effet face aux autres actions.</p>
+                    </div>
+                    <div class="rounded-xl border border-white/10 bg-white/5 p-3">
+                        <div class="flex items-center gap-2 font-bold"><span class="text-xl">💨</span> Esquive <span class="ml-auto text-[11px] text-red-300">−15 endu</span></div>
+                        <p class="text-xs text-white/65 mt-1">Face à une charge : chance = <strong>agilité ÷ 100</strong> (20–95 %). Succès → l'attaquant glisse <em>vers son propre bord</em>.</p>
+                    </div>
+                    <div class="rounded-xl border border-white/10 bg-white/5 p-3">
+                        <div class="flex items-center gap-2 font-bold"><span class="text-xl">💤</span> Repos <span class="ml-auto text-[11px] text-green-300">+25 endu</span></div>
+                        <p class="text-xs text-white/65 mt-1">Récupère… mais très vulnérable : une charge reçue pendant un repos fait <strong>×1.5 de poussée</strong> (coup critique).</p>
+                    </div>
+                </div>
+                <p class="text-xs text-white/55">
+                    ⚠️ Endurance tombée à 0 = <strong>essoufflé</strong> : l'action échoue automatiquement.
+                    Règles complètes sur <a href="/regles#section-l-octogroin-duel-de-boue-pvp" class="underline text-pink-200 hover:text-pink-100">la page Règles</a>.
+                </p>
+            </div>
+        </details>
+
         {% if duel.status == 'waiting' and duel.player1_id == user.id %}
         <section class="arena-card p-4 mb-6 flex items-center justify-between gap-4 flex-wrap">
             <p class="text-white/70 text-sm">Tant que personne n'a rejoint, tu peux annuler : ta mise te sera remboursée.</p>
