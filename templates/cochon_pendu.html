@@ -19,43 +19,96 @@
       --px-pink: #ff8db6;
       --px-yellow: #f9cf5b;
       --px-cyan: #7bf3ff;
+      --px-border: #000;
+      --px-shadow: #000;
+      --px-btn: #6a2a43;
+      --px-btn-hover: #7f3551;
+      --px-kbd: #3a1a27;
+      --px-kbd-hover: #503042;
+      --px-rules-bg: #1a1225;
+      --px-win-bg: #4b2d0f;
+      --px-lose-bg: #3b1422;
+      --px-modal-bg: #2a0e1a;
+      --px-svg-bg: #1a0f12;
+      --px-svg-ground: #4f3119;
+      --px-slot-bg: rgba(255,255,255,0.03);
+      --px-slot-shadow: rgba(255,141,182,0.35);
+      --px-slot-text: #ffd9e7;
+      --px-scanline: rgba(255,255,255,0.03);
+      --px-text-main: #fff;
+      --px-text-soft: rgba(255,255,255,0.8);
     }
+    html[data-theme="light"] {
+      --px-bg: #fff7fb;
+      --px-panel: rgba(255,243,248,0.92);
+      --px-panel-2: rgba(255,252,254,0.96);
+      --px-line: rgba(200,140,170,0.5);
+      --px-pink: #c4367a;
+      --px-yellow: #a16207;
+      --px-cyan: #0e7490;
+      --px-border: rgba(180,130,155,0.45);
+      --px-shadow: rgba(180,130,155,0.2);
+      --px-btn: #d66a96;
+      --px-btn-hover: #c4567e;
+      --px-kbd: rgba(255,235,244,0.9);
+      --px-kbd-hover: rgba(250,215,230,0.95);
+      --px-rules-bg: rgba(245,235,252,0.9);
+      --px-win-bg: rgba(255,248,230,0.92);
+      --px-lose-bg: rgba(255,235,240,0.92);
+      --px-modal-bg: rgba(255,250,253,0.98);
+      --px-svg-bg: #fdf2f5;
+      --px-svg-ground: #d4a574;
+      --px-slot-bg: rgba(120,60,90,0.06);
+      --px-slot-shadow: rgba(200,100,140,0.2);
+      --px-slot-text: #6b2148;
+      --px-scanline: transparent;
+      --px-text-main: #432739;
+      --px-text-soft: rgba(67,39,57,0.8);
+    }
+    html[data-theme="light"] .text-pink-300 { color: #be185d !important; }
+    html[data-theme="light"] .text-cyan-200 { color: #0e7490 !important; }
+    html[data-theme="light"] .text-yellow-300 { color: #a16207 !important; }
+    html[data-theme="light"] .text-red-100 { color: #991b1b !important; }
+    html[data-theme="light"] .text-red-300 { color: #dc2626 !important; }
+    html[data-theme="light"] .text-emerald-300 { color: #047857 !important; }
+    html[data-theme="light"] .text-purple-200 { color: #7c3aed !important; }
     body { background: repeating-linear-gradient(180deg,#220515 0 8px,#1a0410 8px 16px); }
     .pixel-font { font-family: 'Press Start 2P', cursive; letter-spacing: 0.04em; }
     .retro-font { font-family: 'VT323', monospace; }
     .pixel-card {
-      border: 4px solid #000;
-      box-shadow: inset 0 0 0 2px var(--px-line), 0 10px 0 #000;
+      border: 4px solid var(--px-border);
+      box-shadow: inset 0 0 0 2px var(--px-line), 0 10px 0 var(--px-shadow);
       background: linear-gradient(180deg, var(--px-panel-2), var(--px-panel));
     }
     .pixel-btn {
-      border: 3px solid #000;
-      box-shadow: inset 0 0 0 2px rgba(255,255,255,0.08), 0 4px 0 #000;
+      border: 3px solid var(--px-border);
+      box-shadow: inset 0 0 0 2px rgba(255,255,255,0.08), 0 4px 0 var(--px-shadow);
       text-transform: uppercase;
       transition: transform .05s ease;
+      color: var(--px-text-main);
     }
-    .pixel-btn:active { transform: translateY(2px); box-shadow: inset 0 0 0 2px rgba(255,255,255,0.08), 0 2px 0 #000; }
+    .pixel-btn:active { transform: translateY(2px); box-shadow: inset 0 0 0 2px rgba(255,255,255,0.08), 0 2px 0 var(--px-shadow); }
     .scanlines::after {
       content: "";
       position: absolute;
       inset: 0;
       pointer-events: none;
-      background: repeating-linear-gradient(180deg, rgba(255,255,255,0.03) 0 2px, transparent 2px 4px);
+      background: repeating-linear-gradient(180deg, var(--px-scanline) 0 2px, transparent 2px 4px);
       mix-blend-mode: soft-light;
     }
     svg { image-rendering: pixelated; shape-rendering: crispEdges; }
     .word-slot {
       width: 2.4rem;
       height: 2.8rem;
-      border: 3px solid #000;
-      box-shadow: inset 0 -6px 0 rgba(255,141,182,0.35);
-      background: rgba(255,255,255,0.03);
+      border: 3px solid var(--px-border);
+      box-shadow: inset 0 -6px 0 var(--px-slot-shadow);
+      background: var(--px-slot-bg);
       display: inline-flex;
       align-items: center;
       justify-content: center;
       font-family: 'Press Start 2P', cursive;
       font-size: .95rem;
-      color: #ffd9e7;
+      color: var(--px-slot-text);
     }
     .word-gap {
       width: 1.2rem;
@@ -64,16 +117,16 @@
     }
   </style>
 </head>
-<body class="min-h-screen text-white">
+<body class="min-h-screen" style="color: var(--px-text-main)">
   <main class="max-w-7xl mx-auto px-4 py-8 space-y-6">
-    <section class="pixel-card relative scanlines p-5 sm:p-7 text-white">
+    <section class="pixel-card relative scanlines p-5 sm:p-7">
       <div class="flex flex-wrap items-center justify-between gap-4 relative z-10">
         <div>
           <p class="pixel-font text-[10px] text-pink-200">MINI-JEU ARCADE</p>
           <h1 class="pixel-font text-xl sm:text-2xl text-pink-100 mt-3">🐷 COCHON PENDU</h1>
         </div>
         <div class="text-right space-y-1">
-          <button id="restart-btn" class="pixel-btn pixel-font text-[11px] bg-[#6a2a43] hover:bg-[#7f3551] px-4 py-3">Rejouer</button>
+          <button id="restart-btn" class="pixel-btn pixel-font text-[11px] px-4 py-3" style="background: var(--px-btn)" onmouseover="this.style.background='var(--px-btn-hover)'" onmouseout="this.style.background='var(--px-btn)'">Rejouer</button>
           <p id="quota-info" class="pixel-font text-[9px] text-pink-300">
             {% if pendu_info.remaining_free > 0 %}
               {{ pendu_info.remaining_free }}/{{ free_plays }} parties gratuites
@@ -88,9 +141,9 @@
         <article class="pixel-card p-4 sm:p-6">
           <p class="pixel-font text-[10px] text-pink-200">SCENE DU COCHON PENDU</p>
           <div class="mt-4 flex justify-center">
-            <svg viewBox="0 0 200 300" class="w-full max-w-md border-4 border-black bg-[#1a0f12]">
-              <rect x="0" y="0" width="200" height="300" fill="#2b0f1b"/>
-              <rect x="0" y="260" width="200" height="40" fill="#4f3119"/>
+            <svg viewBox="0 0 200 300" class="w-full max-w-md" style="border: 4px solid var(--px-border); background: var(--px-svg-bg)">
+              <rect x="0" y="0" width="200" height="300" style="fill: var(--px-svg-bg)"/>
+              <rect x="0" y="260" width="200" height="40" style="fill: var(--px-svg-ground)"/>
 
               <g id="stage-0">
                 <rect x="80" y="222" width="40" height="24" fill="#f4a5bf"/>
@@ -157,7 +210,7 @@
         </article>
 
         <article class="pixel-card p-4 sm:p-6 space-y-5">
-          <div class="pixel-card p-3 bg-[#1a1225] mb-3">
+          <div class="pixel-card p-3 mb-3" style="background: var(--px-rules-bg)">
             <details class="group">
               <summary class="pixel-font text-[9px] text-purple-200 cursor-pointer select-none">REGLES DU JEU ▾</summary>
               <div class="retro-font text-lg text-white/80 mt-3 space-y-1">
@@ -174,14 +227,14 @@
           </div>
 
           <div class="grid grid-cols-2 gap-3 text-sm">
-            <div class="pixel-card p-3 bg-[#4b2d0f]">
+            <div class="pixel-card p-3" style="background: var(--px-win-bg)">
               <p class="pixel-font text-[9px] text-yellow-100">GAIN VICTOIRE</p>
               <p class="pixel-font text-2xl mt-2 text-yellow-300">+{{ reward }}</p>
               {% if bonus_per_life > 0 %}
                 <p class="retro-font text-lg mt-1 text-emerald-300">+{{ bonus_per_life }}/vie restante</p>
               {% endif %}
             </div>
-            <div class="pixel-card p-3 bg-[#3b1422]">
+            <div class="pixel-card p-3" style="background: var(--px-lose-bg)">
               <p class="pixel-font text-[9px] text-red-100">DEFAITE</p>
               <p class="retro-font text-2xl mt-2">-{{ happiness_penalty }} bonheur / -{{ energy_penalty }} énergie</p>
             </div>
@@ -206,11 +259,11 @@
     </section>
   </main>
 
-  <div id="end-modal" class="fixed inset-0 hidden items-center justify-center bg-black/80 p-4 z-[120]">
-    <div class="pixel-card w-full max-w-lg p-6 text-center space-y-3 bg-[#2a0e1a]">
+  <div id="end-modal" class="fixed inset-0 hidden items-center justify-center p-4 z-[120]" style="background: rgba(0,0,0,0.7)">
+    <div class="pixel-card w-full max-w-lg p-6 text-center space-y-3" style="background: var(--px-modal-bg)">
       <h2 id="modal-title" class="pixel-font text-lg text-pink-100"></h2>
       <p id="modal-text" class="retro-font text-3xl text-white/90"></p>
-      <button id="modal-restart" class="pixel-btn pixel-font text-[11px] bg-[#6a2a43] hover:bg-[#7f3551] px-5 py-3">REJOUER</button>
+      <button id="modal-restart" class="pixel-btn pixel-font text-[11px] px-5 py-3" style="background: var(--px-btn)" onmouseover="this.style.background='var(--px-btn-hover)'" onmouseout="this.style.background='var(--px-btn)'">REJOUER</button>
     </div>
   </div>
 
@@ -349,7 +402,10 @@
         const letter = String.fromCharCode(code);
         const btn = document.createElement('button');
         btn.textContent = letter;
-        btn.className = 'pixel-btn pixel-font text-[11px] bg-[#3a1a27] hover:bg-[#503042] py-2 px-1 disabled:opacity-40';
+        btn.className = 'pixel-btn pixel-font text-[11px] py-2 px-1 disabled:opacity-40';
+        btn.style.background = 'var(--px-kbd)';
+        btn.onmouseover = function() { this.style.background = 'var(--px-kbd-hover)'; };
+        btn.onmouseout = function() { this.style.background = 'var(--px-kbd)'; };
         if ((gameState.guessed_letters || []).includes(letter)) {
           btn.disabled = true;
           btn.dataset.used = '1';
