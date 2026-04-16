@@ -157,10 +157,29 @@
         </article>
 
         <article class="pixel-card p-4 sm:p-6 space-y-5">
+          <div class="pixel-card p-3 bg-[#1a1225] mb-3">
+            <details class="group">
+              <summary class="pixel-font text-[9px] text-purple-200 cursor-pointer select-none">REGLES DU JEU ▾</summary>
+              <div class="retro-font text-lg text-white/80 mt-3 space-y-1">
+                <p>Devinez le mot lettre par lettre avant d'atteindre {{ max_errors }} erreurs.</p>
+                <p>Victoire : <span class="text-yellow-300">+{{ reward }} Truffes</span>
+                  {% if bonus_per_life > 0 %}
+                    + <span class="text-emerald-300">{{ bonus_per_life }}</span> par vie restante
+                  {% endif %}
+                </p>
+                <p>Défaite : <span class="text-red-300">-{{ happiness_penalty }} bonheur, -{{ energy_penalty }} énergie</span> sur votre cochon.</p>
+                <p>{{ free_plays }} parties gratuites / jour, puis {{ extra_cost }} 🪙 par partie.</p>
+              </div>
+            </details>
+          </div>
+
           <div class="grid grid-cols-2 gap-3 text-sm">
             <div class="pixel-card p-3 bg-[#4b2d0f]">
               <p class="pixel-font text-[9px] text-yellow-100">GAIN VICTOIRE</p>
               <p class="pixel-font text-2xl mt-2 text-yellow-300">+{{ reward }}</p>
+              {% if bonus_per_life > 0 %}
+                <p class="retro-font text-lg mt-1 text-emerald-300">+{{ bonus_per_life }}/vie restante</p>
+              {% endif %}
             </div>
             <div class="pixel-card p-3 bg-[#3b1422]">
               <p class="pixel-font text-[9px] text-red-100">DEFAITE</p>
@@ -174,7 +193,7 @@
           </div>
 
           <div class="flex items-center justify-between text-sm">
-            <p class="pixel-font text-[11px] text-white">Erreurs: <span id="errors-count" class="text-pink-300">0</span>/7</p>
+            <p class="pixel-font text-[11px] text-white">Erreurs: <span id="errors-count" class="text-pink-300">0</span>/<span id="max-errors-count">{{ max_errors }}</span></p>
             <p id="status-text" class="pixel-font text-[11px] text-cyan-200">A TOI DE JOUER !</p>
           </div>
 
@@ -236,12 +255,12 @@
     }
 
     function renderStages(errors) {
-      for (let i = 1; i <= 7; i += 1) {
+      for (let i = 1; i <= MAX_ERRORS; i += 1) {
         const stage = document.getElementById(`stage-${i}`);
         if (!stage) continue;
         stage.classList.toggle('hidden', errors < i);
       }
-      stageCaption.textContent = STAGE_CAPTIONS[Math.min(errors, 7)];
+      stageCaption.textContent = STAGE_CAPTIONS[Math.min(errors, STAGE_CAPTIONS.length - 1)];
     }
 
     function lockKeyboard(lock = true) {
@@ -260,23 +279,37 @@
         statusText.textContent = 'Ouf, vous l\'avez sauvé !';
         statusText.className = 'pixel-font text-[11px] text-emerald-300';
         lockKeyboard(true);
-        openModal(true, state.word);
+        openModal(true, state.word, state);
       } else if (state.status === 'lost') {
         statusText.textContent = 'Transformé en saucisson...';
         statusText.className = 'pixel-font text-[11px] text-red-300';
         lockKeyboard(true);
-        openModal(false, state.word);
+        openModal(false, state.word, state);
       } else {
         statusText.textContent = 'A TOI DE JOUER !';
         statusText.className = 'pixel-font text-[11px] text-cyan-200';
       }
     }
 
-    function openModal(isWin, word) {
+    const BASE_REWARD = {{ reward }};
+    const BONUS_PER_LIFE = {{ bonus_per_life }};
+    const MAX_ERRORS = {{ max_errors }};
+
+    function openModal(isWin, word, state) {
       modalTitle.textContent = isWin ? "OUF, VOUS L'AVEZ SAUVE !" : 'TRANSFORME EN SAUCISSON !';
-      modalText.textContent = isWin
-        ? `Mot trouvé : ${word}. Vous gagnez {{ reward }} Truffes.`
-        : `Mot manqué : ${word}. Votre cochon est traumatisé (-{{ happiness_penalty }} bonheur, -{{ energy_penalty }} énergie).`;
+      if (isWin) {
+        const rewardAmount = state.reward_amount != null
+          ? state.reward_amount
+          : BASE_REWARD + Math.max(0, MAX_ERRORS - (state.errors || 0)) * BONUS_PER_LIFE;
+        const remainingLives = Math.max(0, MAX_ERRORS - (state.errors || 0));
+        let detail = `Mot trouvé : ${word}. Vous gagnez ${rewardAmount} Truffes.`;
+        if (BONUS_PER_LIFE > 0 && remainingLives > 0) {
+          detail += ` (${remainingLives} vie${remainingLives > 1 ? 's' : ''} restante${remainingLives > 1 ? 's' : ''})`;
+        }
+        modalText.textContent = detail;
+      } else {
+        modalText.textContent = `Mot manqué : ${word}. Votre cochon est traumatisé (-{{ happiness_penalty }} bonheur, -{{ energy_penalty }} énergie).`;
+      }
       endModal.classList.remove('hidden');
       endModal.classList.add('flex');
     }

@@ -50,7 +50,7 @@ def _serialize_state(state):
     guessed_letters = state.get('guessed_letters', [])
     masked = _build_masked_word(word, guessed_letters)
     settings = get_minigame_settings()
-    return {
+    result = {
         'masked_word': masked,
         'guessed_letters': guessed_letters,
         'errors': state.get('errors', 0),
@@ -58,6 +58,9 @@ def _serialize_state(state):
         'status': state.get('status', 'playing'),
         'word': word if state.get('status') in ('won', 'lost') else None,
     }
+    if state.get('reward_amount') is not None:
+        result['reward_amount'] = state['reward_amount']
+    return result
 
 
 def _sync_pendu_daily_counter(user):
@@ -109,6 +112,8 @@ def cochon_pendu():
         active_page='cochon_pendu',
         game_state=_serialize_state(session['cochon_pendu_game']),
         reward=settings.pendu_win_reward,
+        bonus_per_life=settings.pendu_bonus_per_remaining_life,
+        max_errors=settings.pendu_max_errors,
         happiness_penalty=settings.pendu_loss_happiness_penalty,
         energy_penalty=settings.pendu_loss_energy_penalty,
         pendu_info=pendu_info,
@@ -214,16 +219,19 @@ def cochon_pendu_guess():
         state['status'] = 'lost'
 
     if state['status'] == 'won' and not state.get('reward_granted'):
+        remaining_lives = max(0, settings.pendu_max_errors - state.get('errors', 0))
+        total_reward = settings.pendu_win_reward + remaining_lives * settings.pendu_bonus_per_remaining_life
         credit_user_balance(
             user.id,
-            settings.pendu_win_reward,
+            total_reward,
             reason_code='cochon_pendu_win',
             reason_label='Victoire Cochon Pendu',
-            details='Mot trouvé dans le mini-jeu Cochon Pendu.',
+            details=f'Mot trouvé dans le mini-jeu Cochon Pendu ({remaining_lives} vies restantes).',
             reference_type='user',
             reference_id=user.id,
         )
         state['reward_granted'] = True
+        state['reward_amount'] = total_reward
 
     if state['status'] == 'lost' and not state.get('penalty_applied'):
         player_pigs = get_user_active_pigs(user)

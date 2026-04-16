@@ -17,6 +17,7 @@ from exceptions import ValidationError
 from helpers.config import get_config, invalidate_config_cache, set_config
 
 DEFAULT_PENDU_WIN_REWARD = 25.0
+DEFAULT_PENDU_BONUS_PER_REMAINING_LIFE = 0.0
 DEFAULT_PENDU_MAX_ERRORS = 7
 DEFAULT_PENDU_LOSS_HAPPINESS_PENALTY = 20.0
 DEFAULT_PENDU_LOSS_ENERGY_PENALTY = 10.0
@@ -55,6 +56,7 @@ class MinigameSettings:
     pendu_free_plays_per_day: int
     pendu_extra_play_cost: int
     pendu_win_reward: float
+    pendu_bonus_per_remaining_life: float
     pendu_max_errors: int
     pendu_loss_happiness_penalty: float
     pendu_loss_energy_penalty: float
@@ -185,6 +187,12 @@ def _normalize_minigame_settings(payload=None) -> MinigameSettings:
             minimum=0.0,
             maximum=100000.0,
         ),
+        pendu_bonus_per_remaining_life=_coerce_float(
+            source.get('pendu_bonus_per_remaining_life', DEFAULT_PENDU_BONUS_PER_REMAINING_LIFE),
+            DEFAULT_PENDU_BONUS_PER_REMAINING_LIFE,
+            minimum=0.0,
+            maximum=10000.0,
+        ),
         pendu_max_errors=_coerce_int(
             source.get('pendu_max_errors', DEFAULT_PENDU_MAX_ERRORS),
             DEFAULT_PENDU_MAX_ERRORS,
@@ -295,6 +303,7 @@ def build_minigame_settings_from_form(form, current_settings=None):
         'pendu_free_plays_per_day': form.get('minigame_pendu_free_plays_per_day', current.pendu_free_plays_per_day),
         'pendu_extra_play_cost': form.get('minigame_pendu_extra_play_cost', current.pendu_extra_play_cost),
         'pendu_win_reward': form.get('minigame_pendu_win_reward', current.pendu_win_reward),
+        'pendu_bonus_per_remaining_life': form.get('minigame_pendu_bonus_per_remaining_life', current.pendu_bonus_per_remaining_life),
         'pendu_max_errors': form.get('minigame_pendu_max_errors', current.pendu_max_errors),
         'pendu_loss_happiness_penalty': form.get('minigame_pendu_loss_happiness_penalty', current.pendu_loss_happiness_penalty),
         'pendu_loss_energy_penalty': form.get('minigame_pendu_loss_energy_penalty', current.pendu_loss_energy_penalty),
